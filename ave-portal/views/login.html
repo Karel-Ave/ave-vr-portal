@@ -1,0 +1,110 @@
+<!DOCTYPE html>
+<html lang="cs">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>AVE Hotels – Přihlášení</title>
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body {
+    min-height: 100vh;
+    background: #1a1a18;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-family: 'Segoe UI', sans-serif;
+  }
+  .card {
+    background: #fff;
+    border-radius: 12px;
+    padding: 44px 40px 36px;
+    width: 360px;
+    box-shadow: 0 8px 32px rgba(0,0,0,.4);
+  }
+  .logo {
+    text-align: center;
+    margin-bottom: 32px;
+  }
+  .logo img {
+    height: 48px;
+    filter: brightness(0);
+  }
+  .logo-text {
+    font-size: 13px;
+    color: #888;
+    margin-top: 8px;
+    letter-spacing: 0.15em;
+    text-transform: uppercase;
+  }
+  label {
+    display: block;
+    font-size: 12px;
+    font-weight: 600;
+    color: #555;
+    margin-bottom: 5px;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+  }
+  input {
+    width: 100%;
+    padding: 10px 12px;
+    border: 1px solid #ddd;
+    border-radius: 6px;
+    font-size: 14px;
+    margin-bottom: 16px;
+    outline: none;
+    transition: border-color .2s;
+  }
+  input:focus { border-color: #2a5caa; }
+  .btn {
+    width: 100%;
+    padding: 11px;
+    background: #1a1a18;
+    color: #fff;
+    border: none;
+    border-radius: 6px;
+    font-size: 14px;
+    font-weight: 600;
+    cursor: pointer;
+    letter-spacing: 0.05em;
+    transition: background .2s;
+  }
+  .btn:hover { background: #333; }
+  .error {
+    background: #fff0f0;
+    border: 1px solid #ffcccc;
+    color: #c00;
+    border-radius: 6px;
+    padding: 10px 12px;
+    font-size: 13px;
+    margin-bottom: 16px;
+    display: none;
+  }
+  .error.show { display: block; }
+</style>
+</head>
+<body>
+<div class="card">
+  <div class="logo">
+    <svg width="120" height="40" viewBox="0 0 300 100" xmlns="http://www.w3.org/2000/svg">
+      <text x="0" y="72" font-family="Georgia, serif" font-size="90" font-weight="700" fill="#1a1a18" letter-spacing="-5">AVE</text>
+      <text x="32" y="95" font-family="'Segoe UI', sans-serif" font-size="22" fill="#555" letter-spacing="12">HOTELS</text>
+    </svg>
+    <div class="logo-text">Interní portál</div>
+  </div>
+  <div class="error show" id="err" style="display:none">Nesprávné přihlašovací údaje.</div>
+  <form method="POST" action="/login">
+    <label>Uživatelské jméno</label>
+    <input type="text" name="username" autocomplete="username" autofocus required>
+    <label>Heslo</label>
+    <input type="password" name="password" autocomplete="current-password" required>
+    <button class="btn" type="submit">Přihlásit se</button>
+  </form>
+</div>
+<script>
+  if (location.search.includes('error=1')) {
+    document.getElementById('err').style.display = 'block';
+  }
+</script>
+</body>
+</html>
