@@ -47,6 +47,16 @@
   .type-S { background: #FF8585; }
   .loading { text-align: center; padding: 40px; color: #888; font-size: 14px; }
   .published-info { font-size: 11px; color: #aaa; margin-left: auto; }
+
+  /* Lock banner */
+  #lock-banner { display:none; position:relative; padding:8px 20px; text-align:center; font-size:13px; font-weight:600; }
+  #lock-banner.locked-by-me { background:#2d7a2d; color:#fff; display:block; }
+  #lock-banner.locked-by-other { background:#c00; color:#fff; display:block; }
+  body.readonly-mode * { pointer-events:none !important; }
+  body.readonly-mode #lock-banner, body.readonly-mode .btn-top, body.readonly-mode a,
+  body.readonly-mode .month-btn, body.readonly-mode .dropdown-btn, body.readonly-mode .dropdown-item,
+  body.readonly-mode .set-current-btn { pointer-events:all !important; }
+
 </style>
 </head>
 <body>
@@ -64,6 +74,7 @@
   </div>
 </div>
 
+<div id="lock-banner"></div>
 <div id="month-bar">
   <button class="month-btn active" id="current-month-btn">Načítám…</button>
   <div class="dropdown" id="history-dropdown">
@@ -71,6 +82,7 @@
     <div class="dropdown-menu" id="dropdown-menu"></div>
   </div>
   <button class="set-current-btn" id="set-current-btn" onclick="setAsCurrent()">⭐ Nastavit jako aktuální</button>
+  <button class="set-current-btn" id="send-to-tvorba-btn" onclick="sendToTvorba()" style="border-color:#5a2d8a;color:#5a2d8a;">✏️ Odeslat do Tvorby</button>
   <span class="published-info" id="published-info"></span>
 </div>
 
@@ -245,5 +257,80 @@ async function setAsCurrent() {
 
 init();
 </script>
+
+<script>
+// ── Zamykání, autosave, nečinnost ──
+let _iAmEditor = false;
+let _lockInterval = null;
+
+async function acquireLock() {
+  try {
+    const r = await fetch('/api/lock/rozpis', {method:'POST', headers:{'Content-Type':'application/json'}});
+    // Use acquire endpoint
+  } catch(e) {}
+}
+
+async function initLock() {
+  try {
+    const r = await fetch('/api/lock/rozpis/acquire', {method:'POST'});
+    const data = await r.json();
+    if (data.ok) {
+      _iAmEditor = true;
+      document.getElementById('lock-banner').className = 'locked-by-me';
+      document.getElementById('lock-banner').textContent = '✏️ Prohlížíte rozpis — ostatní uživatelé mají také přístup';
+      document.body.classList.remove('readonly-mode');
+    } else {
+      setReadonly(data.lock);
+    }
+    _lockInterval = setInterval(checkLock, 15000);
+  } catch(e) {}
+}
+
+async function checkLock() {
+  try {
+    const r = await fetch('/api/lock/rozpis');
+    const data = await r.json();
+    if (data.lock && !_iAmEditor) setReadonly(data.lock);
+    else if (!data.lock && !_iAmEditor) initLock();
+  } catch(e) {}
+}
+
+function setReadonly(lock) {
+  _iAmEditor = false;
+  document.body.classList.add('readonly-mode');
+  const who = lock ? lock.userName : 'někdo';
+  const since = lock ? new Date(lock.since).toLocaleTimeString('cs-CZ',{hour:'2-digit',minute:'2-digit'}) : '';
+  document.getElementById('lock-banner').className = 'locked-by-other';
+  document.getElementById('lock-banner').textContent = `🔒 Rozpis právě upravuje ${who} (od ${since}) — máte pouze náhled`;
+}
+
+// Inactivity logout (10 min)
+(function() {
+  const LOGOUT_MS = 10 * 60 * 1000;
+  let logoutTimer;
+  function resetTimer() {
+    clearTimeout(logoutTimer);
+    logoutTimer = setTimeout(async () => {
+      if (_iAmEditor) { try { await fetch('/api/lock/rozpis/release', {method:'POST'}); } catch(e){} }
+      window.location.href = '/logout';
+    }, LOGOUT_MS - 60000);
+  }
+  ['mousemove','keydown','click','scroll'].forEach(e => document.addEventListener(e, resetTimer, {passive:true}));
+  resetTimer();
+})();
+
+async function sendToTvorba() {
+  if (!displayedKey) return;
+  if (!confirm('Otevřít tento rozpis v aplikaci Tvorba rozpisu?')) return;
+  localStorage.setItem('loadRozpisKey', displayedKey);
+  window.location.href = '/tvorba-rozpisu';
+}
+
+window.addEventListener('load', initLock);
+window.addEventListener('beforeunload', () => {
+  if (_iAmEditor) navigator.sendBeacon('/api/lock/rozpis/release');
+});
+</script>
+
 </body>
 </html>

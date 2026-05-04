@@ -6,30 +6,31 @@ const fs = require('fs');
 
 const app = express();
 const PORT = process.env.PORT || 8080;
-const DATA_FILE = path.join(__dirname, 'data', 'users.json');
-const ROZPISY_FILE = path.join(__dirname, 'data', 'rozpisy.json');
+const DATA_DIR = path.join(__dirname, 'data');
+const USERS_FILE = path.join(DATA_DIR, 'users.json');
+const ROZPISY_FILE = path.join(DATA_DIR, 'rozpisy.json');
+const SETTINGS_FILE = path.join(DATA_DIR, 'settings.json');
 
-if (!fs.existsSync(path.join(__dirname, 'data'))) fs.mkdirSync(path.join(__dirname, 'data'));
+if (!fs.existsSync(DATA_DIR)) fs.mkdirSync(DATA_DIR);
 
-if (!fs.existsSync(DATA_FILE)) {
-  const users = [
+if (!fs.existsSync(USERS_FILE)) {
+  fs.writeFileSync(USERS_FILE, JSON.stringify([
     { id: 1, name: 'Karel', username: 'Karel-Ave', password: bcrypt.hashSync('Karel.AVE', 10), role: 'admin' },
     { id: 2, name: 'Adam', username: 'Adam-Ave', password: bcrypt.hashSync('Adam.AVE', 10), role: 'user' },
     { id: 3, name: 'Matej', username: 'Matej-Ave', password: bcrypt.hashSync('Matej.AVE', 10), role: 'user' }
-  ];
-  fs.writeFileSync(DATA_FILE, JSON.stringify(users, null, 2));
+  ], null, 2));
 }
+if (!fs.existsSync(ROZPISY_FILE)) fs.writeFileSync(ROZPISY_FILE, JSON.stringify({ current: null, history: [] }, null, 2));
+if (!fs.existsSync(SETTINGS_FILE)) fs.writeFileSync(SETTINGS_FILE, JSON.stringify({ staff: [], hotels: [], hotelOverrides: {}, customHotels: [] }, null, 2));
 
-if (!fs.existsSync(ROZPISY_FILE)) {
-  fs.writeFileSync(ROZPISY_FILE, JSON.stringify({ current: null, history: [] }, null, 2));
-}
+const getUsers = () => JSON.parse(fs.readFileSync(USERS_FILE, 'utf8'));
+const saveUsers = u => fs.writeFileSync(USERS_FILE, JSON.stringify(u, null, 2));
+const getRozpisy = () => JSON.parse(fs.readFileSync(ROZPISY_FILE, 'utf8'));
+const saveRozpisy = r => fs.writeFileSync(ROZPISY_FILE, JSON.stringify(r, null, 2));
+const getSettings = () => JSON.parse(fs.readFileSync(SETTINGS_FILE, 'utf8'));
+const saveSettings = s => fs.writeFileSync(SETTINGS_FILE, JSON.stringify(s, null, 2));
 
-function getUsers() { return JSON.parse(fs.readFileSync(DATA_FILE, 'utf8')); }
-function saveUsers(u) { fs.writeFileSync(DATA_FILE, JSON.stringify(u, null, 2)); }
-function getRozpisy() { return JSON.parse(fs.readFileSync(ROZPISY_FILE, 'utf8')); }
-function saveRozpisy(r) { fs.writeFileSync(ROZPISY_FILE, JSON.stringify(r, null, 2)); }
-
-app.use(express.json({ limit: '10mb' }));
+app.use(express.json({ limit: '20mb' }));
 app.use(express.urlencoded({ extended: true }));
 app.use(session({
   secret: process.env.SESSION_SECRET || 'ave-portal-secret-2026',
@@ -37,36 +38,38 @@ app.use(session({
   cookie: { maxAge: 8 * 60 * 60 * 1000 }
 }));
 
-function requireLogin(req, res, next) {
-  if (req.session.user) return next();
-  res.redirect('/');
-}
+const requireLogin = (req, res, next) => req.session.user ? next() : res.redirect('/');
 
-let rozpis_lock = null;
+// Locks
+let locks = { tvorba: null, rozpis: null };
 
-app.get('/', (req, res) => {
-  if (req.session.user) return res.redirect('/portal');
-  res.sendFile(path.join(__dirname, 'views', 'login.html'));
-});
-
+// ── Auth ──
+app.get('/', (req, res) => req.session.user ? res.redirect('/portal') : res.sendFile(path.join(__dirname, 'views', 'login.html')));
 app.post('/login', (req, res) => {
   const { username, password } = req.body;
-  const users = getUsers();
-  const user = users.find(u => u.username === username);
+  const user = getUsers().find(u => u.username === username);
   if (!user || !bcrypt.compareSync(password, user.password)) return res.redirect('/?error=1');
   req.session.user = { id: user.id, name: user.name, username: user.username, role: user.role };
   res.redirect('/portal');
 });
-
 app.get('/logout', (req, res) => {
-  if (rozpis_lock && req.session.user && rozpis_lock.userId === req.session.user.id) rozpis_lock = null;
+  if (req.session.user) {
+    Object.keys(locks).forEach(k => { if (locks[k] && locks[k].userId === req.session.user.id) locks[k] = null; });
+  }
   req.session.destroy();
   res.redirect('/');
 });
 
+// ── Pages ──
 app.get('/portal', requireLogin, (req, res) => res.sendFile(path.join(__dirname, 'views', 'portal.html')));
+app.get('/tvorba-rozpisu', requireLogin, (req, res) => res.sendFile(path.join(__dirname, 'public', 'rozpis.html')));
+app.get('/rozpis-view', requireLogin, (req, res) => res.sendFile(path.join(__dirname, 'views', 'rozpis-view.html')));
+app.use('/static', express.static(path.join(__dirname, 'public')));
+
+// ── API: me ──
 app.get('/api/me', requireLogin, (req, res) => res.json(req.session.user));
 
+// ── API: change password ──
 app.post('/api/change-password', requireLogin, (req, res) => {
   const { oldPassword, newPassword } = req.body;
   if (!newPassword || newPassword.length < 6) return res.json({ ok: false, msg: 'Nové heslo musí mít alespoň 6 znaků.' });
@@ -78,62 +81,67 @@ app.post('/api/change-password', requireLogin, (req, res) => {
   res.json({ ok: true, msg: 'Heslo bylo změněno.' });
 });
 
-// Lock API
-app.get('/api/lock/rozpis', requireLogin, (req, res) => res.json({ lock: rozpis_lock }));
-app.post('/api/lock/rozpis/acquire', requireLogin, (req, res) => {
+// ── API: locks ──
+app.get('/api/lock/:app', requireLogin, (req, res) => res.json({ lock: locks[req.params.app] || null }));
+app.post('/api/lock/:app/acquire', requireLogin, (req, res) => {
+  const key = req.params.app;
   const user = req.session.user;
-  if (rozpis_lock && rozpis_lock.userId !== user.id) return res.json({ ok: false, lock: rozpis_lock });
-  rozpis_lock = { userId: user.id, userName: user.name, since: new Date().toISOString() };
-  res.json({ ok: true, lock: rozpis_lock });
+  if (locks[key] && locks[key].userId !== user.id) return res.json({ ok: false, lock: locks[key] });
+  locks[key] = { userId: user.id, userName: user.name, since: new Date().toISOString() };
+  res.json({ ok: true, lock: locks[key] });
 });
-app.post('/api/lock/rozpis/release', requireLogin, (req, res) => {
-  if (rozpis_lock && req.session.user && rozpis_lock.userId === req.session.user.id) rozpis_lock = null;
+app.post('/api/lock/:app/release', requireLogin, (req, res) => {
+  const key = req.params.app;
+  if (locks[key] && locks[key].userId === req.session.user.id) locks[key] = null;
   res.json({ ok: true });
 });
 
-// Rozpisy API
+// ── API: settings ──
+app.get('/api/settings', requireLogin, (req, res) => res.json(getSettings()));
+app.post('/api/settings', requireLogin, (req, res) => {
+  const { staff, hotels, hotelOverrides, customHotels, fondHpp, fondZpp, holidays } = req.body;
+  const s = getSettings();
+  if (staff !== undefined) s.staff = staff;
+  if (hotels !== undefined) s.hotels = hotels;
+  if (hotelOverrides !== undefined) s.hotelOverrides = hotelOverrides;
+  if (customHotels !== undefined) s.customHotels = customHotels;
+  if (fondHpp !== undefined) s.fondHpp = fondHpp;
+  if (fondZpp !== undefined) s.fondZpp = fondZpp;
+  if (holidays !== undefined) s.holidays = holidays;
+  saveSettings(s);
+  res.json({ ok: true });
+});
+
+// ── API: rozpisy ──
+app.get('/api/rozpisy', requireLogin, (req, res) => {
+  const r = getRozpisy();
+  res.json({ current: r.current, history: r.history.map(h => ({ key: h.key, label: h.label, month: h.month, year: h.year, publishedAt: h.publishedAt, publishedBy: h.publishedBy })) });
+});
+app.get('/api/rozpisy/:key', requireLogin, (req, res) => {
+  const key = decodeURIComponent(req.params.key);
+  const entry = getRozpisy().history.find(r => r.key === key);
+  if (!entry) return res.status(404).json({ ok: false });
+  res.json({ ok: true, entry });
+});
 app.post('/api/rozpisy/publish', requireLogin, (req, res) => {
   const { month, year, data } = req.body;
   if (!month || !year || !data) return res.json({ ok: false, msg: 'Chybí data.' });
   const key = `${String(month).padStart(2,'0')}/${year}`;
   const label = `Rozpis ${String(month).padStart(2,'0')}/${year}`;
-  const rozpisy = getRozpisy();
-  // Remove existing entry for same month/year
-  rozpisy.history = rozpisy.history.filter(r => r.key !== key);
-  const entry = { key, label, month, year, data, publishedAt: new Date().toISOString(), publishedBy: req.session.user.name };
-  // Add to front
-  rozpisy.history.unshift(entry);
-  // Set as current
-  rozpisy.current = key;
-  saveRozpisy(rozpisy);
+  const r = getRozpisy();
+  r.history = r.history.filter(h => h.key !== key);
+  r.history.unshift({ key, label, month, year, data, publishedAt: new Date().toISOString(), publishedBy: req.session.user.name });
+  r.current = key;
+  saveRozpisy(r);
   res.json({ ok: true, label });
 });
-
-app.get('/api/rozpisy', requireLogin, (req, res) => {
-  const rozpisy = getRozpisy();
-  res.json({ current: rozpisy.current, history: rozpisy.history.map(r => ({ key: r.key, label: r.label, publishedAt: r.publishedAt, publishedBy: r.publishedBy })) });
-});
-
-app.get('/api/rozpisy/:key', requireLogin, (req, res) => {
-  const key = decodeURIComponent(req.params.key);
-  const rozpisy = getRozpisy();
-  const entry = rozpisy.history.find(r => r.key === key);
-  if (!entry) return res.status(404).json({ ok: false });
-  res.json({ ok: true, entry });
-});
-
 app.post('/api/rozpisy/set-current', requireLogin, (req, res) => {
   const { key } = req.body;
-  const rozpisy = getRozpisy();
-  if (!rozpisy.history.find(r => r.key === key)) return res.json({ ok: false });
-  rozpisy.current = key;
-  saveRozpisy(rozpisy);
+  const r = getRozpisy();
+  if (!r.history.find(h => h.key === key)) return res.json({ ok: false });
+  r.current = key;
+  saveRozpisy(r);
   res.json({ ok: true });
 });
-
-// Pages
-app.get('/tvorba-rozpisu', requireLogin, (req, res) => res.sendFile(path.join(__dirname, 'public', 'rozpis.html')));
-app.get('/rozpis-view', requireLogin, (req, res) => res.sendFile(path.join(__dirname, 'views', 'rozpis-view.html')));
-app.use('/static', express.static(path.join(__dirname, 'public')));
 
 app.listen(PORT, () => console.log(`AVE Portál běží na portu ${PORT}`));
