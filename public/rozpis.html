@@ -646,9 +646,36 @@ table.staff-tbl td select:focus { background: #fff; border-radius: 2px; }
   width: 1px;
   height: 1px;
 }
+
+/* Lock banner */
+#lock-banner {
+  display: none;
+  position: fixed;
+  top: 0; left: 0; right: 0;
+  z-index: 99999;
+  padding: 10px 20px;
+  text-align: center;
+  font-size: 13px;
+  font-weight: 600;
+}
+#lock-banner.locked-by-me {
+  background: #2d7a2d;
+  color: #fff;
+  display: block;
+}
+#lock-banner.locked-by-other {
+  background: #c00;
+  color: #fff;
+  display: block;
+}
+body.readonly-mode * { pointer-events: none !important; }
+body.readonly-mode #lock-banner { pointer-events: all !important; }
+body.readonly-mode a { pointer-events: all !important; }
 </style>
 </head>
 <body>
+
+<div id="lock-banner"></div>
 
 <div id="topbar">
   <a href="/portal" style="color:#aaa;text-decoration:none;font-size:12px;padding:4px 10px;border:1px solid #444;border-radius:5px;white-space:nowrap;flex-shrink:0;">⬅ Portál</a>
@@ -6339,4 +6366,81 @@ document.addEventListener('mouseup', (e) => {
 </script>
 
 
-<div id="__app_data__" style="display: none;">{"v":3,"month":5,"year":2026,"fondHpp":"","fondZpp":"","holidays":"","staff":[{"name":"Absolon Marek","type":"Denní","contract":"DPP","maxHrs":"","regular":"","dates":"","noteM":"","noteP":""},{"name":"Antipin Dmitrii","type":"Noční","contract":"HPP","maxHrs":"","regular":"","dates":"","noteM":"","noteP":""},{"name":"Augustin Patrik","type":"Denní","contract":"HPP","maxHrs":"","regular":"","dates":"","noteM":"","noteP":""},{"name":"Baidiuk Dmytrii","type":"Obojí","contract":"HPP","maxHrs":"","regular":"","dates":"","noteM":"","noteP":""},{"name":"Bartošková Mína","type":"Denní","contract":"DPP","maxHrs":"","regular":"","dates":"","noteM":"","noteP":"max. 50 hod."},{"name":"Bendos Elizaveta","type":"Obojí","contract":"HPP","maxHrs":"","regular":"","dates":"","noteM":"","noteP":""},{"name":"Beránek Stanislav","type":"Denní","contract":"HPP","maxHrs":"","regular":"","dates":"","noteM":"","noteP":""},{"name":"Bernat Luboš","type":"Denní","contract":"DPČ","maxHrs":"","regular":"Pá-d, So-d, Ne-d, Sv-d","dates":"","noteM":"","noteP":"chtěl by ideálně 10 směn"},{"name":"Bičišťová Klaudie","type":"Denní","contract":"HPP","maxHrs":"","regular":"","dates":"","noteM":"","noteP":""},{"name":"Blahout Radek","type":"Denní","contract":"HPP","maxHrs":"","regular":"","dates":"","noteM":"","noteP":""},{"name":"Bogdanovich Olesia","type":"Noční","contract":"ZPP","maxHrs":"","regular":"","dates":"","noteM":"","noteP":""},{"name":"Brisudová Anna","type":"Noční","contract":"ZPP","maxHrs":"","regular":"Po-d, Út-d, St-d, Ne-d","dates":"","noteM":"","noteP":"co nejvíc C"},{"name":"Brovko Vjačeslav","type":"Denní","contract":"HPP","maxHrs":"","regular":"","dates":"","noteM":"","noteP":"nemůže s KUK"},{"name":"Burda Tomáš","type":"Noční","contract":"HPP","maxHrs":"205","regular":"","dates":"","noteM":"","noteP":""},{"name":"Buslaev Gleb","type":"Denní","contract":"DPP","maxHrs":"25","regular":"","dates":"","noteM":"","noteP":"směny ideálně v So, Ne možná "},{"name":"Ciple Anna Maria","type":"Noční","contract":"HPP","maxHrs":"","regular":"","dates":"","noteM":"","noteP":""},{"name":"Čada Štěpán","type":"Denní","contract":"HPP","maxHrs":"","regular":"","dates":"","noteM":"","noteP":""},{"name":"Čermáková Helena","type":"Denní","contract":"ZPP","maxHrs":"","regular":"","dates":"","noteM":"","noteP":"nemůže s KUK"},{"name":"Černocká Marie","type":"Denní","contract":"DPČ","maxHrs":"","regular":"","dates":"","noteM":"","noteP":""},{"name":"Dognal Mark","type":"Noční","contract":"HPP","maxHrs":"193","regular":"","dates":"","noteM":"","noteP":"nestřídat s STEO"},{"name":"Dubinina Viktorie","type":"Noční","contract":"HPP","maxHrs":"","regular":"","dates":"","noteM":"","noteP":""},{"name":"Fialová Alena","type":"Denní","contract":"HPP","maxHrs":"","regular":"","dates":"","noteM":"","noteP":""},{"name":"Fořt David","type":"Noční","contract":"HPP","maxHrs":"","regular":"","dates":"","noteM":"","noteP":"vždy jen fond"},{"name":"Hoppeová Klára","type":"Denní","contract":"HPP","maxHrs":"205","regular":"","dates":"","noteM":"","noteP":""},{"name":"Hudečková Kateřina","type":"Denní","contract":"DPČ","maxHrs":"","regular":"","dates":"","noteM":"","noteP":""},{"name":"Ielitro Giuseppe","type":"Denní","contract":"HPP","maxHrs":"","regular":"","dates":"","noteM":"","noteP":""},{"name":"Ivanov Alexandr","type":"Noční","contract":"HPP","maxHrs":"193","regular":"","dates":"","noteM":"","noteP":""},{"name":"Juklová Jana","type":"Denní","contract":"ZPP","maxHrs":"","regular":"","dates":"","noteM":"","noteP":""},{"name":"Klimchenko Darya","type":"Denní","contract":"HPP","maxHrs":"","regular":"","dates":"","noteM":"","noteP":""},{"name":"Kochurikhina Valeriia","type":"Noční","contract":"HPP","maxHrs":"","regular":"","dates":"","noteM":"","noteP":""},{"name":"Konovalenko Yuriy","type":"Denní","contract":"HPP","maxHrs":"193","regular":"","dates":"","noteM":"","noteP":""},{"name":"Korejs Martin","type":"Noční","contract":"HPP","maxHrs":"","regular":"","dates":"","noteM":"","noteP":""},{"name":"Kovářová Alice","type":"Denní","contract":"HPP","maxHrs":"","regular":"","dates":"","noteM":"","noteP":""},{"name":"Kukelková Martina","type":"Denní","contract":"HPP","maxHrs":"","regular":"","dates":"","noteM":"","noteP":""},{"name":"Kuular Saiana","type":"Noční","contract":"HPP","maxHrs":"","regular":"","dates":"","noteM":"","noteP":""},{"name":"Lesnichenka Liza","type":"Denní","contract":"DPČ","maxHrs":"","regular":"","dates":"1-30","noteM":"celý červen dovolená","noteP":"nemůže s AUGP"},{"name":"Linhartová Jana","type":"Denní","contract":"ZPP","maxHrs":"","regular":"","dates":"","noteM":"","noteP":""},{"name":"Litvínov Vladimír","type":"Obojí","contract":"HPP","maxHrs":"193","regular":"","dates":"","noteM":"","noteP":"nestřídat s KUK, KOAL"},{"name":"Makhanova Malika","type":"Noční","contract":"HPP","maxHrs":"","regular":"","dates":"","noteM":"","noteP":""},{"name":"Motejlková Barbora","type":"Denní","contract":"HPP","maxHrs":"","regular":"","dates":"","noteM":"","noteP":""},{"name":"Nechvátal Jaroslav","type":"Noční","contract":"HPP","maxHrs":"205","regular":"","dates":"","noteM":"","noteP":""},{"name":"Nermesanová Manuela","type":"Obojí","contract":"HPP","maxHrs":"","regular":"Út-d, Út-n, St-d, St-n","dates":"","noteM":"","noteP":"úterý noční teoreticky může"},{"name":"Nguyen Thi Nhung","type":"Noční","contract":"ZPP","maxHrs":"","regular":"","dates":"","noteM":"","noteP":""},{"name":"Nováková Romana","type":"Denní","contract":"HPP","maxHrs":"","regular":"","dates":"","noteM":"dovolená 28.6.-7.7","noteP":"dovolená 28.6.-7.7. a 4.8.-14.8."},{"name":"Pavelka Filip","type":"Denní","contract":"HPP","maxHrs":"205","regular":"","dates":"","noteM":"","noteP":""},{"name":"Pešek Stanislav","type":"Noční","contract":"DPČ","maxHrs":"","regular":"","dates":"","noteM":"","noteP":"chtěl by 9 směn"},{"name":"Polášková Blanka","type":"Denní","contract":"HPP","maxHrs":"","regular":"","dates":"","noteM":"","noteP":""},{"name":"Prokhorian Anna","type":"Denní","contract":"HPP","maxHrs":"","regular":"","dates":"","noteM":"","noteP":"4-5 směn na C, zbytek E"},{"name":"Skřivánek Jan","type":"Denní","contract":"HPP","maxHrs":"","regular":"","dates":"","noteM":"volno 13.-25.6.","noteP":""},{"name":"Smolová Kristýna","type":"Noční","contract":"DPČ","maxHrs":"","regular":"","dates":"","noteM":"","noteP":""},{"name":"Smrčková Jitka","type":"Denní","contract":"ZPP","maxHrs":"","regular":"","dates":"","noteM":"","noteP":""},{"name":"Smutná Petra","type":"Denní","contract":"HPP","maxHrs":"","regular":"","dates":"","noteM":"","noteP":""},{"name":"Stalchenko Oleksandra","type":"Obojí","contract":"HPP","maxHrs":"","regular":"","dates":"","noteM":"","noteP":""},{"name":"Steblová Natálie","type":"Denní","contract":"DPP","maxHrs":"","regular":"","dates":"15-18, 20-30","noteM":"","noteP":"nemůže s KUK"},{"name":"Stempak Ivan","type":"Noční","contract":"DPČ","maxHrs":"","regular":"","dates":"","noteM":"","noteP":""},{"name":"Šmejkalová Iva","type":"Noční","contract":"HPP","maxHrs":"","regular":"","dates":"","noteM":"","noteP":""},{"name":"Štěpánek Ondřej","type":"Denní","contract":"HPP","maxHrs":"","regular":"","dates":"","noteM":"","noteP":"nestřídat s DOGM"},{"name":"Štochlová Gabriela","type":"Denní","contract":"HPP","maxHrs":"","regular":"","dates":"","noteM":"","noteP":""},{"name":"Tatara Juraj","type":"Denní","contract":"ZPP","maxHrs":"","regular":"","dates":"","noteM":"","noteP":""},{"name":"Tremlová Hana","type":"Denní","contract":"HPP","maxHrs":"","regular":"","dates":"","noteM":"","noteP":""},{"name":"Tsarkov Valentin","type":"Noční","contract":"HPP","maxHrs":"193","regular":"","dates":"","noteM":"","noteP":""},{"name":"Valeyeva Kristina","type":"Denní","contract":"HPP","maxHrs":"","regular":"","dates":"","noteM":"","noteP":""},{"name":"Viktorenkov Aleksei","type":"Noční","contract":"HPP","maxHrs":"193","regular":"","dates":"","noteM":"","noteP":""},{"name":"Voropaeva Anastasiia","type":"Obojí","contract":"HPP","maxHrs":"","regular":"Po-n, Út-d, Út-n, St-d, Čt-n, Pá-d","dates":"","noteM":"","noteP":"co nejvíc B"},{"name":"Vránek Matyáš","type":"Denní","contract":"DPP","maxHrs":"","regular":"","dates":"","noteM":"","noteP":""},{"name":"z Dvořák Karel","type":"Vedoucí","contract":"","maxHrs":"","regular":"","dates":"","noteM":"","noteP":""},{"name":"z Pětivlas Matěj","type":"Vedoucí","contract":"","maxHrs":"","regular":"","dates":"","noteM":"","noteP":""},{"name":"z Schubert Adam","type":"Vedoucí","contract":"","maxHrs":"","regular":"","dates":"","noteM":"","noteP":""},{"name":"zz Pohotovost","type":"Pohotovost","contract":"","maxHrs":"","regular":"","dates":"","noteM":"","noteP":""},{"name":"zzz Essence","type":"Speciální","contract":"","maxHrs":"","regular":"","dates":"","noteM":"","noteP":""},{"name":"zzz Theatrino","type":"Speciální","contract":"","maxHrs":"","regular":"","dates":"","noteM":"","noteP":""},{"name":"zzz Waldstein","type":"Speciální","contract":"","maxHrs":"","regular":"","dates":"","noteM":"","noteP":""}],"schedule":{"69_0":"F","69_2":"F","69_4":"F","69_6":"F","69_8":"F","69_10":"F","69_12":"F","69_14":"F","69_16":"F","69_18":"F","69_20":"F","69_22":"F","69_24":"F","69_26":"F","69_28":"F","69_30":"F","69_32":"F","69_34":"F","69_36":"F","69_38":"F","69_40":"F","69_42":"F","69_44":"F","69_46":"F","69_48":"F","69_50":"F","69_52":"F","69_54":"F","69_56":"F","69_58":"F","69_60":"F","71_0":"W","71_1":"W","71_2":"W","71_3":"W","71_4":"W","71_5":"W","71_6":"W","71_7":"W","71_8":"W","71_9":"W","71_10":"W","71_11":"W","71_12":"W","71_13":"W","71_14":"W","71_15":"W","71_16":"W","71_17":"W","71_18":"W","71_19":"W","71_20":"W","71_21":"W","71_22":"W","71_23":"W","71_24":"W","71_25":"W","71_26":"W","71_27":"W","71_28":"W","71_29":"W","71_30":"W","71_31":"W","71_32":"W","71_33":"W","71_34":"W","71_35":"W","71_36":"W","71_37":"W","71_38":"W","71_39":"W","71_40":"W","71_41":"W","71_42":"W","71_43":"W","71_44":"W","71_45":"W","71_46":"W","71_47":"W","71_48":"W","71_49":"W","71_50":"W","71_51":"W","71_52":"W","71_53":"W","71_54":"W","71_55":"W","71_56":"W","71_57":"W","71_58":"W","71_59":"W","71_60":"W","71_61":"W"},"extras":{},"requirements":{},"requirementSums":{},"customHotels":[],"hotelOverrides":{},"prevMonthData":{},"lockInfo":null}</div></body></html>
+<div id="__app_data__" style="display: none;">{"v":3,"month":5,"year":2026,"fondHpp":"","fondZpp":"","holidays":"","staff":[{"name":"Absolon Marek","type":"Denní","contract":"DPP","maxHrs":"","regular":"","dates":"","noteM":"","noteP":""},{"name":"Antipin Dmitrii","type":"Noční","contract":"HPP","maxHrs":"","regular":"","dates":"","noteM":"","noteP":""},{"name":"Augustin Patrik","type":"Denní","contract":"HPP","maxHrs":"","regular":"","dates":"","noteM":"","noteP":""},{"name":"Baidiuk Dmytrii","type":"Obojí","contract":"HPP","maxHrs":"","regular":"","dates":"","noteM":"","noteP":""},{"name":"Bartošková Mína","type":"Denní","contract":"DPP","maxHrs":"","regular":"","dates":"","noteM":"","noteP":"max. 50 hod."},{"name":"Bendos Elizaveta","type":"Obojí","contract":"HPP","maxHrs":"","regular":"","dates":"","noteM":"","noteP":""},{"name":"Beránek Stanislav","type":"Denní","contract":"HPP","maxHrs":"","regular":"","dates":"","noteM":"","noteP":""},{"name":"Bernat Luboš","type":"Denní","contract":"DPČ","maxHrs":"","regular":"Pá-d, So-d, Ne-d, Sv-d","dates":"","noteM":"","noteP":"chtěl by ideálně 10 směn"},{"name":"Bičišťová Klaudie","type":"Denní","contract":"HPP","maxHrs":"","regular":"","dates":"","noteM":"","noteP":""},{"name":"Blahout Radek","type":"Denní","contract":"HPP","maxHrs":"","regular":"","dates":"","noteM":"","noteP":""},{"name":"Bogdanovich Olesia","type":"Noční","contract":"ZPP","maxHrs":"","regular":"","dates":"","noteM":"","noteP":""},{"name":"Brisudová Anna","type":"Noční","contract":"ZPP","maxHrs":"","regular":"Po-d, Út-d, St-d, Ne-d","dates":"","noteM":"","noteP":"co nejvíc C"},{"name":"Brovko Vjačeslav","type":"Denní","contract":"HPP","maxHrs":"","regular":"","dates":"","noteM":"","noteP":"nemůže s KUK"},{"name":"Burda Tomáš","type":"Noční","contract":"HPP","maxHrs":"205","regular":"","dates":"","noteM":"","noteP":""},{"name":"Buslaev Gleb","type":"Denní","contract":"DPP","maxHrs":"25","regular":"","dates":"","noteM":"","noteP":"směny ideálně v So, Ne možná "},{"name":"Ciple Anna Maria","type":"Noční","contract":"HPP","maxHrs":"","regular":"","dates":"","noteM":"","noteP":""},{"name":"Čada Štěpán","type":"Denní","contract":"HPP","maxHrs":"","regular":"","dates":"","noteM":"","noteP":""},{"name":"Čermáková Helena","type":"Denní","contract":"ZPP","maxHrs":"","regular":"","dates":"","noteM":"","noteP":"nemůže s KUK"},{"name":"Černocká Marie","type":"Denní","contract":"DPČ","maxHrs":"","regular":"","dates":"","noteM":"","noteP":""},{"name":"Dognal Mark","type":"Noční","contract":"HPP","maxHrs":"193","regular":"","dates":"","noteM":"","noteP":"nestřídat s STEO"},{"name":"Dubinina Viktorie","type":"Noční","contract":"HPP","maxHrs":"","regular":"","dates":"","noteM":"","noteP":""},{"name":"Fialová Alena","type":"Denní","contract":"HPP","maxHrs":"","regular":"","dates":"","noteM":"","noteP":""},{"name":"Fořt David","type":"Noční","contract":"HPP","maxHrs":"","regular":"","dates":"","noteM":"","noteP":"vždy jen fond"},{"name":"Hoppeová Klára","type":"Denní","contract":"HPP","maxHrs":"205","regular":"","dates":"","noteM":"","noteP":""},{"name":"Hudečková Kateřina","type":"Denní","contract":"DPČ","maxHrs":"","regular":"","dates":"","noteM":"","noteP":""},{"name":"Ielitro Giuseppe","type":"Denní","contract":"HPP","maxHrs":"","regular":"","dates":"","noteM":"","noteP":""},{"name":"Ivanov Alexandr","type":"Noční","contract":"HPP","maxHrs":"193","regular":"","dates":"","noteM":"","noteP":""},{"name":"Juklová Jana","type":"Denní","contract":"ZPP","maxHrs":"","regular":"","dates":"","noteM":"","noteP":""},{"name":"Klimchenko Darya","type":"Denní","contract":"HPP","maxHrs":"","regular":"","dates":"","noteM":"","noteP":""},{"name":"Kochurikhina Valeriia","type":"Noční","contract":"HPP","maxHrs":"","regular":"","dates":"","noteM":"","noteP":""},{"name":"Konovalenko Yuriy","type":"Denní","contract":"HPP","maxHrs":"193","regular":"","dates":"","noteM":"","noteP":""},{"name":"Korejs Martin","type":"Noční","contract":"HPP","maxHrs":"","regular":"","dates":"","noteM":"","noteP":""},{"name":"Kovářová Alice","type":"Denní","contract":"HPP","maxHrs":"","regular":"","dates":"","noteM":"","noteP":""},{"name":"Kukelková Martina","type":"Denní","contract":"HPP","maxHrs":"","regular":"","dates":"","noteM":"","noteP":""},{"name":"Kuular Saiana","type":"Noční","contract":"HPP","maxHrs":"","regular":"","dates":"","noteM":"","noteP":""},{"name":"Lesnichenka Liza","type":"Denní","contract":"DPČ","maxHrs":"","regular":"","dates":"1-30","noteM":"celý červen dovolená","noteP":"nemůže s AUGP"},{"name":"Linhartová Jana","type":"Denní","contract":"ZPP","maxHrs":"","regular":"","dates":"","noteM":"","noteP":""},{"name":"Litvínov Vladimír","type":"Obojí","contract":"HPP","maxHrs":"193","regular":"","dates":"","noteM":"","noteP":"nestřídat s KUK, KOAL"},{"name":"Makhanova Malika","type":"Noční","contract":"HPP","maxHrs":"","regular":"","dates":"","noteM":"","noteP":""},{"name":"Motejlková Barbora","type":"Denní","contract":"HPP","maxHrs":"","regular":"","dates":"","noteM":"","noteP":""},{"name":"Nechvátal Jaroslav","type":"Noční","contract":"HPP","maxHrs":"205","regular":"","dates":"","noteM":"","noteP":""},{"name":"Nermesanová Manuela","type":"Obojí","contract":"HPP","maxHrs":"","regular":"Út-d, Út-n, St-d, St-n","dates":"","noteM":"","noteP":"úterý noční teoreticky může"},{"name":"Nguyen Thi Nhung","type":"Noční","contract":"ZPP","maxHrs":"","regular":"","dates":"","noteM":"","noteP":""},{"name":"Nováková Romana","type":"Denní","contract":"HPP","maxHrs":"","regular":"","dates":"","noteM":"dovolená 28.6.-7.7","noteP":"dovolená 28.6.-7.7. a 4.8.-14.8."},{"name":"Pavelka Filip","type":"Denní","contract":"HPP","maxHrs":"205","regular":"","dates":"","noteM":"","noteP":""},{"name":"Pešek Stanislav","type":"Noční","contract":"DPČ","maxHrs":"","regular":"","dates":"","noteM":"","noteP":"chtěl by 9 směn"},{"name":"Polášková Blanka","type":"Denní","contract":"HPP","maxHrs":"","regular":"","dates":"","noteM":"","noteP":""},{"name":"Prokhorian Anna","type":"Denní","contract":"HPP","maxHrs":"","regular":"","dates":"","noteM":"","noteP":"4-5 směn na C, zbytek E"},{"name":"Skřivánek Jan","type":"Denní","contract":"HPP","maxHrs":"","regular":"","dates":"","noteM":"volno 13.-25.6.","noteP":""},{"name":"Smolová Kristýna","type":"Noční","contract":"DPČ","maxHrs":"","regular":"","dates":"","noteM":"","noteP":""},{"name":"Smrčková Jitka","type":"Denní","contract":"ZPP","maxHrs":"","regular":"","dates":"","noteM":"","noteP":""},{"name":"Smutná Petra","type":"Denní","contract":"HPP","maxHrs":"","regular":"","dates":"","noteM":"","noteP":""},{"name":"Stalchenko Oleksandra","type":"Obojí","contract":"HPP","maxHrs":"","regular":"","dates":"","noteM":"","noteP":""},{"name":"Steblová Natálie","type":"Denní","contract":"DPP","maxHrs":"","regular":"","dates":"15-18, 20-30","noteM":"","noteP":"nemůže s KUK"},{"name":"Stempak Ivan","type":"Noční","contract":"DPČ","maxHrs":"","regular":"","dates":"","noteM":"","noteP":""},{"name":"Šmejkalová Iva","type":"Noční","contract":"HPP","maxHrs":"","regular":"","dates":"","noteM":"","noteP":""},{"name":"Štěpánek Ondřej","type":"Denní","contract":"HPP","maxHrs":"","regular":"","dates":"","noteM":"","noteP":"nestřídat s DOGM"},{"name":"Štochlová Gabriela","type":"Denní","contract":"HPP","maxHrs":"","regular":"","dates":"","noteM":"","noteP":""},{"name":"Tatara Juraj","type":"Denní","contract":"ZPP","maxHrs":"","regular":"","dates":"","noteM":"","noteP":""},{"name":"Tremlová Hana","type":"Denní","contract":"HPP","maxHrs":"","regular":"","dates":"","noteM":"","noteP":""},{"name":"Tsarkov Valentin","type":"Noční","contract":"HPP","maxHrs":"193","regular":"","dates":"","noteM":"","noteP":""},{"name":"Valeyeva Kristina","type":"Denní","contract":"HPP","maxHrs":"","regular":"","dates":"","noteM":"","noteP":""},{"name":"Viktorenkov Aleksei","type":"Noční","contract":"HPP","maxHrs":"193","regular":"","dates":"","noteM":"","noteP":""},{"name":"Voropaeva Anastasiia","type":"Obojí","contract":"HPP","maxHrs":"","regular":"Po-n, Út-d, Út-n, St-d, Čt-n, Pá-d","dates":"","noteM":"","noteP":"co nejvíc B"},{"name":"Vránek Matyáš","type":"Denní","contract":"DPP","maxHrs":"","regular":"","dates":"","noteM":"","noteP":""},{"name":"z Dvořák Karel","type":"Vedoucí","contract":"","maxHrs":"","regular":"","dates":"","noteM":"","noteP":""},{"name":"z Pětivlas Matěj","type":"Vedoucí","contract":"","maxHrs":"","regular":"","dates":"","noteM":"","noteP":""},{"name":"z Schubert Adam","type":"Vedoucí","contract":"","maxHrs":"","regular":"","dates":"","noteM":"","noteP":""},{"name":"zz Pohotovost","type":"Pohotovost","contract":"","maxHrs":"","regular":"","dates":"","noteM":"","noteP":""},{"name":"zzz Essence","type":"Speciální","contract":"","maxHrs":"","regular":"","dates":"","noteM":"","noteP":""},{"name":"zzz Theatrino","type":"Speciální","contract":"","maxHrs":"","regular":"","dates":"","noteM":"","noteP":""},{"name":"zzz Waldstein","type":"Speciální","contract":"","maxHrs":"","regular":"","dates":"","noteM":"","noteP":""}],"schedule":{"69_0":"F","69_2":"F","69_4":"F","69_6":"F","69_8":"F","69_10":"F","69_12":"F","69_14":"F","69_16":"F","69_18":"F","69_20":"F","69_22":"F","69_24":"F","69_26":"F","69_28":"F","69_30":"F","69_32":"F","69_34":"F","69_36":"F","69_38":"F","69_40":"F","69_42":"F","69_44":"F","69_46":"F","69_48":"F","69_50":"F","69_52":"F","69_54":"F","69_56":"F","69_58":"F","69_60":"F","71_0":"W","71_1":"W","71_2":"W","71_3":"W","71_4":"W","71_5":"W","71_6":"W","71_7":"W","71_8":"W","71_9":"W","71_10":"W","71_11":"W","71_12":"W","71_13":"W","71_14":"W","71_15":"W","71_16":"W","71_17":"W","71_18":"W","71_19":"W","71_20":"W","71_21":"W","71_22":"W","71_23":"W","71_24":"W","71_25":"W","71_26":"W","71_27":"W","71_28":"W","71_29":"W","71_30":"W","71_31":"W","71_32":"W","71_33":"W","71_34":"W","71_35":"W","71_36":"W","71_37":"W","71_38":"W","71_39":"W","71_40":"W","71_41":"W","71_42":"W","71_43":"W","71_44":"W","71_45":"W","71_46":"W","71_47":"W","71_48":"W","71_49":"W","71_50":"W","71_51":"W","71_52":"W","71_53":"W","71_54":"W","71_55":"W","71_56":"W","71_57":"W","71_58":"W","71_59":"W","71_60":"W","71_61":"W"},"extras":{},"requirements":{},"requirementSums":{},"customHotels":[],"hotelOverrides":{},"prevMonthData":{},"lockInfo":null}</div>
+<script>
+// ── Zamykání rozpisu ──
+let _lockInterval = null;
+let _iAmEditor = false;
+
+function formatLockTime(isoStr) {
+  const d = new Date(isoStr);
+  return d.toLocaleTimeString('cs-CZ', {hour:'2-digit', minute:'2-digit'});
+}
+
+async function acquireLock() {
+  try {
+    const r = await fetch('/api/lock/rozpis/acquire', {method:'POST'});
+    const data = await r.json();
+    if (data.ok) {
+      _iAmEditor = true;
+      document.getElementById('lock-banner').className = 'locked-by-me';
+      document.getElementById('lock-banner').textContent = '✏️ Editujete rozpis — ostatní uživatelé mají pouze náhled';
+      document.body.classList.remove('readonly-mode');
+    } else {
+      setReadonly(data.lock);
+    }
+  } catch(e) {}
+}
+
+async function releaseLock() {
+  if (!_iAmEditor) return;
+  try {
+    await fetch('/api/lock/rozpis/release', {method:'POST'});
+    _iAmEditor = false;
+  } catch(e) {}
+}
+
+function setReadonly(lock) {
+  _iAmEditor = false;
+  document.body.classList.add('readonly-mode');
+  const since = lock ? formatLockTime(lock.since) : '';
+  const who = lock ? lock.userName : 'někdo';
+  document.getElementById('lock-banner').className = 'locked-by-other';
+  document.getElementById('lock-banner').textContent = `🔒 Rozpis právě edituje ${who} (od ${since}) — máte pouze náhled`;
+}
+
+async function checkLock() {
+  try {
+    const r = await fetch('/api/lock/rozpis');
+    const data = await r.json();
+    if (data.lock && !_iAmEditor) {
+      setReadonly(data.lock);
+    } else if (!data.lock && !_iAmEditor) {
+      // Lock free, try to acquire
+      await acquireLock();
+    }
+  } catch(e) {}
+}
+
+// Init on page load
+window.addEventListener('load', async () => {
+  await acquireLock();
+  // Poll every 15 seconds
+  _lockInterval = setInterval(checkLock, 15000);
+});
+
+// Release on page unload
+window.addEventListener('beforeunload', () => {
+  if (_iAmEditor) {
+    navigator.sendBeacon('/api/lock/rozpis/release');
+  }
+});
+
+// Release lock when save is complete (wrap original saveData)
+const _origSaveData = window.saveData;
+if (typeof saveData !== 'undefined') {
+  const _prevSave = saveData;
+}
+</script>
+
+</body></html>
