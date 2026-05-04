@@ -7,158 +7,49 @@
 <style>
   * { box-sizing: border-box; margin: 0; padding: 0; }
   body { min-height: 100vh; background: #f5f5f0; font-family: 'Segoe UI', sans-serif; color: #1a1a18; }
-
-  #topbar {
-    background: #1a1a18;
-    height: 56px;
-    display: flex;
-    align-items: center;
-    padding: 0 16px;
-    gap: 12px;
-    position: relative;
-  }
+  #topbar { background: #1a1a18; height: 56px; display: flex; align-items: center; padding: 0 16px; gap: 12px; position: relative; }
   .topbar-logo { position: absolute; left: 50%; transform: translateX(-50%); }
-  .topbar-logo svg text { fill: #fff; }
   .topbar-right { margin-left: auto; display: flex; align-items: center; gap: 8px; }
-  .btn-top { padding: 5px 12px; border-radius: 5px; border: 1px solid #444; background: transparent; color: #ccc; font-size: 12px; cursor: pointer; transition: all .15s; text-decoration: none; }
+  .btn-top { padding: 5px 12px; border-radius: 5px; border: 1px solid #444; background: transparent; color: #ccc; font-size: 12px; cursor: pointer; transition: all .15s; text-decoration: none; white-space: nowrap; }
   .btn-top:hover { background: #333; color: #fff; }
 
-  /* Month selector area */
-  #month-bar {
-    background: #fff;
-    border-bottom: 1px solid #e8e8e0;
-    padding: 10px 20px;
-    display: flex;
-    align-items: center;
-    gap: 10px;
-    flex-wrap: wrap;
-  }
-  .month-btn {
-    padding: 6px 16px;
-    border-radius: 6px;
-    border: 1px solid #ddd;
-    background: #f5f5f0;
-    font-size: 13px;
-    font-weight: 600;
-    cursor: pointer;
-    transition: all .15s;
-  }
+  #month-bar { background: #fff; border-bottom: 1px solid #e8e8e0; padding: 10px 20px; display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
+  .month-btn { padding: 6px 16px; border-radius: 6px; border: 1px solid #ddd; background: #f5f5f0; font-size: 13px; font-weight: 600; cursor: pointer; transition: all .15s; }
   .month-btn.active { background: #1a1a18; color: #fff; border-color: #1a1a18; }
   .month-btn:hover:not(.active) { background: #e8e8e0; }
-
-  /* Dropdown */
   .dropdown { position: relative; }
-  .dropdown-btn {
-    padding: 6px 12px;
-    border-radius: 6px;
-    border: 1px solid #ddd;
-    background: #f5f5f0;
-    font-size: 12px;
-    cursor: pointer;
-    display: flex;
-    align-items: center;
-    gap: 6px;
-  }
+  .dropdown-btn { padding: 6px 12px; border-radius: 6px; border: 1px solid #ddd; background: #f5f5f0; font-size: 12px; cursor: pointer; display: flex; align-items: center; gap: 6px; }
   .dropdown-btn:hover { background: #e8e8e0; }
-  .dropdown-menu {
-    display: none;
-    position: absolute;
-    top: 100%;
-    left: 0;
-    background: #fff;
-    border: 1px solid #ddd;
-    border-radius: 6px;
-    box-shadow: 0 4px 12px rgba(0,0,0,.12);
-    min-width: 180px;
-    z-index: 100;
-    margin-top: 4px;
-    max-height: 300px;
-    overflow-y: auto;
-  }
+  .dropdown-menu { display: none; position: absolute; top: 100%; left: 0; background: #fff; border: 1px solid #ddd; border-radius: 6px; box-shadow: 0 4px 12px rgba(0,0,0,.12); min-width: 180px; z-index: 100; margin-top: 4px; max-height: 300px; overflow-y: auto; }
   .dropdown-menu.show { display: block; }
-  .dropdown-item {
-    padding: 8px 14px;
-    font-size: 13px;
-    cursor: pointer;
-    border-bottom: 1px solid #f0f0f0;
-  }
+  .dropdown-item { padding: 8px 14px; font-size: 13px; cursor: pointer; border-bottom: 1px solid #f0f0f0; }
   .dropdown-item:hover { background: #f5f5f0; }
   .dropdown-item.current { font-weight: 700; color: #2a5caa; }
-
-  .set-current-btn {
-    padding: 6px 12px;
-    border-radius: 6px;
-    border: 1px solid #2a5caa;
-    background: transparent;
-    color: #2a5caa;
-    font-size: 12px;
-    cursor: pointer;
-    transition: all .15s;
-  }
+  .set-current-btn { padding: 6px 12px; border-radius: 6px; border: 1px solid #2a5caa; background: transparent; color: #2a5caa; font-size: 12px; cursor: pointer; transition: all .15s; }
   .set-current-btn:hover { background: #2a5caa; color: #fff; }
 
-  /* Empty state */
-  #empty-state {
-    text-align: center;
-    padding: 80px 20px;
-    color: #888;
-  }
+  #empty-state { text-align: center; padding: 80px 20px; color: #888; }
   #empty-state .icon { font-size: 48px; margin-bottom: 16px; }
   #empty-state h2 { font-size: 18px; margin-bottom: 8px; color: #555; }
 
-  /* Schedule table */
-  #schedule-container {
-    padding: 16px 20px;
-    overflow-x: auto;
-  }
-
-  #scheduleViewTable {
-    border-collapse: collapse;
-    font-size: 11px;
-    white-space: nowrap;
-  }
-  #scheduleViewTable th {
-    background: #1a1a18;
-    color: #fff;
-    padding: 4px 6px;
-    text-align: center;
-    font-weight: 500;
-    border: 1px solid #333;
-    position: sticky;
-    top: 0;
-  }
-  #scheduleViewTable td {
-    padding: 3px 6px;
-    border: 1px solid #e0e0d8;
-    text-align: center;
-  }
-  .name-cell {
-    text-align: left !important;
-    font-weight: 500;
-    min-width: 160px;
-    padding: 3px 10px !important;
-    position: sticky;
-    left: 0;
-    z-index: 1;
-  }
-  .hours-cell { font-weight: 600; color: #2a5caa; }
-  .weekend { background: #f0f0e8; }
-  .cell-D { color: #1a6b1a; }
-  .cell-N { color: #1a1a8a; }
-  .cell-empty { color: #ccc; }
-
-  /* Staff type colors */
+  #schedule-container { padding: 16px 20px; overflow-x: auto; }
+  #scheduleViewTable { border-collapse: collapse; font-size: 11px; white-space: nowrap; }
+  #scheduleViewTable th { background: #1a1a18; color: #fff; padding: 4px 6px; text-align: center; font-weight: 500; border: 1px solid #333; }
+  #scheduleViewTable td { padding: 3px 6px; border: 1px solid #e0e0d8; text-align: center; min-width: 28px; }
+  .name-cell { text-align: left !important; font-weight: 500; min-width: 160px; padding: 3px 10px !important; background: #fff; }
+  .hours-cell { font-weight: 600; color: #2a5caa; background: #f0f4ff; }
+  .weekend-header { background: #555 !important; }
+  .weekend-cell { background: #f0f0e8; }
   .type-D { background: #F8FF35; }
   .type-N { background: #4DC3F5; }
   .type-B { background: #A8E05A; }
   .type-V { background: #FFB347; }
   .type-S { background: #FF8585; }
-
   .loading { text-align: center; padding: 40px; color: #888; font-size: 14px; }
+  .published-info { font-size: 11px; color: #aaa; margin-left: auto; }
 </style>
 </head>
 <body>
-
 <div id="topbar">
   <a href="/portal" class="btn-top">⬅ Portál</a>
   <div class="topbar-logo">
@@ -180,14 +71,14 @@
     <div class="dropdown-menu" id="dropdown-menu"></div>
   </div>
   <button class="set-current-btn" id="set-current-btn" onclick="setAsCurrent()">⭐ Nastavit jako aktuální</button>
+  <span class="published-info" id="published-info"></span>
 </div>
 
 <div id="empty-state" style="display:none">
   <div class="icon">📅</div>
   <h2>Zatím žádný rozpis</h2>
-  <p>Z aplikace Tvorba rozpisu klikněte na „Jako aktuální"</p>
+  <p>Z aplikace Tvorba rozpisu uložte rozpis přes „Uložit rozpis"</p>
 </div>
-
 <div id="loading" class="loading">Načítám rozpis…</div>
 <div id="schedule-container" style="display:none"></div>
 
@@ -196,11 +87,24 @@ let allRozpisy = [];
 let currentKey = null;
 let displayedKey = null;
 
-async function init() {
-  const me = await fetch('/api/me').then(r=>r.json());
-  document.getElementById('user-name-top').textContent = me.username;
+// Hotel hours mapping (same as in tvorba-rozpisu)
+const HOTEL_HOURS = {
+  'VSE':12,'A':12,'B':12,'C':12,'D':12,'E':12,'G':12,'H':12,'I':12,'J':12,
+  'K':12,'L':12,'M':12,'N':12,'P':12,'S':12,'T':12,'U':12,'W':8,'F':8,'Q':4
+};
 
-  const data = await fetch('/api/rozpisy').then(r=>r.json());
+function getHotelHours(val) {
+  if (!val) return 0;
+  const v = val.toUpperCase().trim();
+  if (!v || 'XYZŽ'.includes(v) || v === '-') return 0;
+  return HOTEL_HOURS[v] || 12;
+}
+
+async function init() {
+  const me = await fetch('/api/me').then(r=>r.json()).catch(()=>null);
+  if (me) document.getElementById('user-name-top').textContent = me.username;
+
+  const data = await fetch('/api/rozpisy').then(r=>r.json()).catch(()=>({history:[],current:null}));
   allRozpisy = data.history || [];
   currentKey = data.current;
 
@@ -212,8 +116,6 @@ async function init() {
   }
 
   buildDropdown();
-
-  // Display current or latest
   const keyToShow = currentKey || allRozpisy[0].key;
   await loadRozpis(keyToShow);
 }
@@ -241,15 +143,16 @@ async function loadRozpis(key) {
   document.getElementById('loading').style.display = 'block';
   document.getElementById('schedule-container').style.display = 'none';
 
-  const res = await fetch('/api/rozpisy/' + encodeURIComponent(key)).then(r=>r.json());
-  if (!res.ok) return;
+  const res = await fetch('/api/rozpisy/' + encodeURIComponent(key)).then(r=>r.json()).catch(()=>({ok:false}));
+  if (!res.ok) { document.getElementById('loading').style.display = 'none'; return; }
 
   displayedKey = key;
   const entry = res.entry;
-
-  // Update month button
   document.getElementById('current-month-btn').textContent = entry.label;
   document.getElementById('current-month-btn').classList.toggle('active', key === currentKey);
+
+  const d = new Date(entry.publishedAt);
+  document.getElementById('published-info').textContent = `Uloženo: ${d.toLocaleDateString('cs-CZ')} ${d.toLocaleTimeString('cs-CZ',{hour:'2-digit',minute:'2-digit'})} (${entry.publishedBy})`;
 
   renderSchedule(entry.data);
 }
@@ -258,55 +161,69 @@ function renderSchedule(data) {
   const container = document.getElementById('schedule-container');
   container.innerHTML = '';
 
-  const { staff, schedule, month, year } = data;
+  const { staff, schedule, month, year, calCols: cols, extras } = data;
   if (!staff || !staff.length) {
-    container.innerHTML = '<div class="loading">Prázdný rozpis</div>';
     document.getElementById('loading').style.display = 'none';
+    container.innerHTML = '<div class="loading">Prázdný rozpis</div>';
     container.style.display = 'block';
     return;
   }
 
   const daysInMonth = new Date(year, month, 0).getDate();
 
-  // Build table
+  // Build calCols from saved data or reconstruct
+  let columns = cols;
+  if (!columns || !columns.length) {
+    columns = [];
+    for (let d = 1; d <= daysInMonth; d++) {
+      columns.push({ day: d, dn: 'd' });
+      columns.push({ day: d, dn: 'n' });
+    }
+  }
+  // Filter out nextYear cols
+  const activeCols = columns.filter(c => !c.nextYear);
+
   const table = document.createElement('table');
   table.id = 'scheduleViewTable';
 
-  // Header
+  // Header - group by day, show just day number
   const thead = document.createElement('thead');
-  let headerRow = '<tr><th>Jméno</th>';
-  for (let d = 1; d <= daysInMonth; d++) {
-    const dow = new Date(year, month-1, d).getDay();
+  let hRow = '<tr><th>Jméno</th>';
+  activeCols.forEach((col, ci) => {
+    const dow = new Date(year, month-1, col.day).getDay();
     const isWe = dow === 0 || dow === 6;
-    headerRow += `<th${isWe ? ' style="background:#555"' : ''}>${d}</th>`;
-  }
-  headerRow += '<th>Hod.</th></tr>';
-  thead.innerHTML = headerRow;
+    const isD = col.dn === 'd';
+    hRow += `<th class="${isWe ? 'weekend-header' : ''}" title="${col.day}. ${isD?'den':'noc'}">${isD ? col.day : ''}</th>`;
+  });
+  hRow += '<th>Hod.</th></tr>';
+  thead.innerHTML = hRow;
   table.appendChild(thead);
 
   // Body
   const tbody = document.createElement('tbody');
   staff.forEach((s, si) => {
-    if (s.name && s.name.startsWith('zzz')) return; // hide hotel rows
+    if (!s || !s.name) return;
+    if (s.name.startsWith('zzz')) return;
+    const typeMap = { 'Denní': 'type-D', 'Noční': 'type-N', 'Obojí': 'type-B', 'Vedoucí': 'type-V', 'Speciální': 'type-S' };
+    const typeClass = typeMap[s.type] || '';
     const tr = document.createElement('tr');
-    const typeClass = s.type === 'Denní' ? 'type-D' : s.type === 'Noční' ? 'type-N' : s.type === 'Obojí' ? 'type-B' : s.type === 'Vedoucí' ? 'type-V' : 'type-S';
-    let row = `<td class="name-cell ${typeClass}">${s.name || ''}</td>`;
     let totalHrs = 0;
-    for (let d = 1; d <= daysInMonth; d++) {
-      const dow = new Date(year, month-1, d).getDay();
+
+    let cells = `<td class="name-cell ${typeClass}">${s.name}</td>`;
+    activeCols.forEach((col, ci) => {
+      const dow = new Date(year, month-1, col.day).getDay();
       const isWe = dow === 0 || dow === 6;
-      // Find schedule value - look for both d and n columns
-      const dayKey = `${si}_${d-1}`;
-      // Get hours from schedule data
-      const val = getVal(schedule, si, d-1, daysInMonth);
-      const hrs = getHours(val);
+      const val = (schedule && schedule[`${si}_${ci}`]) || '';
+      const hrs = getHotelHours(val);
       totalHrs += hrs;
-      const cellClass = isWe ? ' weekend' : '';
-      const valClass = hrs > 0 ? (s.type === 'Noční' ? ' cell-N' : ' cell-D') : ' cell-empty';
-      row += `<td class="${cellClass}${valClass}">${hrs > 0 ? hrs : ''}</td>`;
-    }
-    row += `<td class="hours-cell">${totalHrs}</td>`;
-    tr.innerHTML = row;
+      const bg = isWe ? ' weekend-cell' : '';
+      cells += `<td class="${bg}" title="${val||''}">${hrs > 0 ? hrs : (val && !'-XYZŽ'.includes(val.toUpperCase()) ? val : '')}</td>`;
+    });
+
+    // Override with extras hours if available
+    const extraHrs = extras && extras[si] && extras[si].hours ? extras[si].hours : null;
+    cells += `<td class="hours-cell">${extraHrs !== null ? extraHrs : totalHrs}</td>`;
+    tr.innerHTML = cells;
     tbody.appendChild(tr);
   });
   table.appendChild(tbody);
@@ -316,33 +233,14 @@ function renderSchedule(data) {
   container.style.display = 'block';
 }
 
-function getVal(schedule, si, ci, daysInMonth) {
-  if (!schedule) return '';
-  // schedule is stored as object with keys like "si_ci" or as nested array
-  if (Array.isArray(schedule)) {
-    return (schedule[si] && schedule[si][ci]) || '';
-  }
-  return schedule[`${si}_${ci}`] || '';
-}
-
-function getHours(val) {
-  if (!val) return 0;
-  const v = val.toUpperCase();
-  // Hotel hour mapping (simplified)
-  const map = { 'D': 12, 'N': 12, 'VSE': 12, 'A': 12, 'B': 12, 'C': 12, 'E': 12, 'G': 12, 'H': 12, 'I': 12, 'J': 12, 'K': 12, 'L': 12, 'M': 12, 'N': 12, 'P': 12, 'S': 12, 'T': 12, 'U': 12 };
-  if ('XYZŽ'.includes(v)) return 0;
-  if (map[v] !== undefined) return map[v];
-  if (v.length > 0) return 12;
-  return 0;
-}
-
 async function setAsCurrent() {
   if (!displayedKey) return;
   await fetch('/api/rozpisy/set-current', { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({key: displayedKey}) });
   currentKey = displayedKey;
   document.getElementById('current-month-btn').classList.add('active');
   buildDropdown();
-  alert('Nastaveno jako aktuální: ' + document.getElementById('current-month-btn').textContent);
+  const lbl = document.getElementById('current-month-btn').textContent;
+  alert('Nastaveno jako aktuální: ' + lbl);
 }
 
 init();
