@@ -697,7 +697,7 @@ body.readonly-mode #topbar { pointer-events: all !important; }
 </div>
 <div id="content">
   <!-- NASTAVENÍ -->
-  <div id="panel-settings" class="panel active">
+  <div id="panel-settings" class="panel">
     <div class="settings-top">
       <div class="field-group">
         <label>Měsíc / Rok</label>
@@ -3340,8 +3340,6 @@ function autoLoad() {
 
 window.onload = async () => {
   // VIEW MODE - načti rozpis ze serveru
-  renderStaff();
-  buildSchedule();
   await initViewMode();
   buildHotelBtns();
   // Show "Zruš požadavky" if requirements were saved
@@ -6600,7 +6598,10 @@ async function loadViewRozpis(key) {
   
   // Update button label
   const btn = document.getElementById('current-rozpis-btn');
-  if (btn) btn.textContent = entry.label + ' ▾';
+  if (btn) btn.textContent = '📋 ' + entry.label + ' ▾';
+  
+  // Rebuild dropdown to update star/bold
+  buildHistoryDD();
   
   // Reapply view settings
   setTimeout(() => {
@@ -6620,6 +6621,14 @@ async function deleteRozpis(key) {
     _viewAllRozpisy = _viewAllRozpisy.filter(r => r.key !== key);
     buildHistoryDD();
     showHint('Rozpis smazán.');
+    // Pokud byl smazán zobrazený rozpis, načíst jiný (nebo aktuální)
+    if (key === _viewCurrentKey) {
+      _viewCurrentKey = null;
+      const btn = document.getElementById('current-rozpis-btn');
+      if (btn) btn.textContent = '📋 Žádný ▾';
+      const next = data.current || (_viewAllRozpisy[0] && _viewAllRozpisy[0].key);
+      if (next) await loadViewRozpis(next);
+    }
   }
 }
 
