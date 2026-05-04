@@ -6,124 +6,27 @@
 <title>AVE Hotels – Portál</title>
 <style>
   * { box-sizing: border-box; margin: 0; padding: 0; }
-  body {
-    min-height: 100vh;
-    background: #f5f5f0;
-    font-family: 'Segoe UI', sans-serif;
-    color: #1a1a18;
-  }
-  /* Topbar */
-  #topbar {
-    background: #1a1a18;
-    height: 56px;
-    display: flex;
-    align-items: center;
-    padding: 0 24px;
-    gap: 16px;
-    position: relative;
-  }
-  .topbar-logo {
-    position: absolute;
-    left: 50%;
-    transform: translateX(-50%);
-    display: flex;
-    align-items: center;
-    gap: 10px;
-  }
-  .topbar-logo svg text { fill: #fff; }
-  .topbar-right {
-    margin-left: auto;
-    display: flex;
-    align-items: center;
-    gap: 12px;
-  }
-  .user-badge {
-    color: #aaa;
-    font-size: 13px;
-  }
-  .btn-sm {
-    padding: 5px 12px;
-    border-radius: 5px;
-    border: 1px solid #444;
-    background: transparent;
-    color: #ccc;
-    font-size: 12px;
-    cursor: pointer;
-    transition: all .15s;
-  }
+  body { min-height: 100vh; background: #f5f5f0; font-family: 'Segoe UI', sans-serif; color: #1a1a18; }
+  #topbar { background: #1a1a18; height: 56px; display: flex; align-items: center; padding: 0 24px; gap: 16px; position: relative; }
+  .topbar-logo { position: absolute; left: 50%; transform: translateX(-50%); display: flex; align-items: center; gap: 10px; }
+  .topbar-right { margin-left: auto; display: flex; align-items: center; gap: 12px; }
+  .user-badge { color: #aaa; font-size: 13px; }
+  .btn-sm { padding: 5px 12px; border-radius: 5px; border: 1px solid #444; background: transparent; color: #ccc; font-size: 12px; cursor: pointer; transition: all .15s; }
   .btn-sm:hover { background: #333; color: #fff; }
-
-  /* Main */
-  .main {
-    max-width: 1000px;
-    margin: 40px auto;
-    padding: 0 24px;
-  }
-  h1 {
-    font-size: 22px;
-    font-weight: 600;
-    margin-bottom: 8px;
-  }
-  .subtitle {
-    color: #888;
-    font-size: 14px;
-    margin-bottom: 32px;
-  }
-
-  /* Cards grid */
-  .grid {
-    display: grid;
-    grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
-    gap: 16px;
-  }
-  .card {
-    background: #fff;
-    border-radius: 10px;
-    padding: 24px 20px;
-    box-shadow: 0 1px 4px rgba(0,0,0,.08);
-    cursor: pointer;
-    transition: box-shadow .15s, transform .15s;
-    text-decoration: none;
-    color: inherit;
-    display: block;
-    border: 1px solid #e8e8e0;
-  }
-  .card:hover {
-    box-shadow: 0 4px 16px rgba(0,0,0,.12);
-    transform: translateY(-2px);
-  }
+  .main { max-width: 1000px; margin: 40px auto; padding: 0 24px; }
+  h1 { font-size: 22px; font-weight: 600; margin-bottom: 8px; }
+  .subtitle { color: #888; font-size: 14px; margin-bottom: 32px; }
+  .grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(220px, 1fr)); gap: 16px; }
+  .card { background: #fff; border-radius: 10px; padding: 24px 20px; box-shadow: 0 1px 4px rgba(0,0,0,.08); cursor: pointer; transition: box-shadow .15s, transform .15s; text-decoration: none; color: inherit; display: block; border: 1px solid #e8e8e0; }
+  .card:hover { box-shadow: 0 4px 16px rgba(0,0,0,.12); transform: translateY(-2px); }
   .card-icon { font-size: 32px; margin-bottom: 12px; }
   .card-title { font-size: 15px; font-weight: 600; margin-bottom: 4px; }
   .card-desc { font-size: 12px; color: #888; }
   .card.disabled { opacity: 0.45; cursor: not-allowed; pointer-events: none; }
-  .badge-soon {
-    display: inline-block;
-    font-size: 10px;
-    background: #e8e8e0;
-    color: #888;
-    border-radius: 4px;
-    padding: 1px 6px;
-    margin-top: 6px;
-  }
-
-  /* Modal */
-  .modal-overlay {
-    display: none;
-    position: fixed;
-    inset: 0;
-    background: rgba(0,0,0,.5);
-    z-index: 1000;
-    align-items: center;
-    justify-content: center;
-  }
+  .badge-soon { display: inline-block; font-size: 10px; background: #e8e8e0; color: #888; border-radius: 4px; padding: 1px 6px; margin-top: 6px; }
+  .modal-overlay { display: none; position: fixed; inset: 0; background: rgba(0,0,0,.5); z-index: 1000; align-items: center; justify-content: center; }
   .modal-overlay.show { display: flex; }
-  .modal {
-    background: #fff;
-    border-radius: 10px;
-    padding: 28px 28px 20px;
-    width: 360px;
-    box-shadow: 0 8px 32px rgba(0,0,0,.3);
-  }
+  .modal { background: #fff; border-radius: 10px; padding: 28px 28px 20px; width: 360px; box-shadow: 0 8px 32px rgba(0,0,0,.3); }
   .modal h2 { font-size: 16px; margin-bottom: 20px; }
   .modal label { display: block; font-size: 11px; font-weight: 600; color: #555; margin-bottom: 4px; text-transform: uppercase; letter-spacing: .05em; }
   .modal input { width: 100%; padding: 8px 10px; border: 1px solid #ddd; border-radius: 5px; font-size: 13px; margin-bottom: 12px; outline: none; }
@@ -137,7 +40,6 @@
 </style>
 </head>
 <body>
-
 <div id="topbar">
   <div class="topbar-logo">
     <svg width="90" height="30" viewBox="0 0 300 100" xmlns="http://www.w3.org/2000/svg">
@@ -155,12 +57,16 @@
 <div class="main">
   <h1>Vítej, <span id="greet-name">…</span>!</h1>
   <div class="subtitle">Interní portál AVE Hotels</div>
-
   <div class="grid">
-    <a href="/rozpis" class="card">
+    <a href="/tvorba-rozpisu" class="card">
+      <div class="card-icon">✏️</div>
+      <div class="card-title">Tvorba rozpisu</div>
+      <div class="card-desc">Vytváření a editace měsíčního rozpisu</div>
+    </a>
+    <a href="/rozpis-view" class="card">
       <div class="card-icon">📅</div>
-      <div class="card-title">Rozpis směn</div>
-      <div class="card-desc">Tvorba a editace měsíčního rozpisu</div>
+      <div class="card-title">Rozpis</div>
+      <div class="card-desc">Aktuální rozpis směn ke čtení</div>
     </a>
     <div class="card disabled">
       <div class="card-icon">📄</div>
@@ -189,16 +95,15 @@
   </div>
 </div>
 
-<!-- Změna hesla modal -->
 <div class="modal-overlay" id="pw-modal">
   <div class="modal">
     <h2>🔑 Změna hesla</h2>
     <label>Současné heslo</label>
-    <input type="password" id="pw-old" placeholder="">
+    <input type="password" id="pw-old">
     <label>Nové heslo</label>
     <input type="password" id="pw-new" placeholder="min. 6 znaků">
     <label>Nové heslo znovu</label>
-    <input type="password" id="pw-new2" placeholder="">
+    <input type="password" id="pw-new2">
     <div class="msg" id="pw-msg"></div>
     <div class="modal-btns">
       <button class="btn-secondary" onclick="closePwModal()">Zrušit</button>
@@ -212,35 +117,24 @@
     document.getElementById('user-name').textContent = u.username;
     document.getElementById('greet-name').textContent = u.name;
   });
-
   function closePwModal() {
     document.getElementById('pw-modal').classList.remove('show');
-    document.getElementById('pw-old').value = '';
-    document.getElementById('pw-new').value = '';
-    document.getElementById('pw-new2').value = '';
+    ['pw-old','pw-new','pw-new2'].forEach(id => document.getElementById(id).value = '');
     document.getElementById('pw-msg').textContent = '';
   }
-
   async function changePassword() {
     const old = document.getElementById('pw-old').value;
-    const n1  = document.getElementById('pw-new').value;
-    const n2  = document.getElementById('pw-new2').value;
+    const n1 = document.getElementById('pw-new').value;
+    const n2 = document.getElementById('pw-new2').value;
     const msg = document.getElementById('pw-msg');
     if (n1 !== n2) { msg.className='msg err'; msg.textContent='Nová hesla se neshodují.'; return; }
-    const r = await fetch('/api/change-password', {
-      method: 'POST',
-      headers: {'Content-Type':'application/json'},
-      body: JSON.stringify({ oldPassword: old, newPassword: n1 })
-    });
+    const r = await fetch('/api/change-password', { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({oldPassword:old,newPassword:n1}) });
     const data = await r.json();
     msg.className = 'msg ' + (data.ok ? 'ok' : 'err');
     msg.textContent = data.msg;
     if (data.ok) setTimeout(closePwModal, 1500);
   }
-
-  document.getElementById('pw-modal').addEventListener('click', e => {
-    if (e.target === document.getElementById('pw-modal')) closePwModal();
-  });
+  document.getElementById('pw-modal').addEventListener('click', e => { if (e.target === document.getElementById('pw-modal')) closePwModal(); });
 </script>
 </body>
 </html>
