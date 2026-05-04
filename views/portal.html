@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>AVE Hotels – Portál</title>
+<title>AVE Hotels â PortÃ¡l</title>
 <style>
   * { box-sizing: border-box; margin: 0; padding: 0; }
   body { min-height: 100vh; background: #f5f5f0; font-family: 'Segoe UI', sans-serif; color: #1a1a18; }
@@ -48,66 +48,61 @@
     </svg>
   </div>
   <div class="topbar-right">
-    <span class="user-badge" id="user-name">…</span>
-    <button class="btn-sm" onclick="document.getElementById('pw-modal').classList.add('show')">🔑 Změnit heslo</button>
-    <a href="/logout" class="btn-sm">Odhlásit</a>
+    <span class="user-badge" id="user-name">â¦</span>
+    <button class="btn-sm" onclick="document.getElementById('pw-modal').classList.add('show')">ð ZmÄnit heslo</button>
+    <a href="/logout" class="btn-sm">OdhlÃ¡sit</a>
   </div>
 </div>
 
 <div class="main">
-  <h1>Vítej, <span id="greet-name">…</span>!</h1>
-  <div class="subtitle">Interní portál AVE Hotels</div>
+  <h1>VÃ­tej, <span id="greet-name">â¦</span>!</h1>
+  <div class="subtitle">InternÃ­ portÃ¡l AVE Hotels</div>
   <div class="grid">
     <a href="/tvorba-rozpisu" class="card">
-      <div class="card-icon">✏️</div>
-      <div class="card-title">Tvorba rozpisu</div>
-      <div class="card-desc">Vytváření a editace měsíčního rozpisu</div>
-    </a>
-    <a href="/rozpis-view" class="card">
-      <div class="card-icon">📅</div>
+      <div class="card-icon">âï¸</div>
       <div class="card-title">Rozpis</div>
-      <div class="card-desc">Aktuální rozpis směn ke čtení</div>
+      <div class="card-desc">Rozpis směn</div>
     </a>
     <div class="card disabled">
-      <div class="card-icon">📄</div>
-      <div class="card-title">Pracovní smlouvy</div>
-      <div class="card-desc">Automatické generování smluv</div>
-      <span class="badge-soon">Připravuje se</span>
+      <div class="card-icon">ð</div>
+      <div class="card-title">PracovnÃ­ smlouvy</div>
+      <div class="card-desc">AutomatickÃ© generovÃ¡nÃ­ smluv</div>
+      <span class="badge-soon">PÅipravuje se</span>
     </div>
     <div class="card disabled">
-      <div class="card-icon">🚫</div>
+      <div class="card-icon">ð«</div>
       <div class="card-title">Blacklist</div>
-      <div class="card-desc">Správa blacklistu hostů</div>
-      <span class="badge-soon">Připravuje se</span>
+      <div class="card-desc">SprÃ¡va blacklistu hostÅ¯</div>
+      <span class="badge-soon">PÅipravuje se</span>
     </div>
     <div class="card disabled">
-      <div class="card-icon">💰</div>
-      <div class="card-title">Výplaty</div>
-      <div class="card-desc">Příplatky, pokuty a výpočty</div>
-      <span class="badge-soon">Připravuje se</span>
+      <div class="card-icon">ð°</div>
+      <div class="card-title">VÃ½platy</div>
+      <div class="card-desc">PÅÃ­platky, pokuty a vÃ½poÄty</div>
+      <span class="badge-soon">PÅipravuje se</span>
     </div>
     <div class="card disabled">
-      <div class="card-icon">📊</div>
+      <div class="card-icon">ð</div>
       <div class="card-title">Provize</div>
-      <div class="card-desc">Provize z prodeje a směnárny</div>
-      <span class="badge-soon">Připravuje se</span>
+      <div class="card-desc">Provize z prodeje a smÄnÃ¡rny</div>
+      <span class="badge-soon">PÅipravuje se</span>
     </div>
   </div>
 </div>
 
 <div class="modal-overlay" id="pw-modal">
   <div class="modal">
-    <h2>🔑 Změna hesla</h2>
-    <label>Současné heslo</label>
+    <h2>ð ZmÄna hesla</h2>
+    <label>SouÄasnÃ© heslo</label>
     <input type="password" id="pw-old">
-    <label>Nové heslo</label>
-    <input type="password" id="pw-new" placeholder="min. 6 znaků">
-    <label>Nové heslo znovu</label>
+    <label>NovÃ© heslo</label>
+    <input type="password" id="pw-new" placeholder="min. 6 znakÅ¯">
+    <label>NovÃ© heslo znovu</label>
     <input type="password" id="pw-new2">
     <div class="msg" id="pw-msg"></div>
     <div class="modal-btns">
-      <button class="btn-secondary" onclick="closePwModal()">Zrušit</button>
-      <button class="btn-primary" onclick="changePassword()">Uložit</button>
+      <button class="btn-secondary" onclick="closePwModal()">ZruÅ¡it</button>
+      <button class="btn-primary" onclick="changePassword()">UloÅ¾it</button>
     </div>
   </div>
 </div>
@@ -127,7 +122,7 @@
     const n1 = document.getElementById('pw-new').value;
     const n2 = document.getElementById('pw-new2').value;
     const msg = document.getElementById('pw-msg');
-    if (n1 !== n2) { msg.className='msg err'; msg.textContent='Nová hesla se neshodují.'; return; }
+    if (n1 !== n2) { msg.className='msg err'; msg.textContent='NovÃ¡ hesla se neshodujÃ­.'; return; }
     const r = await fetch('/api/change-password', { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({oldPassword:old,newPassword:n1}) });
     const data = await r.json();
     msg.className = 'msg ' + (data.ok ? 'ok' : 'err');
