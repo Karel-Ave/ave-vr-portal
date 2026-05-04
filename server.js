@@ -43,7 +43,7 @@ const requireLogin = (req, res, next) => req.session.user ? next() : res.redirec
 // Locks
 let locks = { tvorba: null, rozpis: null, 'rozpis-view': null };
 
-// ── Auth ──
+// ââ Auth ââ
 app.get('/', (req, res) => req.session.user ? res.redirect('/portal') : res.sendFile(path.join(__dirname, 'views', 'login.html')));
 app.post('/login', (req, res) => {
   const { username, password } = req.body;
@@ -60,28 +60,28 @@ app.get('/logout', (req, res) => {
   res.redirect('/');
 });
 
-// ── Pages ──
+// ââ Pages ââ
 app.get('/portal', requireLogin, (req, res) => res.sendFile(path.join(__dirname, 'views', 'portal.html')));
-app.get('/tvorba-rozpisu', requireLogin, (req, res) => res.sendFile(path.join(__dirname, 'public', 'rozpis.html')));
+app.get('/tvorba-rozpisu', requireLogin, (req, res) => res.sendFile(path.join(__dirname, 'public', 'ave-portal', 'public', 'Rozpis ke zmene.html')));
 app.get('/rozpis-view', requireLogin, (req, res) => res.sendFile(path.join(__dirname, 'views', 'rozpis-view.html')));
 app.use('/static', express.static(path.join(__dirname, 'public')));
 
-// ── API: me ──
+// ââ API: me ââ
 app.get('/api/me', requireLogin, (req, res) => res.json(req.session.user));
 
-// ── API: change password ──
+// ââ API: change password ââ
 app.post('/api/change-password', requireLogin, (req, res) => {
   const { oldPassword, newPassword } = req.body;
-  if (!newPassword || newPassword.length < 6) return res.json({ ok: false, msg: 'Nové heslo musí mít alespoň 6 znaků.' });
+  if (!newPassword || newPassword.length < 6) return res.json({ ok: false, msg: 'NovÃ© heslo musÃ­ mÃ­t alespoÅ 6 znakÅ¯.' });
   const users = getUsers();
   const user = users.find(u => u.id === req.session.user.id);
-  if (!bcrypt.compareSync(oldPassword, user.password)) return res.json({ ok: false, msg: 'Současné heslo není správné.' });
+  if (!bcrypt.compareSync(oldPassword, user.password)) return res.json({ ok: false, msg: 'SouÄasnÃ© heslo nenÃ­ sprÃ¡vnÃ©.' });
   user.password = bcrypt.hashSync(newPassword, 10);
   saveUsers(users);
-  res.json({ ok: true, msg: 'Heslo bylo změněno.' });
+  res.json({ ok: true, msg: 'Heslo bylo zmÄnÄno.' });
 });
 
-// ── API: locks ──
+// ââ API: locks ââ
 app.get('/api/lock/:app', requireLogin, (req, res) => res.json({ lock: locks[req.params.app] || null }));
 app.post('/api/lock/:app/acquire', requireLogin, (req, res) => {
   const key = req.params.app;
@@ -96,7 +96,7 @@ app.post('/api/lock/:app/release', requireLogin, (req, res) => {
   res.json({ ok: true });
 });
 
-// ── API: settings ──
+// ââ API: settings ââ
 app.get('/api/settings', requireLogin, (req, res) => res.json(getSettings()));
 app.post('/api/settings', requireLogin, (req, res) => {
   const { staff, hotels, hotelOverrides, customHotels, fondHpp, fondZpp, holidays } = req.body;
@@ -112,7 +112,7 @@ app.post('/api/settings', requireLogin, (req, res) => {
   res.json({ ok: true });
 });
 
-// ── API: rozpisy ──
+// ââ API: rozpisy ââ
 app.get('/api/rozpisy', requireLogin, (req, res) => {
   const r = getRozpisy();
   res.json({ current: r.current, history: r.history.map(h => ({ key: h.key, label: h.label, month: h.month, year: h.year, publishedAt: h.publishedAt, publishedBy: h.publishedBy })) });
@@ -125,7 +125,7 @@ app.get('/api/rozpisy/:key', requireLogin, (req, res) => {
 });
 app.post('/api/rozpisy/publish', requireLogin, (req, res) => {
   const { month, year, data } = req.body;
-  if (!month || !year || !data) return res.json({ ok: false, msg: 'Chybí data.' });
+  if (!month || !year || !data) return res.json({ ok: false, msg: 'ChybÃ­ data.' });
   const key = `${String(month).padStart(2,'0')}/${year}`;
   const label = `Rozpis ${String(month).padStart(2,'0')}/${year}`;
   const r = getRozpisy();
@@ -153,4 +153,4 @@ app.post('/api/rozpisy/set-current', requireLogin, (req, res) => {
   res.json({ ok: true });
 });
 
-app.listen(PORT, () => console.log(`AVE Portál běží na portu ${PORT}`));
+app.listen(PORT, () => console.log(`AVE PortÃ¡l bÄÅ¾Ã­ na portu ${PORT}`));
