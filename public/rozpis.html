@@ -651,7 +651,7 @@ table.staff-tbl td select:focus { background: #fff; border-radius: 2px; }
 <body>
 
 <div id="topbar">
-  <a href="/portal" style="color:#aaa;text-decoration:none;font-size:12px;padding:4px 10px;border:1px solid #444;border-radius:5px;white-space:nowrap;">⬅ Portál</a>
+  <a href="/portal" style="color:#aaa;text-decoration:none;font-size:12px;padding:4px 10px;border:1px solid #444;border-radius:5px;white-space:nowrap;flex-shrink:0;">⬅ Portál</a>
   <div class="tabs">
     <button class="tab active" onclick="showTab('settings')">Nastavení</button>
     <button class="tab" onclick="showTab('schedule')">Rozpis</button>
@@ -662,7 +662,6 @@ table.staff-tbl td select:focus { background: #fff; border-radius: 2px; }
   <button class="btn btn-sm btn-primary" onclick="saveData()" title="Uložit rozpis do souboru">💾 Uložit rozpis</button>
   <button class="btn btn-sm btn-danger" onclick="newSchedule()" title="Začít nový prázdný rozpis">🆕 Nový rozpis</button>
 </div>
-
 <div id="content">
   <!-- NASTAVENÍ -->
   <div id="panel-settings" class="panel active">
