@@ -41,7 +41,7 @@ app.use(session({
 const requireLogin = (req, res, next) => req.session.user ? next() : res.redirect('/');
 
 // Locks
-let locks = { tvorba: null, rozpis: null };
+let locks = { tvorba: null, rozpis: null, 'rozpis-view': null };
 
 // ── Auth ──
 app.get('/', (req, res) => req.session.user ? res.redirect('/portal') : res.sendFile(path.join(__dirname, 'views', 'login.html')));
@@ -135,6 +135,15 @@ app.post('/api/rozpisy/publish', requireLogin, (req, res) => {
   saveRozpisy(r);
   res.json({ ok: true, label });
 });
+app.post('/api/rozpisy/delete', requireLogin, (req, res) => {
+  const { key } = req.body;
+  const r = getRozpisy();
+  r.history = r.history.filter(h => h.key !== key);
+  if (r.current === key) r.current = r.history[0] ? r.history[0].key : null;
+  saveRozpisy(r);
+  res.json({ ok: true });
+});
+
 app.post('/api/rozpisy/set-current', requireLogin, (req, res) => {
   const { key } = req.body;
   const r = getRozpisy();
