@@ -6532,10 +6532,7 @@ if (typeof saveData !== 'undefined') {
 })();
 </script>
 
-
-
-
-
+<script>
 // ── Server API funkce ──
 
 async function loadSettingsFromServer() {
@@ -6625,5 +6622,6 @@ async function loadRozpisFromServer(key) {
     showHint('✓ Načten: ' + entry.label);
   } catch(e) { showHint('Chyba při načítání.'); }
 }
+</script>
 
-</body></html>
+</body>
