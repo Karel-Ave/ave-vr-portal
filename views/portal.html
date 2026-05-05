@@ -306,7 +306,7 @@
 <div id="topbar">
   <!-- Left: Home button (visible only when app is loaded) -->
   <div class="topbar-left">
-    <button id="btn-home" class="btn-top" onclick="goHome()">&#8592; Domů</button>
+    <button id="btn-home" class="btn-top" onclick="goHome()">&#8592; Back to Dashboard</button>
   </div>
 
   <!-- Center: Logo (always visible) -->
@@ -451,8 +451,11 @@
       const frame = document.getElementById('app-frame');
       const cardsView = document.getElementById('cards-view');
       const btnHome = document.getElementById('btn-home');
+      const loading = document.getElementById('app-loading');
+      frame.onload = null;
       frame.src = 'about:blank';
       frame.classList.remove('visible');
+      if (loading) loading.classList.remove('visible');
       cardsView.style.display = '';
       btnHome.classList.remove('visible');
     }
