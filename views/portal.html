@@ -195,6 +195,34 @@
     display: block;
   }
 
+  /* ── Loading overlay ── */
+  #app-loading {
+    display: none;
+    position: fixed;
+    top: 58px;
+    left: 0;
+    width: 100%;
+    height: calc(100vh - 58px);
+    background: #e8e8e4;
+    z-index: 100;
+    align-items: center;
+    justify-content: center;
+    flex-direction: column;
+    gap: 12px;
+    color: #888;
+    font-size: 13px;
+  }
+  #app-loading.visible { display: flex; }
+  .spinner {
+    width: 28px;
+    height: 28px;
+    border: 3px solid #ddd;
+    border-top-color: #555;
+    border-radius: 50%;
+    animation: spin .7s linear infinite;
+  }
+  @keyframes spin { to { transform: rotate(360deg); } }
+
   /* ── Modální okno ── */
   .overlay {
     display: none;
@@ -315,6 +343,12 @@
   </div>
 </div>
 
+<!-- Loading overlay -->
+<div id="app-loading">
+  <div class="spinner"></div>
+  <span>Načítám…</span>
+</div>
+
 <!-- App iframe (hidden by default) -->
 <iframe id="app-frame" src="about:blank" title="Aplikace"></iframe>
 
@@ -372,13 +406,18 @@
     const frame = document.getElementById('app-frame');
     const cardsView = document.getElementById('cards-view');
     const btnHome = document.getElementById('btn-home');
+    const loading = document.getElementById('app-loading');
 
-    frame.src = url;
-    frame.classList.add('visible');
     cardsView.style.display = 'none';
     btnHome.classList.add('visible');
+    loading.classList.add('visible');
+    frame.classList.remove('visible');
 
-    // Update URL without navigation
+    frame.onload = function() {
+      loading.classList.remove('visible');
+      frame.classList.add('visible');
+    };
+    frame.src = url;
     history.pushState({ app: url }, '', url);
   }
 
@@ -387,9 +426,12 @@
     const frame = document.getElementById('app-frame');
     const cardsView = document.getElementById('cards-view');
     const btnHome = document.getElementById('btn-home');
+    const loading = document.getElementById('app-loading');
 
+    frame.onload = null;
     frame.src = 'about:blank';
     frame.classList.remove('visible');
+    loading.classList.remove('visible');
     cardsView.style.display = '';
     btnHome.classList.remove('visible');
 
