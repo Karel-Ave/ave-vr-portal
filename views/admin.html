@@ -28,12 +28,16 @@
     position: absolute;
     left: 50%;
     transform: translateX(-50%);
+    display: flex;
+    align-items: center;
+    gap: 10px;
   }
   .topbar-logo img {
     height: 52px;
     object-fit: contain;
     filter: brightness(0) invert(1);
   }
+  .topbar-copy { font-size: 10px; color: #444; white-space: nowrap; }
   .topbar-left { display: flex; align-items: center; gap: 12px; }
   .topbar-right { margin-left: auto; display: flex; align-items: center; gap: 10px; }
   .user-badge { color: #666; font-size: 13px; }
@@ -224,6 +228,7 @@
   </div>
   <div class="topbar-logo">
     <img src="/static/logo.png" alt="AVE Hotels">
+    <span class="topbar-copy">&copy; 2026 Karel Dvo&rcaron;&aacute;k</span>
   </div>
   <div class="topbar-right">
     <span class="user-badge" id="user-label"></span>

@@ -28,11 +28,19 @@
     position: absolute;
     left: 50%;
     transform: translateX(-50%);
+    display: flex;
+    align-items: center;
+    gap: 10px;
   }
   .topbar-logo img {
     height: 52px;
     object-fit: contain;
     filter: brightness(0) invert(1);
+  }
+  .topbar-copy {
+    font-size: 10px;
+    color: #444;
+    white-space: nowrap;
   }
   .topbar-right {
     margin-left: auto;
@@ -228,6 +236,7 @@
 <div id="topbar">
   <div class="topbar-logo">
     <img src="/static/logo.png" alt="AVE Hotels">
+    <span class="topbar-copy">&copy; 2026 Karel Dvo&rcaron;&aacute;k</span>
   </div>
   <div class="topbar-right">
     <span class="user-badge" id="user-label"></span>
@@ -277,12 +286,8 @@
 
 <script>
   // Definice karet
-  const CARDS_ROZPIS_ADMIN = [
-    { icon: '📋', title: 'Tvorba rozpisu', desc: 'Vytvoření nového měsíčního rozpisu', href: '/tvorba-rozpisu' },
-    { icon: '📅', title: 'Raspis', desc: 'Prohlížení a editace publikovaných rozpisů', href: '/rozpis-view' }
-  ];
-  const CARDS_ROZPIS_VEDOUCI = [
-    { icon: '📅', title: 'Raspis', desc: 'Prohlížení a editace publikovaných rozpisů', href: '/rozpis-view' }
+  const CARDS_ROZPIS = [
+    { icon: '📅', title: 'Raspis', desc: 'Prohlížení a editace publikovaných rozpisů', href: '/raspis-view' }
   ];
   const CARDS_MODULY = [
     { icon: '⭐', title: 'Odměny', desc: 'Záznamy odměn recepčních', href: null },
@@ -315,7 +320,7 @@
 
     // Rozpis karty
     const grRozpis = document.getElementById('grid-rozpis');
-    (isAdmin ? CARDS_ROZPIS_ADMIN : CARDS_ROZPIS_VEDOUCI).forEach(c => grRozpis.appendChild(makeCard(c)));
+    CARDS_ROZPIS.forEach(c => grRozpis.appendChild(makeCard(c)));
 
     // Moduly
     const grModuly = document.getElementById('grid-moduly');
