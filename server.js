@@ -206,6 +206,91 @@ app.delete('/api/users/:id', requireLogin, requireAdmin, async (req, res) => {
   }
 });
 
+// ── API: Oprávnění skupin ─────────────────────────────────────────────────────
+
+app.get('/api/admin/groups', requireLogin, requireAdmin, async (req, res) => {
+  try {
+    const db = getPool();
+    const { rows } = await db.query('SELECT name, display_name, perms FROM permission_groups ORDER BY name');
+    res.json(rows.map(r => ({ name: r.name, displayName: r.display_name, perms: JSON.parse(r.perms || '{}') })));
+  } catch(err) { res.json([]); }
+});
+
+app.post('/api/admin/groups', requireLogin, requireAdmin, async (req, res) => {
+  const { name, displayName } = req.body;
+  if (!name || !displayName) return res.json({ ok: false, msg: 'Chybí data.' });
+  try {
+    const db = getPool();
+    await db.query('INSERT INTO permission_groups (name, display_name) VALUES ($1, $2)', [name, displayName]);
+    res.json({ ok: true });
+  } catch(err) { res.json({ ok: false, msg: 'Skupina s tímto klíčem již existuje.' }); }
+});
+
+app.delete('/api/admin/groups/:name', requireLogin, requireAdmin, async (req, res) => {
+  const name = req.params.name;
+  if (name === 'admin') return res.json({ ok: false, msg: 'Skupinu admin nelze smazat.' });
+  try {
+    const db = getPool();
+    const { rows } = await db.query('SELECT COUNT(*) AS cnt FROM users WHERE role = $1', [name]);
+    if (parseInt(rows[0].cnt) > 0) return res.json({ ok: false, msg: 'Skupinu nelze smazat – jsou v ní uživatelé.' });
+    await db.query('DELETE FROM permission_groups WHERE name = $1', [name]);
+    res.json({ ok: true });
+  } catch(err) { res.json({ ok: false, msg: 'Chyba serveru.' }); }
+});
+
+app.put('/api/admin/groups/:name/perms', requireLogin, requireAdmin, async (req, res) => {
+  try {
+    const db = getPool();
+    await db.query('UPDATE permission_groups SET perms = $1 WHERE name = $2', [JSON.stringify(req.body.perms || {}), req.params.name]);
+    res.json({ ok: true });
+  } catch(err) { res.json({ ok: false, msg: 'Chyba serveru.' }); }
+});
+
+app.get('/api/admin/users/:id/overrides', requireLogin, requireAdmin, async (req, res) => {
+  try {
+    const db = getPool();
+    const { rows } = await db.query('SELECT perm_overrides FROM users WHERE id = $1', [req.params.id]);
+    if (!rows.length) return res.json({ ok: false });
+    res.json({ ok: true, overrides: rows[0].perm_overrides ? JSON.parse(rows[0].perm_overrides) : null });
+  } catch(err) { res.json({ ok: false }); }
+});
+
+app.put('/api/admin/users/:id/overrides', requireLogin, requireAdmin, async (req, res) => {
+  try {
+    const db = getPool();
+    const val = req.body.overrides ? JSON.stringify(req.body.overrides) : null;
+    await db.query('UPDATE users SET perm_overrides = $1 WHERE id = $2', [val, req.params.id]);
+    res.json({ ok: true });
+  } catch(err) { res.json({ ok: false, msg: 'Chyba serveru.' }); }
+});
+
+app.get('/api/my-permissions', requireLogin, async (req, res) => {
+  try {
+    const db   = getPool();
+    const user = req.session.user;
+    const { rows: gr } = await db.query('SELECT perms FROM permission_groups WHERE name = $1', [user.role]);
+    const groupPerms   = gr.length ? JSON.parse(gr[0].perms || '{}') : {};
+    const { rows: ur } = await db.query('SELECT perm_overrides FROM users WHERE id = $1', [user.id]);
+    const userOv       = (ur.length && ur[0].perm_overrides) ? JSON.parse(ur[0].perm_overrides) : {};
+    const result = {};
+    const DEFAULTS = { raspis: { enabled: true, buttons: { import: user.role === 'admin', delete: user.role === 'admin', trash: user.role === 'admin', edit: true, export: true } } };
+    const allApps = new Set([...Object.keys(DEFAULTS), ...Object.keys(groupPerms), ...Object.keys(userOv)]);
+    for (const appKey of allApps) {
+      const gp   = groupPerms[appKey] || DEFAULTS[appKey] || { enabled: true, buttons: {} };
+      const uo   = userOv[appKey] || {};
+      const enabled = (uo.enabled != null) ? uo.enabled : gp.enabled;
+      const buttons = {};
+      const allBtns = new Set([...Object.keys(gp.buttons || {}), ...Object.keys(uo.buttons || {})]);
+      for (const btnKey of allBtns) {
+        const gb = (gp.buttons || {})[btnKey]; const ub = (uo.buttons || {})[btnKey];
+        buttons[btnKey] = (ub != null) ? ub : (gb != null ? gb : true);
+      }
+      result[appKey] = { enabled, buttons };
+    }
+    res.json(result);
+  } catch(err) { console.error(err); res.json({}); }
+});
+
 // ── API: Zámky ────────────────────────────────────────────────────────────────
 
 app.get('/api/lock/:app', requireLogin, (req, res) =>

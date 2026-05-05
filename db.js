@@ -115,6 +115,23 @@ async function init() {
     )
   `);
 
+  // Skupiny oprávnění
+  await db.query(`
+    CREATE TABLE IF NOT EXISTS permission_groups (
+      name         VARCHAR(50) PRIMARY KEY,
+      display_name VARCHAR(100) NOT NULL,
+      perms        TEXT NOT NULL DEFAULT '{}'
+    )
+  `);
+
+  // Individuální přepisy oprávnění pro uživatele
+  await db.query(`ALTER TABLE users ADD COLUMN IF NOT EXISTS perm_overrides TEXT DEFAULT NULL`);
+
+  // Seed výchozích skupin
+  const adminPerms  = JSON.stringify({ raspis: { enabled: true, buttons: { import: true, delete: true, trash: true, edit: true, export: true } } });
+  const vedPerms    = JSON.stringify({ raspis: { enabled: true, buttons: { import: false, delete: false, trash: false, edit: true, export: true } } });
+  await db.query(`INSERT INTO permission_groups (name, display_name, perms) VALUES ('admin','Admin',$1),('vedoucí','VR',$2) ON CONFLICT (name) DO NOTHING`, [adminPerms, vedPerms]);
+
   // Seed: pokud nejsou žádní uživatelé, vytvoř admina
   const { rows } = await db.query('SELECT COUNT(*) AS cnt FROM users');
   if (parseInt(rows[0].cnt, 10) === 0) {

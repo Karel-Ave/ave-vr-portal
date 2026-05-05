@@ -665,7 +665,7 @@ table.staff-tbl td select:focus { background: #fff; border-radius: 2px; }
     <button id="portal-save-btn" class="btn btn-sm btn-primary" style="display:none;">Uložit</button>
   </div>
   <div style="margin-left:auto;display:flex;align-items:center;gap:6px;">
-    <button class="btn btn-sm" onclick="exportXlsx()" style="background:#4caf50;color:#fff;border-color:#388e3c;">Export do .xlsx</button>
+    <button id="portal-export-btn" class="btn btn-sm" onclick="exportXlsx()" style="background:#4caf50;color:#fff;border-color:#388e3c;">Export do .xlsx</button>
   </div>
 </div>
 <div id="content">
@@ -6331,7 +6331,6 @@ document.addEventListener('mouseup', (e) => {
 /* Portal integration overrides */
 #portal-controls .btn { font-family: inherit; }
 #portal-controls select { height: 22px; padding: 0 6px; line-height: 22px; font-size: 10px; }
-#schedule-wrap.portal-readonly td { pointer-events: none; user-select: none; }
 #schedule-wrap.portal-readonly button { pointer-events: none; }
 #schedule-wrap.portal-readonly input, #schedule-wrap.portal-readonly textarea, #schedule-wrap.portal-readonly select { pointer-events: none; }
 </style>
@@ -6363,12 +6362,18 @@ document.addEventListener('mouseup', (e) => {
       const me = await fetch('/api/me').then(r => r.json());
       _isAdmin = me.role === 'admin';
       _myUserId = me.id;
-      if (_isAdmin) {
-        const delBtn = document.getElementById('portal-delete-btn');
-        if (delBtn) delBtn.style.display = '';
-        var trashBtnEl = document.getElementById("portal-trash-btn");
-        if (trashBtnEl) trashBtnEl.style.display = "";
-      }
+
+      const perms = await fetch('/api/my-permissions').then(r => r.json()).catch(() => null);
+      const rp   = (perms && perms.raspis) ? perms.raspis
+        : { enabled: true, buttons: { import: true, delete: _isAdmin, trash: _isAdmin, edit: true, export: true } };
+      const btns = rp.buttons || {};
+
+      const show = (id, flag) => { const el = document.getElementById(id); if (el) el.style.display = flag !== false ? '' : 'none'; };
+      show('portal-import-btn', btns.import);
+      show('portal-delete-btn', btns.delete);
+      show('portal-trash-btn',  btns.trash);
+      show('portal-edit-btn',   btns.edit);
+      show('portal-export-btn', btns.export);
     } catch(e) { /* not inside portal, ignore */ }
 
     setReadOnly(true);
@@ -6454,7 +6459,24 @@ document.addEventListener('mouseup', (e) => {
 
   function setReadOnly(ro) {
     const wrap = document.getElementById('schedule-wrap');
-    if (wrap) { if (ro) wrap.classList.add('portal-readonly'); else wrap.classList.remove('portal-readonly'); }
+    if (!wrap) return;
+    if (ro) {
+      wrap.classList.add('portal-readonly');
+      if (!wrap._roBlocker) {
+        wrap._roBlocker = (e) => { e.stopPropagation(); e.preventDefault(); };
+        wrap.addEventListener('keydown',     wrap._roBlocker, true);
+        wrap.addEventListener('input',       wrap._roBlocker, true);
+        wrap.addEventListener('beforeinput', wrap._roBlocker, true);
+      }
+    } else {
+      wrap.classList.remove('portal-readonly');
+      if (wrap._roBlocker) {
+        wrap.removeEventListener('keydown',     wrap._roBlocker, true);
+        wrap.removeEventListener('input',       wrap._roBlocker, true);
+        wrap.removeEventListener('beforeinput', wrap._roBlocker, true);
+        delete wrap._roBlocker;
+      }
+    }
   }
 
   function updateLockUI(editMode, lockInfo) {

@@ -6,235 +6,152 @@
 <title>AVE Hotels – Správa uživatelů</title>
 <style>
   * { box-sizing: border-box; margin: 0; padding: 0; }
+  body { min-height: 100vh; background: #e8e8e4; font-family: 'Segoe UI', system-ui, sans-serif; color: #1a1a18; }
 
-  body {
-    min-height: 100vh;
-    background: #e8e8e4;
-    font-family: 'Segoe UI', system-ui, sans-serif;
-    color: #1a1a18;
-  }
+  #topbar { background: #d8d8d4; height: 44px; display: flex; align-items: center; padding: 0 16px; border-bottom: 1px solid #c8c8c4; }
 
-  /* ── Horní lišta ── */
-  #topbar {
-    background: #d8d8d4;
-    height: 44px;
-    display: flex;
-    align-items: center;
-    padding: 0 16px;
-    gap: 10px;
-    border-bottom: 1px solid #c8c8c4;
-  }
-  .topbar-left { display: flex; align-items: center; gap: 10px; }
-  .topbar-right { margin-left: auto; display: flex; align-items: center; gap: 10px; }
-  .btn-top {
-    padding: 4px 12px;
-    border-radius: 5px;
-    border: 1px solid #bbb;
-    background: transparent;
-    color: #444;
-    font-size: 12px;
-    cursor: pointer;
-    transition: all .15s;
-    text-decoration: none;
-    font-family: inherit;
-  }
-  .btn-top:hover { background: #c8c8c4; color: #111; border-color: #999; }
+  .main { max-width: 920px; margin: 28px auto; padding: 0 28px; }
 
-  /* ── Obsah ── */
-  .main {
-    max-width: 860px;
-    margin: 40px auto;
-    padding: 0 28px;
-  }
+  /* Tabs */
+  .tabs { display: flex; gap: 2px; border-bottom: 2px solid #d0d0c8; margin-bottom: 24px; }
+  .tab-btn { padding: 8px 20px; font-size: 13px; font-weight: 500; color: #666; background: none; border: none; cursor: pointer; border-bottom: 2px solid transparent; margin-bottom: -2px; transition: color .15s; font-family: inherit; }
+  .tab-btn.active { color: #2a5caa; border-bottom-color: #2a5caa; }
+  .tab-btn:hover:not(.active) { color: #333; }
 
-  .page-header {
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-    margin-bottom: 28px;
-  }
-  .page-header h1 { font-size: 20px; font-weight: 600; color: #1a1a18; }
+  .page-header { display: flex; align-items: center; justify-content: space-between; margin-bottom: 24px; }
+  .page-header h1 { font-size: 18px; font-weight: 600; color: #1a1a18; }
 
-  .btn-add {
-    padding: 8px 18px;
-    background: #e0e0e0;
-    color: #111;
-    border: none;
-    border-radius: 7px;
-    font-size: 13px;
-    font-weight: 700;
-    cursor: pointer;
-    font-family: inherit;
-    transition: background .15s;
-  }
+  /* Buttons */
+  .btn-add { padding: 7px 16px; background: #e0e0e0; border: 1px solid #ccc; border-radius: 7px; font-size: 12px; cursor: pointer; transition: background .15s; font-family: inherit; }
   .btn-add:hover { background: #fff; }
-
-  /* ── Tabulka uživatelů ── */
-  .table-wrap {
-    background: #ffffff;
-    border: 1px solid #d0d0c8;
-    border-radius: 12px;
-    overflow: hidden;
-  }
-  table {
-    width: 100%;
-    border-collapse: collapse;
-  }
-  thead th {
-    background: #141414;
-    padding: 11px 16px;
-    text-align: left;
-    font-size: 10px;
-    font-weight: 700;
-    text-transform: uppercase;
-    letter-spacing: 0.1em;
-    color: #666;
-    border-bottom: 1px solid #d0d0c8;
-  }
-  tbody tr { border-bottom: 1px solid #e8e8e0; transition: background .12s; }
-  tbody tr:last-child { border-bottom: none; }
-  tbody tr:hover { background: #f0f0eb; }
-  tbody td {
-    padding: 12px 16px;
-    font-size: 13px;
-    vertical-align: middle;
-  }
-  .role-badge {
-    display: inline-block;
-    padding: 2px 9px;
-    border-radius: 20px;
-    font-size: 11px;
-    font-weight: 600;
-  }
-  .role-admin   { background: #fff8cc; color: #7a6200; border: 1px solid #d4b800; }
-  .role-vedouci { background: #e8f0ff; color: #2a5caa; border: 1px solid #a0b8e0; }
-  .td-actions { text-align: right; white-space: nowrap; }
-  .btn-action {
-    padding: 4px 12px;
-    border-radius: 5px;
-    font-size: 11px;
-    cursor: pointer;
-    font-family: inherit;
-    transition: all .12s;
-    border: 1px solid #ccc;
-    background: transparent;
-    color: #555;
-    margin-left: 4px;
-  }
+  .btn-action { padding: 3px 10px; border-radius: 4px; font-size: 11px; cursor: pointer; border: 1px solid #ccc; background: transparent; color: #555; margin-left: 4px; font-family: inherit; transition: all .12s; }
   .btn-action:hover { background: #e8e8e4; color: #111; border-color: #999; }
   .btn-action.danger:hover { background: #fff0f0; color: #c00; border-color: #f00; }
 
+  /* Users table */
+  .table-wrap { background: #fff; border: 1px solid #d0d0c8; border-radius: 10px; overflow: hidden; }
+  table { width: 100%; border-collapse: collapse; }
+  thead th { text-align: left; padding: 10px 14px; font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.06em; color: #777; border-bottom: 1px solid #d0d0c8; background: #141414; }
+  tbody tr { border-bottom: 1px solid #e8e8e0; transition: background .12s; }
+  tbody tr:last-child { border-bottom: none; }
+  tbody tr:hover { background: #f0f0eb; }
+  td { padding: 10px 14px; vertical-align: middle; font-size: 13px; }
+  .td-actions { text-align: right; white-space: nowrap; }
+  .role-badge { display: inline-block; padding: 2px 10px; border-radius: 20px; font-size: 11px; font-weight: 600; }
+  .role-admin   { background: #fff8cc; color: #7a6200; border: 1px solid #d4b800; }
+  .role-vedouci { background: #e8f0ff; color: #2a5caa; border: 1px solid #a0b8e0; }
+  .role-other   { background: #f0f0e8; color: #555;    border: 1px solid #ccc; }
   .empty-row td { text-align: center; color: #888; padding: 32px; font-size: 13px; }
 
-  /* ── Modální okno ── */
-  .overlay {
-    display: none;
-    position: fixed;
-    inset: 0;
-    background: rgba(0,0,0,.4);
-    z-index: 1000;
-    align-items: center;
-    justify-content: center;
-  }
+  /* Groups & Permissions */
+  .groups-layout { display: flex; gap: 18px; align-items: flex-start; }
+  .groups-sidebar { width: 180px; flex-shrink: 0; }
+  .group-item { padding: 9px 12px; border: 1px solid #d0d0c8; border-radius: 7px; margin-bottom: 7px; cursor: pointer; background: #fff; display: flex; justify-content: space-between; align-items: center; font-size: 13px; transition: all .15s; }
+  .group-item.active { border-color: #2a5caa; background: #e8f0ff; color: #2a5caa; font-weight: 600; }
+  .group-item:hover:not(.active) { background: #f5f5f0; }
+  .groups-panel { flex: 1; min-width: 0; }
+  .groups-panel-inner { background: #fff; border: 1px solid #d0d0c8; border-radius: 10px; padding: 20px; }
+  .groups-panel-inner h3 { font-size: 14px; font-weight: 600; margin-bottom: 16px; }
+  .app-block { border: 1px solid #e0e0d8; border-radius: 8px; margin-bottom: 10px; overflow: hidden; }
+  .app-header { display: flex; align-items: center; gap: 10px; padding: 10px 14px; cursor: pointer; user-select: none; background: #fafaf8; }
+  .app-header:hover { background: #f0f0eb; }
+  .app-expand { font-size: 10px; color: #aaa; margin-left: auto; transition: transform .2s; }
+  .app-expand.open { transform: rotate(90deg); }
+  .app-btns { display: none; padding: 6px 14px 12px 42px; border-top: 1px solid #f0f0e8; }
+  .app-btns.open { display: block; }
+  .perm-row { display: flex; align-items: center; justify-content: space-between; padding: 6px 0; border-bottom: 1px solid #f5f5f0; }
+  .perm-row:last-child { border-bottom: none; }
+  .perm-label { font-size: 12px; color: #444; }
+
+  /* Toggle */
+  .toggle { display: inline-flex; align-items: center; cursor: pointer; }
+  .toggle-track { width: 34px; height: 18px; border-radius: 9px; background: #ccc; position: relative; transition: background .18s; flex-shrink: 0; }
+  .toggle-track.on { background: #4caf50; }
+  .toggle-track::after { content: ''; position: absolute; left: 2px; top: 2px; width: 14px; height: 14px; border-radius: 50%; background: #fff; box-shadow: 0 1px 3px rgba(0,0,0,.2); transition: left .18s; }
+  .toggle-track.on::after { left: 18px; }
+
+  /* Override rows */
+  .over-section { margin-top: 14px; }
+  .over-section-title { font-size: 11px; font-weight: 700; color: #999; text-transform: uppercase; letter-spacing: .06em; margin-bottom: 8px; }
+  .over-app-block { border: 1px solid #e8e8e0; border-radius: 7px; margin-bottom: 8px; overflow: hidden; }
+  .over-app-header { display: flex; align-items: center; gap: 8px; padding: 9px 12px; background: #fafaf8; }
+  .over-app-label { flex: 1; font-size: 13px; font-weight: 500; }
+  .over-status { font-size: 10px; color: #e07000; }
+  .over-status.inherit { color: #aaa; }
+  .over-btns-wrap { padding: 6px 12px 10px 32px; border-top: 1px solid #f0f0e8; }
+  .over-btn-row { display: flex; align-items: center; justify-content: space-between; padding: 5px 0; border-bottom: 1px solid #f8f8f5; }
+  .over-btn-row:last-child { border-bottom: none; }
+  .over-btn-label { font-size: 12px; color: #444; }
+  .reset-btn { font-size: 10px; padding: 1px 6px; color: #888; border: 1px solid #ddd; border-radius: 3px; background: none; cursor: pointer; margin-left: 6px; }
+  .reset-btn:hover { background: #f0f0eb; }
+
+  /* Modals */
+  .overlay { display: none; position: fixed; inset: 0; background: rgba(0,0,0,.4); z-index: 1000; align-items: center; justify-content: center; }
   .overlay.show { display: flex; }
-  .modal {
-    background: #ffffff;
-    border: 1px solid #d0d0c8;
-    border-radius: 12px;
-    padding: 28px;
-    width: 400px;
-    box-shadow: 0 8px 32px rgba(0,0,0,.15);
-  }
+  .modal { background: #fff; border: 1px solid #d0d0c8; border-radius: 12px; padding: 28px; width: 460px; box-shadow: 0 8px 32px rgba(0,0,0,.15); }
   .modal h2 { font-size: 15px; font-weight: 600; color: #1a1a18; margin-bottom: 20px; }
   .form-row { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
-  .form-group { display: flex; flex-direction: column; gap: 5px; margin-bottom: 14px; }
-  .form-group label {
-    font-size: 10px;
-    font-weight: 700;
-    color: #777;
-    text-transform: uppercase;
-    letter-spacing: 0.07em;
-  }
-  .form-group input,
-  .form-group select {
-    padding: 9px 11px;
-    background: #f8f8f4;
-    border: 1px solid #ccc;
-    border-radius: 6px;
-    font-size: 13px;
-    color: #1a1a18;
-    outline: none;
-    font-family: inherit;
-    transition: border-color .15s;
-  }
-  .form-group input:focus,
-  .form-group select:focus { border-color: #2a5caa; }
+  .form-group { margin-bottom: 14px; }
+  .form-group label { display: block; font-size: 10px; font-weight: 700; color: #777; text-transform: uppercase; letter-spacing: .07em; margin-bottom: 5px; }
+  .form-group input, .form-group select { width: 100%; padding: 9px 11px; background: #f8f8f4; border: 1px solid #ccc; border-radius: 6px; font-size: 13px; color: #1a1a18; outline: none; font-family: inherit; transition: border-color .15s; }
+  .form-group input:focus, .form-group select:focus { border-color: #2a5caa; }
   .form-group select option { background: #fff; }
   .form-hint { font-size: 11px; color: #888; margin-top: 2px; }
-  .modal-btns { display: flex; gap: 8px; justify-content: flex-end; margin-top: 8px; }
-  .btn-secondary {
-    padding: 7px 16px;
-    background: transparent;
-    border: 1px solid #ccc;
-    border-radius: 6px;
-    color: #555;
-    font-size: 13px;
-    cursor: pointer;
-    font-family: inherit;
-    transition: all .15s;
-  }
+  .modal-btns { display: flex; gap: 8px; justify-content: flex-end; margin-top: 6px; }
+  .btn-secondary { padding: 7px 16px; background: transparent; border: 1px solid #ccc; border-radius: 6px; color: #555; font-size: 13px; cursor: pointer; font-family: inherit; }
   .btn-secondary:hover { background: #e8e8e4; color: #111; }
-  .btn-primary {
-    padding: 7px 18px;
-    background: #e0e0e0;
-    color: #111;
-    border: none;
-    border-radius: 6px;
-    font-size: 13px;
-    font-weight: 700;
-    cursor: pointer;
-    font-family: inherit;
-    transition: background .15s;
-  }
+  .btn-primary { padding: 7px 18px; background: #e0e0e0; border: 1px solid #ccc; border-radius: 6px; font-size: 13px; font-weight: 600; color: #111; cursor: pointer; font-family: inherit; }
   .btn-primary:hover { background: #fff; }
   .msg { font-size: 12px; min-height: 18px; margin-top: 8px; }
   .msg.ok  { color: #5cb85c; }
   .msg.err { color: #e05555; }
-
-  /* ── Modál: Změna hesla ── */
   #pw-overlay .modal { width: 360px; }
 </style>
 </head>
 <body>
 
 <div id="topbar">
-  <div class="topbar-left">
-    <span style="font-size:13px;font-weight:600;color:#444;">Správa uživatelů</span>
-  </div>
+  <span style="font-size:13px;font-weight:600;color:#444;">Správa uživatelů</span>
 </div>
 
 <div class="main">
-  <div class="page-header">
-    <h1>Správa uživatelů</h1>
-    <button class="btn-add" onclick="openAddModal()">+ Přidat uživatele</button>
+  <div class="tabs">
+    <button class="tab-btn active" onclick="showTab('users')">Uživatelé</button>
+    <button class="tab-btn" onclick="showTab('groups')">Skupiny &amp; Oprávnění</button>
   </div>
 
-  <div class="table-wrap">
-    <table>
-      <thead>
-        <tr>
-          <th>#</th>
-          <th>Jméno</th>
-          <th>Uživatelské jméno</th>
-          <th>Role</th>
-          <th>Přidán</th>
-          <th></th>
-        </tr>
-      </thead>
-      <tbody id="users-tbody">
-        <tr class="empty-row"><td colspan="6">Načítám…</td></tr>
-      </tbody>
-    </table>
+  <!-- ── Tab: Uživatelé ── -->
+  <div id="tab-users">
+    <div class="page-header">
+      <h1>Uživatelé</h1>
+      <button class="btn-add" onclick="openAddModal()">+ Přidat uživatele</button>
+    </div>
+    <div class="table-wrap">
+      <table>
+        <thead>
+          <tr><th>#</th><th>Jméno</th><th>Uživatelské jméno</th><th>Skupina</th><th>Přidán</th><th></th></tr>
+        </thead>
+        <tbody id="users-tbody">
+          <tr class="empty-row"><td colspan="6">Načítám…</td></tr>
+        </tbody>
+      </table>
+    </div>
+  </div>
+
+  <!-- ── Tab: Skupiny & Oprávnění ── -->
+  <div id="tab-groups" style="display:none;">
+    <div class="page-header">
+      <h1>Skupiny &amp; Oprávnění</h1>
+      <button class="btn-add" onclick="openAddGroupModal()">+ Přidat skupinu</button>
+    </div>
+    <div class="groups-layout">
+      <div class="groups-sidebar" id="groups-list">
+        <div style="font-size:12px;color:#aaa;padding:8px 0;">Načítám…</div>
+      </div>
+      <div class="groups-panel" id="groups-panel">
+        <div style="font-size:13px;color:#aaa;padding:40px 0;text-align:center;">Vyberte skupinu vlevo.</div>
+      </div>
+    </div>
   </div>
 </div>
 
@@ -257,37 +174,59 @@
       <input type="password" id="u-password" placeholder="min. 6 znaků">
     </div>
     <div class="form-group">
-      <label>Role</label>
-      <select id="u-role">
-        <option value="vedoucí">Vedoucí</option>
-        <option value="admin">Admin</option>
-      </select>
-      <span class="form-hint" id="role-hint"></span>
+      <label>Skupina</label>
+      <select id="u-role"></select>
     </div>
     <div class="msg" id="user-msg"></div>
     <div class="modal-btns">
       <button class="btn-secondary" onclick="closeUserModal()">Zrušit</button>
-      <button class="btn-primary" id="user-save-btn" onclick="saveUser()">Uložit</button>
+      <button class="btn-primary" onclick="saveUser()">Uložit</button>
     </div>
   </div>
 </div>
 
-<!-- Modál: Změna vlastního hesla -->
+<!-- Modál: Individuální oprávnění -->
+<div class="overlay" id="overrides-overlay">
+  <div class="modal" style="width:500px;max-height:82vh;overflow-y:auto;">
+    <h2>Oprávnění: <span id="overrides-uname" style="color:#2a5caa;"></span></h2>
+    <p style="font-size:12px;color:#888;margin-bottom:16px;">Standardně platí oprávnění skupiny. Zde lze nastavit individuální výjimky.</p>
+    <div id="overrides-content"></div>
+    <div class="msg" id="overrides-msg"></div>
+    <div class="modal-btns">
+      <button class="btn-secondary" style="color:#e05555;border-color:#eecece;" onclick="resetOverrides()">Obnovit výchozí</button>
+      <button class="btn-secondary" onclick="closeOverridesModal()">Zrušit</button>
+      <button class="btn-primary" onclick="saveOverrides()">Uložit</button>
+    </div>
+  </div>
+</div>
+
+<!-- Modál: Přidat skupinu -->
+<div class="overlay" id="addgroup-overlay">
+  <div class="modal" style="width:380px;">
+    <h2>Přidat skupinu</h2>
+    <div class="form-group">
+      <label>Klíč skupiny (interní, bez mezer)</label>
+      <input type="text" id="new-group-key" placeholder="pr. vedouci2">
+    </div>
+    <div class="form-group">
+      <label>Zobrazovaný název</label>
+      <input type="text" id="new-group-name" placeholder="pr. Vedoucí 2">
+    </div>
+    <div class="msg" id="addgroup-msg"></div>
+    <div class="modal-btns">
+      <button class="btn-secondary" onclick="closeAddGroupModal()">Zrušit</button>
+      <button class="btn-primary" onclick="saveNewGroup()">Přidat</button>
+    </div>
+  </div>
+</div>
+
+<!-- Modál: Změna hesla -->
 <div class="overlay" id="pw-overlay">
   <div class="modal">
     <h2>Změna hesla</h2>
-    <div class="form-group">
-      <label>Současné heslo</label>
-      <input type="password" id="pw-old">
-    </div>
-    <div class="form-group">
-      <label>Nové heslo</label>
-      <input type="password" id="pw-new" placeholder="min. 6 znaků">
-    </div>
-    <div class="form-group">
-      <label>Nové heslo znovu</label>
-      <input type="password" id="pw-new2">
-    </div>
+    <div class="form-group"><label>Současné heslo</label><input type="password" id="pw-old"></div>
+    <div class="form-group"><label>Nové heslo</label><input type="password" id="pw-new" placeholder="min. 6 znaků"></div>
+    <div class="form-group"><label>Nové heslo znovu</label><input type="password" id="pw-new2"></div>
     <div class="msg" id="pw-msg"></div>
     <div class="modal-btns">
       <button class="btn-secondary" onclick="closePwModal()">Zrušit</button>
@@ -297,19 +236,33 @@
 </div>
 
 <script>
-  let currentUserId = null;
-  let myId = null;
+  // ── Definice aplikací ─────────────────────────────────────────────────────────
+  const DEFINED_APPS = {
+    raspis: { label: 'Rozpis', buttons: {
+      import: 'Nahrát rozpis', delete: 'Smazat', trash: 'Koš',
+      edit: 'Editovat / Uložit', export: 'Export do .xlsx'
+    }}
+  };
 
-  // Načíst přihlášeného uživatele
-  fetch('/api/me').then(r => r.json()).then(u => {
-    myId = u.id;
-    loadUsers();
-  });
+  let myId = null, currentUserId = null;
+  let currentOverridesId = null, currentOverridesRole = '';
+  let overridesData = {};
+  let allGroups = [];
+  let selectedGroupName = null;
 
+  fetch('/api/me').then(r => r.json()).then(u => { myId = u.id; loadUsers(); loadGroups(); });
+
+  // ── TABS ──────────────────────────────────────────────────────────────────────
+  function showTab(t) {
+    document.getElementById('tab-users').style.display  = t === 'users'  ? '' : 'none';
+    document.getElementById('tab-groups').style.display = t === 'groups' ? '' : 'none';
+    document.querySelectorAll('.tab-btn').forEach((b, i) => b.classList.toggle('active', (i === 0) === (t === 'users')));
+  }
+
+  // ── UŽIVATELÉ ─────────────────────────────────────────────────────────────────
   function formatDate(iso) {
     if (!iso) return '—';
-    const d = new Date(iso);
-    return d.toLocaleDateString('cs-CZ', { day: '2-digit', month: '2-digit', year: 'numeric' });
+    return new Date(iso).toLocaleDateString('cs-CZ', { day: '2-digit', month: '2-digit', year: 'numeric' });
   }
 
   async function loadUsers() {
@@ -318,163 +271,370 @@
       const r = await fetch('/api/users');
       if (!r.ok) { tbody.innerHTML = '<tr class="empty-row"><td colspan="6">Chyba načtení.</td></tr>'; return; }
       const users = await r.json();
-      if (!users.length) {
-        tbody.innerHTML = '<tr class="empty-row"><td colspan="6">Žádní uživatelé.</td></tr>';
-        return;
-      }
-      tbody.innerHTML = users.map((u, i) => `
-        <tr>
+      if (!users.length) { tbody.innerHTML = '<tr class="empty-row"><td colspan="6">Žádní uživatelé.</td></tr>'; return; }
+      tbody.innerHTML = users.map((u, i) => {
+        const grp = allGroups.find(g => g.name === u.role);
+        const grpLabel = grp ? esc(grp.displayName) : esc(u.role);
+        const roleClass = u.role === 'admin' ? 'role-admin' : (u.role === 'vedoucí' ? 'role-vedouci' : 'role-other');
+        return `<tr>
           <td style="color:#888;font-size:12px">${i + 1}</td>
-          <td style="font-weight:500;color:#1a1a18">${esc(u.name)}</td>
+          <td style="font-weight:500;">${esc(u.name)}</td>
           <td style="color:#555;font-family:monospace;font-size:12px">${esc(u.username)}</td>
-          <td><span class="role-badge role-${u.role === 'admin' ? 'admin' : 'vedouci'}">${u.role === 'admin' ? 'Admin' : 'Vedoucí'}</span></td>
+          <td><span class="role-badge ${roleClass}">${grpLabel}</span></td>
           <td style="color:#777;font-size:12px">${formatDate(u.created_at)}</td>
           <td class="td-actions">
-            <button class="btn-action" onclick="openEditModal(${u.id}, '${esc(u.name)}', '${esc(u.username)}', '${u.role}')">Upravit</button>
-            ${u.id !== myId ? `<button class="btn-action danger" onclick="deleteUser(${u.id}, '${esc(u.name)}')">Smazat</button>` : ''}
+            <button class="btn-action" onclick="openEditModal(${u.id},'${esc(u.name)}','${esc(u.username)}','${esc(u.role)}')">Upravit</button>
+            <button class="btn-action" onclick="openOverridesModal(${u.id},'${esc(u.name)}','${esc(u.role)}')">Oprávnění</button>
+            ${u.id !== myId ? `<button class="btn-action danger" onclick="deleteUser(${u.id},'${esc(u.name)}')">Smazat</button>` : ''}
           </td>
-        </tr>
-      `).join('');
-    } catch {
-      tbody.innerHTML = '<tr class="empty-row"><td colspan="6">Chyba načtení.</td></tr>';
-    }
+        </tr>`;
+      }).join('');
+    } catch { tbody.innerHTML = '<tr class="empty-row"><td colspan="6">Chyba načtení.</td></tr>'; }
   }
 
   function esc(s) {
     return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;').replace(/'/g,'&#39;');
   }
 
-  // Přidat uživatele
+  function populateRoleSelect(sel, selected) {
+    sel.innerHTML = '';
+    const groups = allGroups.length ? allGroups : [{ name: 'admin', displayName: 'Admin' }, { name: 'vedoucí', displayName: 'VR' }];
+    groups.forEach(g => {
+      const o = document.createElement('option');
+      o.value = g.name; o.textContent = g.displayName;
+      if (g.name === selected) o.selected = true;
+      sel.appendChild(o);
+    });
+  }
+
   function openAddModal() {
     currentUserId = null;
     document.getElementById('modal-title').textContent = 'Přidat uživatele';
-    document.getElementById('u-name').value = '';
-    document.getElementById('u-username').value = '';
-    document.getElementById('u-password').value = '';
-    document.getElementById('u-role').value = 'vedoucí';
+    ['u-name','u-username','u-password'].forEach(id => document.getElementById(id).value = '');
     document.getElementById('u-username').disabled = false;
     document.getElementById('pw-hint-label').style.display = 'none';
+    populateRoleSelect(document.getElementById('u-role'), 'vedoucí');
     clearMsg('user-msg');
     document.getElementById('user-overlay').classList.add('show');
     setTimeout(() => document.getElementById('u-name').focus(), 50);
   }
 
-  // Upravit uživatele
   function openEditModal(id, name, username, role) {
     currentUserId = id;
     document.getElementById('modal-title').textContent = 'Upravit uživatele';
     document.getElementById('u-name').value = name;
     document.getElementById('u-username').value = username;
     document.getElementById('u-password').value = '';
-    document.getElementById('u-role').value = role;
     document.getElementById('u-username').disabled = true;
     document.getElementById('pw-hint-label').style.display = 'inline';
+    populateRoleSelect(document.getElementById('u-role'), role);
     clearMsg('user-msg');
     document.getElementById('user-overlay').classList.add('show');
     setTimeout(() => document.getElementById('u-name').focus(), 50);
   }
 
-  function closeUserModal() {
-    document.getElementById('user-overlay').classList.remove('show');
-  }
+  function closeUserModal() { document.getElementById('user-overlay').classList.remove('show'); }
 
   async function saveUser() {
-    const name     = document.getElementById('u-name').value.trim();
+    const name = document.getElementById('u-name').value.trim();
     const username = document.getElementById('u-username').value.trim();
     const password = document.getElementById('u-password').value;
-    const role     = document.getElementById('u-role').value;
-    const msg      = document.getElementById('user-msg');
-
+    const role = document.getElementById('u-role').value;
+    const msg = document.getElementById('user-msg');
     if (!name) { setMsg(msg, 'err', 'Zadejte jméno.'); return; }
-
-    let r, data;
+    let r;
     if (currentUserId === null) {
-      // Nový uživatel
       if (!username) { setMsg(msg, 'err', 'Zadejte uživatelské jméno.'); return; }
       if (!password) { setMsg(msg, 'err', 'Zadejte heslo.'); return; }
-      r = await fetch('/api/users', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ name, username, password, role })
-      });
+      r = await fetch('/api/users', { method: 'POST', headers: {'Content-Type':'application/json'}, body: JSON.stringify({ name, username, password, role }) });
     } else {
-      // Úprava
-      const body = { name, role };
-      if (password) body.password = password;
-      r = await fetch(`/api/users/${currentUserId}`, {
-        method: 'PATCH',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(body)
-      });
+      const body = { name, role }; if (password) body.password = password;
+      r = await fetch(`/api/users/${currentUserId}`, { method: 'PATCH', headers: {'Content-Type':'application/json'}, body: JSON.stringify(body) });
     }
-    data = await r.json();
-    if (data.ok) {
-      closeUserModal();
-      loadUsers();
-    } else {
-      setMsg(msg, 'err', data.msg || 'Chyba.');
-    }
+    const data = await r.json();
+    if (data.ok) { closeUserModal(); loadUsers(); } else { setMsg(msg, 'err', data.msg || 'Chyba.'); }
   }
 
   async function deleteUser(id, name) {
     if (!confirm(`Opravdu smazat uživatele „${name}"?`)) return;
-    const r    = await fetch(`/api/users/${id}`, { method: 'DELETE' });
+    const r = await fetch(`/api/users/${id}`, { method: 'DELETE' });
     const data = await r.json();
-    if (data.ok) {
-      loadUsers();
-    } else {
-      alert(data.msg || 'Chyba smazání.');
+    if (data.ok) loadUsers(); else alert(data.msg || 'Chyba smazání.');
+  }
+
+  // ── OPRÁVNĚNÍ UŽIVATELE ────────────────────────────────────────────────────────
+  async function openOverridesModal(id, name, role) {
+    currentOverridesId = id;
+    currentOverridesRole = role;
+    document.getElementById('overrides-uname').textContent = name;
+    clearMsg('overrides-msg');
+    overridesData = {};
+    const grp = allGroups.find(g => g.name === role) || { perms: {} };
+    try {
+      const { overrides } = await fetch(`/api/admin/users/${id}/overrides`).then(r => r.json());
+      overridesData = overrides || {};
+    } catch(e) {}
+    renderOverridesContent(grp.perms || {});
+    document.getElementById('overrides-overlay').classList.add('show');
+  }
+
+  function renderOverridesContent(groupPerms) {
+    const container = document.getElementById('overrides-content');
+    container.innerHTML = '';
+    for (const [appKey, appDef] of Object.entries(DEFINED_APPS)) {
+      const gp  = groupPerms[appKey] || { enabled: true, buttons: {} };
+      const uo  = overridesData[appKey] || {};
+      const appEnabled   = (uo.enabled != null) ? uo.enabled : gp.enabled;
+      const appOverridden = uo.enabled != null;
+
+      const block = document.createElement('div');
+      block.className = 'over-app-block';
+
+      // App header row
+      const hdr = document.createElement('div');
+      hdr.className = 'over-app-header';
+      hdr.innerHTML = `
+        <span class="over-app-label">${appDef.label}</span>
+        <span class="over-status ${appOverridden ? '' : 'inherit'}">${appOverridden ? 'výjimka' : 'ze skupiny'}</span>
+        <div class="toggle" onclick="toggleOver('${appKey}',null,this)">
+          <div class="toggle-track ${appEnabled ? 'on' : ''}"></div>
+        </div>
+        ${appOverridden ? `<button class="reset-btn" onclick="clearOver('${appKey}',null);event.stopPropagation();">↩</button>` : ''}
+      `;
+      block.appendChild(hdr);
+
+      // Button rows
+      const btnsWrap = document.createElement('div');
+      btnsWrap.className = 'over-btns-wrap';
+      for (const [btnKey, btnLabel] of Object.entries(appDef.buttons)) {
+        const gb = (gp.buttons || {})[btnKey]; const ub = (uo.buttons || {})[btnKey];
+        const btnEnabled    = (ub != null) ? ub : (gb != null ? gb : true);
+        const btnOverridden = ub != null;
+        const row = document.createElement('div');
+        row.className = 'over-btn-row';
+        row.innerHTML = `
+          <span class="over-btn-label">${btnLabel}</span>
+          <div style="display:flex;align-items:center;gap:6px;">
+            <span class="over-status ${btnOverridden ? '' : 'inherit'}" style="font-size:10px;">${btnOverridden ? 'výjimka' : 'ze skupiny'}</span>
+            <div class="toggle" onclick="toggleOver('${appKey}','${btnKey}',this)">
+              <div class="toggle-track ${btnEnabled ? 'on' : ''}"></div>
+            </div>
+            ${btnOverridden ? `<button class="reset-btn" onclick="clearOver('${appKey}','${btnKey}');event.stopPropagation();">↩</button>` : ''}
+          </div>
+        `;
+        btnsWrap.appendChild(row);
+      }
+      block.appendChild(btnsWrap);
+      container.appendChild(block);
     }
   }
 
-  // Změna vlastního hesla
+  function toggleOver(appKey, btnKey, el) {
+    if (!overridesData[appKey]) overridesData[appKey] = { enabled: null, buttons: {} };
+    if (!overridesData[appKey].buttons) overridesData[appKey].buttons = {};
+    const track = el.querySelector ? el.querySelector('.toggle-track') : el.closest('.toggle').querySelector('.toggle-track');
+    const nowOn = track.classList.contains('on');
+    if (btnKey === null) overridesData[appKey].enabled = !nowOn;
+    else overridesData[appKey].buttons[btnKey] = !nowOn;
+    const grp = allGroups.find(g => g.name === currentOverridesRole) || { perms: {} };
+    renderOverridesContent(grp.perms || {});
+  }
+
+  function clearOver(appKey, btnKey) {
+    if (!overridesData[appKey]) return;
+    if (btnKey === null) { overridesData[appKey].enabled = null; }
+    else { if (overridesData[appKey].buttons) delete overridesData[appKey].buttons[btnKey]; }
+    const grp = allGroups.find(g => g.name === currentOverridesRole) || { perms: {} };
+    renderOverridesContent(grp.perms || {});
+  }
+
+  function closeOverridesModal() { document.getElementById('overrides-overlay').classList.remove('show'); }
+
+  function resetOverrides() {
+    if (!confirm('Obnovit výchozí oprávnění skupiny? Všechny individuální výjimky budou smazány.')) return;
+    overridesData = {};
+    const grp = allGroups.find(g => g.name === currentOverridesRole) || { perms: {} };
+    renderOverridesContent(grp.perms || {});
+  }
+
+  async function saveOverrides() {
+    // Clean nulls
+    const clean = {};
+    for (const [appKey, uo] of Object.entries(overridesData)) {
+      const cb = {};
+      for (const [k, v] of Object.entries(uo.buttons || {})) { if (v != null) cb[k] = v; }
+      if (uo.enabled != null || Object.keys(cb).length) clean[appKey] = { enabled: uo.enabled, buttons: cb };
+    }
+    const r = await fetch(`/api/admin/users/${currentOverridesId}/overrides`, {
+      method: 'PUT', headers: {'Content-Type':'application/json'},
+      body: JSON.stringify({ overrides: Object.keys(clean).length ? clean : null })
+    });
+    const data = await r.json();
+    if (data.ok) closeOverridesModal(); else setMsg('overrides-msg', 'err', data.msg || 'Chyba.');
+  }
+
+  // ── SKUPINY ────────────────────────────────────────────────────────────────────
+  async function loadGroups() {
+    try { allGroups = await fetch('/api/admin/groups').then(r => r.json()); } catch(e) { allGroups = []; }
+    renderGroupsList();
+  }
+
+  function renderGroupsList() {
+    const el = document.getElementById('groups-list');
+    el.innerHTML = '';
+    allGroups.forEach(g => {
+      const item = document.createElement('div');
+      item.className = 'group-item' + (g.name === selectedGroupName ? ' active' : '');
+      item.innerHTML = `<span>${esc(g.displayName)}</span>
+        ${g.name !== 'admin' ? `<button class="btn-action danger" style="font-size:10px;padding:2px 6px;margin:0;" onclick="deleteGroup('${esc(g.name)}','${esc(g.displayName)}');event.stopPropagation();">✕</button>` : ''}`;
+      item.addEventListener('click', () => selectGroup(g.name));
+      el.appendChild(item);
+    });
+  }
+
+  function selectGroup(name) {
+    selectedGroupName = name;
+    renderGroupsList();
+    renderGroupPerms(allGroups.find(g => g.name === name));
+  }
+
+  function renderGroupPerms(grp) {
+    const panel = document.getElementById('groups-panel');
+    if (!grp) { panel.innerHTML = '<div style="font-size:13px;color:#aaa;padding:40px 0;text-align:center;">Vyberte skupinu vlevo.</div>'; return; }
+    const perms = grp.perms || {};
+    let html = `<div class="groups-panel-inner"><h3>Skupina: ${esc(grp.displayName)}</h3>`;
+    for (const [appKey, appDef] of Object.entries(DEFINED_APPS)) {
+      const ap = perms[appKey] || { enabled: true, buttons: {} };
+      html += `<div class="app-block">
+        <div class="app-header" onclick="toggleAppSection(this)">
+          <div class="toggle" onclick="toggleGrpPerm('${grp.name}','${appKey}',null);event.stopPropagation();">
+            <div class="toggle-track ${ap.enabled !== false ? 'on' : ''}" id="gt-${appKey}"></div>
+          </div>
+          <span style="font-size:13px;font-weight:500;">${appDef.label}</span>
+          <span class="app-expand">▶</span>
+        </div>
+        <div class="app-btns">
+          ${Object.entries(appDef.buttons).map(([btnKey, btnLabel]) => {
+            const on = (ap.buttons || {})[btnKey] !== false;
+            return `<div class="perm-row">
+              <span class="perm-label">${btnLabel}</span>
+              <div class="toggle" onclick="toggleGrpPerm('${grp.name}','${appKey}','${btnKey}')">
+                <div class="toggle-track ${on ? 'on' : ''}" id="gt-${appKey}-${btnKey}"></div>
+              </div>
+            </div>`;
+          }).join('')}
+        </div>
+      </div>`;
+    }
+    html += `<div style="margin-top:16px;text-align:right;">
+      <button class="btn-primary" id="save-grp-btn" onclick="saveGroupPerms('${grp.name}')">Uložit oprávnění</button>
+    </div></div>`;
+    panel.innerHTML = html;
+  }
+
+  function toggleAppSection(header) {
+    const btns  = header.nextElementSibling;
+    const arrow = header.querySelector('.app-expand');
+    btns.classList.toggle('open');
+    arrow.classList.toggle('open');
+  }
+
+  function toggleGrpPerm(groupName, appKey, btnKey) {
+    const grp = allGroups.find(g => g.name === groupName);
+    if (!grp) return;
+    if (!grp.perms) grp.perms = {};
+    if (!grp.perms[appKey]) grp.perms[appKey] = { enabled: true, buttons: {} };
+    if (!grp.perms[appKey].buttons) grp.perms[appKey].buttons = {};
+    if (btnKey === null) {
+      grp.perms[appKey].enabled = !grp.perms[appKey].enabled;
+      const t = document.getElementById(`gt-${appKey}`);
+      if (t) t.classList.toggle('on', grp.perms[appKey].enabled);
+    } else {
+      const cur = grp.perms[appKey].buttons[btnKey] !== false;
+      grp.perms[appKey].buttons[btnKey] = !cur;
+      const t = document.getElementById(`gt-${appKey}-${btnKey}`);
+      if (t) t.classList.toggle('on', !cur);
+    }
+  }
+
+  async function saveGroupPerms(groupName) {
+    const grp = allGroups.find(g => g.name === groupName);
+    if (!grp) return;
+    const r = await fetch(`/api/admin/groups/${groupName}/perms`, {
+      method: 'PUT', headers: {'Content-Type':'application/json'}, body: JSON.stringify({ perms: grp.perms })
+    });
+    const data = await r.json();
+    const btn = document.getElementById('save-grp-btn');
+    if (btn) { btn.textContent = data.ok ? '✓ Uloženo' : '✗ Chyba'; setTimeout(() => { btn.textContent = 'Uložit oprávnění'; }, 1500); }
+  }
+
+  async function deleteGroup(name, displayName) {
+    if (!confirm(`Opravdu smazat skupinu „${displayName}"?`)) return;
+    const r = await fetch(`/api/admin/groups/${name}`, { method: 'DELETE' });
+    const data = await r.json();
+    if (data.ok) {
+      if (selectedGroupName === name) { selectedGroupName = null; document.getElementById('groups-panel').innerHTML = '<div style="font-size:13px;color:#aaa;padding:40px 0;text-align:center;">Vyberte skupinu vlevo.</div>'; }
+      await loadGroups();
+    } else alert(data.msg || 'Chyba smazání.');
+  }
+
+  function openAddGroupModal() {
+    ['new-group-key','new-group-name'].forEach(id => document.getElementById(id).value = '');
+    clearMsg('addgroup-msg');
+    document.getElementById('addgroup-overlay').classList.add('show');
+    setTimeout(() => document.getElementById('new-group-key').focus(), 50);
+  }
+  function closeAddGroupModal() { document.getElementById('addgroup-overlay').classList.remove('show'); }
+
+  async function saveNewGroup() {
+    const name = document.getElementById('new-group-key').value.trim().toLowerCase().replace(/\s+/g,'_');
+    const displayName = document.getElementById('new-group-name').value.trim();
+    const msg = document.getElementById('addgroup-msg');
+    if (!name || !displayName) { setMsg(msg, 'err', 'Vyplňte oba údaje.'); return; }
+    const r = await fetch('/api/admin/groups', { method: 'POST', headers: {'Content-Type':'application/json'}, body: JSON.stringify({ name, displayName }) });
+    const data = await r.json();
+    if (data.ok) { closeAddGroupModal(); await loadGroups(); } else setMsg(msg, 'err', data.msg || 'Chyba.');
+  }
+
+  // ── HESLO ──────────────────────────────────────────────────────────────────────
   function closePwModal() {
     document.getElementById('pw-overlay').classList.remove('show');
     ['pw-old','pw-new','pw-new2'].forEach(id => document.getElementById(id).value = '');
     clearMsg('pw-msg');
   }
   async function changePassword() {
-    const old  = document.getElementById('pw-old').value;
-    const n1   = document.getElementById('pw-new').value;
-    const n2   = document.getElementById('pw-new2').value;
-    const msg  = document.getElementById('pw-msg');
+    const old = document.getElementById('pw-old').value;
+    const n1  = document.getElementById('pw-new').value;
+    const n2  = document.getElementById('pw-new2').value;
+    const msg = document.getElementById('pw-msg');
     if (n1 !== n2) { setMsg(msg, 'err', 'Nová hesla se neshodují.'); return; }
-    const r    = await fetch('/api/change-password', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ oldPassword: old, newPassword: n1 })
-    });
+    const r = await fetch('/api/change-password', { method: 'POST', headers: {'Content-Type':'application/json'}, body: JSON.stringify({ oldPassword: old, newPassword: n1 }) });
     const data = await r.json();
     setMsg(msg, data.ok ? 'ok' : 'err', data.msg);
     if (data.ok) setTimeout(closePwModal, 1500);
   }
 
-  // Helpery
+  // ── Helpery ────────────────────────────────────────────────────────────────────
   function setMsg(el, cls, text) {
     if (typeof el === 'string') el = document.getElementById(el);
-    el.className = 'msg ' + cls;
-    el.textContent = text;
+    el.className = 'msg ' + cls; el.textContent = text;
   }
   function clearMsg(id) {
-    const el = document.getElementById(id);
-    el.className = 'msg';
-    el.textContent = '';
+    const el = typeof id === 'string' ? document.getElementById(id) : id;
+    el.className = 'msg'; el.textContent = '';
   }
 
-  // Zavření modálů kliknutím mimo
-  ['user-overlay','pw-overlay'].forEach(id => {
+  ['user-overlay','pw-overlay','overrides-overlay','addgroup-overlay'].forEach(id => {
     document.getElementById(id).addEventListener('click', e => {
-      if (e.target.id === id) {
-        if (id === 'user-overlay') closeUserModal();
-        else closePwModal();
-      }
+      if (e.target.id !== id) return;
+      if (id === 'user-overlay') closeUserModal();
+      else if (id === 'pw-overlay') closePwModal();
+      else if (id === 'overrides-overlay') closeOverridesModal();
+      else closeAddGroupModal();
     });
   });
-
-  // Enter v polích spustí uložení
-  document.getElementById('user-overlay').addEventListener('keydown', e => {
-    if (e.key === 'Enter') saveUser();
-  });
+  document.getElementById('user-overlay').addEventListener('keydown', e => { if (e.key === 'Enter') saveUser(); });
+  document.getElementById('addgroup-overlay').addEventListener('keydown', e => { if (e.key === 'Enter') saveNewGroup(); });
 </script>
 </body>
 </html>
