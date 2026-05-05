@@ -120,6 +120,7 @@
     margin-top: 32px;
   }
   .section-label:first-of-type { margin-top: 0; }
+  #section-admin { margin-top: 52px; }
 
   /* ── Mřížka karet ── */
   .grid {
@@ -197,7 +198,9 @@
 
   /* ── Loading overlay ── */
   #app-loading {
-    display: none;
+    display: flex;
+    opacity: 0;
+    pointer-events: none;
     position: fixed;
     top: 58px;
     left: 0;
@@ -211,8 +214,10 @@
     gap: 12px;
     color: #888;
     font-size: 13px;
+    transition: opacity .2s;
   }
-  #app-loading.visible { display: flex; }
+  #app-loading.visible { opacity: 1; pointer-events: auto; }
+  #app-frame { transition: opacity .15s; }
   .spinner {
     width: 28px;
     height: 28px;

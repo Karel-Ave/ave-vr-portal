@@ -662,7 +662,7 @@ table.staff-tbl td select:focus { background: #fff; border-radius: 2px; }
   <div style="flex:1"></div>
   <div style="display:flex;align-items:center;gap:6px;">
     <button id="portal-save-btn" class="btn btn-sm btn-primary">Uložit</button>
-    <button class="btn btn-sm" onclick="exportXlsx()">Export do .xlsx</button>
+    <button class="btn btn-sm" onclick="exportXlsx()" style="background:#4caf50;color:#fff;border-color:#388e3c;">Export do .xlsx</button>
   </div>
 </div>
 <div id="content">
@@ -3049,11 +3049,7 @@ table.staff-tbl td select:focus { background: #fff; border-radius: 2px; }
           </div>
           <div style="flex:1"></div>
           <!-- Pravá zóna řádek 1 — grid 2 sloupce -->
-          <div class="sc-right-grid">
-            <button class="hb sc-right-btn" id="btn-toggle-sums" onclick="toggleSums()">Skrýt součty</button>
-
-            <!-- btn-clear-req odstraněno, funkce přesunuta do btn-remember-req -->
-          </div>
+          <!-- btn-clear-req odstraněno, funkce přesunuta do btn-remember-req -->
         </div>
         <div style="display:flex; align-items:center; gap:3px; position:relative;">
           <!-- Levá zóna řádek 2 -->
@@ -3073,8 +3069,8 @@ table.staff-tbl td select:focus { background: #fff; border-radius: 2px; }
           </div>
           <!-- Pravá zóna řádek 2 — stejný grid -->
           <div class="sc-right-grid" style="margin-left:auto;">
+            <button class="hb sc-right-btn" id="btn-toggle-sums" onclick="toggleSums()">Skrýt součty</button>
             <button class="hb sc-right-btn" id="btn-toggle-hoursonly" onclick="toggleHoursOnly()">Jen hodiny</button>
-            <button class="hb sc-right-btn" onclick="exportXlsx()" style="background:#d4edda;border-color:#5a9e6f;color:#1e5c35;">Export .xlsx</button>
           </div>
         </div>
       </div>
@@ -6331,7 +6327,7 @@ document.addEventListener('mouseup', (e) => {
 <style>
 /* Portal integration overrides */
 #portal-controls .btn { font-family: inherit; }
-#portal-controls select { height: 22px; padding: 0 6px; line-height: 22px; }
+#portal-controls select { height: 22px; padding: 0 6px; line-height: 22px; font-size: 10px; }
 </style>
 
 <script>

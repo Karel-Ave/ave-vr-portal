@@ -278,6 +278,33 @@ app.get('/api/rozpisy', requireLogin, async (req, res) => {
   }
 });
 
+// Koš publikovaných rozpisů
+app.get('/api/rozpisy/trash', requireLogin, requireAdmin, async (req, res) => {
+  try {
+    const db = getPool();
+    const { rows } = await db.query(
+      'SELECT id, key, month, year, label, deleted_at, deleted_by FROM rozpisy_trash ORDER BY deleted_at DESC'
+    );
+    res.json(rows);
+  } catch (err) {
+    res.status(500).json([]);
+  }
+});
+// Obnovení z koše
+app.post('/api/rozpisy/restore/:id', requireLogin, requireAdmin, async (req, res) => {
+  const id = parseInt(req.params.id, 10);
+  try {
+    const db = getPool();
+    const { rows } = await db.query('SELECT * FROM rozpisy_trash WHERE id = $1', [id]);
+    if (!rows.length) return res.json({ ok: false, msg: 'Nenalezeno.' });
+// Trvalé smazání z koše
+app.delete('/api/rozpisy/perma/:id', requireLogin, requireAdmin, async (req, res) => {
+  const id = parseInt(req.params.id, 10);
+  try {
+    const db = getPool();
+    await db.query('DELETE FROM rozpisy_trash WHERE id = $1', [id]);
+    res.json({ ok: true });
+
 app.get('/api/rozpisy/:key', requireLogin, async (req, res) => {
   const key = decodeURIComponent(req.params.key);
   try {
@@ -491,26 +518,7 @@ app.delete('/api/rozpisy/:key', requireLogin, requireAdmin, async (req, res) => 
   }
 });
 
-// Koš publikovaných rozpisů
-app.get('/api/rozpisy/trash', requireLogin, requireAdmin, async (req, res) => {
-  try {
-    const db = getPool();
-    const { rows } = await db.query(
-      'SELECT id, key, month, year, label, deleted_at, deleted_by FROM rozpisy_trash ORDER BY deleted_at DESC'
-    );
-    res.json(rows);
-  } catch (err) {
-    res.status(500).json([]);
-  }
-});
 
-// Obnovení z koše
-app.post('/api/rozpisy/restore/:id', requireLogin, requireAdmin, async (req, res) => {
-  const id = parseInt(req.params.id, 10);
-  try {
-    const db = getPool();
-    const { rows } = await db.query('SELECT * FROM rozpisy_trash WHERE id = $1', [id]);
-    if (!rows.length) return res.json({ ok: false, msg: 'Nenalezeno.' });
     const r = rows[0];
     await db.query(
       `INSERT INTO rozpisy (key, month, year, label, data, published_at, published_by)
@@ -526,13 +534,6 @@ app.post('/api/rozpisy/restore/:id', requireLogin, requireAdmin, async (req, res
   }
 });
 
-// Trvalé smazání z koše
-app.delete('/api/rozpisy/perma/:id', requireLogin, requireAdmin, async (req, res) => {
-  const id = parseInt(req.params.id, 10);
-  try {
-    const db = getPool();
-    await db.query('DELETE FROM rozpisy_trash WHERE id = $1', [id]);
-    res.json({ ok: true });
   } catch (err) {
     res.json({ ok: false, msg: 'Chyba serveru.' });
   }
