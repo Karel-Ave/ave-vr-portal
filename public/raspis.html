@@ -63,8 +63,8 @@ body {
   padding: 0 16px;
   display: flex;
   align-items: center;
-  gap: 16px;
-  height: 64px;
+  gap: 10px;
+  height: 44px;
   flex-shrink: 0;
   position: relative;
 }
@@ -653,7 +653,7 @@ table.staff-tbl td select:focus { background: #fff; border-radius: 2px; }
 
 <div id="topbar">
   <div id="portal-controls" style="display:flex;align-items:center;gap:6px;">
-    <select id="portal-rozpis-sel" class="btn btn-sm" style="padding:4px 8px;font-size:12px;cursor:pointer;min-width:140px;"></select>
+    <select id="portal-rozpis-sel" class="btn btn-sm" style="padding:4px 8px;font-size:12px;cursor:pointer;"></select>
     <button id="portal-import-btn" class="btn btn-sm">Nahrát rozpis</button>
     <input type="file" id="portal-import-input" accept=".json" style="display:none">
     <button id="portal-delete-btn" class="btn btn-sm btn-danger" style="display:none">Smazat</button>
@@ -6516,8 +6516,12 @@ document.addEventListener('mouseup', (e) => {
       const result = await r.json();
       if (result.ok) {
         _currentKey = null;
+        // Clear the displayed schedule
+        if (typeof applyData === 'function') {
+          applyData({ v:3, month: (typeof state !== 'undefined' ? state.month : new Date().getMonth()+1), year: (typeof state !== 'undefined' ? state.year : new Date().getFullYear()), staff: (typeof state !== 'undefined' ? state.staff : []), schedule:{}, extras:{}, requirements:{}, requirementSums:{}, customHotels: (typeof state !== 'undefined' ? state.customHotels : []), hotelOverrides:{}, prevMonthData:{}, lockInfo:null });
+          if (typeof buildSchedule === 'function') buildSchedule();
+        }
         await loadRozpisyList();
-        alert('Rozpis byl smazán.');
       } else {
         alert('Chyba smazání: ' + (result.msg || 'neznámá chyba'));
       }
@@ -6542,7 +6546,7 @@ document.addEventListener('mouseup', (e) => {
     try {
       var resp = await fetch("/api/rozpisy/trash");
       var json = await resp.json();
-      var items = json.items || [];
+      var items = Array.isArray(json) ? json : (json.items || []);
       if (!items.length) { list.innerHTML = "<em style=\"color:#999\">Koš je prázdný.</em>"; return; }
       list.innerHTML = "";
       items.forEach(function(item) {

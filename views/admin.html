@@ -16,44 +16,29 @@
 
   /* ── Horní lišta ── */
   #topbar {
-    background: #0f0f0f;
-    height: 58px;
+    background: #d8d8d4;
+    height: 44px;
     display: flex;
     align-items: center;
-    padding: 0 24px;
-    position: relative;
-    border-bottom: 1px solid #1e1e1e;
-  }
-  .topbar-logo {
-    position: absolute;
-    left: 50%;
-    transform: translateX(-50%);
-    display: flex;
-    align-items: center;
+    padding: 0 16px;
     gap: 10px;
+    border-bottom: 1px solid #c8c8c4;
   }
-  .topbar-logo img {
-    height: 52px;
-    object-fit: contain;
-    filter: brightness(0) invert(1);
-  }
-  .topbar-copy { font-size: 10px; color: rgba(255,255,255,0.55); white-space: nowrap; }
-  .topbar-left { display: flex; align-items: center; gap: 12px; }
+  .topbar-left { display: flex; align-items: center; gap: 10px; }
   .topbar-right { margin-left: auto; display: flex; align-items: center; gap: 10px; }
-  .user-badge { color: #666; font-size: 13px; }
   .btn-top {
-    padding: 5px 14px;
-    border-radius: 6px;
-    border: 1px solid #333;
+    padding: 4px 12px;
+    border-radius: 5px;
+    border: 1px solid #bbb;
     background: transparent;
-    color: #aaa;
+    color: #444;
     font-size: 12px;
     cursor: pointer;
     transition: all .15s;
     text-decoration: none;
     font-family: inherit;
   }
-  .btn-top:hover { background: #222; color: #fff; border-color: #555; }
+  .btn-top:hover { background: #c8c8c4; color: #111; border-color: #999; }
 
   /* ── Obsah ── */
   .main {
@@ -224,16 +209,7 @@
 
 <div id="topbar">
   <div class="topbar-left">
-    <a href="/portal" class="btn-top">← Home</a>
-  </div>
-  <div class="topbar-logo">
-    <img src="/static/logo.png" alt="AVE Hotels">
-    <span class="topbar-copy">&copy; 2026 Karel Dvo&rcaron;&aacute;k</span>
-  </div>
-  <div class="topbar-right">
-    <span class="user-badge" id="user-label"></span>
-    <button class="btn-top" onclick="document.getElementById('pw-overlay').classList.add('show')">Změnit heslo</button>
-    <a href="/logout" class="btn-top">Odhlásit</a>
+    <span style="font-size:13px;font-weight:600;color:#444;">Správa uživatelů</span>
   </div>
 </div>
 

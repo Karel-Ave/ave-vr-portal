@@ -267,7 +267,7 @@ app.get('/api/rozpisy', requireLogin, async (req, res) => {
   try {
     const db = getPool();
     const { rows } = await db.query(
-      'SELECT key, month, year, label, published_at, published_by FROM rozpisy ORDER BY year DESC, month DESC'
+      'SELECT key, month, year, label, published_at, published_by FROM rozpisy ORDER BY published_at DESC'
     );
     // Určíme "aktuální" jako nejnovější
     const current = rows.length > 0 ? rows[0].key : null;
