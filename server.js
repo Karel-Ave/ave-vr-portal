@@ -56,12 +56,12 @@ app.get('/admin', requireLogin, requireAdmin, (req, res) =>
 
 // Tvorba rozpisu — pouze admin
 app.get('/tvorba-rozpisu', requireLogin, requireAdmin, (req, res) =>
-  res.sendFile(path.join(__dirname, 'public', 'ave-portal', 'public', 'Rozpis ke zmene.html'))
+  res.sendFile(path.join(__dirname, 'public', 'raspis.html'))
 );
 
 // Zobrazení/editace hotového rozpisu — admin i vedoucí
 app.get('/rozpis-view', requireLogin, (req, res) =>
-  res.sendFile(path.join(__dirname, 'views', 'rozpis-view.html'))
+  res.sendFile(path.join(__dirname, 'public', 'raspis.html'))
 );
 
 // ── API: Auth ─────────────────────────────────────────────────────────────────
