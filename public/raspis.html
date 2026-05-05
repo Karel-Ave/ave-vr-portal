@@ -6555,17 +6555,50 @@ document.addEventListener('mouseup', (e) => {
     const isAdmin = _user && _user.role === 'admin';
     bar.style.display = 'flex';
     bar.innerHTML =
-      '<span class="hbar-lbl">Raspis:</span>' +
+      '<input type="file" id="import-json-input" accept=".json" style="display:none" onchange="portalImportFile(event)">' +
+      '<span class="hbar-lbl">Rozpis:</span>' +
       '<select id="pub-sel" onchange="portalLoadPublished(this.value)">' +
         '<option value="">— vybrat —</option>' +
         published.map(p =>
           `<option value="${escHtml(p.key)}" ${p.key === selectedKey ? 'selected' : ''}>${escHtml(p.label)}</option>`
         ).join('') +
       '</select>' +
+      (isAdmin ? '<button class="hbar-btn" onclick="document.getElementById(''import-json-input'').click()">&#128194; Nahr&#225;t rozpis</button>' : '') +
       '<button class="hbar-btn green" onclick="portalSetDefault()">&#9733; Nastavit jako v&#253;choz&#237;</button>' +
       (isAdmin ? '<button class="hbar-btn red" onclick="portalDeletePublished()">Smazat</button>' : '') +
       (isAdmin ? '<button class="hbar-btn" onclick="portalSendToTvorba()">&#8629; Do Tvorby</button>' : '');
   }
+
+    window.portalImportFile = async function (event) {
+    const file = event.target.files[0];
+    if (!file) return;
+    event.target.value = '';
+    try {
+      const text = await file.text();
+      const data = JSON.parse(text);
+      const month = data.month;
+      const year  = data.year;
+      if (!month || !year) { showHint && showHint('Neplatny soubor.'); return; }
+      const mm    = String(month).padStart(2, '0');
+      const label = 'Rozpis ' + mm + '/' + year;
+      const r = await fetch('/api/rozpisy/publish', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ month, year, label, data })
+      });
+      const d = await r.json();
+      if (d.ok) {
+        showHint && showHint('Nahrano: ' + d.label + ' ✓');
+        await loadAndRenderPublished();
+        portalLoadPublished(d.key);
+      } else {
+        showHint && showHint('Chyba: ' + (d.msg || '?'));
+      }
+    } catch(e) {
+      showHint && showHint('Chyba cteni souboru.');
+      console.error(e);
+    }
+  };
 
   window.portalLoadPublished = async function (key) {
     if (!key) return;

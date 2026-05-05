@@ -304,7 +304,7 @@ app.post('/api/rozpisy/publish', requireLogin, requireAdmin, async (req, res) =>
        ON CONFLICT (key) DO UPDATE SET data = $5, published_at = NOW(), published_by = $6`,
       [key, month, year, label, JSON.stringify(data), req.session.user.name]
     );
-    res.json({ ok: true, label });
+    res.json({ ok: true, key, label });
   } catch (err) {
     console.error('Chyba uložení rozpisu:', err);
     res.json({ ok: false, msg: 'Chyba serveru.' });
