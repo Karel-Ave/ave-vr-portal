@@ -650,7 +650,7 @@ table.staff-tbl td select:focus { background: #fff; border-radius: 2px; }
 /* ── AVE Portal header bar ── */
 #phb {
   background: #0f0f0f;
-  height: 52px;
+  height: 58px;
   display: flex;
   align-items: center;
   padding: 0 16px;
@@ -660,7 +660,7 @@ table.staff-tbl td select:focus { background: #fff; border-radius: 2px; }
   z-index: 9999;
 }
 #phb-logo {
-  height: 40px;
+  height: 52px;
   object-fit: contain;
   filter: brightness(0) invert(1);
 }
@@ -678,10 +678,10 @@ table.staff-tbl td select:focus { background: #fff; border-radius: 2px; }
 #phb-user  { color: #888; font-size: 12px; font-family: 'DM Sans', sans-serif; }
 #phb-copy { font-size: 10px; color: rgba(255,255,255,0.55); white-space: nowrap; }
 .phb-btn {
-  padding: 4px 11px; border-radius: 4px; border: 1px solid #333;
-  background: transparent; color: #888; font-size: 11px;
+  padding: 5px 14px; border-radius: 6px; border: 1px solid #333;
+  background: transparent; color: #aaa; font-size: 12px;
   cursor: pointer; text-decoration: none;
-  font-family: 'DM Sans', sans-serif; transition: all .12s;
+  font-family: 'Segoe UI', system-ui, sans-serif, sans-serif; transition: all .12s;
   white-space: nowrap; display: inline-flex; align-items: center;
 }
 .phb-btn:hover { background: #222; color: #ccc; border-color: #555; }
@@ -6526,22 +6526,30 @@ document.addEventListener('mouseup', (e) => {
     overrideSaveDataView();
     loadAndRenderPublished();
 
-    // Skrýt záložku Nastavení a tlačítka jen pro lokální režim
+    // Inject CSS to hide app-specific elements not needed in view mode
+    const st = document.createElement('style');
+    st.textContent = `
+      #topbar { display: none !important; }
+      #btn-remember-req { display: none !important; }
+    `;
+    document.head.appendChild(st);
+
+    // Move Save button into portal header, switch to schedule tab
     setTimeout(() => {
-      // Skrýt záložku Nastavení
-      document.querySelectorAll('.tab').forEach(t => {
-        if (t.textContent.trim().startsWith('Nastaven')) t.style.display = 'none';
-      });
-      // Přepnout na záložku Rozpis
       if (typeof showTab === 'function') showTab('schedule');
-      // Skrýt tlačítko Nový rozpis
-      document.querySelectorAll('button').forEach(b => {
-        if (b.getAttribute('onclick') === 'newSchedule()') b.style.display = 'none';
-      });
-      // Skrýt tlačítko Zapamatuj požadavky
-      const reqBtn = document.getElementById('btn-remember-req');
-      if (reqBtn) reqBtn.style.display = 'none';
-    }, 200);
+
+      // Add Save button to #phb-right (matches portal button style)
+      const phbRight = document.getElementById('phb-right');
+      if (phbRight && !document.getElementById('phb-save-btn')) {
+        const saveBtn = document.createElement('button');
+        saveBtn.id = 'phb-save-btn';
+        saveBtn.className = 'phb-btn';
+        saveBtn.textContent = '💾 Uložit';
+        saveBtn.title = 'Uložit změny rozpisu na server';
+        saveBtn.onclick = () => window.saveData && window.saveData();
+        phbRight.insertBefore(saveBtn, phbRight.firstChild);
+      }
+    }, 300);
   }
 
   function overrideSaveDataView() {
