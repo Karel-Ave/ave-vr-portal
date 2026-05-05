@@ -537,27 +537,6 @@ app.delete('/api/rozpisy/:key', requireLogin, requireAdmin, async (req, res) => 
   }
 });
 
-
-    const r = rows[0];
-    await db.query(
-      `INSERT INTO rozpisy (key, month, year, label, data, published_at, published_by)
-       VALUES ($1,$2,$3,$4,$5,$6,$7)
-       ON CONFLICT (key) DO UPDATE SET data = $5, published_at = $6, published_by = $7`,
-      [r.key, r.month, r.year, r.label, r.data, r.published_at, r.published_by]
-    );
-    await db.query('DELETE FROM rozpisy_trash WHERE id = $1', [id]);
-    res.json({ ok: true });
-  } catch (err) {
-    console.error(err);
-    res.json({ ok: false, msg: 'Chyba serveru.' });
-  }
-});
-
-  } catch (err) {
-    res.json({ ok: false, msg: 'Chyba serveru.' });
-  }
-});
-
 // Odeslat zpět do Tvorby (vytvoří koncept pro admina)
 app.post('/api/rozpisy/:key/to-tvorba', requireLogin, requireAdmin, async (req, res) => {
   const key = decodeURIComponent(req.params.key);
