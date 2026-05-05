@@ -659,9 +659,10 @@ table.staff-tbl td select:focus { background: #fff; border-radius: 2px; }
     <button id="portal-delete-btn" class="btn btn-sm btn-danger" style="display:none">Smazat</button>
     <button id="portal-trash-btn" class="btn btn-sm" style="display:none">Koš</button>
   </div>
-  <div style="flex:1"></div>
-  <div style="display:flex;align-items:center;gap:6px;">
+  <div style="position:absolute;left:50%;transform:translateX(-50%);">
     <button id="portal-save-btn" class="btn btn-sm btn-primary">Uložit</button>
+  </div>
+  <div style="margin-left:auto;display:flex;align-items:center;gap:6px;">
     <button class="btn btn-sm" onclick="exportXlsx()" style="background:#4caf50;color:#fff;border-color:#388e3c;">Export do .xlsx</button>
   </div>
 </div>

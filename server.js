@@ -297,6 +297,21 @@ app.post('/api/rozpisy/restore/:id', requireLogin, requireAdmin, async (req, res
     const db = getPool();
     const { rows } = await db.query('SELECT * FROM rozpisy_trash WHERE id = $1', [id]);
     if (!rows.length) return res.json({ ok: false, msg: 'Nenalezeno.' });
+    const r = rows[0];
+    await db.query(
+      `INSERT INTO rozpisy (key, month, year, label, data, published_at, published_by)
+       VALUES ($1,$2,$3,$4,$5,$6,$7)
+       ON CONFLICT (key) DO UPDATE SET data = $5, published_at = $6, published_by = $7`,
+      [r.key, r.month, r.year, r.label, r.data, r.published_at, r.published_by]
+    );
+    await db.query('DELETE FROM rozpisy_trash WHERE id = $1', [id]);
+    res.json({ ok: true });
+  } catch (err) {
+    console.error(err);
+    res.json({ ok: false, msg: 'Chyba serveru.' });
+  }
+});
+
 // Trvalé smazání z koše
 app.delete('/api/rozpisy/perma/:id', requireLogin, requireAdmin, async (req, res) => {
   const id = parseInt(req.params.id, 10);
@@ -304,6 +319,10 @@ app.delete('/api/rozpisy/perma/:id', requireLogin, requireAdmin, async (req, res
     const db = getPool();
     await db.query('DELETE FROM rozpisy_trash WHERE id = $1', [id]);
     res.json({ ok: true });
+  } catch (err) {
+    res.json({ ok: false, msg: 'Chyba serveru.' });
+  }
+});
 
 app.get('/api/rozpisy/:key', requireLogin, async (req, res) => {
   const key = decodeURIComponent(req.params.key);
