@@ -60,11 +60,60 @@ async function init() {
       sess   JSON NOT NULL,
       expire TIMESTAMP(6) NOT NULL,
       CONSTRAINT session_pkey PRIMARY KEY (sid) NOT DEFERRABLE INITIALLY IMMEDIATE
-    ) WITH (OIDS=FALSE)
-  `).catch(() => {
-    // Tabulka už existuje nebo constraint conflict - ignorujeme
-  });
+    )
+  `).catch(() => {});
   await db.query(`CREATE INDEX IF NOT EXISTS IDX_session_expire ON session (expire)`);
+
+  // Koncepty (Tvorba rozpisu) — jeden na uživatele × měsíc/rok
+  await db.query(`
+    CREATE TABLE IF NOT EXISTS drafts (
+      id       SERIAL PRIMARY KEY,
+      user_id  INTEGER NOT NULL,
+      month    INTEGER NOT NULL,
+      year     INTEGER NOT NULL,
+      data     TEXT NOT NULL,
+      saved_at TIMESTAMPTZ DEFAULT NOW(),
+      UNIQUE(user_id, month, year)
+    )
+  `);
+
+  // Koš smazaných konceptů
+  await db.query(`
+    CREATE TABLE IF NOT EXISTS drafts_trash (
+      id          SERIAL PRIMARY KEY,
+      user_id     INTEGER NOT NULL,
+      original_id INTEGER,
+      month       INTEGER NOT NULL,
+      year        INTEGER NOT NULL,
+      data        TEXT NOT NULL,
+      deleted_at  TIMESTAMPTZ DEFAULT NOW()
+    )
+  `);
+
+  // Koš smazaných publikovaných rozpisů
+  await db.query(`
+    CREATE TABLE IF NOT EXISTS rozpisy_trash (
+      id           SERIAL PRIMARY KEY,
+      key          VARCHAR(20) NOT NULL,
+      month        INTEGER NOT NULL,
+      year         INTEGER NOT NULL,
+      label        VARCHAR(100) NOT NULL,
+      data         TEXT NOT NULL,
+      published_at TIMESTAMPTZ,
+      published_by VARCHAR(100),
+      deleted_at   TIMESTAMPTZ DEFAULT NOW(),
+      deleted_by   VARCHAR(100) NOT NULL
+    )
+  `);
+
+  // Uživatelské preference (výchozí rozpis)
+  await db.query(`
+    CREATE TABLE IF NOT EXISTS user_preferences (
+      user_id          INTEGER PRIMARY KEY,
+      default_raspis_key VARCHAR(20),
+      updated_at       TIMESTAMPTZ DEFAULT NOW()
+    )
+  `);
 
   // Seed: pokud nejsou žádní uživatelé, vytvoř admina
   const { rows } = await db.query('SELECT COUNT(*) AS cnt FROM users');

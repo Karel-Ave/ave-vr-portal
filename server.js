@@ -323,6 +323,274 @@ app.post('/api/rozpisy/delete', requireLogin, requireAdmin, async (req, res) => 
   }
 });
 
+// ── API: Koncepty (Tvorba rozpisu) ────────────────────────────────────────────
+
+// DŮLEŽITÉ: přesné cesty musí být před /:id aby Express je zachytil správně
+
+app.get('/api/drafts/trash', requireLogin, async (req, res) => {
+  try {
+    const db = getPool();
+    const isAdmin = req.session.user.role === 'admin';
+    const { rows } = isAdmin
+      ? await db.query('SELECT id, user_id, month, year, deleted_at FROM drafts_trash ORDER BY deleted_at DESC')
+      : await db.query('SELECT id, user_id, month, year, deleted_at FROM drafts_trash WHERE user_id = $1 ORDER BY deleted_at DESC', [req.session.user.id]);
+    res.json(rows.map(r => ({
+      ...r,
+      label: `Koncept ${String(r.month).padStart(2,'0')}/${r.year}`
+    })));
+  } catch (err) {
+    console.error(err);
+    res.status(500).json([]);
+  }
+});
+
+app.get('/api/drafts', requireLogin, async (req, res) => {
+  try {
+    const db = getPool();
+    const { rows } = await db.query(
+      'SELECT id, month, year, saved_at FROM drafts WHERE user_id = $1 ORDER BY year DESC, month DESC',
+      [req.session.user.id]
+    );
+    res.json(rows.map(r => ({
+      ...r,
+      label: `Koncept ${String(r.month).padStart(2,'0')}/${r.year}`
+    })));
+  } catch (err) {
+    console.error(err);
+    res.json([]);
+  }
+});
+
+app.get('/api/drafts/:id', requireLogin, async (req, res) => {
+  const id = parseInt(req.params.id, 10);
+  try {
+    const db = getPool();
+    const { rows } = await db.query(
+      'SELECT * FROM drafts WHERE id = $1 AND user_id = $2',
+      [id, req.session.user.id]
+    );
+    if (!rows.length) return res.status(404).json({ ok: false });
+    const r = rows[0];
+    res.json({ ok: true, label: `Koncept ${String(r.month).padStart(2,'0')}/${r.year}`, data: JSON.parse(r.data) });
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ ok: false });
+  }
+});
+
+app.post('/api/drafts/save', requireLogin, async (req, res) => {
+  const { month, year, data } = req.body;
+  if (!month || !year || !data) return res.json({ ok: false, msg: 'Chybí data.' });
+  try {
+    const db = getPool();
+    const { rows } = await db.query(
+      `INSERT INTO drafts (user_id, month, year, data, saved_at)
+       VALUES ($1, $2, $3, $4, NOW())
+       ON CONFLICT (user_id, month, year) DO UPDATE SET data = $4, saved_at = NOW()
+       RETURNING id`,
+      [req.session.user.id, month, year, JSON.stringify(data)]
+    );
+    res.json({ ok: true, id: rows[0].id });
+  } catch (err) {
+    console.error(err);
+    res.json({ ok: false, msg: 'Chyba serveru.' });
+  }
+});
+
+app.delete('/api/drafts/:id', requireLogin, async (req, res) => {
+  const id = parseInt(req.params.id, 10);
+  try {
+    const db = getPool();
+    const { rows } = await db.query(
+      'SELECT * FROM drafts WHERE id = $1 AND user_id = $2',
+      [id, req.session.user.id]
+    );
+    if (!rows.length) return res.json({ ok: false, msg: 'Nenalezeno.' });
+    const r = rows[0];
+    await db.query(
+      'INSERT INTO drafts_trash (user_id, original_id, month, year, data) VALUES ($1, $2, $3, $4, $5)',
+      [r.user_id, r.id, r.month, r.year, r.data]
+    );
+    await db.query('DELETE FROM drafts WHERE id = $1', [id]);
+    res.json({ ok: true });
+  } catch (err) {
+    console.error(err);
+    res.json({ ok: false, msg: 'Chyba serveru.' });
+  }
+});
+
+app.post('/api/drafts/restore/:id', requireLogin, async (req, res) => {
+  const id = parseInt(req.params.id, 10);
+  try {
+    const db = getPool();
+    const { rows } = await db.query('SELECT * FROM drafts_trash WHERE id = $1', [id]);
+    if (!rows.length) return res.json({ ok: false, msg: 'Nenalezeno.' });
+    const r = rows[0];
+    await db.query(
+      `INSERT INTO drafts (user_id, month, year, data, saved_at)
+       VALUES ($1, $2, $3, $4, NOW())
+       ON CONFLICT (user_id, month, year) DO UPDATE SET data = $4, saved_at = NOW()`,
+      [r.user_id, r.month, r.year, r.data]
+    );
+    await db.query('DELETE FROM drafts_trash WHERE id = $1', [id]);
+    res.json({ ok: true });
+  } catch (err) {
+    console.error(err);
+    res.json({ ok: false, msg: 'Chyba serveru.' });
+  }
+});
+
+app.delete('/api/drafts/perma/:id', requireLogin, requireAdmin, async (req, res) => {
+  const id = parseInt(req.params.id, 10);
+  try {
+    const db = getPool();
+    await db.query('DELETE FROM drafts_trash WHERE id = $1', [id]);
+    res.json({ ok: true });
+  } catch (err) {
+    res.json({ ok: false, msg: 'Chyba serveru.' });
+  }
+});
+
+// ── API: Publikované rozpisy – rozšíření ──────────────────────────────────────
+
+// Uložení změn do existujícího publikovaného rozpisu (editace v Raspisu)
+app.post('/api/rozpisy/save-edits', requireLogin, async (req, res) => {
+  const { key, data } = req.body;
+  if (!key || !data) return res.json({ ok: false, msg: 'Chybí data.' });
+  try {
+    const db = getPool();
+    const { rowCount } = await db.query(
+      'UPDATE rozpisy SET data = $1, published_at = NOW() WHERE key = $2',
+      [JSON.stringify(data), key]
+    );
+    if (!rowCount) return res.json({ ok: false, msg: 'Raspis nenalezen.' });
+    res.json({ ok: true });
+  } catch (err) {
+    console.error(err);
+    res.json({ ok: false, msg: 'Chyba serveru.' });
+  }
+});
+
+// Přesun do koše
+app.delete('/api/rozpisy/:key', requireLogin, requireAdmin, async (req, res) => {
+  const key = decodeURIComponent(req.params.key);
+  try {
+    const db = getPool();
+    const { rows } = await db.query('SELECT * FROM rozpisy WHERE key = $1', [key]);
+    if (!rows.length) return res.json({ ok: false, msg: 'Nenalezeno.' });
+    const r = rows[0];
+    await db.query(
+      'INSERT INTO rozpisy_trash (key, month, year, label, data, published_at, published_by, deleted_by) VALUES ($1,$2,$3,$4,$5,$6,$7,$8)',
+      [r.key, r.month, r.year, r.label, r.data, r.published_at, r.published_by, req.session.user.name]
+    );
+    await db.query('DELETE FROM rozpisy WHERE key = $1', [key]);
+    res.json({ ok: true });
+  } catch (err) {
+    console.error(err);
+    res.json({ ok: false, msg: 'Chyba serveru.' });
+  }
+});
+
+// Koš publikovaných rozpisů
+app.get('/api/rozpisy/trash', requireLogin, requireAdmin, async (req, res) => {
+  try {
+    const db = getPool();
+    const { rows } = await db.query(
+      'SELECT id, key, month, year, label, deleted_at, deleted_by FROM rozpisy_trash ORDER BY deleted_at DESC'
+    );
+    res.json(rows);
+  } catch (err) {
+    res.status(500).json([]);
+  }
+});
+
+// Obnovení z koše
+app.post('/api/rozpisy/restore/:id', requireLogin, requireAdmin, async (req, res) => {
+  const id = parseInt(req.params.id, 10);
+  try {
+    const db = getPool();
+    const { rows } = await db.query('SELECT * FROM rozpisy_trash WHERE id = $1', [id]);
+    if (!rows.length) return res.json({ ok: false, msg: 'Nenalezeno.' });
+    const r = rows[0];
+    await db.query(
+      `INSERT INTO rozpisy (key, month, year, label, data, published_at, published_by)
+       VALUES ($1,$2,$3,$4,$5,$6,$7)
+       ON CONFLICT (key) DO UPDATE SET data = $5, published_at = $6, published_by = $7`,
+      [r.key, r.month, r.year, r.label, r.data, r.published_at, r.published_by]
+    );
+    await db.query('DELETE FROM rozpisy_trash WHERE id = $1', [id]);
+    res.json({ ok: true });
+  } catch (err) {
+    console.error(err);
+    res.json({ ok: false, msg: 'Chyba serveru.' });
+  }
+});
+
+// Trvalé smazání z koše
+app.delete('/api/rozpisy/perma/:id', requireLogin, requireAdmin, async (req, res) => {
+  const id = parseInt(req.params.id, 10);
+  try {
+    const db = getPool();
+    await db.query('DELETE FROM rozpisy_trash WHERE id = $1', [id]);
+    res.json({ ok: true });
+  } catch (err) {
+    res.json({ ok: false, msg: 'Chyba serveru.' });
+  }
+});
+
+// Odeslat zpět do Tvorby (vytvoří koncept pro admina)
+app.post('/api/rozpisy/:key/to-tvorba', requireLogin, requireAdmin, async (req, res) => {
+  const key = decodeURIComponent(req.params.key);
+  try {
+    const db = getPool();
+    const { rows } = await db.query('SELECT * FROM rozpisy WHERE key = $1', [key]);
+    if (!rows.length) return res.json({ ok: false, msg: 'Raspis nenalezen.' });
+    const r = rows[0];
+    await db.query(
+      `INSERT INTO drafts (user_id, month, year, data, saved_at)
+       VALUES ($1, $2, $3, $4, NOW())
+       ON CONFLICT (user_id, month, year) DO UPDATE SET data = $4, saved_at = NOW()`,
+      [req.session.user.id, r.month, r.year, r.data]
+    );
+    res.json({ ok: true });
+  } catch (err) {
+    console.error(err);
+    res.json({ ok: false, msg: 'Chyba serveru.' });
+  }
+});
+
+// ── API: Uživatelské preference ───────────────────────────────────────────────
+
+app.get('/api/user-prefs', requireLogin, async (req, res) => {
+  try {
+    const db = getPool();
+    const { rows } = await db.query(
+      'SELECT default_raspis_key FROM user_preferences WHERE user_id = $1',
+      [req.session.user.id]
+    );
+    res.json({ default_raspis_key: rows[0]?.default_raspis_key || null });
+  } catch (err) {
+    res.json({ default_raspis_key: null });
+  }
+});
+
+app.post('/api/user-prefs/default', requireLogin, async (req, res) => {
+  const { key } = req.body;
+  if (!key) return res.json({ ok: false, msg: 'Chybí klíč.' });
+  try {
+    const db = getPool();
+    await db.query(
+      `INSERT INTO user_preferences (user_id, default_raspis_key, updated_at)
+       VALUES ($1, $2, NOW())
+       ON CONFLICT (user_id) DO UPDATE SET default_raspis_key = $2, updated_at = NOW()`,
+      [req.session.user.id, key]
+    );
+    res.json({ ok: true });
+  } catch (err) {
+    res.json({ ok: false, msg: 'Chyba serveru.' });
+  }
+});
+
 // ── Start ─────────────────────────────────────────────────────────────────────
 
 init()
