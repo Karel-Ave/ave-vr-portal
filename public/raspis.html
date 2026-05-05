@@ -653,7 +653,7 @@ table.staff-tbl td select:focus { background: #fff; border-radius: 2px; }
 
 <div id="topbar">
   <div id="portal-controls" style="display:flex;align-items:center;gap:6px;">
-    <select id="portal-rozpis-sel" class="btn btn-sm" style="padding:4px 8px;font-size:12px;cursor:pointer;"></select>
+    <select id="portal-rozpis-sel" class="btn btn-sm" style="padding:4px 8px;font-size:10px;cursor:pointer;"></select>
     <button id="portal-import-btn" class="btn btn-sm">Nahrát rozpis</button>
     <input type="file" id="portal-import-input" accept=".json" style="display:none">
     <button id="portal-delete-btn" class="btn btn-sm btn-danger" style="display:none">Smazat</button>
@@ -6426,10 +6426,24 @@ document.addEventListener('mouseup', (e) => {
       localStorage.setItem('super_rozpis_data', JSON.stringify(data));
       if (typeof applyData === 'function') {
         applyData(data);
-        // Rebuild schedule grid with requirements coloring
         if (typeof buildSchedule === 'function') buildSchedule();
         else if (typeof renderStaff === 'function') renderStaff();
         else if (typeof showTab === 'function') showTab('schedule');
+        // Re-apply deleted-cell highlighting and button state if requirements are saved
+        if (data.requirements && Object.keys(data.requirements).length > 0) {
+          setTimeout(() => {
+            if (typeof updateAllDeletedCells === 'function') updateAllDeletedCells();
+            if (typeof updateReqSumTooltips === 'function') updateReqSumTooltips();
+            const reqBtn = document.getElementById('btn-remember-req');
+            if (reqBtn) {
+              reqBtn.textContent = 'Požadavky zapamatovány';
+              reqBtn.classList.add('remembered');
+              reqBtn.style.background = '#f0e6ff';
+              reqBtn.style.borderColor = '#7b3fa0';
+              reqBtn.style.color = '#4a1a6b';
+            }
+          }, 150);
+        }
       }
     } catch(e) {
       console.error('[Portal] loadRozpis error:', e);
