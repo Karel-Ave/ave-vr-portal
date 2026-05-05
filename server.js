@@ -39,6 +39,13 @@ const requireAdmin = (req, res, next) =>
 // ── In-memory zámky (zabrání dvěma uživatelům editovat zároveň) ──────────────
 
 const locks = {};
+const lockTimers = {};
+const LOCK_TTL = 10 * 60 * 1000; // 10 minut
+
+function setLockTimer(key) {
+  if (lockTimers[key]) clearTimeout(lockTimers[key]);
+  lockTimers[key] = setTimeout(() => { delete locks[key]; delete lockTimers[key]; }, LOCK_TTL);
+}
 
 // ── Stránky ───────────────────────────────────────────────────────────────────
 
@@ -211,13 +218,19 @@ app.post('/api/lock/:app/acquire', requireLogin, (req, res) => {
   if (locks[key] && locks[key].userId !== user.id) {
     return res.json({ ok: false, lock: locks[key] });
   }
-  locks[key] = { userId: user.id, userName: user.name, since: new Date().toISOString() };
+  const now   = new Date();
+  const until = new Date(now.getTime() + LOCK_TTL).toISOString();
+  locks[key]  = { userId: user.id, userName: user.name, since: now.toISOString(), until };
+  setLockTimer(key);
   res.json({ ok: true, lock: locks[key] });
 });
 
 app.post('/api/lock/:app/release', requireLogin, (req, res) => {
   const key = req.params.app;
-  if (locks[key]?.userId === req.session.user.id) delete locks[key];
+  if (locks[key]?.userId === req.session.user.id) {
+    delete locks[key];
+    if (lockTimers[key]) { clearTimeout(lockTimers[key]); delete lockTimers[key]; }
+  }
   res.json({ ok: true });
 });
 
@@ -510,6 +523,11 @@ app.post('/api/rozpisy/save-edits', requireLogin, async (req, res) => {
       [JSON.stringify(data), key]
     );
     if (!rowCount) return res.json({ ok: false, msg: 'Raspis nenalezen.' });
+    const lockKey = 'raspis-view';
+    if (locks[lockKey]?.userId === req.session.user.id) {
+      locks[lockKey].until = new Date(Date.now() + LOCK_TTL).toISOString();
+      setLockTimer(lockKey);
+    }
     res.json({ ok: true });
   } catch (err) {
     console.error(err);

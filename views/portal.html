@@ -120,7 +120,6 @@
     margin-top: 32px;
   }
   .section-label:first-of-type { margin-top: 0; }
-  #section-admin { margin-top: 52px; }
 
   /* ── Mřížka karet ── */
   .grid {
@@ -508,6 +507,29 @@
   document.getElementById('pw-overlay').addEventListener('click', e => {
     if (e.target === document.getElementById('pw-overlay')) closePwModal();
   });
+
+  // ── Auto-logout after 10 min inactivity ──────────────────────────────────
+  (function() {
+    const IDLE_MS = 10 * 60 * 1000;
+    let idleTimer = setTimeout(() => { window.location.href = '/logout'; }, IDLE_MS);
+    function resetIdle() { clearTimeout(idleTimer); idleTimer = setTimeout(() => { window.location.href = '/logout'; }, IDLE_MS); }
+    document.addEventListener('mousemove', resetIdle, true);
+    document.addEventListener('keydown', resetIdle, true);
+    document.addEventListener('click', resetIdle, true);
+    document.addEventListener('touchstart', resetIdle, true);
+    // Also track activity inside the iframe
+    const frame = document.getElementById('app-frame');
+    if (frame) {
+      frame.addEventListener('load', function() {
+        try {
+          const d = frame.contentDocument || frame.contentWindow.document;
+          d.addEventListener('mousemove', resetIdle, true);
+          d.addEventListener('keydown', resetIdle, true);
+          d.addEventListener('click', resetIdle, true);
+        } catch(e) {}
+      });
+    }
+  })();
 </script>
 </body>
 </html>

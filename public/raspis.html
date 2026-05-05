@@ -659,8 +659,10 @@ table.staff-tbl td select:focus { background: #fff; border-radius: 2px; }
     <button id="portal-delete-btn" class="btn btn-sm btn-danger" style="display:none">Smazat</button>
     <button id="portal-trash-btn" class="btn btn-sm" style="display:none">Koš</button>
   </div>
-  <div style="position:absolute;left:50%;transform:translateX(-50%);">
-    <button id="portal-save-btn" class="btn btn-sm btn-primary">Uložit</button>
+  <div style="position:absolute;left:50%;transform:translateX(-50%);display:flex;align-items:center;gap:6px;">
+    <button id="portal-edit-btn" class="btn btn-sm" style="background:#f0c800;color:#333;border-color:#c8a800;font-weight:600;">Editovat</button>
+    <span id="portal-lock-status" style="font-size:11px;color:#888;white-space:nowrap;display:none;"></span>
+    <button id="portal-save-btn" class="btn btn-sm btn-primary" style="display:none;">Uložit</button>
   </div>
   <div style="margin-left:auto;display:flex;align-items:center;gap:6px;">
     <button class="btn btn-sm" onclick="exportXlsx()" style="background:#4caf50;color:#fff;border-color:#388e3c;">Export do .xlsx</button>
@@ -6329,6 +6331,9 @@ document.addEventListener('mouseup', (e) => {
 /* Portal integration overrides */
 #portal-controls .btn { font-family: inherit; }
 #portal-controls select { height: 22px; padding: 0 6px; line-height: 22px; font-size: 10px; }
+#schedule-wrap.portal-readonly td { pointer-events: none; user-select: none; }
+#schedule-wrap.portal-readonly button { pointer-events: none; }
+#schedule-wrap.portal-readonly input, #schedule-wrap.portal-readonly textarea, #schedule-wrap.portal-readonly select { pointer-events: none; }
 </style>
 
 <script>
@@ -6344,12 +6349,20 @@ document.addEventListener('mouseup', (e) => {
 
   let _currentKey = null;
   let _isAdmin = false;
+  let _editMode = false;
+  let _myUserId = null;
+  let _lockPollTimer = null;
+  let _autosaveTimer = null;
+  const LOCK_APP = 'raspis-view';
+  const AUTOSAVE_INTERVAL = 2 * 60 * 1000;
+  const POLL_INTERVAL = 30 * 1000;
 
   // ── Load user info ──────────────────────────────────────────────────────────
   async function initPortal() {
     try {
       const me = await fetch('/api/me').then(r => r.json());
       _isAdmin = me.role === 'admin';
+      _myUserId = me.id;
       if (_isAdmin) {
         const delBtn = document.getElementById('portal-delete-btn');
         if (delBtn) delBtn.style.display = '';
@@ -6358,6 +6371,8 @@ document.addEventListener('mouseup', (e) => {
       }
     } catch(e) { /* not inside portal, ignore */ }
 
+    setReadOnly(true);
+    startLockPoll();
     await loadRozpisyList();
   }
 
@@ -6421,12 +6436,99 @@ document.addEventListener('mouseup', (e) => {
     }
   }
 
-  // ── Override saveData ──────────────────────────────────────────────────────
-  window.saveData = async function() {
-    if (!_currentKey) {
-      alert('Není vybrán žádný rozpis pro uložení.');
-      return;
+  // ── Lock helpers ──────────────────────────────────────────────────────────
+
+  function setReadOnly(ro) {
+    const wrap = document.getElementById('schedule-wrap');
+    if (wrap) { if (ro) wrap.classList.add('portal-readonly'); else wrap.classList.remove('portal-readonly'); }
+  }
+
+  function updateLockUI(editMode, lockInfo) {
+    const editBtn = document.getElementById('portal-edit-btn');
+    const saveBtn = document.getElementById('portal-save-btn');
+    const status  = document.getElementById('portal-lock-status');
+    if (!editBtn) return;
+    if (editMode) {
+      editBtn.textContent = 'Zrušit';
+      editBtn.style.cssText = 'background:#e53935;color:#fff;border-color:#b71c1c;font-weight:600;';
+      if (saveBtn) saveBtn.style.display = '';
+      if (status)  { status.textContent = ''; status.style.display = 'none'; }
+    } else if (lockInfo && lockInfo.userId !== _myUserId) {
+      editBtn.textContent = 'Editovat';
+      editBtn.style.cssText = 'background:#f0c800;color:#333;border-color:#c8a800;font-weight:600;opacity:0.5;cursor:not-allowed;';
+      if (saveBtn) saveBtn.style.display = 'none';
+      if (status) {
+        const since = new Date(lockInfo.since);
+        const t = since.toLocaleTimeString('cs-CZ', {hour:'2-digit', minute:'2-digit'});
+        status.textContent = 'Právě edituje ' + lockInfo.userName + ' od ' + t;
+        status.style.display = '';
+      }
+    } else {
+      editBtn.textContent = 'Editovat';
+      editBtn.style.cssText = 'background:#f0c800;color:#333;border-color:#c8a800;font-weight:600;';
+      if (saveBtn) saveBtn.style.display = 'none';
+      if (status)  { status.textContent = ''; status.style.display = 'none'; }
     }
+  }
+
+  async function acquireEdit() {
+    if (_editMode) { await releaseEdit(false); return; }
+    try {
+      const r    = await fetch('/api/lock/' + LOCK_APP + '/acquire', { method: 'POST' });
+      const json = await r.json();
+      if (json.ok) {
+        _editMode = true;
+        setReadOnly(false);
+        updateLockUI(true, json.lock);
+        startAutosave();
+      } else {
+        updateLockUI(false, json.lock);
+      }
+    } catch(e) { console.error('[Lock] acquire error:', e); }
+  }
+
+  async function releaseEdit(save) {
+    stopAutosave();
+    if (save) await doSave(false);
+    try { await fetch('/api/lock/' + LOCK_APP + '/release', { method: 'POST' }); } catch(e) {}
+    _editMode = false;
+    setReadOnly(true);
+    updateLockUI(false, null);
+  }
+
+  function startAutosave() {
+    stopAutosave();
+    _autosaveTimer = setInterval(async () => { if (_editMode) await doSave(true); }, AUTOSAVE_INTERVAL);
+  }
+
+  function stopAutosave() {
+    if (_autosaveTimer) { clearInterval(_autosaveTimer); _autosaveTimer = null; }
+  }
+
+  function startLockPoll() {
+    if (_lockPollTimer) clearInterval(_lockPollTimer);
+    _lockPollTimer = setInterval(async () => {
+      try {
+        const r    = await fetch('/api/lock/' + LOCK_APP);
+        const json = await r.json();
+        if (_editMode) {
+          if (!json.lock || json.lock.userId !== _myUserId) {
+            stopAutosave();
+            _editMode = false;
+            setReadOnly(true);
+            updateLockUI(false, json.lock);
+          }
+        } else {
+          updateLockUI(false, json.lock);
+        }
+      } catch(e) {}
+    }, POLL_INTERVAL);
+  }
+
+  // ── Save helper ────────────────────────────────────────────────────────────
+
+  async function doSave(silent) {
+    if (!_currentKey) { if (!silent) alert('Není vybrán žádný rozpis pro uložení.'); return false; }
     try {
       const saveObj = {
         v: 3,
@@ -6445,27 +6547,38 @@ document.addEventListener('mouseup', (e) => {
         prevMonthData: state.prevMonthData || {},
         lockInfo: state.lockInfo || null,
       };
-      const r = await fetch('/api/rozpisy/save-edits', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ key: _currentKey, data: saveObj })
-      });
+      const r      = await fetch('/api/rozpisy/save-edits', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ key: _currentKey, data: saveObj }) });
       const result = await r.json();
-      if (result.ok) {
-        alert('Rozpis uložen.');
-      } else {
-        alert('Chyba uložení: ' + (result.msg || 'neznámá chyba'));
+      if (!silent) {
+        if (result.ok) alert('Rozpis uložen.');
+        else alert('Chyba uložení: ' + (result.msg || 'neznámá chyba'));
       }
+      return result.ok;
     } catch(e) {
       console.error('[Portal] saveData error:', e);
-      alert('Chyba při ukládání.');
+      if (!silent) alert('Chyba při ukládání.');
+      return false;
     }
+  }
+
+  // ── Override saveData ──────────────────────────────────────────────────────
+  window.saveData = async function() {
+    if (!_editMode) return;
+    await doSave(false);
   };
 
   // ── Dropdown change ────────────────────────────────────────────────────────
   function onSelChange() {
     const sel = document.getElementById('portal-rozpis-sel');
-    if (sel && sel.value) loadRozpis(sel.value);
+    if (!sel || !sel.value) return;
+    if (_editMode) {
+      fetch('/api/lock/' + LOCK_APP + '/release', { method: 'POST' }).catch(() => {});
+      stopAutosave();
+      _editMode = false;
+      setReadOnly(true);
+      updateLockUI(false, null);
+    }
+    loadRozpis(sel.value);
   }
 
   // ── Import button ──────────────────────────────────────────────────────────
@@ -6531,7 +6644,7 @@ document.addEventListener('mouseup', (e) => {
 
   // ── Save button ────────────────────────────────────────────────────────────
   function onSaveBtn() {
-    window.saveData();
+    releaseEdit(true);
   }
 
   // Kos modal
@@ -6590,6 +6703,8 @@ document.addEventListener('mouseup', (e) => {
     const deleteBtn = document.getElementById('portal-delete-btn');
     if (deleteBtn) deleteBtn.addEventListener('click', onDeleteBtn);
 
+    const editBtn = document.getElementById('portal-edit-btn');
+    if (editBtn) editBtn.addEventListener('click', acquireEdit);
     const saveBtn = document.getElementById('portal-save-btn');
     if (saveBtn) saveBtn.addEventListener('click', onSaveBtn);
     var trashBtn2 = document.getElementById("portal-trash-btn");
