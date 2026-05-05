@@ -660,16 +660,23 @@ table.staff-tbl td select:focus { background: #fff; border-radius: 2px; }
   z-index: 9999;
 }
 #phb-logo {
-  position: absolute;
-  left: 50%;
-  transform: translateX(-50%);
   height: 40px;
   object-fit: contain;
   filter: brightness(0) invert(1);
 }
+#phb-center {
+  position: absolute;
+  left: 50%;
+  transform: translateX(-50%);
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  pointer-events: none;
+}
+#phb-center img { pointer-events: auto; }
 #phb-right { margin-left: auto; display: flex; gap: 8px; align-items: center; }
-#phb-user  { color: #555; font-size: 12px; font-family: 'DM Sans', sans-serif; }
-#phb-copy { font-size: 10px; color: #555; white-space: nowrap; margin-left: 10px; }
+#phb-user  { color: #888; font-size: 12px; font-family: 'DM Sans', sans-serif; }
+#phb-copy { font-size: 10px; color: rgba(255,255,255,0.55); white-space: nowrap; }
 .phb-btn {
   padding: 4px 11px; border-radius: 4px; border: 1px solid #333;
   background: transparent; color: #888; font-size: 11px;
@@ -678,6 +685,7 @@ table.staff-tbl td select:focus { background: #fff; border-radius: 2px; }
   white-space: nowrap; display: inline-flex; align-items: center;
 }
 .phb-btn:hover { background: #222; color: #ccc; border-color: #555; }
+.phb-home { flex-shrink: 0; }
 /* ── Historie / selektor bar ── */
 #history-bar {
   background: #131311;
@@ -712,10 +720,13 @@ table.staff-tbl td select:focus { background: #fff; border-radius: 2px; }
 </head>
 <body>
 <div id="phb">
-  <img id="phb-logo" src="/static/logo.png" alt="AVE Hotels"><span id="phb-copy">&#169; 2026 Karel Dvo&#345;&#225;k</span>
+  <a href="/portal" class="phb-btn phb-home">&#8592; Home</a>
+  <div id="phb-center">
+    <img id="phb-logo" src="/static/logo.png" alt="AVE Hotels">
+    <span id="phb-copy">&#169; 2026 Karel Dvo&#345;&#225;k</span>
+  </div>
   <div id="phb-right">
     <span id="phb-user"></span>
-    <a href="/portal" class="phb-btn">&#8592; Port&#225;l</a>
   </div>
 </div>
 <div id="history-bar"></div>
@@ -6514,6 +6525,23 @@ document.addEventListener('mouseup', (e) => {
   function initView() {
     overrideSaveDataView();
     loadAndRenderPublished();
+
+    // Skrýt záložku Nastavení a tlačítka jen pro lokální režim
+    setTimeout(() => {
+      // Skrýt záložku Nastavení
+      document.querySelectorAll('.tab').forEach(t => {
+        if (t.textContent.trim().startsWith('Nastaven')) t.style.display = 'none';
+      });
+      // Přepnout na záložku Rozpis
+      if (typeof showTab === 'function') showTab('schedule');
+      // Skrýt tlačítko Nový rozpis
+      document.querySelectorAll('button').forEach(b => {
+        if (b.getAttribute('onclick') === 'newSchedule()') b.style.display = 'none';
+      });
+      // Skrýt tlačítko Zapamatuj požadavky
+      const reqBtn = document.getElementById('btn-remember-req');
+      if (reqBtn) reqBtn.style.display = 'none';
+    }, 200);
   }
 
   function overrideSaveDataView() {
@@ -6563,10 +6591,13 @@ document.addEventListener('mouseup', (e) => {
           `<option value="${escHtml(p.key)}" ${p.key === selectedKey ? 'selected' : ''}>${escHtml(p.label)}</option>`
         ).join('') +
       '</select>' +
-      (isAdmin ? '<button class="hbar-btn" onclick="document.getElementById(''import-json-input'').click()">&#128194; Nahr&#225;t rozpis</button>' : '') +
+      (isAdmin ? '<button class="hbar-btn" id="phb-import-btn">&#128194; Nahr&#225;t rozpis</button>' : '') +
       '<button class="hbar-btn green" onclick="portalSetDefault()">&#9733; Nastavit jako v&#253;choz&#237;</button>' +
       (isAdmin ? '<button class="hbar-btn red" onclick="portalDeletePublished()">Smazat</button>' : '') +
       (isAdmin ? '<button class="hbar-btn" onclick="portalSendToTvorba()">&#8629; Do Tvorby</button>' : '');
+    // Wire import button (onclick can't use quotes-in-quotes inline)
+    const importBtn = document.getElementById('phb-import-btn');
+    if (importBtn) importBtn.onclick = () => document.getElementById('import-json-input').click();
   }
 
     window.portalImportFile = async function (event) {
