@@ -8,75 +8,81 @@
   * { box-sizing: border-box; margin: 0; padding: 0; }
   body {
     min-height: 100vh;
-    background: #1a1a18;
+    background: #111;
     display: flex;
     align-items: center;
     justify-content: center;
-    font-family: 'Segoe UI', sans-serif;
+    font-family: 'Segoe UI', system-ui, sans-serif;
   }
   .card {
-    background: #fff;
-    border-radius: 12px;
+    background: #1e1e1e;
+    border-radius: 14px;
     padding: 44px 40px 36px;
     width: 360px;
-    box-shadow: 0 8px 32px rgba(0,0,0,.4);
+    box-shadow: 0 12px 40px rgba(0,0,0,.6);
+    border: 1px solid #2e2e2e;
   }
   .logo {
     text-align: center;
-    margin-bottom: 32px;
+    margin-bottom: 36px;
   }
   .logo img {
-    height: 48px;
-    filter: brightness(0);
+    height: 52px;
+    object-fit: contain;
   }
-  .logo-text {
-    font-size: 13px;
-    color: #888;
-    margin-top: 8px;
-    letter-spacing: 0.15em;
+  .logo-sub {
+    font-size: 11px;
+    color: #555;
+    margin-top: 10px;
+    letter-spacing: 0.2em;
     text-transform: uppercase;
   }
   label {
     display: block;
-    font-size: 12px;
+    font-size: 11px;
     font-weight: 600;
-    color: #555;
+    color: #777;
     margin-bottom: 5px;
     text-transform: uppercase;
-    letter-spacing: 0.05em;
+    letter-spacing: 0.06em;
   }
   input {
     width: 100%;
     padding: 10px 12px;
-    border: 1px solid #ddd;
-    border-radius: 6px;
+    background: #111;
+    border: 1px solid #333;
+    border-radius: 7px;
     font-size: 14px;
+    color: #e0e0e0;
     margin-bottom: 16px;
     outline: none;
     transition: border-color .2s;
+    font-family: inherit;
   }
-  input:focus { border-color: #2a5caa; }
+  input:focus { border-color: #555; }
   .btn {
     width: 100%;
     padding: 11px;
-    background: #1a1a18;
-    color: #fff;
+    background: #e0e0e0;
+    color: #111;
     border: none;
-    border-radius: 6px;
+    border-radius: 7px;
     font-size: 14px;
-    font-weight: 600;
+    font-weight: 700;
     cursor: pointer;
-    letter-spacing: 0.05em;
+    letter-spacing: 0.04em;
     transition: background .2s;
+    font-family: inherit;
+    margin-top: 4px;
   }
-  .btn:hover { background: #333; }
+  .btn:hover { background: #fff; }
   .error {
-    background: #fff0f0;
-    border: 1px solid #ffcccc;
-    color: #c00;
-    border-radius: 6px;
+    background: rgba(200,0,0,.15);
+    border: 1px solid rgba(200,0,0,.4);
+    color: #ff6b6b;
+    border-radius: 7px;
     padding: 10px 12px;
-    font-size: 13px;
+    font-size: 12px;
     margin-bottom: 16px;
     display: none;
   }
@@ -86,13 +92,10 @@
 <body>
 <div class="card">
   <div class="logo">
-    <svg width="120" height="40" viewBox="0 0 300 100" xmlns="http://www.w3.org/2000/svg">
-      <text x="0" y="72" font-family="Georgia, serif" font-size="90" font-weight="700" fill="#1a1a18" letter-spacing="-5">AVE</text>
-      <text x="32" y="95" font-family="'Segoe UI', sans-serif" font-size="22" fill="#555" letter-spacing="12">HOTELS</text>
-    </svg>
-    <div class="logo-text">Interní portál</div>
+    <img src="/static/logo.png" alt="AVE Hotels">
+    <div class="logo-sub">Interní portál</div>
   </div>
-  <div class="error show" id="err" style="display:none">Nesprávné přihlašovací údaje.</div>
+  <div class="error" id="err">Nesprávné přihlašovací údaje.</div>
   <form method="POST" action="/login">
     <label>Uživatelské jméno</label>
     <input type="text" name="username" autocomplete="username" autofocus required>
@@ -103,7 +106,7 @@
 </div>
 <script>
   if (location.search.includes('error=1')) {
-    document.getElementById('err').style.display = 'block';
+    document.getElementById('err').classList.add('show');
   }
 </script>
 </body>

@@ -1,0 +1,500 @@
+<!DOCTYPE html>
+<html lang="cs">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>AVE Hotels – Správa uživatelů</title>
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+
+  body {
+    min-height: 100vh;
+    background: #3a3a3a;
+    font-family: 'Segoe UI', system-ui, sans-serif;
+    color: #e0e0e0;
+  }
+
+  /* ── Horní lišta ── */
+  #topbar {
+    background: #0f0f0f;
+    height: 58px;
+    display: flex;
+    align-items: center;
+    padding: 0 24px;
+    position: relative;
+    border-bottom: 1px solid #1e1e1e;
+  }
+  .topbar-logo {
+    position: absolute;
+    left: 50%;
+    transform: translateX(-50%);
+  }
+  .topbar-logo img {
+    height: 36px;
+    object-fit: contain;
+    filter: brightness(0) invert(1);
+  }
+  .topbar-left { display: flex; align-items: center; gap: 12px; }
+  .topbar-right { margin-left: auto; display: flex; align-items: center; gap: 10px; }
+  .user-badge { color: #666; font-size: 13px; }
+  .btn-top {
+    padding: 5px 14px;
+    border-radius: 6px;
+    border: 1px solid #333;
+    background: transparent;
+    color: #aaa;
+    font-size: 12px;
+    cursor: pointer;
+    transition: all .15s;
+    text-decoration: none;
+    font-family: inherit;
+  }
+  .btn-top:hover { background: #222; color: #fff; border-color: #555; }
+
+  /* ── Obsah ── */
+  .main {
+    max-width: 860px;
+    margin: 40px auto;
+    padding: 0 28px;
+  }
+
+  .page-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin-bottom: 28px;
+  }
+  .page-header h1 { font-size: 20px; font-weight: 600; color: #e0e0e0; }
+
+  .btn-add {
+    padding: 8px 18px;
+    background: #e0e0e0;
+    color: #111;
+    border: none;
+    border-radius: 7px;
+    font-size: 13px;
+    font-weight: 700;
+    cursor: pointer;
+    font-family: inherit;
+    transition: background .15s;
+  }
+  .btn-add:hover { background: #fff; }
+
+  /* ── Tabulka uživatelů ── */
+  .table-wrap {
+    background: #1a1a1a;
+    border: 1px solid #2a2a2a;
+    border-radius: 12px;
+    overflow: hidden;
+  }
+  table {
+    width: 100%;
+    border-collapse: collapse;
+  }
+  thead th {
+    background: #141414;
+    padding: 11px 16px;
+    text-align: left;
+    font-size: 10px;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.1em;
+    color: #555;
+    border-bottom: 1px solid #2a2a2a;
+  }
+  tbody tr { border-bottom: 1px solid #222; transition: background .12s; }
+  tbody tr:last-child { border-bottom: none; }
+  tbody tr:hover { background: #202020; }
+  tbody td {
+    padding: 12px 16px;
+    font-size: 13px;
+    vertical-align: middle;
+  }
+  .role-badge {
+    display: inline-block;
+    padding: 2px 9px;
+    border-radius: 20px;
+    font-size: 11px;
+    font-weight: 600;
+  }
+  .role-admin   { background: #2a2a00; color: #ccb800; border: 1px solid #443a00; }
+  .role-vedouci { background: #001a2a; color: #5599cc; border: 1px solid #00304a; }
+  .td-actions { text-align: right; white-space: nowrap; }
+  .btn-action {
+    padding: 4px 12px;
+    border-radius: 5px;
+    font-size: 11px;
+    cursor: pointer;
+    font-family: inherit;
+    transition: all .12s;
+    border: 1px solid #333;
+    background: transparent;
+    color: #888;
+    margin-left: 4px;
+  }
+  .btn-action:hover { background: #2a2a2a; color: #ccc; border-color: #444; }
+  .btn-action.danger:hover { background: #2a0000; color: #ff6b6b; border-color: #550000; }
+
+  .empty-row td { text-align: center; color: #444; padding: 32px; font-size: 13px; }
+
+  /* ── Modální okno ── */
+  .overlay {
+    display: none;
+    position: fixed;
+    inset: 0;
+    background: rgba(0,0,0,.7);
+    z-index: 1000;
+    align-items: center;
+    justify-content: center;
+  }
+  .overlay.show { display: flex; }
+  .modal {
+    background: #1e1e1e;
+    border: 1px solid #2e2e2e;
+    border-radius: 12px;
+    padding: 28px;
+    width: 400px;
+    box-shadow: 0 12px 40px rgba(0,0,0,.6);
+  }
+  .modal h2 { font-size: 15px; font-weight: 600; color: #e0e0e0; margin-bottom: 20px; }
+  .form-row { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+  .form-group { display: flex; flex-direction: column; gap: 5px; margin-bottom: 14px; }
+  .form-group label {
+    font-size: 10px;
+    font-weight: 700;
+    color: #666;
+    text-transform: uppercase;
+    letter-spacing: 0.07em;
+  }
+  .form-group input,
+  .form-group select {
+    padding: 9px 11px;
+    background: #111;
+    border: 1px solid #333;
+    border-radius: 6px;
+    font-size: 13px;
+    color: #e0e0e0;
+    outline: none;
+    font-family: inherit;
+    transition: border-color .15s;
+  }
+  .form-group input:focus,
+  .form-group select:focus { border-color: #555; }
+  .form-group select option { background: #1e1e1e; }
+  .form-hint { font-size: 11px; color: #555; margin-top: 2px; }
+  .modal-btns { display: flex; gap: 8px; justify-content: flex-end; margin-top: 8px; }
+  .btn-secondary {
+    padding: 7px 16px;
+    background: transparent;
+    border: 1px solid #333;
+    border-radius: 6px;
+    color: #888;
+    font-size: 13px;
+    cursor: pointer;
+    font-family: inherit;
+    transition: all .15s;
+  }
+  .btn-secondary:hover { background: #222; color: #ccc; }
+  .btn-primary {
+    padding: 7px 18px;
+    background: #e0e0e0;
+    color: #111;
+    border: none;
+    border-radius: 6px;
+    font-size: 13px;
+    font-weight: 700;
+    cursor: pointer;
+    font-family: inherit;
+    transition: background .15s;
+  }
+  .btn-primary:hover { background: #fff; }
+  .msg { font-size: 12px; min-height: 18px; margin-top: 8px; }
+  .msg.ok  { color: #5cb85c; }
+  .msg.err { color: #e05555; }
+
+  /* ── Modál: Změna hesla ── */
+  #pw-overlay .modal { width: 360px; }
+</style>
+</head>
+<body>
+
+<div id="topbar">
+  <div class="topbar-left">
+    <a href="/portal" class="btn-top">← Portál</a>
+  </div>
+  <div class="topbar-logo">
+    <img src="/static/logo.png" alt="AVE Hotels">
+  </div>
+  <div class="topbar-right">
+    <span class="user-badge" id="user-label"></span>
+    <button class="btn-top" onclick="document.getElementById('pw-overlay').classList.add('show')">Změnit heslo</button>
+    <a href="/logout" class="btn-top">Odhlásit</a>
+  </div>
+</div>
+
+<div class="main">
+  <div class="page-header">
+    <h1>Správa uživatelů</h1>
+    <button class="btn-add" onclick="openAddModal()">+ Přidat uživatele</button>
+  </div>
+
+  <div class="table-wrap">
+    <table>
+      <thead>
+        <tr>
+          <th>#</th>
+          <th>Jméno</th>
+          <th>Uživatelské jméno</th>
+          <th>Role</th>
+          <th>Přidán</th>
+          <th></th>
+        </tr>
+      </thead>
+      <tbody id="users-tbody">
+        <tr class="empty-row"><td colspan="6">Načítám…</td></tr>
+      </tbody>
+    </table>
+  </div>
+</div>
+
+<!-- Modál: Přidat / Upravit uživatele -->
+<div class="overlay" id="user-overlay">
+  <div class="modal">
+    <h2 id="modal-title">Přidat uživatele</h2>
+    <div class="form-row">
+      <div class="form-group">
+        <label>Jméno</label>
+        <input type="text" id="u-name" placeholder="Karel">
+      </div>
+      <div class="form-group">
+        <label>Uživatelské jméno</label>
+        <input type="text" id="u-username" placeholder="Karel-Ave">
+      </div>
+    </div>
+    <div class="form-group">
+      <label>Heslo <span id="pw-hint-label" style="color:#555;font-weight:400">(ponechte prázdné pro zachování)</span></label>
+      <input type="password" id="u-password" placeholder="min. 6 znaků">
+    </div>
+    <div class="form-group">
+      <label>Role</label>
+      <select id="u-role">
+        <option value="vedoucí">Vedoucí</option>
+        <option value="admin">Admin</option>
+      </select>
+      <span class="form-hint" id="role-hint"></span>
+    </div>
+    <div class="msg" id="user-msg"></div>
+    <div class="modal-btns">
+      <button class="btn-secondary" onclick="closeUserModal()">Zrušit</button>
+      <button class="btn-primary" id="user-save-btn" onclick="saveUser()">Uložit</button>
+    </div>
+  </div>
+</div>
+
+<!-- Modál: Změna vlastního hesla -->
+<div class="overlay" id="pw-overlay">
+  <div class="modal">
+    <h2>Změna hesla</h2>
+    <div class="form-group">
+      <label>Současné heslo</label>
+      <input type="password" id="pw-old">
+    </div>
+    <div class="form-group">
+      <label>Nové heslo</label>
+      <input type="password" id="pw-new" placeholder="min. 6 znaků">
+    </div>
+    <div class="form-group">
+      <label>Nové heslo znovu</label>
+      <input type="password" id="pw-new2">
+    </div>
+    <div class="msg" id="pw-msg"></div>
+    <div class="modal-btns">
+      <button class="btn-secondary" onclick="closePwModal()">Zrušit</button>
+      <button class="btn-primary" onclick="changePassword()">Uložit</button>
+    </div>
+  </div>
+</div>
+
+<script>
+  let currentUserId = null;
+  let myId = null;
+
+  // Načíst přihlášeného uživatele
+  fetch('/api/me').then(r => r.json()).then(u => {
+    myId = u.id;
+    document.getElementById('user-label').textContent = u.username;
+    loadUsers();
+  });
+
+  function formatDate(iso) {
+    if (!iso) return '—';
+    const d = new Date(iso);
+    return d.toLocaleDateString('cs-CZ', { day: '2-digit', month: '2-digit', year: 'numeric' });
+  }
+
+  async function loadUsers() {
+    const tbody = document.getElementById('users-tbody');
+    try {
+      const r = await fetch('/api/users');
+      if (!r.ok) { tbody.innerHTML = '<tr class="empty-row"><td colspan="6">Chyba načtení.</td></tr>'; return; }
+      const users = await r.json();
+      if (!users.length) {
+        tbody.innerHTML = '<tr class="empty-row"><td colspan="6">Žádní uživatelé.</td></tr>';
+        return;
+      }
+      tbody.innerHTML = users.map((u, i) => `
+        <tr>
+          <td style="color:#444;font-size:12px">${i + 1}</td>
+          <td style="font-weight:500;color:#d0d0d0">${esc(u.name)}</td>
+          <td style="color:#888;font-family:monospace;font-size:12px">${esc(u.username)}</td>
+          <td><span class="role-badge role-${u.role === 'admin' ? 'admin' : 'vedouci'}">${u.role === 'admin' ? 'Admin' : 'Vedoucí'}</span></td>
+          <td style="color:#555;font-size:12px">${formatDate(u.created_at)}</td>
+          <td class="td-actions">
+            <button class="btn-action" onclick="openEditModal(${u.id}, '${esc(u.name)}', '${esc(u.username)}', '${u.role}')">Upravit</button>
+            ${u.id !== myId ? `<button class="btn-action danger" onclick="deleteUser(${u.id}, '${esc(u.name)}')">Smazat</button>` : ''}
+          </td>
+        </tr>
+      `).join('');
+    } catch {
+      tbody.innerHTML = '<tr class="empty-row"><td colspan="6">Chyba načtení.</td></tr>';
+    }
+  }
+
+  function esc(s) {
+    return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;').replace(/'/g,'&#39;');
+  }
+
+  // Přidat uživatele
+  function openAddModal() {
+    currentUserId = null;
+    document.getElementById('modal-title').textContent = 'Přidat uživatele';
+    document.getElementById('u-name').value = '';
+    document.getElementById('u-username').value = '';
+    document.getElementById('u-password').value = '';
+    document.getElementById('u-role').value = 'vedoucí';
+    document.getElementById('u-username').disabled = false;
+    document.getElementById('pw-hint-label').style.display = 'none';
+    clearMsg('user-msg');
+    document.getElementById('user-overlay').classList.add('show');
+    setTimeout(() => document.getElementById('u-name').focus(), 50);
+  }
+
+  // Upravit uživatele
+  function openEditModal(id, name, username, role) {
+    currentUserId = id;
+    document.getElementById('modal-title').textContent = 'Upravit uživatele';
+    document.getElementById('u-name').value = name;
+    document.getElementById('u-username').value = username;
+    document.getElementById('u-password').value = '';
+    document.getElementById('u-role').value = role;
+    document.getElementById('u-username').disabled = true;
+    document.getElementById('pw-hint-label').style.display = 'inline';
+    clearMsg('user-msg');
+    document.getElementById('user-overlay').classList.add('show');
+    setTimeout(() => document.getElementById('u-name').focus(), 50);
+  }
+
+  function closeUserModal() {
+    document.getElementById('user-overlay').classList.remove('show');
+  }
+
+  async function saveUser() {
+    const name     = document.getElementById('u-name').value.trim();
+    const username = document.getElementById('u-username').value.trim();
+    const password = document.getElementById('u-password').value;
+    const role     = document.getElementById('u-role').value;
+    const msg      = document.getElementById('user-msg');
+
+    if (!name) { setMsg(msg, 'err', 'Zadejte jméno.'); return; }
+
+    let r, data;
+    if (currentUserId === null) {
+      // Nový uživatel
+      if (!username) { setMsg(msg, 'err', 'Zadejte uživatelské jméno.'); return; }
+      if (!password) { setMsg(msg, 'err', 'Zadejte heslo.'); return; }
+      r = await fetch('/api/users', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ name, username, password, role })
+      });
+    } else {
+      // Úprava
+      const body = { name, role };
+      if (password) body.password = password;
+      r = await fetch(`/api/users/${currentUserId}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(body)
+      });
+    }
+    data = await r.json();
+    if (data.ok) {
+      closeUserModal();
+      loadUsers();
+    } else {
+      setMsg(msg, 'err', data.msg || 'Chyba.');
+    }
+  }
+
+  async function deleteUser(id, name) {
+    if (!confirm(`Opravdu smazat uživatele „${name}"?`)) return;
+    const r    = await fetch(`/api/users/${id}`, { method: 'DELETE' });
+    const data = await r.json();
+    if (data.ok) {
+      loadUsers();
+    } else {
+      alert(data.msg || 'Chyba smazání.');
+    }
+  }
+
+  // Změna vlastního hesla
+  function closePwModal() {
+    document.getElementById('pw-overlay').classList.remove('show');
+    ['pw-old','pw-new','pw-new2'].forEach(id => document.getElementById(id).value = '');
+    clearMsg('pw-msg');
+  }
+  async function changePassword() {
+    const old  = document.getElementById('pw-old').value;
+    const n1   = document.getElementById('pw-new').value;
+    const n2   = document.getElementById('pw-new2').value;
+    const msg  = document.getElementById('pw-msg');
+    if (n1 !== n2) { setMsg(msg, 'err', 'Nová hesla se neshodují.'); return; }
+    const r    = await fetch('/api/change-password', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ oldPassword: old, newPassword: n1 })
+    });
+    const data = await r.json();
+    setMsg(msg, data.ok ? 'ok' : 'err', data.msg);
+    if (data.ok) setTimeout(closePwModal, 1500);
+  }
+
+  // Helpery
+  function setMsg(el, cls, text) {
+    if (typeof el === 'string') el = document.getElementById(el);
+    el.className = 'msg ' + cls;
+    el.textContent = text;
+  }
+  function clearMsg(id) {
+    const el = document.getElementById(id);
+    el.className = 'msg';
+    el.textContent = '';
+  }
+
+  // Zavření modálů kliknutím mimo
+  ['user-overlay','pw-overlay'].forEach(id => {
+    document.getElementById(id).addEventListener('click', e => {
+      if (e.target.id === id) {
+        if (id === 'user-overlay') closeUserModal();
+        else closePwModal();
+      }
+    });
+  });
+
+  // Enter v polích spustí uložení
+  document.getElementById('user-overlay').addEventListener('keydown', e => {
+    if (e.key === 'Enter') saveUser();
+  });
+</script>
+</body>
+</html>

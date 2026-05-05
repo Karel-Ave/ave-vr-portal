@@ -3,133 +3,362 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>AVE Hotels â PortÃ¡l</title>
+<title>AVE Hotels – Portál</title>
 <style>
   * { box-sizing: border-box; margin: 0; padding: 0; }
-  body { min-height: 100vh; background: #f5f5f0; font-family: 'Segoe UI', sans-serif; color: #1a1a18; }
-  #topbar { background: #1a1a18; height: 56px; display: flex; align-items: center; padding: 0 24px; gap: 16px; position: relative; }
-  .topbar-logo { position: absolute; left: 50%; transform: translateX(-50%); display: flex; align-items: center; gap: 10px; }
-  .topbar-right { margin-left: auto; display: flex; align-items: center; gap: 12px; }
-  .user-badge { color: #aaa; font-size: 13px; }
-  .btn-sm { padding: 5px 12px; border-radius: 5px; border: 1px solid #444; background: transparent; color: #ccc; font-size: 12px; cursor: pointer; transition: all .15s; }
-  .btn-sm:hover { background: #333; color: #fff; }
-  .main { max-width: 1000px; margin: 40px auto; padding: 0 24px; }
-  h1 { font-size: 22px; font-weight: 600; margin-bottom: 8px; }
-  .subtitle { color: #888; font-size: 14px; margin-bottom: 32px; }
-  .grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(220px, 1fr)); gap: 16px; }
-  .card { background: #fff; border-radius: 10px; padding: 24px 20px; box-shadow: 0 1px 4px rgba(0,0,0,.08); cursor: pointer; transition: box-shadow .15s, transform .15s; text-decoration: none; color: inherit; display: block; border: 1px solid #e8e8e0; }
-  .card:hover { box-shadow: 0 4px 16px rgba(0,0,0,.12); transform: translateY(-2px); }
-  .card-icon { font-size: 32px; margin-bottom: 12px; }
-  .card-title { font-size: 15px; font-weight: 600; margin-bottom: 4px; }
-  .card-desc { font-size: 12px; color: #888; }
-  .card.disabled { opacity: 0.45; cursor: not-allowed; pointer-events: none; }
-  .badge-soon { display: inline-block; font-size: 10px; background: #e8e8e0; color: #888; border-radius: 4px; padding: 1px 6px; margin-top: 6px; }
-  .modal-overlay { display: none; position: fixed; inset: 0; background: rgba(0,0,0,.5); z-index: 1000; align-items: center; justify-content: center; }
-  .modal-overlay.show { display: flex; }
-  .modal { background: #fff; border-radius: 10px; padding: 28px 28px 20px; width: 360px; box-shadow: 0 8px 32px rgba(0,0,0,.3); }
-  .modal h2 { font-size: 16px; margin-bottom: 20px; }
-  .modal label { display: block; font-size: 11px; font-weight: 600; color: #555; margin-bottom: 4px; text-transform: uppercase; letter-spacing: .05em; }
-  .modal input { width: 100%; padding: 8px 10px; border: 1px solid #ddd; border-radius: 5px; font-size: 13px; margin-bottom: 12px; outline: none; }
-  .modal input:focus { border-color: #2a5caa; }
-  .modal-btns { display: flex; gap: 8px; justify-content: flex-end; margin-top: 4px; }
-  .btn-primary { padding: 7px 16px; background: #1a1a18; color: #fff; border: none; border-radius: 5px; font-size: 13px; cursor: pointer; }
-  .btn-secondary { padding: 7px 14px; background: #f5f5f0; border: 1px solid #ddd; border-radius: 5px; font-size: 13px; cursor: pointer; }
-  .msg { font-size: 12px; margin-top: 8px; min-height: 16px; }
-  .msg.ok { color: #2d7a2d; }
-  .msg.err { color: #c00; }
+
+  body {
+    min-height: 100vh;
+    background: #3a3a3a;
+    font-family: 'Segoe UI', system-ui, sans-serif;
+    color: #e0e0e0;
+  }
+
+  /* ── Horní lišta ── */
+  #topbar {
+    background: #0f0f0f;
+    height: 58px;
+    display: flex;
+    align-items: center;
+    padding: 0 24px;
+    position: relative;
+    border-bottom: 1px solid #1e1e1e;
+  }
+  .topbar-logo {
+    position: absolute;
+    left: 50%;
+    transform: translateX(-50%);
+  }
+  .topbar-logo img {
+    height: 36px;
+    object-fit: contain;
+    filter: brightness(0) invert(1);
+  }
+  .topbar-right {
+    margin-left: auto;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+  }
+  .user-badge {
+    color: #666;
+    font-size: 13px;
+  }
+  .btn-top {
+    padding: 5px 14px;
+    border-radius: 6px;
+    border: 1px solid #333;
+    background: transparent;
+    color: #aaa;
+    font-size: 12px;
+    cursor: pointer;
+    transition: all .15s;
+    text-decoration: none;
+    font-family: inherit;
+  }
+  .btn-top:hover { background: #222; color: #fff; border-color: #555; }
+
+  /* ── Obsah ── */
+  .main {
+    max-width: 1100px;
+    margin: 48px auto;
+    padding: 0 28px;
+  }
+  .welcome {
+    margin-bottom: 36px;
+  }
+  .welcome h1 {
+    font-size: 24px;
+    font-weight: 600;
+    color: #e8e8e8;
+    margin-bottom: 4px;
+  }
+  .welcome p {
+    color: #666;
+    font-size: 14px;
+  }
+
+  /* ── Sekce ── */
+  .section-label {
+    font-size: 10px;
+    font-weight: 700;
+    letter-spacing: 0.14em;
+    text-transform: uppercase;
+    color: #555;
+    margin-bottom: 14px;
+    margin-top: 32px;
+  }
+  .section-label:first-of-type { margin-top: 0; }
+
+  /* ── Mřížka karet ── */
+  .grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(210px, 1fr));
+    gap: 14px;
+  }
+
+  /* ── Karta ── */
+  .card {
+    background: #1a1a1a;
+    border: 1px solid #2a2a2a;
+    border-radius: 12px;
+    padding: 24px 20px 20px;
+    cursor: pointer;
+    transition: background .18s, border-color .18s, transform .18s;
+    text-decoration: none;
+    color: inherit;
+    display: block;
+  }
+  .card:hover {
+    background: #252525;
+    border-color: #3a3a3a;
+    transform: translateY(-2px);
+  }
+  .card.disabled {
+    opacity: 0.38;
+    cursor: not-allowed;
+    pointer-events: none;
+  }
+  .card-icon {
+    font-size: 28px;
+    margin-bottom: 14px;
+    line-height: 1;
+  }
+  .card-title {
+    font-size: 14px;
+    font-weight: 600;
+    color: #e0e0e0;
+    margin-bottom: 5px;
+  }
+  .card-desc {
+    font-size: 12px;
+    color: #555;
+    line-height: 1.4;
+  }
+  .badge-soon {
+    display: inline-block;
+    font-size: 9px;
+    font-weight: 600;
+    letter-spacing: 0.08em;
+    background: #222;
+    color: #555;
+    border: 1px solid #2e2e2e;
+    border-radius: 4px;
+    padding: 2px 7px;
+    margin-top: 8px;
+    text-transform: uppercase;
+  }
+
+  /* ── Modální okno ── */
+  .overlay {
+    display: none;
+    position: fixed;
+    inset: 0;
+    background: rgba(0,0,0,.7);
+    z-index: 1000;
+    align-items: center;
+    justify-content: center;
+  }
+  .overlay.show { display: flex; }
+  .modal {
+    background: #1e1e1e;
+    border: 1px solid #2e2e2e;
+    border-radius: 12px;
+    padding: 28px;
+    width: 360px;
+    box-shadow: 0 12px 40px rgba(0,0,0,.6);
+  }
+  .modal h2 { font-size: 15px; font-weight: 600; color: #e0e0e0; margin-bottom: 20px; }
+  .modal label {
+    display: block;
+    font-size: 10px;
+    font-weight: 700;
+    color: #666;
+    text-transform: uppercase;
+    letter-spacing: 0.07em;
+    margin-bottom: 5px;
+  }
+  .modal input {
+    width: 100%;
+    padding: 9px 11px;
+    background: #111;
+    border: 1px solid #333;
+    border-radius: 6px;
+    font-size: 13px;
+    color: #e0e0e0;
+    margin-bottom: 14px;
+    outline: none;
+    font-family: inherit;
+    transition: border-color .15s;
+  }
+  .modal input:focus { border-color: #555; }
+  .modal-btns { display: flex; gap: 8px; justify-content: flex-end; margin-top: 6px; }
+  .btn-secondary {
+    padding: 7px 16px;
+    background: transparent;
+    border: 1px solid #333;
+    border-radius: 6px;
+    color: #888;
+    font-size: 13px;
+    cursor: pointer;
+    font-family: inherit;
+    transition: all .15s;
+  }
+  .btn-secondary:hover { background: #222; color: #ccc; }
+  .btn-primary {
+    padding: 7px 16px;
+    background: #e0e0e0;
+    color: #111;
+    border: none;
+    border-radius: 6px;
+    font-size: 13px;
+    font-weight: 700;
+    cursor: pointer;
+    font-family: inherit;
+    transition: background .15s;
+  }
+  .btn-primary:hover { background: #fff; }
+  .msg { font-size: 12px; min-height: 18px; margin-top: 6px; }
+  .msg.ok  { color: #5cb85c; }
+  .msg.err { color: #e05555; }
 </style>
 </head>
 <body>
+
 <div id="topbar">
   <div class="topbar-logo">
-    <svg width="90" height="30" viewBox="0 0 300 100" xmlns="http://www.w3.org/2000/svg">
-      <text x="0" y="72" font-family="Georgia, serif" font-size="90" font-weight="700" fill="#fff" letter-spacing="-5">AVE</text>
-      <text x="32" y="95" font-family="'Segoe UI', sans-serif" font-size="22" fill="#aaa" letter-spacing="12">HOTELS</text>
-    </svg>
+    <img src="/static/logo.png" alt="AVE Hotels">
   </div>
   <div class="topbar-right">
-    <span class="user-badge" id="user-name">â¦</span>
-    <button class="btn-sm" onclick="document.getElementById('pw-modal').classList.add('show')">ð ZmÄnit heslo</button>
-    <a href="/logout" class="btn-sm">OdhlÃ¡sit</a>
+    <span class="user-badge" id="user-label"></span>
+    <button class="btn-top" onclick="document.getElementById('pw-overlay').classList.add('show')">Změnit heslo</button>
+    <a href="/logout" class="btn-top">Odhlásit</a>
   </div>
 </div>
 
 <div class="main">
-  <h1>VÃ­tej, <span id="greet-name">â¦</span>!</h1>
-  <div class="subtitle">InternÃ­ portÃ¡l AVE Hotels</div>
-  <div class="grid">
-    <a href="/tvorba-rozpisu" class="card">
-      <div class="card-icon">âï¸</div>
-      <div class="card-title">Rozpis</div>
-      <div class="card-desc">Rozpis směn</div>
-    </a>
-    <div class="card disabled">
-      <div class="card-icon">ð</div>
-      <div class="card-title">PracovnÃ­ smlouvy</div>
-      <div class="card-desc">AutomatickÃ© generovÃ¡nÃ­ smluv</div>
-      <span class="badge-soon">PÅipravuje se</span>
-    </div>
-    <div class="card disabled">
-      <div class="card-icon">ð«</div>
-      <div class="card-title">Blacklist</div>
-      <div class="card-desc">SprÃ¡va blacklistu hostÅ¯</div>
-      <span class="badge-soon">PÅipravuje se</span>
-    </div>
-    <div class="card disabled">
-      <div class="card-icon">ð°</div>
-      <div class="card-title">VÃ½platy</div>
-      <div class="card-desc">PÅÃ­platky, pokuty a vÃ½poÄty</div>
-      <span class="badge-soon">PÅipravuje se</span>
-    </div>
-    <div class="card disabled">
-      <div class="card-icon">ð</div>
-      <div class="card-title">Provize</div>
-      <div class="card-desc">Provize z prodeje a smÄnÃ¡rny</div>
-      <span class="badge-soon">PÅipravuje se</span>
-    </div>
+  <div class="welcome">
+    <h1>Vítej, <span id="greet-name"></span>!</h1>
+    <p>Interní portál AVE Hotels</p>
+  </div>
+
+  <!-- Karta skupiny: Rozpis -->
+  <div class="section-label">Rozpis směn</div>
+  <div class="grid" id="grid-rozpis"></div>
+
+  <!-- Karta skupiny: Ostatní moduly -->
+  <div class="section-label">Ostatní moduly</div>
+  <div class="grid" id="grid-moduly"></div>
+
+  <!-- Karta skupiny: Správa (jen admin) -->
+  <div id="section-admin" style="display:none">
+    <div class="section-label">Správa</div>
+    <div class="grid" id="grid-admin"></div>
   </div>
 </div>
 
-<div class="modal-overlay" id="pw-modal">
+<!-- Modál: Změna hesla -->
+<div class="overlay" id="pw-overlay">
   <div class="modal">
-    <h2>ð ZmÄna hesla</h2>
-    <label>SouÄasnÃ© heslo</label>
-    <input type="password" id="pw-old">
-    <label>NovÃ© heslo</label>
-    <input type="password" id="pw-new" placeholder="min. 6 znakÅ¯">
-    <label>NovÃ© heslo znovu</label>
-    <input type="password" id="pw-new2">
+    <h2>Změna hesla</h2>
+    <label>Současné heslo</label>
+    <input type="password" id="pw-old" placeholder="">
+    <label>Nové heslo</label>
+    <input type="password" id="pw-new" placeholder="min. 6 znaků">
+    <label>Nové heslo znovu</label>
+    <input type="password" id="pw-new2" placeholder="">
     <div class="msg" id="pw-msg"></div>
     <div class="modal-btns">
-      <button class="btn-secondary" onclick="closePwModal()">ZruÅ¡it</button>
-      <button class="btn-primary" onclick="changePassword()">UloÅ¾it</button>
+      <button class="btn-secondary" onclick="closePwModal()">Zrušit</button>
+      <button class="btn-primary" onclick="changePassword()">Uložit</button>
     </div>
   </div>
 </div>
 
 <script>
-  fetch('/api/me').then(r=>r.json()).then(u => {
-    document.getElementById('user-name').textContent = u.username;
-    document.getElementById('greet-name').textContent = u.name;
-  });
-  function closePwModal() {
-    document.getElementById('pw-modal').classList.remove('show');
-    ['pw-old','pw-new','pw-new2'].forEach(id => document.getElementById(id).value = '');
-    document.getElementById('pw-msg').textContent = '';
+  // Definice karet
+  const CARDS_ROZPIS_ADMIN = [
+    { icon: '📋', title: 'Tvorba rozpisu', desc: 'Vytvoření nového měsíčního rozpisu', href: '/tvorba-rozpisu' },
+    { icon: '✏️', title: 'Editace rozpisu', desc: 'Úprava a prohlížení hotového rozpisu', href: '/rozpis-view' }
+  ];
+  const CARDS_ROZPIS_VEDOUCI = [
+    { icon: '✏️', title: 'Editace rozpisu', desc: 'Úprava a prohlížení hotového rozpisu', href: '/rozpis-view' }
+  ];
+  const CARDS_MODULY = [
+    { icon: '⭐', title: 'Odměny', desc: 'Záznamy odměn recepčních', href: null },
+    { icon: '💰', title: 'Provize', desc: 'Provize z prodeje a směnárny', href: null },
+    { icon: '📄', title: 'Pracovní smlouvy', desc: 'Generování a správa smluv', href: null },
+    { icon: '🚫', title: 'Blacklist', desc: 'Správa blacklistu hostů', href: null }
+  ];
+  const CARDS_ADMIN = [
+    { icon: '👥', title: 'Správa uživatelů', desc: 'Přidávání a správa přístupů', href: '/admin' }
+  ];
+
+  function makeCard(c) {
+    const el = document.createElement(c.href ? 'a' : 'div');
+    if (c.href) el.href = c.href;
+    el.className = 'card' + (c.href ? '' : ' disabled');
+    el.innerHTML = `
+      <div class="card-icon">${c.icon}</div>
+      <div class="card-title">${c.title}</div>
+      <div class="card-desc">${c.desc}</div>
+      ${!c.href ? '<span class="badge-soon">Připravuje se</span>' : ''}
+    `;
+    return el;
   }
-  async function changePassword() {
-    const old = document.getElementById('pw-old').value;
-    const n1 = document.getElementById('pw-new').value;
-    const n2 = document.getElementById('pw-new2').value;
+
+  fetch('/api/me').then(r => r.json()).then(user => {
+    document.getElementById('user-label').textContent = user.username;
+    document.getElementById('greet-name').textContent = user.name;
+
+    const isAdmin = user.role === 'admin';
+
+    // Rozpis karty
+    const grRozpis = document.getElementById('grid-rozpis');
+    (isAdmin ? CARDS_ROZPIS_ADMIN : CARDS_ROZPIS_VEDOUCI).forEach(c => grRozpis.appendChild(makeCard(c)));
+
+    // Moduly
+    const grModuly = document.getElementById('grid-moduly');
+    CARDS_MODULY.forEach(c => grModuly.appendChild(makeCard(c)));
+
+    // Admin sekce
+    if (isAdmin) {
+      document.getElementById('section-admin').style.display = 'block';
+      const grAdmin = document.getElementById('grid-admin');
+      CARDS_ADMIN.forEach(c => grAdmin.appendChild(makeCard(c)));
+    }
+  });
+
+  // Změna hesla
+  function closePwModal() {
+    document.getElementById('pw-overlay').classList.remove('show');
+    ['pw-old', 'pw-new', 'pw-new2'].forEach(id => document.getElementById(id).value = '');
     const msg = document.getElementById('pw-msg');
-    if (n1 !== n2) { msg.className='msg err'; msg.textContent='NovÃ¡ hesla se neshodujÃ­.'; return; }
-    const r = await fetch('/api/change-password', { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({oldPassword:old,newPassword:n1}) });
+    msg.textContent = '';
+    msg.className = 'msg';
+  }
+
+  async function changePassword() {
+    const old  = document.getElementById('pw-old').value;
+    const n1   = document.getElementById('pw-new').value;
+    const n2   = document.getElementById('pw-new2').value;
+    const msg  = document.getElementById('pw-msg');
+    if (n1 !== n2) { msg.className = 'msg err'; msg.textContent = 'Nová hesla se neshodují.'; return; }
+    const r    = await fetch('/api/change-password', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ oldPassword: old, newPassword: n1 })
+    });
     const data = await r.json();
     msg.className = 'msg ' + (data.ok ? 'ok' : 'err');
     msg.textContent = data.msg;
     if (data.ok) setTimeout(closePwModal, 1500);
   }
-  document.getElementById('pw-modal').addEventListener('click', e => { if (e.target === document.getElementById('pw-modal')) closePwModal(); });
+
+  // Zavření modálu kliknutím mimo
+  document.getElementById('pw-overlay').addEventListener('click', e => {
+    if (e.target === document.getElementById('pw-overlay')) closePwModal();
+  });
 </script>
 </body>
 </html>
