@@ -802,16 +802,17 @@ function blBuildEmailHtml(adds, removes) {
     html += `<p style="${SP}">Tyto hosty v žádném případě neubytovávejte.</p>`;
   }
 
+  const LI = 'font-size:11pt;font-family:Calibri,Arial,sans-serif;';
   html += `<p style="margin: 16px 0 6px 0;"><strong>Prosím:</strong></p>
-  <ul style="margin: 0 0 14px 0; padding-left: 22px; font-size: 11pt;">
-    <li style="margin-bottom:5px;">informujte své kolegy o této změně,</li>
-    <li style="margin-bottom:5px;">vytiskněte si aktuální verzi z přílohy či ze složky <em>nastenka\\Blacklist</em>,</li>
-    <li>starší verze nahraďte aktuální.</li>
+  <ul style="margin: 0 0 14px 0; padding-left: 22px;">
+    <li style="${LI}margin-bottom:5px;">informujte své kolegy o této změně,</li>
+    <li style="${LI}margin-bottom:5px;">vytiskněte si aktuální verzi z přílohy či ze složky <em>nastenka\\Blacklist</em>,</li>
+    <li style="${LI}">starší verze nahraďte aktuální.</li>
   </ul>
   <p style="margin: 0 0 6px 0;"><strong>Postup pro hosty z Blacklistu:</strong></p>
-  <ul style="margin: 0 0 16px 0; padding-left: 22px; font-size: 11pt;">
-    <li style="margin-bottom:5px;">Pokud se některá z osob na blacklistu přijde ubytovat, přečtěte si důvod zařazení.</li>
-    <li>Pokud dle vzezření hosta a důvodu usoudíte, že nechcete jít s hostem do konfliktu, <strong>volejte VRQ</strong>.</li>
+  <ul style="margin: 0 0 16px 0; padding-left: 22px;">
+    <li style="${LI}margin-bottom:5px;">Pokud se některá z osob na blacklistu přijde ubytovat, přečtěte si důvod zařazení.</li>
+    <li style="${LI}">Pokud dle vzezření hosta a důvodu usoudíte, že nechcete jít s hostem do konfliktu, <strong>volejte VRQ</strong>.</li>
   </ul>
   <p style="${SP}">S pozdravem</p>
   </div>`;
