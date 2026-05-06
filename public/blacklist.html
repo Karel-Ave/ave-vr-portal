@@ -531,18 +531,6 @@ td.col-remove {
   overflow-y: auto;
   margin-bottom: 12px;
 }
-#email-textarea {
-  width: 100%;
-  height: 160px;
-  font-size: 11px;
-  font-family: monospace;
-  border: 1px solid #ccc;
-  border-radius: 6px;
-  padding: 10px;
-  resize: vertical;
-  background: #f8f8f8;
-  outline: none;
-}
 
 /* ── Toast ── */
 #toast {
@@ -576,6 +564,103 @@ td.col-remove {
   vertical-align: middle;
 }
 @keyframes spin { to { transform: rotate(360deg); } }
+
+/* ── Custom date picker ── */
+.cdp-wrap { position: relative; display: block; width: 100%; }
+.cdp-row { display: flex; align-items: center; width: 100%; }
+.cdp-text {
+  flex: 1;
+  padding: 8px 10px;
+  border: 1px solid #ccc;
+  border-right: none;
+  border-radius: 6px 0 0 6px;
+  font-size: 13px;
+  font-family: inherit;
+  background: #fff;
+  outline: none;
+  cursor: pointer;
+  transition: border-color .15s;
+  width: 0;
+}
+.cdp-text:focus { border-color: #888; }
+.cdp-icon-btn {
+  padding: 0 10px;
+  height: 36px;
+  border: 1px solid #ccc;
+  border-left: none;
+  border-radius: 0 6px 6px 0;
+  background: #f5f5f5;
+  cursor: pointer;
+  font-size: 14px;
+  line-height: 1;
+  display: flex; align-items: center;
+  transition: background .15s;
+}
+.cdp-icon-btn:hover { background: #e8e8e8; }
+.cdp-popup {
+  position: absolute;
+  top: calc(100% + 4px);
+  left: 0;
+  z-index: 10000;
+  background: #fff;
+  border: 1px solid #ccc;
+  border-radius: 10px;
+  box-shadow: 0 6px 20px rgba(0,0,0,0.15);
+  width: 264px;
+  padding: 12px;
+  user-select: none;
+}
+.cdp-popup.cdp-above { top: auto; bottom: calc(100% + 4px); }
+.cdp-head { display: flex; gap: 6px; margin-bottom: 10px; }
+.cdp-sel {
+  flex: 1;
+  padding: 5px 6px;
+  border: 1px solid #ccc;
+  border-radius: 5px;
+  font-size: 12px;
+  font-family: inherit;
+  background: #fff;
+  cursor: pointer;
+  outline: none;
+}
+.cdp-sel:focus { border-color: #888; }
+.cdp-dow {
+  display: grid;
+  grid-template-columns: repeat(7, 1fr);
+  text-align: center;
+  font-size: 11px;
+  color: #999;
+  font-weight: 600;
+  margin-bottom: 4px;
+}
+.cdp-grid { display: grid; grid-template-columns: repeat(7, 1fr); gap: 2px; }
+.cdp-day {
+  text-align: center;
+  padding: 5px 2px;
+  border-radius: 5px;
+  font-size: 12px;
+  cursor: pointer;
+  transition: background .1s;
+}
+.cdp-day:hover:not(.cdp-empty):not(.cdp-disabled) { background: #e8f0fe; }
+.cdp-day.cdp-selected { background: #1a56a4; color: #fff !important; font-weight: 600; }
+.cdp-day.cdp-today:not(.cdp-selected) { font-weight: 700; color: #1a56a4; }
+.cdp-day.cdp-other { color: #ccc; cursor: default; }
+.cdp-day.cdp-empty { cursor: default; }
+.cdp-foot { display: flex; justify-content: space-between; margin-top: 10px; }
+.cdp-foot button {
+  padding: 4px 12px;
+  border-radius: 5px;
+  border: 1px solid #ccc;
+  background: #f5f5f5;
+  font-size: 12px;
+  font-family: inherit;
+  cursor: pointer;
+}
+.cdp-foot button:hover { background: #e8e8e8; }
+/* History filter date pickers - smaller */
+.history-filters .cdp-text { padding: 5px 8px; font-size: 12px; }
+.history-filters .cdp-icon-btn { height: 30px; font-size: 12px; }
 </style>
 </head>
 <body>
@@ -731,11 +816,9 @@ td.col-remove {
   <div class="modal modal-lg">
     <h2 id="email-modal-title">Export e-mailu</h2>
     <div id="email-preview-wrap"></div>
-    <textarea id="email-textarea" readonly placeholder="HTML kód e-mailu…"></textarea>
     <div class="modal-btns">
       <button class="btn-cancel" id="btn-email-close">Zavřít</button>
-      <button class="btn-top" id="btn-email-download" style="padding:7px 18px;font-size:12px;">Stáhnout .html</button>
-      <button class="btn-save" id="btn-email-copy">Kopírovat HTML</button>
+      <button class="btn-save" id="btn-email-copy">Kopírovat</button>
     </div>
   </div>
 </div>
@@ -955,6 +1038,7 @@ function createPersonBlock(num) {
   }
   nameInp.addEventListener('input', checkDup);
   bdateInp.addEventListener('change', checkDup);
+  initDatePickers(div);
   return div;
 }
 
@@ -1266,7 +1350,7 @@ async function generateEmailFromSelection() {
     if (!r.ok) throw new Error(r.msg || 'Chyba');
     hideOverlay('overlay-email-select');
     document.getElementById('email-preview-wrap').innerHTML = r.html;
-    document.getElementById('email-textarea').value = r.html;
+    document.getElementById('email-preview-wrap').dataset.rawHtml = r.html;
     document.getElementById('email-modal-title').textContent = 'E-mail vygenerován';
     showOverlay('overlay-email');
   } catch(e) {
@@ -1276,24 +1360,16 @@ async function generateEmailFromSelection() {
   }
 }
 
-function copyEmail() {
-  const ta = document.getElementById('email-textarea');
-  ta.select();
-  document.execCommand('copy');
-  showToast('HTML zkopírováno do schránky.');
-}
-
-function downloadEmail() {
-  const html = document.getElementById('email-textarea').value;
-  const blob = new Blob([html], { type: 'text/html;charset=utf-8' });
-  const url  = URL.createObjectURL(blob);
-  const a = document.createElement('a');
-  const now = new Date();
-  const pad2 = n => String(n).padStart(2,'0');
-  a.href = url;
-  a.download = `blacklist_email_${now.getFullYear()}${pad2(now.getMonth()+1)}${pad2(now.getDate())}.html`;
-  a.click();
-  URL.revokeObjectURL(url);
+async function copyEmail() {
+  const html = document.getElementById('email-preview-wrap').dataset.rawHtml || '';
+  try {
+    await navigator.clipboard.write([
+      new ClipboardItem({ 'text/html': new Blob([html], { type: 'text/html' }) })
+    ]);
+    showToast('Zkopírováno do schránky.');
+  } catch(e) {
+    showToast('Kopírování se nezdařilo: ' + e.message, true);
+  }
 }
 
 // ── Event listeners ───────────────────────────────────────────────────────────
@@ -1328,7 +1404,6 @@ document.getElementById('btn-email-select-cancel').addEventListener('click', () 
 document.getElementById('btn-email-select-submit').addEventListener('click', generateEmailFromSelection);
 document.getElementById('btn-email-close').addEventListener('click', () => hideOverlay('overlay-email'));
 document.getElementById('btn-email-copy').addEventListener('click', copyEmail);
-document.getElementById('btn-email-download').addEventListener('click', downloadEmail);
 
 document.getElementById('search').addEventListener('input', applyFilter);
 
@@ -1339,6 +1414,165 @@ document.getElementById('search').addEventListener('input', applyFilter);
   });
 });
 
+// ── Custom date picker ────────────────────────────────────────────────────────
+
+(function() {
+  const MONTHS = ['Leden','Únor','Březen','Duben','Květen','Červen',
+                  'Červenec','Srpen','Září','Říjen','Listopad','Prosinec'];
+  const DOW = ['Po','Út','St','Čt','Pá','So','Ne'];
+  let openPopup = null;
+
+  function closeAll() {
+    if (openPopup) { openPopup.style.display = 'none'; openPopup = null; }
+  }
+  document.addEventListener('mousedown', function(e) {
+    if (openPopup && !openPopup.closest('.cdp-wrap').contains(e.target)) closeAll();
+  });
+
+  function attachPicker(input) {
+    if (input._cdp) return;
+    input._cdp = true;
+    input.style.display = 'none';
+
+    const wrap = document.createElement('div');
+    wrap.className = 'cdp-wrap';
+    input.parentNode.insertBefore(wrap, input);
+    wrap.appendChild(input);
+
+    const row = document.createElement('div');
+    row.className = 'cdp-row';
+    row.innerHTML = `<input type="text" class="cdp-text" readonly placeholder="dd.mm.rrrr">` +
+                    `<button type="button" class="cdp-icon-btn" tabindex="-1">&#128197;</button>`;
+    wrap.insertBefore(row, input);
+
+    const dispInp = row.querySelector('.cdp-text');
+    const iconBtn = row.querySelector('.cdp-icon-btn');
+
+    const popup = document.createElement('div');
+    popup.className = 'cdp-popup';
+    popup.style.display = 'none';
+    wrap.appendChild(popup);
+
+    const today = new Date();
+    let viewYear  = today.getFullYear();
+    let viewMonth = today.getMonth();
+
+    function getValue() { return input.value; } // YYYY-MM-DD or ''
+
+    function setValue(yyyy, mm, dd) {
+      const str = `${yyyy}-${String(mm+1).padStart(2,'0')}-${String(dd).padStart(2,'0')}`;
+      input.value = str;
+      dispInp.value = `${String(dd).padStart(2,'0')}.${String(mm+1).padStart(2,'0')}.${yyyy}`;
+      input.dispatchEvent(new Event('change', { bubbles: true }));
+      closeAll();
+    }
+
+    function clearValue() {
+      input.value = '';
+      dispInp.value = '';
+      input.dispatchEvent(new Event('change', { bubbles: true }));
+      closeAll();
+    }
+
+    function buildYearOptions() {
+      let html = '';
+      const startY = today.getFullYear() - 100, endY = today.getFullYear() + 5;
+      for (let y = endY; y >= startY; y--)
+        html += `<option value="${y}"${y === viewYear ? ' selected' : ''}>${y}</option>`;
+      return html;
+    }
+
+    function renderPopup() {
+      const selVal = getValue();
+      let selY = 0, selM = 0, selD = 0;
+      if (selVal) { const p = selVal.split('-'); selY=+p[0]; selM=+p[1]-1; selD=+p[2]; }
+
+      const firstDay = new Date(viewYear, viewMonth, 1).getDay(); // 0=Sun
+      const offset   = (firstDay === 0) ? 6 : firstDay - 1; // Mon=0
+      const daysInMonth = new Date(viewYear, viewMonth + 1, 0).getDate();
+
+      let grid = '';
+      for (let i = 0; i < offset; i++) grid += `<div class="cdp-day cdp-empty"></div>`;
+      for (let d = 1; d <= daysInMonth; d++) {
+        const isSel   = selY === viewYear && selM === viewMonth && selD === d;
+        const isToday = today.getFullYear()===viewYear && today.getMonth()===viewMonth && today.getDate()===d;
+        let cls = 'cdp-day';
+        if (isSel)   cls += ' cdp-selected';
+        if (isToday) cls += ' cdp-today';
+        grid += `<div class="${cls}" data-d="${d}">${d}</div>`;
+      }
+
+      popup.innerHTML =
+        `<div class="cdp-head">` +
+          `<select class="cdp-sel cdp-sel-m">${MONTHS.map((n,i)=>`<option value="${i}"${i===viewMonth?' selected':''}>${n}</option>`).join('')}</select>` +
+          `<select class="cdp-sel cdp-sel-y">${buildYearOptions()}</select>` +
+        `</div>` +
+        `<div class="cdp-dow">${DOW.map(d=>`<span>${d}</span>`).join('')}</div>` +
+        `<div class="cdp-grid">${grid}</div>` +
+        `<div class="cdp-foot"><button class="cdp-btn-clear">Vymazat</button><button class="cdp-btn-today">Dnes</button></div>`;
+
+      popup.querySelector('.cdp-sel-m').addEventListener('change', function() {
+        viewMonth = +this.value; renderPopup();
+      });
+      popup.querySelector('.cdp-sel-y').addEventListener('change', function() {
+        viewYear = +this.value; renderPopup();
+      });
+      popup.querySelector('.cdp-btn-clear').addEventListener('click', function(e) {
+        e.stopPropagation(); clearValue();
+      });
+      popup.querySelector('.cdp-btn-today').addEventListener('click', function(e) {
+        e.stopPropagation();
+        viewYear = today.getFullYear(); viewMonth = today.getMonth();
+        setValue(viewYear, viewMonth, today.getDate());
+      });
+      popup.querySelectorAll('.cdp-day[data-d]').forEach(el => {
+        el.addEventListener('mousedown', function(e) {
+          e.preventDefault(); e.stopPropagation();
+          setValue(viewYear, viewMonth, +this.dataset.d);
+        });
+      });
+    }
+
+    function openPopupFn() {
+      if (openPopup && openPopup !== popup) closeAll();
+      const cur = getValue();
+      if (cur) { const p = cur.split('-'); viewYear=+p[0]; viewMonth=+p[1]-1; }
+      else { viewYear = today.getFullYear(); viewMonth = today.getMonth(); }
+      renderPopup();
+      popup.style.display = 'block';
+      // flip above if not enough space below
+      const rect = wrap.getBoundingClientRect();
+      if (rect.bottom + 310 > window.innerHeight && rect.top > 310)
+        popup.classList.add('cdp-above');
+      else
+        popup.classList.remove('cdp-above');
+      openPopup = popup;
+    }
+
+    dispInp.addEventListener('mousedown', function(e) {
+      e.preventDefault();
+      if (popup.style.display !== 'none') { closeAll(); return; }
+      openPopupFn();
+    });
+    iconBtn.addEventListener('mousedown', function(e) {
+      e.preventDefault();
+      if (popup.style.display !== 'none') { closeAll(); return; }
+      openPopupFn();
+    });
+
+    // Reflect existing value on init
+    if (input.value) {
+      const p = input.value.split('-');
+      if (p.length === 3)
+        dispInp.value = `${p[2]}.${p[1]}.${p[0]}`;
+    }
+  }
+
+  window.initDatePickers = function(root) {
+    (root || document).querySelectorAll('input[type="date"]').forEach(inp => attachPicker(inp));
+  };
+})();
+
 // ── Init ──────────────────────────────────────────────────────────────────────
 
 async function init() {
@@ -1348,6 +1582,7 @@ async function init() {
   } catch(e) {}
 
   await loadEntries();
+  initDatePickers(document);
 }
 
 init();

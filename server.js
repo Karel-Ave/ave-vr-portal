@@ -1071,6 +1071,7 @@ app.get('/api/blacklist/export/pdf', requireLogin, async (req, res) => {
         if (y + h > pageH - mB - 20) { pages++; y = mT + rh(null, true, hdrFS); }
         y += h;
       }
+      if (y + 14 > pageH - mB) pages++; // account for signature line
       return pages;
     }
 
@@ -1142,8 +1143,9 @@ app.get('/api/blacklist/export/pdf', requireLogin, async (req, res) => {
         y += rh;
       }
 
+      if (y + 14 > pageH - mB) { doc.addPage(); y = mT; }
       doc.font('Helvetica-Bold').fontSize(8).fillColor('#000000')
-        .text(pdfSafe(`${dateStr}, ${userName}`), mL, pageH - mB + 2, { align: 'right', width: tableW });
+        .text(pdfSafe(`${dateStr}, ${userName}`), mL, y + 4, { align: 'right', width: tableW });
 
       return doc;
     }
