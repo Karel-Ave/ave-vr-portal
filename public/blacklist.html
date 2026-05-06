@@ -11,7 +11,8 @@ body {
   font-family: 'Segoe UI', system-ui, sans-serif;
   background: #e8e8e4;
   color: #1a1a1a;
-  min-height: 100vh;
+  height: 100vh;
+  overflow: hidden;
   display: flex;
   flex-direction: column;
 }
@@ -74,19 +75,47 @@ body {
   padding: 20px;
 }
 
-/* ── Intro box ── */
-#intro-box {
+/* ── Email selection modal ── */
+#email-select-list {
+  max-height: 320px;
+  overflow-y: auto;
+  border: 1px solid #e0e0dc;
+  border-radius: 6px;
   background: #fff;
-  border: 1px solid #d0d0cc;
-  border-radius: 8px;
-  padding: 14px 18px;
-  margin-bottom: 16px;
-  font-size: 13px;
-  line-height: 1.55;
-  color: #1a1a1a;
+  margin-bottom: 12px;
 }
-#intro-box p { margin-bottom: 8px; }
-#intro-box p:last-child { margin-bottom: 0; }
+.email-select-row {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  padding: 9px 12px;
+  border-bottom: 1px solid #f0f0ec;
+  cursor: pointer;
+  user-select: none;
+}
+.email-select-row:last-child { border-bottom: none; }
+.email-select-row:hover { background: #f8f8f5; }
+.email-select-row input[type=checkbox] { flex-shrink: 0; margin-top: 3px; cursor: pointer; }
+.email-select-info { flex: 1; min-width: 0; }
+.email-select-name { font-size: 13px; font-weight: 600; color: #1a1a1a; }
+.email-select-meta { font-size: 11px; color: #888; margin-top: 2px; word-break: break-word; }
+.email-select-actions {
+  display: flex;
+  gap: 8px;
+  margin-bottom: 8px;
+  align-items: center;
+}
+.email-select-actions button {
+  padding: 3px 10px;
+  border: 1px solid #ccc;
+  border-radius: 4px;
+  background: transparent;
+  font-size: 11px;
+  cursor: pointer;
+  font-family: inherit;
+  color: #555;
+}
+.email-select-actions button:hover { background: #f0f0f0; }
 
 /* ── Search ── */
 #search-row {
@@ -558,8 +587,6 @@ td.col-remove {
 
   <!-- List view -->
   <div id="list-view">
-    <div id="intro-box">Načítám…</div>
-
     <div id="search-row">
       <input id="search" placeholder="Hledat jméno, hotel, důvod…" autocomplete="off">
       <span id="count-badge"></span>
@@ -659,6 +686,24 @@ td.col-remove {
     <div class="modal-btns">
       <button class="btn-cancel" id="btn-intro-cancel">Zrušit</button>
       <button class="btn-save" id="btn-intro-submit">Uložit</button>
+    </div>
+  </div>
+</div>
+
+<!-- Modal: Výběr změn pro e-mail -->
+<div class="overlay" id="overlay-email-select">
+  <div class="modal modal-lg">
+    <h2>Výběr změn pro e-mail</h2>
+    <p style="font-size:12px;color:#666;margin-bottom:10px;">Zaškrtněte změny, které chcete zahrnout do e-mailu:</p>
+    <div class="email-select-actions">
+      <button onclick="emailSelectAll(true)">Vybrat vše</button>
+      <button onclick="emailSelectAll(false)">Zrušit výběr</button>
+      <span id="email-select-count" style="font-size:11px;color:#888;margin-left:4px;"></span>
+    </div>
+    <div id="email-select-list"></div>
+    <div class="modal-btns">
+      <button class="btn-cancel" id="btn-email-select-cancel">Zrušit</button>
+      <button class="btn-save" id="btn-email-select-submit">Vygenerovat e-mail</button>
     </div>
   </div>
 </div>
@@ -1117,13 +1162,72 @@ async function exportPdf() {
 
 // ── Email export ──────────────────────────────────────────────────────────────
 
+let emailPendingItems = [];
+
 async function exportEmail() {
   const btn = document.getElementById('btn-email');
+  btn.disabled = true; btn.textContent = 'Načítám…';
+  try {
+    const r = await apiFetch('/api/blacklist/export/email/pending');
+    if (!r.ok) throw new Error(r.msg || 'Chyba');
+    if (!r.items || r.items.length === 0) { showToast('Žádné nové změny k odeslání.'); return; }
+    openEmailSelectModal(r.items);
+  } catch(e) {
+    showToast('Chyba: ' + e.message, true);
+  } finally {
+    btn.disabled = false; btn.textContent = 'Export e-mail';
+  }
+}
+
+function openEmailSelectModal(items) {
+  emailPendingItems = items;
+  const actionLabel = { ADD: 'Přidání', REMOVE: 'Odebrání' };
+  const list = document.getElementById('email-select-list');
+  list.innerHTML = items.map(item => {
+    const p = item.payload || {};
+    const entry = p.entry || p;
+    const name = entry.name || entry.original_name || '—';
+    const remReason = p.removalReason || '';
+    const origReason = entry.reason || entry.original_reason || '';
+    const preview = remReason
+      ? `Důvod odebrání: ${remReason.substring(0, 80)}`
+      : origReason.substring(0, 80);
+    return `<label class="email-select-row">
+      <input type="checkbox" class="email-sel-cb" data-id="${escHtml(item.id)}" checked onchange="updateEmailSelectCount()">
+      <div class="email-select-info">
+        <div class="email-select-name">
+          <span class="badge-action ${item.action}">${actionLabel[item.action] || item.action}</span>
+          &nbsp;${escHtml(name)}
+        </div>
+        <div class="email-select-meta">${escHtml(formatDatetime(item.timestamp))} · ${escHtml(item.user_name)}${preview ? ' · ' + escHtml(preview) : ''}</div>
+      </div>
+    </label>`;
+  }).join('');
+  updateEmailSelectCount();
+  showOverlay('overlay-email-select');
+}
+
+function updateEmailSelectCount() {
+  const checked = document.querySelectorAll('.email-sel-cb:checked').length;
+  document.getElementById('email-select-count').textContent =
+    `Vybráno: ${checked} z ${emailPendingItems.length}`;
+}
+
+function emailSelectAll(val) {
+  document.querySelectorAll('.email-sel-cb').forEach(cb => cb.checked = val);
+  updateEmailSelectCount();
+}
+
+async function generateEmailFromSelection() {
+  const checked = [...document.querySelectorAll('.email-sel-cb:checked')];
+  if (checked.length === 0) { showToast('Vyberte alespoň jednu změnu.', true); return; }
+  const ids = checked.map(cb => cb.dataset.id);
+  const btn = document.getElementById('btn-email-select-submit');
   btn.disabled = true; btn.textContent = 'Generuji…';
   try {
-    const r = await apiFetch('/api/blacklist/export/email', { method: 'POST' });
-    if (!r.ok) { showToast(r.msg || 'Chyba.', true); return; }
-    if (!r.html) { showToast(r.message || 'Žádné nové změny.'); return; }
+    const r = await apiFetch('/api/blacklist/export/email', { method: 'POST', body: JSON.stringify({ ids }) });
+    if (!r.ok) throw new Error(r.msg || 'Chyba');
+    hideOverlay('overlay-email-select');
     document.getElementById('email-preview-wrap').innerHTML = r.html;
     document.getElementById('email-textarea').value = r.html;
     document.getElementById('email-modal-title').textContent = 'E-mail vygenerován';
@@ -1131,7 +1235,7 @@ async function exportEmail() {
   } catch(e) {
     showToast('Chyba: ' + e.message, true);
   } finally {
-    btn.disabled = false; btn.textContent = 'Export e-mail';
+    btn.disabled = false; btn.textContent = 'Vygenerovat e-mail';
   }
 }
 
@@ -1183,6 +1287,8 @@ document.getElementById('hist-filter-to').addEventListener('change', renderHisto
 
 document.getElementById('btn-pdf').addEventListener('click', exportPdf);
 document.getElementById('btn-email').addEventListener('click', exportEmail);
+document.getElementById('btn-email-select-cancel').addEventListener('click', () => hideOverlay('overlay-email-select'));
+document.getElementById('btn-email-select-submit').addEventListener('click', generateEmailFromSelection);
 document.getElementById('btn-email-close').addEventListener('click', () => hideOverlay('overlay-email'));
 document.getElementById('btn-email-copy').addEventListener('click', copyEmail);
 document.getElementById('btn-email-download').addEventListener('click', downloadEmail);
@@ -1190,7 +1296,7 @@ document.getElementById('btn-email-download').addEventListener('click', download
 document.getElementById('search').addEventListener('input', applyFilter);
 
 // Close overlays on backdrop click
-['overlay-add','overlay-remove','overlay-intro','overlay-email'].forEach(id => {
+['overlay-add','overlay-remove','overlay-intro','overlay-email-select','overlay-email'].forEach(id => {
   document.getElementById(id).addEventListener('click', function(e) {
     if (e.target === this) hideOverlay(id);
   });
@@ -1204,7 +1310,7 @@ async function init() {
     currentUser = me;
   } catch(e) {}
 
-  await Promise.all([loadEntries(), loadIntro()]);
+  await loadEntries();
 }
 
 init();

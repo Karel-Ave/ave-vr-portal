@@ -1,7 +1,8 @@
-const express = require('express');
-const session = require('express-session');
-const bcrypt  = require('bcryptjs');
-const path    = require('path');
+const express     = require('express');
+const session     = require('express-session');
+const bcrypt      = require('bcryptjs');
+const path        = require('path');
+const PDFDocument = require('pdfkit');
 const { getPool, init } = require('./db');
 
 const app  = express();
@@ -723,6 +724,79 @@ function blStripHtml(html) {
     .trim();
 }
 
+function blHtmlEscape(s) {
+  return String(s || '').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+}
+
+function blBuildEmailHtml(adds, removes) {
+  let html = `<div style="font-family: Calibri, Arial, sans-serif; font-size: 11pt; max-width: 720px; color: #1a1a1a; line-height: 1.5;">`;
+  html += `<p>Vážení recepční,</p>`;
+
+  if (removes.length > 0) {
+    const pl = removes.length === 1
+      ? 'byla <strong>odstraněna</strong> následující osoba'
+      : 'byly <strong>odstraněny</strong> následující osoby';
+    html += `<p>z Blacklistu ${pl}:</p>`;
+    for (const r of removes) {
+      const p = r.payload;
+      const e = p.entry || p;
+      const name    = blHtmlEscape(e.original_name    || e.name    || '');
+      const hotel   = blHtmlEscape(e.original_hotel   || e.hotel   || '—');
+      const birth   = blHtmlEscape(blFormatDate(e.original_birth_date || e.birth_date || e.birthDate) || '—');
+      const reason  = blHtmlEscape(e.original_reason  || e.reason  || '');
+      const remReas = blHtmlEscape(p.removalReason || p.removal_reason || '');
+      html += `<table cellpadding="0" cellspacing="0" style="margin: 10px 0; border-collapse: collapse; width: 100%;">
+        <tr><td style="padding: 12px 16px; border-left: 4px solid #2e75b6; background: #f4f7fb; font-size: 11pt; word-break: break-word;">
+          <strong>${name}</strong><br>
+          <span style="color: #555; font-size: 10pt;">nar. ${birth} | hotel ${hotel}</span><br>
+          <em>Původní důvod zařazení: ${reason}</em><br>
+          <strong>Důvod odstranění:</strong> ${remReas}
+        </td></tr>
+      </table>`;
+    }
+    html += `<p>Tuto osobu prosím <strong>již nenahlašujte</strong> ani s ní nezacházejte jako s rizikovou.</p>`;
+  }
+
+  if (adds.length > 0) {
+    if (removes.length > 0) html += `<hr style="margin: 16px 0; border: none; border-top: 1px solid #ddd;">`;
+    const pl = adds.length === 1
+      ? 'byla <strong>přidána</strong> následující osoba'
+      : 'byly <strong>přidány</strong> následující osoby';
+    html += `<p>na Blacklist ${pl}:</p>`;
+    for (const r of adds) {
+      const p = r.payload;
+      const e = p.entry || p;
+      const name   = blHtmlEscape(e.name  || '');
+      const hotel  = blHtmlEscape(e.hotel || '—');
+      const birth  = blHtmlEscape(blFormatDate(e.birth_date || e.birthDate) || '—');
+      const reason = blHtmlEscape(e.reason || '');
+      html += `<table cellpadding="0" cellspacing="0" style="margin: 10px 0; border-collapse: collapse; width: 100%;">
+        <tr><td style="padding: 12px 16px; border-left: 4px solid #c0392b; background: #fdf3f1; font-size: 11pt; word-break: break-word;">
+          <strong>${name}</strong><br>
+          <span style="color: #555; font-size: 10pt;">nar. ${birth} | hotel ${hotel}</span><br>
+          <em>Důvod zařazení: ${reason}</em>
+        </td></tr>
+      </table>`;
+    }
+    html += `<p>Tyto hosty v žádném případě neubytovávejte.</p>`;
+  }
+
+  html += `<p><strong>Prosím:</strong></p>
+  <ul>
+    <li>informujte své kolegy o této změně,</li>
+    <li>vytiskněte si aktuální verzi z přílohy či ze složky <em>nastenka\\Blacklist</em>,</li>
+    <li>starší verze nahraďte aktuální.</li>
+  </ul>
+  <p><strong>Postup pro hosty z Blacklistu:</strong></p>
+  <ul>
+    <li>Pokud se některá z osob na blacklistu přijde ubytovat, přečtěte si důvod zařazení.</li>
+    <li>Pokud dle vzezření hosta a důvodu usoudíte, že nechcete jít s hostem do konfliktu, <strong>volejte VRQ</strong>.</li>
+  </ul>
+  <p>S pozdravem</p>
+  </div>`;
+  return html;
+}
+
 app.get('/api/blacklist/entries', requireLogin, async (req, res) => {
   try {
     const db = getPool();
@@ -847,88 +921,47 @@ app.get('/api/blacklist/audit', requireLogin, async (req, res) => {
   }
 });
 
+// GET pending (unnotified) changes — for selection UI
+app.get('/api/blacklist/export/email/pending', requireLogin, async (req, res) => {
+  try {
+    const db = getPool();
+    const { rows } = await db.query(
+      `SELECT id, action, payload, user_name, timestamp
+       FROM blacklist_audit
+       WHERE notified_by_email = FALSE AND action IN ('ADD','REMOVE')
+       ORDER BY timestamp DESC`
+    );
+    res.json(rows);
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ ok: false, msg: 'Chyba serveru.' });
+  }
+});
+
+// POST generate email from selected IDs
 app.post('/api/blacklist/export/email', requireLogin, async (req, res) => {
+  const { ids } = req.body;
+  if (!Array.isArray(ids) || ids.length === 0)
+    return res.status(400).json({ ok: false, msg: 'Vyberte alespoň jednu změnu.' });
   try {
     const db = getPool();
     const { rows } = await db.query(
       `SELECT id, action, payload, user_name, timestamp FROM blacklist_audit
-       WHERE notified_by_email = FALSE AND action IN ('ADD','REMOVE') ORDER BY timestamp ASC`
+       WHERE id = ANY($1::uuid[]) AND action IN ('ADD','REMOVE')
+       ORDER BY timestamp ASC`,
+      [ids]
     );
     if (rows.length === 0)
-      return res.json({ ok: true, html: null, message: 'Žádné nové změny k odeslání e-mailem.' });
+      return res.json({ ok: false, msg: 'Žádné záznamy nenalezeny.' });
 
     const adds    = rows.filter(r => r.action === 'ADD');
     const removes = rows.filter(r => r.action === 'REMOVE');
+    const html    = blBuildEmailHtml(adds, removes);
 
-    let html = `<div style="font-family: Calibri, Arial, sans-serif; font-size: 11pt; max-width: 720px; color: #1a1a1a; line-height: 1.5;">`;
-    html += `<p>Vážení recepční,</p>`;
-
-    if (removes.length > 0) {
-      const pl = removes.length === 1
-        ? 'byla <strong>odstraněna</strong> následující osoba'
-        : 'byly <strong>odstraněny</strong> následující osoby';
-      html += `<p>z Blacklistu ${pl}:</p>`;
-      for (const r of removes) {
-        const p = r.payload;
-        const e = p.entry || p;
-        const name    = e.original_name    || e.name    || '';
-        const hotel   = e.original_hotel   || e.hotel   || '—';
-        const birth   = blFormatDate(e.original_birth_date || e.birth_date || e.birthDate) || '—';
-        const reason  = e.original_reason  || e.reason  || '';
-        const remReas = p.removalReason || p.removal_reason || '';
-        html += `<table width="100%" cellpadding="0" cellspacing="0" style="margin: 10px 0; border-collapse: collapse;">
-          <tr><td style="padding: 12px 16px; border-left: 4px solid #2e75b6; background: #f4f7fb; font-size: 11pt;">
-            <strong>${name}</strong><br>
-            <span style="color: #555; font-size: 10pt;">nar. ${birth} | hotel ${hotel}</span><br>
-            <em>Původní důvod zařazení: ${reason}</em><br>
-            <strong>Důvod odstranění:</strong> ${remReas}
-          </td></tr>
-        </table>`;
-      }
-      html += `<p>Tuto osobu prosím <strong>již nenahlašujte</strong> ani s ní nezacházejte jako s rizikovou.</p>`;
-    }
-
-    if (adds.length > 0) {
-      if (removes.length > 0) html += `<hr style="margin: 16px 0; border: none; border-top: 1px solid #ddd;">`;
-      const pl = adds.length === 1
-        ? 'byla <strong>přidána</strong> následující osoba'
-        : 'byly <strong>přidány</strong> následující osoby';
-      html += `<p>na Blacklist ${pl}:</p>`;
-      for (const r of adds) {
-        const p = r.payload;
-        const e = p.entry || p;
-        const name  = e.name  || '';
-        const hotel = e.hotel || '—';
-        const birth = blFormatDate(e.birth_date || e.birthDate) || '—';
-        const reason = e.reason || '';
-        html += `<table width="100%" cellpadding="0" cellspacing="0" style="margin: 10px 0; border-collapse: collapse;">
-          <tr><td style="padding: 12px 16px; border-left: 4px solid #c0392b; background: #fdf3f1; font-size: 11pt;">
-            <strong>${name}</strong><br>
-            <span style="color: #555; font-size: 10pt;">nar. ${birth} | hotel ${hotel}</span><br>
-            <em>Důvod zařazení: ${reason}</em>
-          </td></tr>
-        </table>`;
-      }
-      html += `<p>Tyto hosty v žádném případě neubytovávejte.</p>`;
-    }
-
-    html += `<p><strong>Prosím:</strong></p>
-    <ul>
-      <li>informujte své kolegy o této změně,</li>
-      <li>vytiskněte si aktuální verzi z přílohy či ze složky <em>nastenka\\Blacklist</em>,</li>
-      <li>starší verze nahraďte aktuální.</li>
-    </ul>
-    <p><strong>Postup pro hosty z Blacklistu:</strong></p>
-    <ul>
-      <li>Pokud se některá z osob na blacklistu přijde ubytovat, přečtěte si důvod zařazení.</li>
-      <li>Pokud dle vzezření hosta a důvodu usoudíte, že nechcete jít s hostem do konfliktu, <strong>volejte VRQ</strong>.</li>
-    </ul>
-    <p>S pozdravem</p>
-    </div>`;
-
-    const ids = rows.map(r => r.id);
-    await db.query(`UPDATE blacklist_audit SET notified_by_email = TRUE WHERE id = ANY($1::uuid[])`, [ids]);
-
+    await db.query(
+      `UPDATE blacklist_audit SET notified_by_email = TRUE WHERE id = ANY($1::uuid[])`,
+      [ids]
+    );
     res.json({ ok: true, html });
   } catch (err) {
     console.error(err);
@@ -938,9 +971,7 @@ app.post('/api/blacklist/export/email', requireLogin, async (req, res) => {
 
 app.get('/api/blacklist/export/pdf', requireLogin, async (req, res) => {
   try {
-    const PDFDocument = require('pdfkit');
     const db = getPool();
-
     const [entRes, introRes] = await Promise.all([
       db.query('SELECT * FROM blacklist_entries'),
       db.query('SELECT content FROM blacklist_intro WHERE id = 1')
@@ -960,6 +991,7 @@ app.get('/api/blacklist/export/pdf', requireLogin, async (req, res) => {
     const mL = 34, mT = 34, mB = 43;
     const pageW = 595.28, pageH = 841.89;
     const tableW = pageW - 2 * mL;
+    const cellPad = 1.5;
 
     const cols = [
       { key: 'name',       label: 'Jméno',        w: 124.74 },
@@ -976,143 +1008,125 @@ app.get('/api/blacklist/export/pdf', requireLogin, async (req, res) => {
       return String(entry[key] || '');
     }
 
-    function buildPDF(dataFS) {
-      const hdrFS = dataFS + 1;
-      const cellPad = 1.5;
-
-      const doc = new PDFDocument({
-        size: 'A4',
-        margins: { top: mT, bottom: mB, left: mL, right: mL },
-        autoFirstPage: true
-      });
-
-      function rowHeight(entry, isHeader, fs) {
-        doc.font(isHeader ? 'Helvetica-Bold' : 'Helvetica').fontSize(fs);
-        let maxH = 0;
-        for (const col of cols) {
-          const text = isHeader ? col.label : cellVal(entry, col.key);
-          const h = doc.heightOfString(text || ' ', { width: col.w - 2 * cellPad });
-          if (h > maxH) maxH = h;
-        }
-        return maxH + 2 * cellPad;
-      }
-
-      function drawRow(y, entry, isHeader, fs) {
-        const rh = rowHeight(entry, isHeader, fs);
-        let x = mL;
-        for (const col of cols) {
-          const text = isHeader ? col.label : cellVal(entry, col.key);
-          doc.save();
-          if (isHeader) {
-            doc.rect(x, y, col.w, rh).fill('#A9D08E');
-          } else {
-            doc.rect(x, y, col.w, rh).fill('#ffffff');
-          }
-          doc.restore();
-          doc.rect(x, y, col.w, rh).stroke('#000000');
-          doc.font(isHeader ? 'Helvetica-Bold' : 'Helvetica')
-            .fontSize(fs)
-            .fillColor('#000000')
-            .text(text || '', x + cellPad, y + cellPad, {
-              width: col.w - 2 * cellPad,
-              lineBreak: true
-            });
-          x += col.w;
-        }
-        return rh;
-      }
-
-      // Title
-      let y = mT;
-      doc.font('Helvetica-Bold').fontSize(15).fillColor('#000000')
-        .text('AVEhotels - Blacklist', mL, y, { align: 'center', width: tableW });
-      y += doc.heightOfString('AVEhotels - Blacklist', { width: tableW, fontSize: 15 }) + 6;
-
-      // Intro
-      doc.font('Helvetica-Bold').fontSize(8.5).fillColor('#000000')
-        .text(introText, mL, y, { width: tableW });
-      y += doc.heightOfString(introText, { width: tableW, fontSize: 8.5 }) + 8;
-
-      // Header row
-      const hdrH = rowHeight(null, true, hdrFS);
-      drawRow(y, null, true, hdrFS);
-      y += hdrH;
-
-      // Data rows
-      for (const entry of entries) {
-        const rh = rowHeight(entry, false, dataFS);
-        if (y + rh > pageH - mB - 20) {
-          doc.addPage();
-          y = mT;
-          drawRow(y, null, true, hdrFS);
-          y += hdrH;
-        }
-        drawRow(y, entry, false, dataFS);
-        y += rh;
-      }
-
-      // Signature
-      doc.font('Helvetica-Bold').fontSize(8).fillColor('#000000')
-        .text(`${dateStr}, ${userName}`, mL, pageH - mB + 2, { align: 'right', width: tableW });
-
-      return doc;
-    }
-
-    // Estimate page count at given fontSize to decide auto-shrink
+    // Approximate page count (avoids second PDFDocument)
     function estimatePages(dataFS) {
       const hdrFS = dataFS + 1;
-      const cellPad = 1.5;
-      const tmpDoc = new PDFDocument({ size: 'A4', autoFirstPage: false });
-
-      function rh(entry, isHeader, fs) {
-        tmpDoc.font(isHeader ? 'Helvetica-Bold' : 'Helvetica').fontSize(fs);
+      const avgCW = dataFS * 0.52;
+      function apH(entry, isHeader, fs) {
+        const cw = fs * 0.52;
         let maxH = 0;
         for (const col of cols) {
           const text = isHeader ? col.label : cellVal(entry, col.key);
-          const h = tmpDoc.heightOfString(text || ' ', { width: col.w - 2 * cellPad });
+          const cpp  = Math.max(1, Math.floor((col.w - 2*cellPad) / cw));
+          const lines = Math.max(1, Math.ceil((text || ' ').length / cpp));
+          const h = lines * fs * 1.4 + 2*cellPad;
           if (h > maxH) maxH = h;
         }
-        return maxH + 2 * cellPad;
+        return maxH;
       }
-
+      const introCpp = Math.max(1, Math.floor(tableW / (8.5 * 0.52)));
+      const introLines = Math.max(1, Math.ceil((introText || ' ').length / introCpp));
+      let y = mT + 20 + 6 + introLines * 8.5 * 1.4 + 8 + apH(null, true, hdrFS);
       let pages = 1;
-      let y = mT;
-      tmpDoc.font('Helvetica-Bold').fontSize(15);
-      y += tmpDoc.heightOfString('AVEhotels - Blacklist', { width: tableW }) + 6;
-      tmpDoc.font('Helvetica-Bold').fontSize(8.5);
-      y += tmpDoc.heightOfString(introText, { width: tableW }) + 8;
-      y += rh(null, true, hdrFS);
       for (const entry of entries) {
-        const h = rh(entry, false, dataFS);
-        if (y + h > pageH - mB - 20) { pages++; y = mT + rh(null, true, hdrFS); }
-        y += h;
+        const rh = apH(entry, false, dataFS);
+        if (y + rh > pageH - mB - 15) { pages++; y = mT + apH(null, true, hdrFS); }
+        y += rh;
       }
       return pages;
     }
 
     let dataFS = 6.2;
-    let pageCount = estimatePages(dataFS);
     let warning = false;
-    while (pageCount > 4 && dataFS > 5.5) {
+    while (estimatePages(dataFS) > 4 && dataFS > 5.5)
       dataFS = Math.round((dataFS - 0.5) * 10) / 10;
-      pageCount = estimatePages(dataFS);
-    }
-    if (pageCount > 4) warning = true;
+    if (estimatePages(dataFS) > 4) warning = true;
 
-    const doc = buildPDF(dataFS);
+    const hdrFS = dataFS + 1;
+
+    // Create doc & register listeners BEFORE any drawing (avoids lost data events on multi-page)
+    const doc = new PDFDocument({
+      size: 'A4',
+      margins: { top: mT, bottom: mB, left: mL, right: mL },
+      autoFirstPage: true
+    });
+
     const chunks = [];
     doc.on('data', c => chunks.push(c));
+    doc.on('error', err => {
+      console.error('pdfkit error:', err);
+      if (!res.headersSent) res.status(500).json({ ok: false, msg: 'Chyba PDF.' });
+    });
     doc.on('end', () => {
+      if (res.headersSent) return;
       const buf = Buffer.concat(chunks);
       res.setHeader('Content-Type', 'application/pdf');
       res.setHeader('Content-Disposition', `attachment; filename="${filename}"`);
       if (warning) res.setHeader('X-PDF-Warning', 'Přesahuje 4 stránky, písmo nelze dále zmenšit.');
       res.send(buf);
     });
+
+    function rowH(entry, isHeader, fs) {
+      doc.font(isHeader ? 'Helvetica-Bold' : 'Helvetica').fontSize(fs);
+      let maxH = 0;
+      for (const col of cols) {
+        const text = isHeader ? col.label : cellVal(entry, col.key);
+        const h = doc.heightOfString(text || ' ', { width: col.w - 2*cellPad });
+        if (h > maxH) maxH = h;
+      }
+      return maxH + 2*cellPad;
+    }
+
+    function drawRow(y, entry, isHeader, fs) {
+      const rh = rowH(entry, isHeader, fs);
+      let x = mL;
+      for (const col of cols) {
+        const text = isHeader ? col.label : cellVal(entry, col.key);
+        doc.rect(x, y, col.w, rh).fill(isHeader ? '#A9D08E' : '#ffffff');
+        doc.rect(x, y, col.w, rh).lineWidth(0.4).stroke('#000000');
+        doc.font(isHeader ? 'Helvetica-Bold' : 'Helvetica').fontSize(fs).fillColor('#000000')
+          .text(text || '', x+cellPad, y+cellPad, { width: col.w-2*cellPad, lineBreak: true });
+        x += col.w;
+      }
+      return rh;
+    }
+
+    // Draw content
+    let y = mT;
+    doc.font('Helvetica-Bold').fontSize(15).fillColor('#000000')
+      .text('AVEhotels - Blacklist', mL, y, { align: 'center', width: tableW });
+    doc.font('Helvetica-Bold').fontSize(15);
+    y += doc.heightOfString('AVEhotels - Blacklist', { width: tableW }) + 6;
+
+    doc.font('Helvetica-Bold').fontSize(8.5).fillColor('#000000')
+      .text(introText, mL, y, { width: tableW });
+    doc.font('Helvetica-Bold').fontSize(8.5);
+    y += doc.heightOfString(introText, { width: tableW }) + 8;
+
+    const hh = rowH(null, true, hdrFS);
+    drawRow(y, null, true, hdrFS);
+    y += hh;
+
+    for (const entry of entries) {
+      const rh = rowH(entry, false, dataFS);
+      if (y + rh > pageH - mB - 15) {
+        doc.addPage();
+        y = mT;
+        drawRow(y, null, true, hdrFS);
+        y += hh;
+      }
+      drawRow(y, entry, false, dataFS);
+      y += rh;
+    }
+
+    // Signature bottom-right of last page
+    doc.font('Helvetica-Bold').fontSize(8).fillColor('#000000')
+      .text(`${dateStr}, ${userName}`, mL, pageH - mB - 2, { align: 'right', width: tableW });
+
     doc.end();
   } catch (err) {
-    console.error(err);
-    res.status(500).json({ ok: false, msg: 'Chyba serveru při generování PDF.' });
+    console.error('PDF error:', err);
+    if (!res.headersSent) res.status(500).json({ ok: false, msg: 'Chyba serveru při generování PDF.' });
   }
 });
 
