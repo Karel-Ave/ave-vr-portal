@@ -54,20 +54,6 @@ body {
 .btn-top.primary { border-color: #2e5a2e; color: #6fbf6f; }
 .btn-top.primary:hover { background: #1e3e1e; color: #90e090; border-color: #4caf50; }
 
-#remove-bar {
-  display: none;
-  align-items: center;
-  gap: 10px;
-  padding: 0 18px;
-  height: 40px;
-  background: #2a1a1a;
-  border-bottom: 1px solid #5a2a2a;
-  flex-shrink: 0;
-}
-#remove-bar.show { display: flex; }
-#remove-count { font-size: 12px; color: #e08080; font-weight: 600; }
-#remove-bar .spacer { flex: 1; }
-
 /* ── Main content ── */
 #main-content {
   flex: 1;
@@ -197,7 +183,7 @@ body {
 #bl-table thead th.sort-active { background: #85b86a; }
 .sort-arrow { display: inline-block; width: 10px; font-size: 9px; opacity: .45; }
 th.sort-active .sort-arrow { opacity: 1; }
-td.col-edit { width: 36px; text-align: center; padding: 4px; }
+td.col-edit { width: 68px; text-align: center; padding: 4px; display: flex; gap: 4px; justify-content: center; align-items: center; }
 .btn-edit-row {
   background: none;
   border: 1px solid #999;
@@ -211,6 +197,19 @@ td.col-edit { width: 36px; text-align: center; padding: 4px; }
   transition: all .15s;
 }
 .btn-edit-row:hover { background: #555; border-color: #555; color: #fff; }
+.btn-del-row {
+  background: none;
+  border: 1px solid #c0392b;
+  color: #c0392b;
+  border-radius: 4px;
+  width: 26px; height: 26px;
+  cursor: pointer;
+  font-size: 14px;
+  line-height: 1;
+  display: flex; align-items: center; justify-content: center;
+  transition: all .15s;
+}
+.btn-del-row:hover { background: #c0392b; border-color: #c0392b; color: #fff; }
 .btn-restore-hist {
   background: none;
   border: 1px solid #1a7a1a;
@@ -232,8 +231,6 @@ td.col-edit { width: 36px; text-align: center; padding: 4px; }
   transition: background .1s;
 }
 #bl-table tbody tr:hover { background: #f5f7f2; }
-#bl-table tbody tr.selected { background: #fde8e8; }
-#bl-table tbody tr.selected:hover { background: #fdd8d8; }
 #bl-table td {
   padding: 6px 10px;
   vertical-align: top;
@@ -244,30 +241,6 @@ td.col-edit { width: 36px; text-align: center; padding: 4px; }
   max-width: 360px;
   word-break: break-word;
 }
-td.col-remove {
-  width: 36px;
-  text-align: center;
-  padding: 4px;
-}
-.btn-remove-row {
-  background: none;
-  border: 1px solid #c0392b;
-  color: #c0392b;
-  border-radius: 4px;
-  width: 26px;
-  height: 26px;
-  cursor: pointer;
-  font-size: 14px;
-  line-height: 1;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  margin: auto;
-  transition: all .15s;
-}
-.btn-remove-row:hover { background: #c0392b; color: #fff; }
-.btn-remove-row.selected { background: #c0392b; color: #fff; }
-
 #empty-state {
   text-align: center;
   padding: 48px 20px;
@@ -733,19 +706,10 @@ td.col-remove {
 <div id="topbar">
   <span id="topbar-title">🚫 Blacklist</span>
   <button class="btn-top primary" id="btn-add">+ Přidat</button>
-  <button class="btn-top danger" id="btn-remove-mode">− Odebrat</button>
   <button class="btn-top" id="btn-pdf">Export PDF</button>
   <button class="btn-top" id="btn-email">Export e-mail</button>
   <button class="btn-top" id="btn-intro">Upravit text</button>
   <button class="btn-top" id="btn-history">Historie</button>
-</div>
-
-<!-- Remove mode bar -->
-<div id="remove-bar">
-  <span id="remove-count">Označeno: 0 osob</span>
-  <div class="spacer"></div>
-  <button class="btn-top danger" id="btn-remove-selected">Odebrat označené</button>
-  <button class="btn-top" id="btn-remove-cancel">Zrušit</button>
 </div>
 
 <!-- Controls bar (always visible, above scroll) -->
@@ -766,18 +730,17 @@ td.col-remove {
       <table id="bl-table">
         <thead>
           <tr>
-            <th id="th-remove" style="display:none;width:36px;"></th>
             <th class="sortable" data-sort="name">Jméno <span class="sort-arrow" id="sa-name">▲</span></th>
             <th class="sortable" data-sort="hotel">Hotel <span class="sort-arrow" id="sa-hotel"></span></th>
             <th class="sortable" data-sort="birth_date">Datum nar. <span class="sort-arrow" id="sa-birth_date"></span></th>
             <th>Škoda</th>
             <th class="sortable" data-sort="stay_date">Datum pobytu <span class="sort-arrow" id="sa-stay_date"></span></th>
             <th>Důvod</th>
-            <th id="th-edit" style="width:36px;"></th>
+            <th id="th-edit" style="width:68px;"></th>
           </tr>
         </thead>
         <tbody id="bl-body">
-          <tr><td colspan="7" id="empty-state">Načítám…</td></tr>
+          <tr><td colspan="7" id="empty-state" style="text-align:center;padding:40px;color:#888;">Načítám…</td></tr>
         </tbody>
       </table>
     </div>
@@ -940,8 +903,6 @@ td.col-remove {
 
 let entries  = [];
 let filtered = [];
-let selected = new Set();
-let removeMode = false;
 let auditLog = [];
 let currentUser = null;
 let sortKey = 'name';
@@ -1056,9 +1017,6 @@ function renderTable() {
     }
   });
 
-  document.getElementById('th-remove').style.display = removeMode ? '' : 'none';
-  document.getElementById('th-edit').style.display  = removeMode ? 'none' : '';
-
   if (filtered.length === 0) {
     tbody.innerHTML = `<tr><td colspan="7" style="text-align:center;padding:40px;color:#888;">
       ${entries.length === 0 ? 'Žádné osoby na blacklistu. Použijte <em>+ Přidat</em> pro první záznam.' : 'Žádné výsledky pro zadaný filtr.'}
@@ -1074,16 +1032,17 @@ function renderTable() {
   });
 
   tbody.innerHTML = sorted.map(e => {
-    const isSel = selected.has(e.id);
-    return `<tr class="${isSel ? 'selected' : ''}" data-id="${escHtml(e.id)}">
-      ${removeMode ? `<td class="col-remove"><button class="btn-remove-row${isSel ? ' selected' : ''}" onclick="toggleSelect('${escHtml(e.id)}')" title="Označit k odebrání">×</button></td>` : ''}
+    return `<tr data-id="${escHtml(e.id)}">
       <td>${escHtml(e.name)}</td>
       <td>${escHtml(e.hotel || '')}</td>
       <td>${escHtml(formatDate(e.birth_date))}</td>
       <td>${escHtml(e.damage || '')}</td>
       <td>${escHtml(formatDate(e.stay_date))}</td>
       <td class="col-reason">${escHtml(e.reason)}</td>
-      ${!removeMode ? `<td class="col-edit"><button class="btn-edit-row" onclick="openEditModal('${escHtml(e.id)}')" title="Upravit záznam">✎</button></td>` : ''}
+      <td class="col-edit">
+        <button class="btn-edit-row" onclick="openEditModal('${escHtml(e.id)}')" title="Upravit záznam">✎</button>
+        <button class="btn-del-row" onclick="openRemoveModal('${escHtml(e.id)}')" title="Odebrat z blacklistu">×</button>
+      </td>
     </tr>`;
   }).join('');
 }
@@ -1101,40 +1060,6 @@ function updateFooter() {
 async function loadIntro() {
   const data = await apiFetch('/api/blacklist/intro');
   document.getElementById('intro-box').innerHTML = data.content || '';
-}
-
-// ── Remove mode ───────────────────────────────────────────────────────────────
-
-function enterRemoveMode() {
-  removeMode = true;
-  selected.clear();
-  document.getElementById('remove-bar').classList.add('show');
-  document.getElementById('btn-remove-mode').style.display = 'none';
-  document.getElementById('btn-add').style.display = 'none';
-  document.getElementById('main-content').scrollTop = 0;
-  updateRemoveCount();
-  renderTable();
-}
-
-function exitRemoveMode() {
-  removeMode = false;
-  selected.clear();
-  document.getElementById('remove-bar').classList.remove('show');
-  document.getElementById('btn-remove-mode').style.display = '';
-  document.getElementById('btn-add').style.display = '';
-  renderTable();
-}
-
-function toggleSelect(id) {
-  if (selected.has(id)) selected.delete(id);
-  else selected.add(id);
-  updateRemoveCount();
-  renderTable();
-}
-
-function updateRemoveCount() {
-  document.getElementById('remove-count').textContent =
-    `Označeno: ${selected.size} ${selected.size === 1 ? 'osoba' : selected.size < 5 ? 'osoby' : 'osob'}`;
 }
 
 // ── Add modal ─────────────────────────────────────────────────────────────────
@@ -1257,25 +1182,22 @@ async function submitAdd() {
   }
 }
 
-// ── Remove selected modal ─────────────────────────────────────────────────────
+// ── Remove modal ──────────────────────────────────────────────────────────────
 
-function openRemoveModal() {
-  if (selected.size === 0) { showToast('Nejdříve označte osoby k odebrání.', true); return; }
+function openRemoveModal(id) {
+  const e = entries.find(x => x.id === id);
+  if (!e) return;
   const container = document.getElementById('removal-blocks');
   container.innerHTML = '';
-  [...selected].forEach(id => {
-    const e = entries.find(x => x.id === id);
-    if (!e) return;
-    const div = document.createElement('div');
-    div.className = 'removal-block';
-    div.dataset.id = id;
-    div.innerHTML = `
-      <div class="removal-name">${escHtml(e.name)}</div>
-      <label>Důvod odebrání *</label>
-      <textarea class="f-rem-reason" placeholder="Proč je host odebírán z blacklistu…"></textarea>
-    `;
-    container.appendChild(div);
-  });
+  const div = document.createElement('div');
+  div.className = 'removal-block';
+  div.dataset.id = id;
+  div.innerHTML = `
+    <div class="removal-name">${escHtml(e.name)}</div>
+    <label>Důvod odebrání *</label>
+    <textarea class="f-rem-reason" placeholder="Proč je host odebírán z blacklistu…"></textarea>
+  `;
+  container.appendChild(div);
   showOverlay('overlay-remove');
   container.querySelector('.f-rem-reason')?.focus();
 }
@@ -1296,7 +1218,6 @@ async function submitRemove() {
     const r = await apiFetch('/api/blacklist/remove', { method: 'POST', body: JSON.stringify({ removals }) });
     if (!r.ok) throw new Error(r.msg);
     hideOverlay('overlay-remove');
-    exitRemoveMode();
     await loadEntries();
     showToast(`Odebráno ${removals.length} ${removals.length === 1 ? 'osoba' : removals.length < 5 ? 'osoby' : 'osob'}.`);
     openHistory();
@@ -1641,9 +1562,6 @@ document.getElementById('btn-add-more').addEventListener('click', () => {
 document.getElementById('btn-add-cancel').addEventListener('click', () => hideOverlay('overlay-add'));
 document.getElementById('btn-add-submit').addEventListener('click', submitAdd);
 
-document.getElementById('btn-remove-mode').addEventListener('click', enterRemoveMode);
-document.getElementById('btn-remove-cancel').addEventListener('click', exitRemoveMode);
-document.getElementById('btn-remove-selected').addEventListener('click', openRemoveModal);
 document.getElementById('btn-rem-cancel').addEventListener('click', () => hideOverlay('overlay-remove'));
 document.getElementById('btn-rem-submit').addEventListener('click', submitRemove);
 
