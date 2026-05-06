@@ -1182,6 +1182,7 @@ async function submitIntro() {
 async function openHistory() {
   document.getElementById('list-view').style.display = 'none';
   document.getElementById('history-view').style.display = 'block';
+  document.getElementById('main-content').scrollTop = 0;
   const data = await apiFetch('/api/blacklist/audit');
   auditLog = data;
   renderHistory();
@@ -1248,6 +1249,7 @@ async function deleteHistoryEntry(id) {
 function closeHistory() {
   document.getElementById('history-view').style.display = 'none';
   document.getElementById('list-view').style.display = 'block';
+  document.getElementById('main-content').scrollTop = 0;
 }
 
 // ── PDF export ────────────────────────────────────────────────────────────────

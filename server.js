@@ -803,13 +803,13 @@ function blBuildEmailHtml(adds, removes) {
   }
 
   html += `<p style="margin: 16px 0 6px 0;"><strong>Prosím:</strong></p>
-  <ul style="margin: 0 0 14px 0; padding-left: 22px;">
+  <ul style="margin: 0 0 14px 0; padding-left: 22px; font-size: 11pt;">
     <li style="margin-bottom:5px;">informujte své kolegy o této změně,</li>
     <li style="margin-bottom:5px;">vytiskněte si aktuální verzi z přílohy či ze složky <em>nastenka\\Blacklist</em>,</li>
     <li>starší verze nahraďte aktuální.</li>
   </ul>
   <p style="margin: 0 0 6px 0;"><strong>Postup pro hosty z Blacklistu:</strong></p>
-  <ul style="margin: 0 0 16px 0; padding-left: 22px;">
+  <ul style="margin: 0 0 16px 0; padding-left: 22px; font-size: 11pt;">
     <li style="margin-bottom:5px;">Pokud se některá z osob na blacklistu přijde ubytovat, přečtěte si důvod zařazení.</li>
     <li>Pokud dle vzezření hosta a důvodu usoudíte, že nechcete jít s hostem do konfliktu, <strong>volejte VRQ</strong>.</li>
   </ul>
