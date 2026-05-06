@@ -645,7 +645,7 @@ td.col-remove {
       <input type="date" id="hist-filter-from">
       <label>Do:</label>
       <input type="date" id="hist-filter-to">
-      <button class="btn-top" id="btn-hist-back">← Zpět na seznam</button>
+      <button id="btn-hist-back" style="padding:5px 14px;border-radius:5px;border:1px solid #4a4a4a;background:#3a3a3a;color:#e0e0e0;font-size:11px;cursor:pointer;font-family:inherit;white-space:nowrap;">← Zpět na seznam</button>
     </div>
 
     <div id="history-table-wrap">
@@ -1053,6 +1053,7 @@ async function submitRemove() {
     exitRemoveMode();
     await loadEntries();
     showToast(`Odebráno ${removals.length} ${removals.length === 1 ? 'osoba' : removals.length < 5 ? 'osoby' : 'osob'}.`);
+    openHistory();
   } catch(e) {
     showToast('Chyba: ' + e.message, true);
   } finally {
@@ -1172,7 +1173,11 @@ async function exportPdf() {
   btn.disabled = true; btn.textContent = 'Generuji…';
   try {
     const r = await fetch('/api/blacklist/export/pdf');
-    if (!r.ok) { showToast('Chyba při generování PDF.', true); return; }
+    if (!r.ok) {
+      let msg = 'Chyba při generování PDF.';
+      try { const j = await r.json(); msg = j.msg || msg; } catch(e) {}
+      showToast(msg, true); return;
+    }
     const warning = r.headers.get('X-PDF-Warning');
     const blob = await r.blob();
     const url  = URL.createObjectURL(blob);
@@ -1225,7 +1230,7 @@ function openEmailSelectModal(items) {
       ? `Důvod odebrání: ${remReason.substring(0, 80)}`
       : origReason.substring(0, 80);
     return `<label class="email-select-row">
-      <input type="checkbox" class="email-sel-cb" data-id="${escHtml(item.id)}" checked onchange="updateEmailSelectCount()">
+      <input type="checkbox" class="email-sel-cb" data-id="${escHtml(item.id)}" onchange="updateEmailSelectCount()">
       <div class="email-select-info">
         <div class="email-select-name">
           <span class="badge-action ${item.action}">${actionLabel[item.action] || item.action}</span>

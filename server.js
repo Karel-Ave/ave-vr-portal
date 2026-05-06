@@ -724,6 +724,16 @@ function blStripHtml(html) {
     .trim();
 }
 
+// Strip diacritics for pdfkit built-in fonts (Windows-1252 only; č,ě,ř,ů etc. throw)
+function pdfSafe(str) {
+  const m = { 'č':'c','Č':'C','ě':'e','Ě':'E','ř':'r','Ř':'R',
+               'ů':'u','Ů':'U','ď':'d','Ď':'D','ň':'n','Ň':'N',
+               'ť':'t','Ť':'T' };
+  return String(str || '')
+    .replace(/[čČěĚřŘůŮďĎňŇťŤ]/g, c => m[c])
+    .normalize('NFD').replace(/[̀-ͯ]/g, '');
+}
+
 function blHtmlEscape(s) {
   return String(s || '').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
 }
@@ -1070,8 +1080,8 @@ app.get('/api/blacklist/export/pdf', requireLogin, async (req, res) => {
     const chunks = [];
     doc.on('data', c => chunks.push(c));
     doc.on('error', err => {
-      console.error('pdfkit error:', err);
-      if (!res.headersSent) res.status(500).json({ ok: false, msg: 'Chyba PDF.' });
+      console.error('pdfkit error:', err.stack || err);
+      if (!res.headersSent) res.status(500).json({ ok: false, msg: 'pdfkit: ' + (err.message || err) });
     });
     doc.on('end', () => {
       if (res.headersSent) return;
@@ -1101,10 +1111,13 @@ app.get('/api/blacklist/export/pdf', requireLogin, async (req, res) => {
     function drawRow(y, entry, isHeader, fs) {
       const rh = rowH(entry, isHeader, fs);
       let x = mL;
+      const bg = isHeader ? '#A9D08E' : '#ffffff';
       for (const col of cols) {
-        const text = isHeader ? col.label : cellVal(entry, col.key);
-        doc.rect(x, y, col.w, rh).fill(isHeader ? '#A9D08E' : '#ffffff');
-        doc.rect(x, y, col.w, rh).lineWidth(0.4).stroke('#000000');
+        const text = pdfSafe(isHeader ? col.label : cellVal(entry, col.key));
+        doc.save();
+        doc.rect(x, y, col.w, rh).fillColor(bg).fill();
+        doc.rect(x, y, col.w, rh).strokeColor('#000000').lineWidth(0.4).stroke();
+        doc.restore();
         doc.font(isHeader ? 'Helvetica-Bold' : 'Helvetica').fontSize(fs).fillColor('#000000')
           .text(text || '', x+cellPad, y+cellPad, { width: col.w-2*cellPad, lineBreak: true });
         x += col.w;
@@ -1118,10 +1131,11 @@ app.get('/api/blacklist/export/pdf', requireLogin, async (req, res) => {
       .text('AVEhotels - Blacklist', mL, y, { align: 'center', width: tableW });
     y += 15 * 1.4 + 6;
 
+    const safeIntro = pdfSafe(introText);
     doc.font('Helvetica-Bold').fontSize(8.5).fillColor('#000000')
-      .text(introText, mL, y, { width: tableW });
+      .text(safeIntro, mL, y, { width: tableW });
     const introCpl = Math.max(1, Math.floor(tableW / (8.5 * 0.52)));
-    const introLineCount = (introText || ' ').split('\n').reduce((acc, line) => {
+    const introLineCount = (safeIntro || ' ').split('\n').reduce((acc, line) => {
       return acc + Math.max(1, Math.ceil((line.length || 1) / introCpl));
     }, 0);
     y += introLineCount * 8.5 * 1.4 + 8;
@@ -1144,12 +1158,12 @@ app.get('/api/blacklist/export/pdf', requireLogin, async (req, res) => {
 
     // Signature bottom-right of last page
     doc.font('Helvetica-Bold').fontSize(8).fillColor('#000000')
-      .text(`${dateStr}, ${userName}`, mL, pageH - mB - 2, { align: 'right', width: tableW });
+      .text(pdfSafe(`${dateStr}, ${userName}`), mL, pageH - mB - 2, { align: 'right', width: tableW });
 
     doc.end();
   } catch (err) {
-    console.error('PDF error:', err);
-    if (!res.headersSent) res.status(500).json({ ok: false, msg: 'Chyba serveru při generování PDF.' });
+    console.error('PDF error:', err.stack || err);
+    if (!res.headersSent) res.status(500).json({ ok: false, msg: err.message || 'Chyba serveru.' });
   }
 });
 
