@@ -277,6 +277,23 @@ td.col-remove {
   border: 1px solid #e0e0dc;
   line-height: 1.4;
 }
+.btn-hist-del {
+  background: none;
+  border: 1px solid #c0392b;
+  color: #c0392b;
+  border-radius: 4px;
+  width: 24px;
+  height: 24px;
+  cursor: pointer;
+  font-size: 13px;
+  line-height: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  margin: auto;
+  transition: all .15s;
+}
+.btn-hist-del:hover { background: #c0392b; color: #fff; }
 .badge-action {
   display: inline-block;
   font-size: 10px;
@@ -639,6 +656,7 @@ td.col-remove {
             <th>Uživatel</th>
             <th>Akce</th>
             <th>Detaily</th>
+            <th style="width:36px;"></th>
           </tr>
         </thead>
         <tbody id="hist-body"></tbody>
@@ -1124,8 +1142,22 @@ function renderHistory() {
       <td>${escHtml(r.user_name)}</td>
       <td><span class="badge-action ${r.action}">${actionLabel[r.action] || r.action}</span></td>
       <td>${detail}</td>
+      <td style="padding:4px;text-align:center;"><button class="btn-hist-del" onclick="deleteHistoryEntry('${escHtml(r.id)}')" title="Smazat záznam">×</button></td>
     </tr>`;
   }).join('');
+}
+
+async function deleteHistoryEntry(id) {
+  if (!confirm('Smazat tento záznam z historie trvale?')) return;
+  try {
+    const r = await apiFetch(`/api/blacklist/audit/${id}`, { method: 'DELETE' });
+    if (!r.ok) throw new Error(r.msg);
+    auditLog = auditLog.filter(x => x.id !== id);
+    renderHistory();
+    showToast('Záznam smazán.');
+  } catch(e) {
+    showToast('Chyba: ' + e.message, true);
+  }
 }
 
 function closeHistory() {

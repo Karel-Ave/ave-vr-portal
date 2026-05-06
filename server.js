@@ -921,6 +921,22 @@ app.get('/api/blacklist/audit', requireLogin, async (req, res) => {
   }
 });
 
+// DELETE a single audit/history entry permanently
+app.delete('/api/blacklist/audit/:id', requireLogin, async (req, res) => {
+  try {
+    const db = getPool();
+    const { rowCount } = await db.query(
+      `DELETE FROM blacklist_audit WHERE id = $1::uuid`,
+      [req.params.id]
+    );
+    if (rowCount === 0) return res.status(404).json({ ok: false, msg: 'Záznam nenalezen.' });
+    res.json({ ok: true });
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ ok: false, msg: 'Chyba serveru.' });
+  }
+});
+
 // GET pending (unnotified) changes — for selection UI
 app.get('/api/blacklist/export/email/pending', requireLogin, async (req, res) => {
   try {
@@ -931,7 +947,7 @@ app.get('/api/blacklist/export/email/pending', requireLogin, async (req, res) =>
        WHERE notified_by_email = FALSE AND action IN ('ADD','REMOVE')
        ORDER BY timestamp DESC`
     );
-    res.json(rows);
+    res.json({ ok: true, items: rows });
   } catch (err) {
     console.error(err);
     res.status(500).json({ ok: false, msg: 'Chyba serveru.' });
@@ -1067,14 +1083,19 @@ app.get('/api/blacklist/export/pdf', requireLogin, async (req, res) => {
     });
 
     function rowH(entry, isHeader, fs) {
-      doc.font(isHeader ? 'Helvetica-Bold' : 'Helvetica').fontSize(fs);
+      const avgCW = fs * 0.52;
       let maxH = 0;
       for (const col of cols) {
         const text = isHeader ? col.label : cellVal(entry, col.key);
-        const h = doc.heightOfString(text || ' ', { width: col.w - 2*cellPad });
+        const usableW = col.w - 2*cellPad;
+        const cpl = Math.max(1, Math.floor(usableW / avgCW));
+        const rawLines = (text || ' ').split('\n');
+        let lines = 0;
+        for (const rl of rawLines) lines += Math.max(1, Math.ceil((rl.length || 1) / cpl));
+        const h = lines * fs * 1.4 + 2*cellPad;
         if (h > maxH) maxH = h;
       }
-      return maxH + 2*cellPad;
+      return maxH;
     }
 
     function drawRow(y, entry, isHeader, fs) {
@@ -1095,13 +1116,15 @@ app.get('/api/blacklist/export/pdf', requireLogin, async (req, res) => {
     let y = mT;
     doc.font('Helvetica-Bold').fontSize(15).fillColor('#000000')
       .text('AVEhotels - Blacklist', mL, y, { align: 'center', width: tableW });
-    doc.font('Helvetica-Bold').fontSize(15);
-    y += doc.heightOfString('AVEhotels - Blacklist', { width: tableW }) + 6;
+    y += 15 * 1.4 + 6;
 
     doc.font('Helvetica-Bold').fontSize(8.5).fillColor('#000000')
       .text(introText, mL, y, { width: tableW });
-    doc.font('Helvetica-Bold').fontSize(8.5);
-    y += doc.heightOfString(introText, { width: tableW }) + 8;
+    const introCpl = Math.max(1, Math.floor(tableW / (8.5 * 0.52)));
+    const introLineCount = (introText || ' ').split('\n').reduce((acc, line) => {
+      return acc + Math.max(1, Math.ceil((line.length || 1) / introCpl));
+    }, 0);
+    y += introLineCount * 8.5 * 1.4 + 8;
 
     const hh = rowH(null, true, hdrFS);
     drawRow(y, null, true, hdrFS);
