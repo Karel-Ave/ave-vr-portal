@@ -118,12 +118,40 @@ body {
 .email-select-actions button:hover { background: #f0f0f0; }
 
 /* ── Search ── */
+/* ── Controls bar (sticky above scroll area) ── */
+#controls-bar {
+  flex-shrink: 0;
+  background: #f0f0ec;
+  border-bottom: 1px solid #d8d8d4;
+  padding: 10px 18px 8px;
+}
+#controls-bar.hidden { display: none; }
 #search-row {
   display: flex;
   align-items: center;
   gap: 10px;
-  margin-bottom: 12px;
+  margin-bottom: 8px;
 }
+#hotel-filter-row {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  flex-wrap: wrap;
+}
+.hotel-label { font-size: 11px; font-weight: 700; color: #888; text-transform: uppercase; letter-spacing:.05em; }
+.hotel-btn {
+  padding: 3px 11px;
+  font-size: 11px;
+  font-family: inherit;
+  border: 1px solid #bbb;
+  border-radius: 12px;
+  background: #fff;
+  cursor: pointer;
+  color: #444;
+  transition: all .15s;
+}
+.hotel-btn:hover { background: #e8f0fe; border-color: #1a56a4; color: #1a56a4; }
+.hotel-btn.active { background: #1a56a4; border-color: #1a56a4; color: #fff; font-weight: 600; }
 #search {
   flex: 1;
   max-width: 380px;
@@ -164,6 +192,39 @@ body {
   white-space: nowrap;
   font-size: 12px;
 }
+#bl-table thead th.sortable { cursor: pointer; user-select: none; }
+#bl-table thead th.sortable:hover { background: #98c47e; }
+#bl-table thead th.sort-active { background: #85b86a; }
+.sort-arrow { display: inline-block; width: 10px; font-size: 9px; opacity: .45; }
+th.sort-active .sort-arrow { opacity: 1; }
+td.col-edit { width: 36px; text-align: center; padding: 4px; }
+.btn-edit-row {
+  background: none;
+  border: 1px solid #999;
+  color: #666;
+  border-radius: 4px;
+  width: 26px; height: 26px;
+  cursor: pointer;
+  font-size: 12px;
+  display: flex; align-items: center; justify-content: center;
+  margin: auto;
+  transition: all .15s;
+}
+.btn-edit-row:hover { background: #555; border-color: #555; color: #fff; }
+.btn-restore-hist {
+  background: none;
+  border: 1px solid #1a7a1a;
+  color: #1a7a1a;
+  border-radius: 4px;
+  width: 26px; height: 26px;
+  cursor: pointer;
+  font-size: 13px;
+  display: inline-flex; align-items: center; justify-content: center;
+  margin-right: 3px;
+  transition: all .15s;
+}
+.btn-restore-hist:hover { background: #1a7a1a; color: #fff; }
+.badge-action.EDIT { background: #fff3cd; color: #856404; border: 1px solid #ffc107; }
 #bl-table tbody tr {
   border-bottom: 1px solid #e8e8e4;
   transition: background .1s;
@@ -684,27 +745,32 @@ td.col-remove {
   <button class="btn-top" id="btn-remove-cancel">Zrušit</button>
 </div>
 
+<!-- Controls bar (always visible, above scroll) -->
+<div id="controls-bar">
+  <div id="search-row">
+    <input id="search" placeholder="Hledat jméno, hotel, důvod…" autocomplete="off">
+    <span id="count-badge"></span>
+  </div>
+  <div id="hotel-filter-row"></div>
+</div>
+
 <!-- Main content -->
 <div id="main-content">
 
   <!-- List view -->
   <div id="list-view">
-    <div id="search-row">
-      <input id="search" placeholder="Hledat jméno, hotel, důvod…" autocomplete="off">
-      <span id="count-badge"></span>
-    </div>
-
     <div id="bl-table-wrap">
       <table id="bl-table">
         <thead>
           <tr>
             <th id="th-remove" style="display:none;width:36px;"></th>
-            <th>Jméno</th>
-            <th>Hotel</th>
-            <th>Datum nar.</th>
+            <th class="sortable" data-sort="name">Jméno <span class="sort-arrow" id="sa-name">▲</span></th>
+            <th class="sortable" data-sort="hotel">Hotel <span class="sort-arrow" id="sa-hotel"></span></th>
+            <th class="sortable" data-sort="birth_date">Datum nar. <span class="sort-arrow" id="sa-birth_date"></span></th>
             <th>Škoda</th>
-            <th>Datum pobytu</th>
+            <th class="sortable" data-sort="stay_date">Datum pobytu <span class="sort-arrow" id="sa-stay_date"></span></th>
             <th>Důvod</th>
+            <th id="th-edit" style="width:36px;"></th>
           </tr>
         </thead>
         <tbody id="bl-body">
@@ -823,17 +889,58 @@ td.col-remove {
   </div>
 </div>
 
+<!-- Modal: Upravit záznam -->
+<div class="overlay" id="overlay-edit">
+  <div class="modal">
+    <h2>Upravit záznam</h2>
+    <div class="form-row">
+      <div class="form-field">
+        <label>Jméno *</label>
+        <input type="text" id="edit-name" placeholder="Příjmení Jméno" autocomplete="off">
+      </div>
+      <div class="form-field">
+        <label>Hotel</label>
+        <input type="text" id="edit-hotel" placeholder="A, T, I, A+I…" autocomplete="off">
+      </div>
+    </div>
+    <div class="form-row three">
+      <div class="form-field">
+        <label>Datum narození</label>
+        <input type="date" id="edit-bdate">
+      </div>
+      <div class="form-field">
+        <label>Škoda</label>
+        <input type="text" id="edit-damage" placeholder="1500 Kč, 2275 /2 os." autocomplete="off">
+      </div>
+      <div class="form-field">
+        <label>Datum pobytu</label>
+        <input type="date" id="edit-sdate">
+      </div>
+    </div>
+    <label>Důvod zařazení *</label>
+    <textarea id="edit-reason" placeholder="Stručný popis incidentu…"></textarea>
+    <div class="modal-btns">
+      <button class="btn-cancel" id="btn-edit-cancel">Zrušit</button>
+      <button class="btn-save" id="btn-edit-submit">Uložit změny</button>
+    </div>
+  </div>
+</div>
+
 <div id="toast"></div>
 
 <script>
 // ── State ────────────────────────────────────────────────────────────────────
 
-let entries  = [];     // active blacklist
-let filtered = [];     // after search filter
-let selected = new Set(); // IDs selected for removal
+let entries  = [];
+let filtered = [];
+let selected = new Set();
 let removeMode = false;
 let auditLog = [];
 let currentUser = null;
+let sortKey = 'name';
+let sortDir = 'asc';
+let activeHotel = '';
+let editingId = null;
 
 // ── Helpers ──────────────────────────────────────────────────────────────────
 
@@ -854,6 +961,16 @@ function formatDatetime(val) {
 
 function escHtml(s) {
   return String(s || '').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+}
+
+function toISODate(val) {
+  if (!val) return '';
+  const s = String(val);
+  const m1 = s.match(/^(\d{4})-(\d{2})-(\d{2})/);
+  if (m1) return `${m1[1]}-${m1[2]}-${m1[3]}`;
+  const m2 = s.match(/^(\d{1,2})\.(\d{1,2})\.(\d{4})/);
+  if (m2) return `${m2[3]}-${m2[2].padStart(2,'0')}-${m2[1].padStart(2,'0')}`;
+  return '';
 }
 
 let toastTimer;
@@ -881,27 +998,58 @@ async function apiFetch(url, opts) {
 async function loadEntries() {
   const data = await apiFetch('/api/blacklist/entries');
   entries = data;
+  renderHotelFilter();
   applyFilter();
   updateFooter();
 }
 
 function applyFilter() {
   const q = document.getElementById('search').value.trim().toLowerCase();
-  if (!q) {
-    filtered = [...entries];
-  } else {
-    filtered = entries.filter(e =>
-      [e.name, e.hotel, e.birth_date, e.damage, e.stay_date, e.reason, e.added_by]
-        .some(v => String(v || '').toLowerCase().includes(q))
-    );
-  }
+  filtered = entries.filter(e => {
+    const matchQ = !q || [e.name, e.hotel, e.birth_date, e.damage, e.stay_date, e.reason, e.added_by]
+      .some(v => String(v || '').toLowerCase().includes(q));
+    const matchH = !activeHotel || (e.hotel || '') === activeHotel;
+    return matchQ && matchH;
+  });
   renderTable();
+}
+
+function renderHotelFilter() {
+  const hotels = [...new Set(entries.map(e => e.hotel || '').filter(Boolean))].sort((a,b) => a.localeCompare(b,'cs'));
+  const row = document.getElementById('hotel-filter-row');
+  if (hotels.length < 2) { row.innerHTML = ''; return; }
+  row.innerHTML = `<span class="hotel-label">Hotel:</span>` +
+    `<button class="hotel-btn${!activeHotel ? ' active' : ''}" onclick="setHotelFilter('')">Vše</button>` +
+    hotels.map(h => `<button class="hotel-btn${activeHotel === h ? ' active' : ''}" onclick="setHotelFilter('${escHtml(h)}')">${escHtml(h)}</button>`).join('');
+}
+
+function setHotelFilter(h) {
+  activeHotel = h;
+  renderHotelFilter();
+  applyFilter();
 }
 
 function renderTable() {
   const tbody = document.getElementById('bl-body');
   const badge = document.getElementById('count-badge');
   badge.textContent = `${filtered.length} záznamů${entries.length !== filtered.length ? ` z ${entries.length}` : ''}`;
+
+  // Update sort arrows
+  ['name','hotel','birth_date','stay_date'].forEach(k => {
+    const th = document.querySelector(`th[data-sort="${k}"]`);
+    const arrow = document.getElementById(`sa-${k}`);
+    if (!th || !arrow) return;
+    if (k === sortKey) {
+      th.classList.add('sort-active');
+      arrow.textContent = sortDir === 'asc' ? '▲' : '▼';
+    } else {
+      th.classList.remove('sort-active');
+      arrow.textContent = '';
+    }
+  });
+
+  document.getElementById('th-remove').style.display = removeMode ? '' : 'none';
+  document.getElementById('th-edit').style.display  = removeMode ? 'none' : '';
 
   if (filtered.length === 0) {
     tbody.innerHTML = `<tr><td colspan="7" style="text-align:center;padding:40px;color:#888;">
@@ -910,10 +1058,14 @@ function renderTable() {
     return;
   }
 
-  const thRemove = document.getElementById('th-remove');
-  thRemove.style.display = removeMode ? '' : 'none';
+  const sorted = [...filtered].sort((a, b) => {
+    let va = String(a[sortKey] || '').toLowerCase();
+    let vb = String(b[sortKey] || '').toLowerCase();
+    const cmp = va.localeCompare(vb, 'cs', { sensitivity: 'base' });
+    return sortDir === 'asc' ? cmp : -cmp;
+  });
 
-  tbody.innerHTML = filtered.map(e => {
+  tbody.innerHTML = sorted.map(e => {
     const isSel = selected.has(e.id);
     return `<tr class="${isSel ? 'selected' : ''}" data-id="${escHtml(e.id)}">
       ${removeMode ? `<td class="col-remove"><button class="btn-remove-row${isSel ? ' selected' : ''}" onclick="toggleSelect('${escHtml(e.id)}')" title="Označit k odebrání">×</button></td>` : ''}
@@ -923,6 +1075,7 @@ function renderTable() {
       <td>${escHtml(e.damage || '')}</td>
       <td>${escHtml(formatDate(e.stay_date))}</td>
       <td class="col-reason">${escHtml(e.reason)}</td>
+      ${!removeMode ? `<td class="col-edit"><button class="btn-edit-row" onclick="openEditModal('${escHtml(e.id)}')" title="Upravit záznam">✎</button></td>` : ''}
     </tr>`;
   }).join('');
 }
@@ -950,6 +1103,7 @@ function enterRemoveMode() {
   document.getElementById('remove-bar').classList.add('show');
   document.getElementById('btn-remove-mode').style.display = 'none';
   document.getElementById('btn-add').style.display = 'none';
+  document.getElementById('main-content').scrollTop = 0;
   updateRemoveCount();
   renderTable();
 }
@@ -1182,6 +1336,7 @@ async function submitIntro() {
 async function openHistory() {
   document.getElementById('list-view').style.display = 'none';
   document.getElementById('history-view').style.display = 'block';
+  document.getElementById('controls-bar').classList.add('hidden');
   document.getElementById('main-content').scrollTop = 0;
   const data = await apiFetch('/api/blacklist/audit');
   auditLog = data;
@@ -1204,7 +1359,7 @@ function renderHistory() {
     return;
   }
 
-  const actionLabel = { ADD: 'Přidání', REMOVE: 'Odebrání', EDIT_INTRO: 'Úprava textu' };
+  const actionLabel = { ADD: 'Přidání', REMOVE: 'Odebrání', EDIT: 'Úprava záznamu', EDIT_INTRO: 'Úprava textu' };
 
   tbody.innerHTML = rows.map(r => {
     const p = r.payload;
@@ -1220,15 +1375,22 @@ function renderHistory() {
       detail = `<strong>${escHtml(name)}</strong><br>
         <span style="color:#555;font-size:11px;">Původní důvod: ${escHtml(origR.substring(0, 80))}</span><br>
         <span style="color:#b71c1c;font-size:11px;">Důvod odebrání: ${escHtml(remR)}</span>`;
+    } else if (r.action === 'EDIT') {
+      const after = p.after || {};
+      const before = p.before || {};
+      detail = `<strong>${escHtml(after.name || before.name || '')}</strong><br><span style="color:#555;font-size:11px;">Upraven záznam</span>`;
     } else {
       detail = `<span style="color:#555;font-size:11px;">Upraven úvodní text</span>`;
     }
+    const restoreBtn = r.action === 'REMOVE'
+      ? `<button class="btn-restore-hist" onclick="restoreFromHistory('${escHtml(r.id)}')" title="Přidat zpět na blacklist">↩</button>`
+      : '';
     return `<tr>
       <td style="white-space:nowrap;">${escHtml(formatDatetime(r.timestamp))}</td>
       <td>${escHtml(r.user_name)}</td>
       <td><span class="badge-action ${r.action}">${actionLabel[r.action] || r.action}</span></td>
       <td>${detail}</td>
-      <td style="padding:4px;text-align:center;"><button class="btn-hist-del" onclick="deleteHistoryEntry('${escHtml(r.id)}')" title="Smazat záznam">×</button></td>
+      <td style="padding:4px;text-align:center;white-space:nowrap;">${restoreBtn}<button class="btn-hist-del" onclick="deleteHistoryEntry('${escHtml(r.id)}')" title="Smazat záznam">×</button></td>
     </tr>`;
   }).join('');
 }
@@ -1249,6 +1411,7 @@ async function deleteHistoryEntry(id) {
 function closeHistory() {
   document.getElementById('history-view').style.display = 'none';
   document.getElementById('list-view').style.display = 'block';
+  document.getElementById('controls-bar').classList.remove('hidden');
   document.getElementById('main-content').scrollTop = 0;
 }
 
@@ -1407,10 +1570,13 @@ document.getElementById('btn-email-select-submit').addEventListener('click', gen
 document.getElementById('btn-email-close').addEventListener('click', () => hideOverlay('overlay-email'));
 document.getElementById('btn-email-copy').addEventListener('click', copyEmail);
 
+document.getElementById('btn-edit-cancel').addEventListener('click', () => hideOverlay('overlay-edit'));
+document.getElementById('btn-edit-submit').addEventListener('click', submitEdit);
+
 document.getElementById('search').addEventListener('input', applyFilter);
 
 // Close overlays on backdrop click
-['overlay-add','overlay-remove','overlay-intro','overlay-email-select','overlay-email'].forEach(id => {
+['overlay-add','overlay-remove','overlay-intro','overlay-email-select','overlay-email','overlay-edit'].forEach(id => {
   document.getElementById(id).addEventListener('click', function(e) {
     if (e.target === this) hideOverlay(id);
   });
@@ -1573,7 +1739,104 @@ document.getElementById('search').addEventListener('input', applyFilter);
   window.initDatePickers = function(root) {
     (root || document).querySelectorAll('input[type="date"]').forEach(inp => attachPicker(inp));
   };
+
+  window.setCdpValue = function(nativeInput, isoValue) {
+    nativeInput.value = isoValue || '';
+    const wrap = nativeInput.closest('.cdp-wrap');
+    if (!wrap) return;
+    const disp = wrap.querySelector('.cdp-text');
+    if (!disp) return;
+    if (isoValue) {
+      const p = isoValue.split('-');
+      disp.value = p.length === 3 ? `${p[2]}.${p[1]}.${p[0]}` : '';
+    } else {
+      disp.value = '';
+    }
+  };
 })();
+
+// ── Sort ─────────────────────────────────────────────────────────────────────
+
+document.querySelectorAll('#bl-table th.sortable').forEach(th => {
+  th.addEventListener('click', () => {
+    const key = th.dataset.sort;
+    if (sortKey === key) sortDir = sortDir === 'asc' ? 'desc' : 'asc';
+    else { sortKey = key; sortDir = 'asc'; }
+    renderTable();
+  });
+});
+
+// ── Edit entry ────────────────────────────────────────────────────────────────
+
+function openEditModal(id) {
+  const e = entries.find(x => x.id === id);
+  if (!e) return;
+  editingId = id;
+  document.getElementById('edit-name').value   = e.name   || '';
+  document.getElementById('edit-hotel').value  = e.hotel  || '';
+  document.getElementById('edit-damage').value = e.damage || '';
+  document.getElementById('edit-reason').value = e.reason || '';
+  setCdpValue(document.getElementById('edit-bdate'), toISODate(e.birth_date));
+  setCdpValue(document.getElementById('edit-sdate'), toISODate(e.stay_date));
+  showOverlay('overlay-edit');
+  document.getElementById('edit-name').focus();
+}
+
+async function submitEdit() {
+  const name   = document.getElementById('edit-name').value.trim();
+  const hotel  = document.getElementById('edit-hotel').value.trim();
+  const bdate  = document.getElementById('edit-bdate').value;
+  const damage = document.getElementById('edit-damage').value.trim();
+  const sdate  = document.getElementById('edit-sdate').value;
+  const reason = document.getElementById('edit-reason').value.trim();
+  if (!name)   { document.getElementById('edit-name').style.borderColor   = '#c0392b'; return; }
+  if (!reason) { document.getElementById('edit-reason').style.borderColor = '#c0392b'; return; }
+  const btn = document.getElementById('btn-edit-submit');
+  btn.disabled = true; btn.textContent = 'Ukládám…';
+  try {
+    const r = await apiFetch(`/api/blacklist/entries/${editingId}`, {
+      method: 'PUT',
+      body: JSON.stringify({ name, hotel: hotel || null, birthDate: bdate || null, damage: damage || null, stayDate: sdate || null, reason })
+    });
+    if (!r.ok) throw new Error(r.msg);
+    hideOverlay('overlay-edit');
+    await loadEntries();
+    showToast('Záznam upraven.');
+  } catch(e) {
+    showToast('Chyba: ' + e.message, true);
+  } finally {
+    btn.disabled = false; btn.textContent = 'Uložit změny';
+  }
+}
+
+// ── Restore from history ──────────────────────────────────────────────────────
+
+async function restoreFromHistory(auditId) {
+  const rec = auditLog.find(r => r.id === auditId);
+  if (!rec) { showToast('Záznam nenalezen.', true); return; }
+  const p = rec.payload;
+  const e = p.entry || p;
+  const name   = e.original_name      || e.name       || '';
+  const hotel  = e.original_hotel     || e.hotel      || '';
+  const birth  = e.original_birth_date || e.birth_date || '';
+  const damage = e.original_damage    || e.damage     || '';
+  const stay   = e.original_stay_date  || e.stay_date  || '';
+  const reason = e.original_reason    || e.reason     || '';
+  if (!name || !reason) { showToast('Nelze obnovit — chybí povinná data.', true); return; }
+  if (!confirm(`Přidat „${name}" zpět na blacklist?`)) return;
+  try {
+    const r = await apiFetch('/api/blacklist/entries', {
+      method: 'POST',
+      body: JSON.stringify({ entries: [{ name, hotel: hotel || null, birthDate: toISODate(birth) || null, damage: damage || null, stayDate: toISODate(stay) || null, reason }] })
+    });
+    if (!r.ok) throw new Error(r.msg);
+    await loadEntries();
+    closeHistory();
+    showToast(`${name} přidán/a zpět na blacklist.`);
+  } catch(e) {
+    showToast('Chyba: ' + e.message, true);
+  }
+}
 
 // ── Init ──────────────────────────────────────────────────────────────────────
 
@@ -1585,6 +1848,7 @@ async function init() {
 
   await loadEntries();
   initDatePickers(document);
+  document.getElementById('main-content').scrollTop = 0;
 }
 
 init();

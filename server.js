@@ -865,6 +865,35 @@ app.post('/api/blacklist/entries', requireLogin, async (req, res) => {
   }
 });
 
+app.put('/api/blacklist/entries/:id', requireLogin, async (req, res) => {
+  const { id } = req.params;
+  const { name, hotel, birthDate, damage, stayDate, reason } = req.body;
+  if (!name?.trim() || !reason?.trim())
+    return res.status(400).json({ ok: false, msg: 'Jméno a důvod jsou povinné.' });
+  const editedBy = req.session.user.name;
+  try {
+    const db = getPool();
+    const { rows: prev } = await db.query('SELECT * FROM blacklist_entries WHERE id = $1', [id]);
+    if (!prev[0]) return res.status(404).json({ ok: false, msg: 'Záznam nenalezen.' });
+    const stayDateVal = stayDate && /^\d{4}-\d{2}-\d{2}$/.test(stayDate) ? stayDate : null;
+    const { rows } = await db.query(
+      `UPDATE blacklist_entries SET name=$1, hotel=$2, birth_date=$3, damage=$4, stay_date=$5, reason=$6
+       WHERE id=$7 RETURNING *`,
+      [name.trim(), hotel?.trim() || null, birthDate?.trim() || null,
+       damage?.trim() || null, stayDateVal, reason.trim(), id]
+    );
+    if (!rows[0]) return res.status(404).json({ ok: false, msg: 'Záznam nenalezen.' });
+    await db.query(
+      `INSERT INTO blacklist_audit (action, payload, user_name) VALUES ('EDIT',$1,$2)`,
+      [JSON.stringify({ before: prev[0], after: rows[0] }), editedBy]
+    );
+    res.json({ ok: true, entry: rows[0] });
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ ok: false, msg: 'Chyba serveru.' });
+  }
+});
+
 app.post('/api/blacklist/remove', requireLogin, async (req, res) => {
   const { removals } = req.body;
   if (!Array.isArray(removals) || removals.length === 0)
