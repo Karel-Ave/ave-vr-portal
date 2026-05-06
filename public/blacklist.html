@@ -1,0 +1,1213 @@
+<!DOCTYPE html>
+<html lang="cs">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Blacklist – AVEhotels</title>
+<style>
+* { box-sizing: border-box; margin: 0; padding: 0; }
+
+body {
+  font-family: 'Segoe UI', system-ui, sans-serif;
+  background: #e8e8e4;
+  color: #1a1a1a;
+  min-height: 100vh;
+  display: flex;
+  flex-direction: column;
+}
+
+/* ── Topbar ── */
+#topbar {
+  background: #1a1a1a;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 0 18px;
+  height: 48px;
+  border-bottom: 1px solid #2e2e2e;
+  flex-shrink: 0;
+  flex-wrap: wrap;
+}
+#topbar-title {
+  font-size: 13px;
+  font-weight: 700;
+  color: #e0e0e0;
+  margin-right: 10px;
+  white-space: nowrap;
+}
+.btn-top {
+  padding: 4px 12px;
+  border-radius: 5px;
+  border: 1px solid #3a3a3a;
+  background: transparent;
+  color: #bbb;
+  font-size: 11px;
+  cursor: pointer;
+  font-family: inherit;
+  transition: all .15s;
+  white-space: nowrap;
+}
+.btn-top:hover { background: #2e2e2e; color: #fff; border-color: #555; }
+.btn-top.danger { border-color: #6b2a2a; color: #e07070; }
+.btn-top.danger:hover { background: #4a1a1a; color: #ff9999; border-color: #c0392b; }
+.btn-top.primary { border-color: #2e5a2e; color: #6fbf6f; }
+.btn-top.primary:hover { background: #1e3e1e; color: #90e090; border-color: #4caf50; }
+
+#remove-bar {
+  display: none;
+  align-items: center;
+  gap: 10px;
+  padding: 0 18px;
+  height: 40px;
+  background: #2a1a1a;
+  border-bottom: 1px solid #5a2a2a;
+  flex-shrink: 0;
+}
+#remove-bar.show { display: flex; }
+#remove-count { font-size: 12px; color: #e08080; font-weight: 600; }
+#remove-bar .spacer { flex: 1; }
+
+/* ── Main content ── */
+#main-content {
+  flex: 1;
+  overflow-y: auto;
+  padding: 20px;
+}
+
+/* ── Intro box ── */
+#intro-box {
+  background: #fff;
+  border: 1px solid #d0d0cc;
+  border-radius: 8px;
+  padding: 14px 18px;
+  margin-bottom: 16px;
+  font-size: 13px;
+  line-height: 1.55;
+  color: #1a1a1a;
+}
+#intro-box p { margin-bottom: 8px; }
+#intro-box p:last-child { margin-bottom: 0; }
+
+/* ── Search ── */
+#search-row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-bottom: 12px;
+}
+#search {
+  flex: 1;
+  max-width: 380px;
+  padding: 7px 12px;
+  border: 1px solid #ccc;
+  border-radius: 6px;
+  font-size: 13px;
+  font-family: inherit;
+  background: #fff;
+  outline: none;
+  transition: border-color .15s;
+}
+#search:focus { border-color: #888; }
+#count-badge {
+  font-size: 12px;
+  color: #666;
+  white-space: nowrap;
+}
+
+/* ── Table ── */
+#bl-table-wrap {
+  overflow-x: auto;
+}
+#bl-table {
+  width: 100%;
+  border-collapse: collapse;
+  background: #fff;
+  font-size: 12.5px;
+  min-width: 800px;
+}
+#bl-table thead tr th {
+  background: #A9D08E;
+  color: #1a1a1a;
+  font-weight: 700;
+  padding: 7px 10px;
+  text-align: left;
+  border: 1px solid #8aaa70;
+  white-space: nowrap;
+  font-size: 12px;
+}
+#bl-table tbody tr {
+  border-bottom: 1px solid #e8e8e4;
+  transition: background .1s;
+}
+#bl-table tbody tr:hover { background: #f5f7f2; }
+#bl-table tbody tr.selected { background: #fde8e8; }
+#bl-table tbody tr.selected:hover { background: #fdd8d8; }
+#bl-table td {
+  padding: 6px 10px;
+  vertical-align: top;
+  border: 1px solid #e0e0dc;
+  line-height: 1.4;
+}
+#bl-table td.col-reason {
+  max-width: 360px;
+  word-break: break-word;
+}
+td.col-remove {
+  width: 36px;
+  text-align: center;
+  padding: 4px;
+}
+.btn-remove-row {
+  background: none;
+  border: 1px solid #c0392b;
+  color: #c0392b;
+  border-radius: 4px;
+  width: 26px;
+  height: 26px;
+  cursor: pointer;
+  font-size: 14px;
+  line-height: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  margin: auto;
+  transition: all .15s;
+}
+.btn-remove-row:hover { background: #c0392b; color: #fff; }
+.btn-remove-row.selected { background: #c0392b; color: #fff; }
+
+#empty-state {
+  text-align: center;
+  padding: 48px 20px;
+  color: #888;
+  font-size: 14px;
+}
+
+/* ── Footer info ── */
+#footer-info {
+  margin-top: 14px;
+  font-size: 11px;
+  color: #888;
+  text-align: right;
+}
+
+/* ── History view ── */
+#history-view {
+  display: none;
+}
+#history-view.show { display: block; }
+#main-content.history-mode #list-view { display: none; }
+#main-content.history-mode #history-view { display: block; }
+
+.history-filters {
+  display: flex;
+  gap: 10px;
+  margin-bottom: 14px;
+  flex-wrap: wrap;
+  align-items: center;
+}
+.history-filters label {
+  font-size: 11px;
+  color: #666;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: .05em;
+}
+.history-filters select,
+.history-filters input {
+  padding: 5px 10px;
+  border: 1px solid #ccc;
+  border-radius: 5px;
+  font-size: 12px;
+  font-family: inherit;
+  background: #fff;
+  outline: none;
+}
+#history-table-wrap { overflow-x: auto; }
+#history-table {
+  width: 100%;
+  border-collapse: collapse;
+  background: #fff;
+  font-size: 12px;
+  min-width: 700px;
+}
+#history-table thead th {
+  background: #2e2e2e;
+  color: #e0e0e0;
+  font-weight: 600;
+  padding: 7px 10px;
+  text-align: left;
+  border: 1px solid #3e3e3e;
+  white-space: nowrap;
+}
+#history-table tbody tr { border-bottom: 1px solid #e8e8e4; }
+#history-table tbody tr:hover { background: #f5f5f5; }
+#history-table td {
+  padding: 6px 10px;
+  vertical-align: top;
+  border: 1px solid #e0e0dc;
+  line-height: 1.4;
+}
+.badge-action {
+  display: inline-block;
+  font-size: 10px;
+  font-weight: 700;
+  padding: 2px 7px;
+  border-radius: 4px;
+  text-transform: uppercase;
+  letter-spacing: .04em;
+}
+.badge-action.ADD    { background: #e8f5e9; color: #2e7d32; border: 1px solid #a5d6a7; }
+.badge-action.REMOVE { background: #fdecea; color: #b71c1c; border: 1px solid #ef9a9a; }
+.badge-action.EDIT_INTRO { background: #e3f2fd; color: #1565c0; border: 1px solid #90caf9; }
+
+/* ── Modals ── */
+.overlay {
+  display: none;
+  position: fixed;
+  inset: 0;
+  background: rgba(0,0,0,.6);
+  z-index: 1000;
+  align-items: flex-start;
+  justify-content: center;
+  padding: 40px 16px;
+  overflow-y: auto;
+}
+.overlay.show { display: flex; }
+.modal {
+  background: #fff;
+  border-radius: 10px;
+  padding: 24px;
+  width: 100%;
+  max-width: 560px;
+  box-shadow: 0 8px 32px rgba(0,0,0,.2);
+  position: relative;
+}
+.modal-lg { max-width: 720px; }
+.modal h2 {
+  font-size: 15px;
+  font-weight: 700;
+  color: #1a1a1a;
+  margin-bottom: 18px;
+}
+.modal label {
+  display: block;
+  font-size: 10px;
+  font-weight: 700;
+  color: #666;
+  text-transform: uppercase;
+  letter-spacing: .07em;
+  margin-bottom: 4px;
+  margin-top: 12px;
+}
+.modal label:first-of-type { margin-top: 0; }
+.modal input[type="text"],
+.modal input[type="date"],
+.modal textarea,
+.modal select {
+  width: 100%;
+  padding: 8px 10px;
+  border: 1px solid #ccc;
+  border-radius: 6px;
+  font-size: 13px;
+  font-family: inherit;
+  background: #fff;
+  outline: none;
+  transition: border-color .15s;
+}
+.modal input:focus,
+.modal textarea:focus { border-color: #4a4a4a; }
+.modal textarea { resize: vertical; min-height: 70px; }
+.modal-btns {
+  display: flex;
+  gap: 8px;
+  justify-content: flex-end;
+  margin-top: 20px;
+}
+.btn-cancel {
+  padding: 7px 18px;
+  border: 1px solid #ccc;
+  border-radius: 6px;
+  background: transparent;
+  color: #666;
+  font-size: 12px;
+  cursor: pointer;
+  font-family: inherit;
+  transition: all .15s;
+}
+.btn-cancel:hover { background: #f0f0f0; }
+.btn-save {
+  padding: 7px 18px;
+  border: 1px solid #2e5a2e;
+  border-radius: 6px;
+  background: #2e5a2e;
+  color: #fff;
+  font-size: 12px;
+  cursor: pointer;
+  font-family: inherit;
+  transition: all .15s;
+  font-weight: 600;
+}
+.btn-save:hover { background: #1e3e1e; }
+.btn-del-red {
+  padding: 7px 18px;
+  border: 1px solid #c0392b;
+  border-radius: 6px;
+  background: #c0392b;
+  color: #fff;
+  font-size: 12px;
+  cursor: pointer;
+  font-family: inherit;
+  transition: all .15s;
+  font-weight: 600;
+}
+.btn-del-red:hover { background: #922b21; }
+
+/* ── Person form block ── */
+.person-block {
+  background: #f8f8f8;
+  border: 1px solid #e0e0dc;
+  border-radius: 8px;
+  padding: 14px 16px;
+  margin-bottom: 12px;
+  position: relative;
+}
+.person-block-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 10px;
+}
+.person-block-title {
+  font-size: 11px;
+  font-weight: 700;
+  color: #666;
+  text-transform: uppercase;
+  letter-spacing: .07em;
+}
+.btn-remove-block {
+  background: none;
+  border: none;
+  color: #c0392b;
+  cursor: pointer;
+  font-size: 16px;
+  padding: 0 4px;
+  line-height: 1;
+}
+.form-row { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+.form-row.three { grid-template-columns: 1fr 1fr 1fr; }
+.form-field { display: flex; flex-direction: column; }
+.form-field label { margin-top: 0; margin-bottom: 4px; }
+.warning-dup {
+  font-size: 11px;
+  color: #b25900;
+  background: #fff8ee;
+  border: 1px solid #f0c060;
+  border-radius: 4px;
+  padding: 5px 9px;
+  margin-top: 6px;
+  display: none;
+}
+.btn-add-more {
+  padding: 7px 14px;
+  border: 1px dashed #999;
+  border-radius: 6px;
+  background: transparent;
+  color: #555;
+  font-size: 12px;
+  cursor: pointer;
+  font-family: inherit;
+  width: 100%;
+  transition: all .15s;
+  margin-top: 4px;
+}
+.btn-add-more:hover { background: #f0f0f0; border-style: solid; }
+
+/* ── Removal reasons blocks ── */
+.removal-block {
+  background: #fff5f5;
+  border: 1px solid #f0c0c0;
+  border-radius: 8px;
+  padding: 14px 16px;
+  margin-bottom: 12px;
+}
+.removal-name {
+  font-size: 13px;
+  font-weight: 700;
+  color: #1a1a1a;
+  margin-bottom: 8px;
+}
+
+/* ── Rich text editor ── */
+#rte-toolbar {
+  display: flex;
+  gap: 4px;
+  padding: 6px 8px;
+  background: #f0f0f0;
+  border: 1px solid #ccc;
+  border-bottom: none;
+  border-radius: 6px 6px 0 0;
+}
+.rte-btn {
+  padding: 3px 9px;
+  border: 1px solid #ccc;
+  border-radius: 4px;
+  background: #fff;
+  font-size: 12px;
+  cursor: pointer;
+  font-family: inherit;
+  min-width: 28px;
+  text-align: center;
+}
+.rte-btn:hover { background: #e8e8e8; }
+.rte-btn b { font-weight: 900; }
+#rte-body {
+  min-height: 140px;
+  border: 1px solid #ccc;
+  border-radius: 0 0 6px 6px;
+  padding: 10px 12px;
+  font-size: 13px;
+  font-family: 'Segoe UI', system-ui, sans-serif;
+  outline: none;
+  line-height: 1.55;
+  background: #fff;
+}
+#rte-body:focus { border-color: #4a4a4a; }
+
+/* ── Email preview ── */
+#email-preview-wrap {
+  border: 1px solid #ccc;
+  border-radius: 6px;
+  background: #fafafa;
+  padding: 14px 16px;
+  font-size: 12px;
+  max-height: 340px;
+  overflow-y: auto;
+  margin-bottom: 12px;
+}
+#email-textarea {
+  width: 100%;
+  height: 160px;
+  font-size: 11px;
+  font-family: monospace;
+  border: 1px solid #ccc;
+  border-radius: 6px;
+  padding: 10px;
+  resize: vertical;
+  background: #f8f8f8;
+  outline: none;
+}
+
+/* ── Toast ── */
+#toast {
+  position: fixed;
+  bottom: 24px;
+  right: 24px;
+  background: #1a3a1a;
+  color: #90e090;
+  border: 1px solid #2e6e2e;
+  border-radius: 8px;
+  padding: 10px 18px;
+  font-size: 13px;
+  z-index: 9999;
+  opacity: 0;
+  transform: translateY(8px);
+  transition: opacity .25s, transform .25s;
+  pointer-events: none;
+}
+#toast.show { opacity: 1; transform: translateY(0); }
+#toast.error { background: #3a1a1a; color: #e09090; border-color: #6e2e2e; }
+
+/* ── Spinner ── */
+.spinner-small {
+  display: inline-block;
+  width: 14px;
+  height: 14px;
+  border: 2px solid #ccc;
+  border-top-color: #555;
+  border-radius: 50%;
+  animation: spin .7s linear infinite;
+  vertical-align: middle;
+}
+@keyframes spin { to { transform: rotate(360deg); } }
+</style>
+</head>
+<body>
+
+<!-- Topbar -->
+<div id="topbar">
+  <span id="topbar-title">🚫 Blacklist</span>
+  <button class="btn-top primary" id="btn-add">+ Přidat</button>
+  <button class="btn-top danger" id="btn-remove-mode">− Odebrat</button>
+  <button class="btn-top" id="btn-pdf">Export PDF</button>
+  <button class="btn-top" id="btn-email">Export e-mail</button>
+  <button class="btn-top" id="btn-intro">Upravit text</button>
+  <button class="btn-top" id="btn-history">Historie</button>
+</div>
+
+<!-- Remove mode bar -->
+<div id="remove-bar">
+  <span id="remove-count">Označeno: 0 osob</span>
+  <div class="spacer"></div>
+  <button class="btn-top danger" id="btn-remove-selected">Odebrat označené</button>
+  <button class="btn-top" id="btn-remove-cancel">Zrušit</button>
+</div>
+
+<!-- Main content -->
+<div id="main-content">
+
+  <!-- List view -->
+  <div id="list-view">
+    <div id="intro-box">Načítám…</div>
+
+    <div id="search-row">
+      <input id="search" placeholder="Hledat jméno, hotel, důvod…" autocomplete="off">
+      <span id="count-badge"></span>
+    </div>
+
+    <div id="bl-table-wrap">
+      <table id="bl-table">
+        <thead>
+          <tr>
+            <th id="th-remove" style="display:none;width:36px;"></th>
+            <th>Jméno</th>
+            <th>Hotel</th>
+            <th>Datum nar.</th>
+            <th>Škoda</th>
+            <th>Datum pobytu</th>
+            <th>Důvod</th>
+          </tr>
+        </thead>
+        <tbody id="bl-body">
+          <tr><td colspan="7" id="empty-state">Načítám…</td></tr>
+        </tbody>
+      </table>
+    </div>
+
+    <div id="footer-info"></div>
+  </div>
+
+  <!-- History view -->
+  <div id="history-view">
+    <div class="history-filters">
+      <label>Akce:</label>
+      <select id="hist-filter-action">
+        <option value="">Vše</option>
+        <option value="ADD">Přidání</option>
+        <option value="REMOVE">Odebrání</option>
+        <option value="EDIT_INTRO">Úprava textu</option>
+      </select>
+      <label>Od:</label>
+      <input type="date" id="hist-filter-from">
+      <label>Do:</label>
+      <input type="date" id="hist-filter-to">
+      <button class="btn-top" id="btn-hist-back">← Zpět na seznam</button>
+    </div>
+
+    <div id="history-table-wrap">
+      <table id="history-table">
+        <thead>
+          <tr>
+            <th>Datum a čas</th>
+            <th>Uživatel</th>
+            <th>Akce</th>
+            <th>Detaily</th>
+          </tr>
+        </thead>
+        <tbody id="hist-body"></tbody>
+      </table>
+    </div>
+  </div>
+
+</div>
+
+<!-- Modal: Přidat osobu/y -->
+<div class="overlay" id="overlay-add">
+  <div class="modal">
+    <h2>Přidat osobu na blacklist</h2>
+    <div id="person-blocks"></div>
+    <button class="btn-add-more" id="btn-add-more">+ Přidat další osobu</button>
+    <div class="modal-btns">
+      <button class="btn-cancel" id="btn-add-cancel">Zrušit</button>
+      <button class="btn-save" id="btn-add-submit">Přidat</button>
+    </div>
+  </div>
+</div>
+
+<!-- Modal: Důvody odebrání -->
+<div class="overlay" id="overlay-remove">
+  <div class="modal">
+    <h2>Potvrdit odebrání</h2>
+    <div id="removal-blocks"></div>
+    <div class="modal-btns">
+      <button class="btn-cancel" id="btn-rem-cancel">Zrušit</button>
+      <button class="btn-del-red" id="btn-rem-submit">Odebrat</button>
+    </div>
+  </div>
+</div>
+
+<!-- Modal: Upravit úvodní text -->
+<div class="overlay" id="overlay-intro">
+  <div class="modal modal-lg">
+    <h2>Upravit úvodní text</h2>
+    <div id="rte-toolbar">
+      <button class="rte-btn" title="Tučné" onclick="execCmd('bold')"><b>B</b></button>
+      <button class="rte-btn" title="Kurzíva" onclick="execCmd('italic')"><i>I</i></button>
+      <button class="rte-btn" title="Podtržené" onclick="execCmd('underline')"><u>U</u></button>
+    </div>
+    <div id="rte-body" contenteditable="true"></div>
+    <div class="modal-btns">
+      <button class="btn-cancel" id="btn-intro-cancel">Zrušit</button>
+      <button class="btn-save" id="btn-intro-submit">Uložit</button>
+    </div>
+  </div>
+</div>
+
+<!-- Modal: Export e-mail -->
+<div class="overlay" id="overlay-email">
+  <div class="modal modal-lg">
+    <h2 id="email-modal-title">Export e-mailu</h2>
+    <div id="email-preview-wrap"></div>
+    <textarea id="email-textarea" readonly placeholder="HTML kód e-mailu…"></textarea>
+    <div class="modal-btns">
+      <button class="btn-cancel" id="btn-email-close">Zavřít</button>
+      <button class="btn-top" id="btn-email-download" style="padding:7px 18px;font-size:12px;">Stáhnout .html</button>
+      <button class="btn-save" id="btn-email-copy">Kopírovat HTML</button>
+    </div>
+  </div>
+</div>
+
+<div id="toast"></div>
+
+<script>
+// ── State ────────────────────────────────────────────────────────────────────
+
+let entries  = [];     // active blacklist
+let filtered = [];     // after search filter
+let selected = new Set(); // IDs selected for removal
+let removeMode = false;
+let auditLog = [];
+let currentUser = null;
+
+// ── Helpers ──────────────────────────────────────────────────────────────────
+
+function formatDate(val) {
+  if (!val) return '';
+  const s = String(val);
+  const m = s.match(/^(\d{4})-(\d{2})-(\d{2})/);
+  if (m) return `${m[3]}.${m[2]}.${m[1]}`;
+  return s;
+}
+
+function formatDatetime(val) {
+  if (!val) return '';
+  const d = new Date(val);
+  if (isNaN(d)) return '';
+  return `${String(d.getDate()).padStart(2,'0')}.${String(d.getMonth()+1).padStart(2,'0')}.${d.getFullYear()} ${String(d.getHours()).padStart(2,'0')}:${String(d.getMinutes()).padStart(2,'0')}`;
+}
+
+function escHtml(s) {
+  return String(s || '').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+}
+
+let toastTimer;
+function showToast(msg, isError) {
+  const el = document.getElementById('toast');
+  el.textContent = msg;
+  el.className = 'show' + (isError ? ' error' : '');
+  clearTimeout(toastTimer);
+  toastTimer = setTimeout(() => el.className = '', 3000);
+}
+
+function showOverlay(id) { document.getElementById(id).classList.add('show'); }
+function hideOverlay(id) { document.getElementById(id).classList.remove('show'); }
+
+// ── Fetch helpers ─────────────────────────────────────────────────────────────
+
+async function apiFetch(url, opts) {
+  const r = await fetch(url, { headers: { 'Content-Type': 'application/json' }, ...opts });
+  if (!r.ok && !r.headers.get('content-type')?.includes('json')) throw new Error('HTTP ' + r.status);
+  return r.json();
+}
+
+// ── Load entries ──────────────────────────────────────────────────────────────
+
+async function loadEntries() {
+  const data = await apiFetch('/api/blacklist/entries');
+  entries = data;
+  applyFilter();
+  updateFooter();
+}
+
+function applyFilter() {
+  const q = document.getElementById('search').value.trim().toLowerCase();
+  if (!q) {
+    filtered = [...entries];
+  } else {
+    filtered = entries.filter(e =>
+      [e.name, e.hotel, e.birth_date, e.damage, e.stay_date, e.reason, e.added_by]
+        .some(v => String(v || '').toLowerCase().includes(q))
+    );
+  }
+  renderTable();
+}
+
+function renderTable() {
+  const tbody = document.getElementById('bl-body');
+  const badge = document.getElementById('count-badge');
+  badge.textContent = `${filtered.length} záznamů${entries.length !== filtered.length ? ` z ${entries.length}` : ''}`;
+
+  if (filtered.length === 0) {
+    tbody.innerHTML = `<tr><td colspan="7" style="text-align:center;padding:40px;color:#888;">
+      ${entries.length === 0 ? 'Žádné osoby na blacklistu. Použijte <em>+ Přidat</em> pro první záznam.' : 'Žádné výsledky pro zadaný filtr.'}
+    </td></tr>`;
+    return;
+  }
+
+  const thRemove = document.getElementById('th-remove');
+  thRemove.style.display = removeMode ? '' : 'none';
+
+  tbody.innerHTML = filtered.map(e => {
+    const isSel = selected.has(e.id);
+    return `<tr class="${isSel ? 'selected' : ''}" data-id="${escHtml(e.id)}">
+      ${removeMode ? `<td class="col-remove"><button class="btn-remove-row${isSel ? ' selected' : ''}" onclick="toggleSelect('${escHtml(e.id)}')" title="Označit k odebrání">×</button></td>` : ''}
+      <td>${escHtml(e.name)}</td>
+      <td>${escHtml(e.hotel || '')}</td>
+      <td>${escHtml(formatDate(e.birth_date))}</td>
+      <td>${escHtml(e.damage || '')}</td>
+      <td>${escHtml(formatDate(e.stay_date))}</td>
+      <td class="col-reason">${escHtml(e.reason)}</td>
+    </tr>`;
+  }).join('');
+}
+
+function updateFooter() {
+  const now = new Date();
+  const d = `${String(now.getDate()).padStart(2,'0')}.${String(now.getMonth()+1).padStart(2,'0')}.${now.getFullYear()}`;
+  const name = currentUser?.name || '';
+  document.getElementById('footer-info').textContent =
+    `${d}${name ? ' · ' + name : ''} · Celkem: ${entries.length} osob`;
+}
+
+// ── Load intro ────────────────────────────────────────────────────────────────
+
+async function loadIntro() {
+  const data = await apiFetch('/api/blacklist/intro');
+  document.getElementById('intro-box').innerHTML = data.content || '';
+}
+
+// ── Remove mode ───────────────────────────────────────────────────────────────
+
+function enterRemoveMode() {
+  removeMode = true;
+  selected.clear();
+  document.getElementById('remove-bar').classList.add('show');
+  document.getElementById('btn-remove-mode').style.display = 'none';
+  document.getElementById('btn-add').style.display = 'none';
+  updateRemoveCount();
+  renderTable();
+}
+
+function exitRemoveMode() {
+  removeMode = false;
+  selected.clear();
+  document.getElementById('remove-bar').classList.remove('show');
+  document.getElementById('btn-remove-mode').style.display = '';
+  document.getElementById('btn-add').style.display = '';
+  renderTable();
+}
+
+function toggleSelect(id) {
+  if (selected.has(id)) selected.delete(id);
+  else selected.add(id);
+  updateRemoveCount();
+  renderTable();
+}
+
+function updateRemoveCount() {
+  document.getElementById('remove-count').textContent =
+    `Označeno: ${selected.size} ${selected.size === 1 ? 'osoba' : selected.size < 5 ? 'osoby' : 'osob'}`;
+}
+
+// ── Add modal ─────────────────────────────────────────────────────────────────
+
+let personCount = 0;
+
+function createPersonBlock(num) {
+  personCount++;
+  const idx = personCount;
+  const div = document.createElement('div');
+  div.className = 'person-block';
+  div.dataset.blockIdx = idx;
+  div.innerHTML = `
+    <div class="person-block-header">
+      <span class="person-block-title">Osoba ${num}</span>
+      ${num > 1 ? `<button class="btn-remove-block" title="Odstranit" onclick="removePersonBlock(this)">×</button>` : ''}
+    </div>
+    <div class="form-row">
+      <div class="form-field">
+        <label>Jméno *</label>
+        <input type="text" class="f-name" placeholder="Příjmení Jméno" autocomplete="off">
+      </div>
+      <div class="form-field">
+        <label>Hotel *</label>
+        <input type="text" class="f-hotel" placeholder="A, T, I, A+I…" autocomplete="off">
+      </div>
+    </div>
+    <div class="form-row three">
+      <div class="form-field">
+        <label>Datum narození</label>
+        <input type="date" class="f-bdate">
+      </div>
+      <div class="form-field">
+        <label>Škoda</label>
+        <input type="text" class="f-damage" placeholder="1500 Kč, 2275 /2 os." autocomplete="off">
+      </div>
+      <div class="form-field">
+        <label>Datum pobytu</label>
+        <input type="date" class="f-sdate">
+      </div>
+    </div>
+    <label>Důvod zařazení *</label>
+    <textarea class="f-reason" placeholder="Stručný popis incidentu…"></textarea>
+    <div class="warning-dup"></div>
+  `;
+  // Duplicate check on name input
+  const nameInp = div.querySelector('.f-name');
+  const bdateInp = div.querySelector('.f-bdate');
+  const dupWarn  = div.querySelector('.warning-dup');
+  function checkDup() {
+    const n = nameInp.value.trim().toLowerCase();
+    const b = bdateInp.value;
+    if (!n) { dupWarn.style.display = 'none'; return; }
+    const dup = entries.find(e =>
+      e.name.toLowerCase() === n && (!b || formatDate(e.birth_date) === formatDate(b))
+    );
+    if (dup) {
+      dupWarn.textContent = `Upozornění: osoba "${dup.name}" je již na blacklistu. Přesto lze přidat.`;
+      dupWarn.style.display = '';
+    } else {
+      dupWarn.style.display = 'none';
+    }
+  }
+  nameInp.addEventListener('input', checkDup);
+  bdateInp.addEventListener('change', checkDup);
+  return div;
+}
+
+function removePersonBlock(btn) {
+  const block = btn.closest('.person-block');
+  block.remove();
+  // Renumber titles
+  document.querySelectorAll('#person-blocks .person-block').forEach((b, i) => {
+    b.querySelector('.person-block-title').textContent = `Osoba ${i + 1}`;
+  });
+}
+
+function openAddModal() {
+  personCount = 0;
+  const container = document.getElementById('person-blocks');
+  container.innerHTML = '';
+  container.appendChild(createPersonBlock(1));
+  showOverlay('overlay-add');
+  container.querySelector('.f-name').focus();
+}
+
+async function submitAdd() {
+  const blocks = document.querySelectorAll('#person-blocks .person-block');
+  const entries_to_add = [];
+  let valid = true;
+  blocks.forEach((b, i) => {
+    const name   = b.querySelector('.f-name').value.trim();
+    const hotel  = b.querySelector('.f-hotel').value.trim();
+    const bdate  = b.querySelector('.f-bdate').value;
+    const damage = b.querySelector('.f-damage').value.trim();
+    const sdate  = b.querySelector('.f-sdate').value;
+    const reason = b.querySelector('.f-reason').value.trim();
+    if (!name || !reason) {
+      b.querySelector('.f-name').style.borderColor = name ? '#ccc' : '#c0392b';
+      b.querySelector('.f-reason').style.borderColor = reason ? '#ccc' : '#c0392b';
+      valid = false;
+      return;
+    }
+    entries_to_add.push({ name, hotel, birthDate: bdate || null, damage: damage || null, stayDate: sdate || null, reason });
+  });
+  if (!valid) { showToast('Vyplňte všechna povinná pole.', true); return; }
+  const btn = document.getElementById('btn-add-submit');
+  btn.disabled = true; btn.textContent = 'Ukládám…';
+  try {
+    const r = await apiFetch('/api/blacklist/entries', { method: 'POST', body: JSON.stringify({ entries: entries_to_add }) });
+    if (!r.ok) throw new Error(r.msg);
+    hideOverlay('overlay-add');
+    await loadEntries();
+    showToast(`Přidáno ${entries_to_add.length} ${entries_to_add.length === 1 ? 'osoba' : entries_to_add.length < 5 ? 'osoby' : 'osob'}.`);
+  } catch(e) {
+    showToast('Chyba při ukládání: ' + e.message, true);
+  } finally {
+    btn.disabled = false; btn.textContent = 'Přidat';
+  }
+}
+
+// ── Remove selected modal ─────────────────────────────────────────────────────
+
+function openRemoveModal() {
+  if (selected.size === 0) { showToast('Nejdříve označte osoby k odebrání.', true); return; }
+  const container = document.getElementById('removal-blocks');
+  container.innerHTML = '';
+  [...selected].forEach(id => {
+    const e = entries.find(x => x.id === id);
+    if (!e) return;
+    const div = document.createElement('div');
+    div.className = 'removal-block';
+    div.dataset.id = id;
+    div.innerHTML = `
+      <div class="removal-name">${escHtml(e.name)}</div>
+      <label>Důvod odebrání *</label>
+      <textarea class="f-rem-reason" placeholder="Proč je host odebírán z blacklistu…"></textarea>
+    `;
+    container.appendChild(div);
+  });
+  showOverlay('overlay-remove');
+  container.querySelector('.f-rem-reason')?.focus();
+}
+
+async function submitRemove() {
+  const blocks = document.querySelectorAll('#removal-blocks .removal-block');
+  const removals = [];
+  let valid = true;
+  blocks.forEach(b => {
+    const reason = b.querySelector('.f-rem-reason').value.trim();
+    if (!reason) { b.querySelector('.f-rem-reason').style.borderColor = '#c0392b'; valid = false; return; }
+    removals.push({ id: b.dataset.id, reason });
+  });
+  if (!valid) { showToast('Vyplňte důvod odebrání u každé osoby.', true); return; }
+  const btn = document.getElementById('btn-rem-submit');
+  btn.disabled = true; btn.textContent = 'Odebírám…';
+  try {
+    const r = await apiFetch('/api/blacklist/remove', { method: 'POST', body: JSON.stringify({ removals }) });
+    if (!r.ok) throw new Error(r.msg);
+    hideOverlay('overlay-remove');
+    exitRemoveMode();
+    await loadEntries();
+    showToast(`Odebráno ${removals.length} ${removals.length === 1 ? 'osoba' : removals.length < 5 ? 'osoby' : 'osob'}.`);
+  } catch(e) {
+    showToast('Chyba: ' + e.message, true);
+  } finally {
+    btn.disabled = false; btn.textContent = 'Odebrat';
+  }
+}
+
+// ── Intro editor ──────────────────────────────────────────────────────────────
+
+function execCmd(cmd) {
+  document.execCommand(cmd, false, null);
+  document.getElementById('rte-body').focus();
+}
+
+async function openIntroModal() {
+  const data = await apiFetch('/api/blacklist/intro');
+  document.getElementById('rte-body').innerHTML = data.content || '';
+  showOverlay('overlay-intro');
+  document.getElementById('rte-body').focus();
+}
+
+async function submitIntro() {
+  const content = document.getElementById('rte-body').innerHTML.trim();
+  if (!content) { showToast('Obsah nesmí být prázdný.', true); return; }
+  const btn = document.getElementById('btn-intro-submit');
+  btn.disabled = true; btn.textContent = 'Ukládám…';
+  try {
+    const r = await apiFetch('/api/blacklist/intro', { method: 'PUT', body: JSON.stringify({ content }) });
+    if (!r.ok) throw new Error(r.msg);
+    hideOverlay('overlay-intro');
+    await loadIntro();
+    showToast('Úvodní text byl uložen.');
+  } catch(e) {
+    showToast('Chyba: ' + e.message, true);
+  } finally {
+    btn.disabled = false; btn.textContent = 'Uložit';
+  }
+}
+
+// ── History ───────────────────────────────────────────────────────────────────
+
+async function openHistory() {
+  document.getElementById('list-view').style.display = 'none';
+  document.getElementById('history-view').style.display = 'block';
+  const data = await apiFetch('/api/blacklist/audit');
+  auditLog = data;
+  renderHistory();
+}
+
+function renderHistory() {
+  const action = document.getElementById('hist-filter-action').value;
+  const from   = document.getElementById('hist-filter-from').value;
+  const to     = document.getElementById('hist-filter-to').value;
+
+  let rows = auditLog;
+  if (action) rows = rows.filter(r => r.action === action);
+  if (from)   rows = rows.filter(r => r.timestamp >= from);
+  if (to)     rows = rows.filter(r => r.timestamp <= to + 'T23:59:59');
+
+  const tbody = document.getElementById('hist-body');
+  if (rows.length === 0) {
+    tbody.innerHTML = `<tr><td colspan="4" style="text-align:center;padding:32px;color:#888;">Žádné záznamy.</td></tr>`;
+    return;
+  }
+
+  const actionLabel = { ADD: 'Přidání', REMOVE: 'Odebrání', EDIT_INTRO: 'Úprava textu' };
+
+  tbody.innerHTML = rows.map(r => {
+    const p = r.payload;
+    let detail = '';
+    if (r.action === 'ADD') {
+      const e = p.entry || p;
+      detail = `<strong>${escHtml(e.name || '')}</strong><br><span style="color:#555;font-size:11px;">${escHtml((e.reason || '').substring(0, 120))}</span>`;
+    } else if (r.action === 'REMOVE') {
+      const e = p.entry || p;
+      const name = e.original_name || e.name || '';
+      const remR = p.removalReason || p.removal_reason || '';
+      const origR = e.original_reason || e.reason || '';
+      detail = `<strong>${escHtml(name)}</strong><br>
+        <span style="color:#555;font-size:11px;">Původní důvod: ${escHtml(origR.substring(0, 80))}</span><br>
+        <span style="color:#b71c1c;font-size:11px;">Důvod odebrání: ${escHtml(remR)}</span>`;
+    } else {
+      detail = `<span style="color:#555;font-size:11px;">Upraven úvodní text</span>`;
+    }
+    return `<tr>
+      <td style="white-space:nowrap;">${escHtml(formatDatetime(r.timestamp))}</td>
+      <td>${escHtml(r.user_name)}</td>
+      <td><span class="badge-action ${r.action}">${actionLabel[r.action] || r.action}</span></td>
+      <td>${detail}</td>
+    </tr>`;
+  }).join('');
+}
+
+function closeHistory() {
+  document.getElementById('history-view').style.display = 'none';
+  document.getElementById('list-view').style.display = 'block';
+}
+
+// ── PDF export ────────────────────────────────────────────────────────────────
+
+async function exportPdf() {
+  const btn = document.getElementById('btn-pdf');
+  btn.disabled = true; btn.textContent = 'Generuji…';
+  try {
+    const r = await fetch('/api/blacklist/export/pdf');
+    if (!r.ok) { showToast('Chyba při generování PDF.', true); return; }
+    const warning = r.headers.get('X-PDF-Warning');
+    const blob = await r.blob();
+    const url  = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    const now = new Date();
+    const pad2 = n => String(n).padStart(2,'0');
+    a.download = `${now.getFullYear()}_${pad2(now.getMonth()+1)}_${pad2(now.getDate())}_BLACKLIST.pdf`;
+    a.click();
+    URL.revokeObjectURL(url);
+    if (warning) showToast('⚠ ' + warning, true);
+    else showToast('PDF bylo vygenerováno.');
+  } catch(e) {
+    showToast('Chyba: ' + e.message, true);
+  } finally {
+    btn.disabled = false; btn.textContent = 'Export PDF';
+  }
+}
+
+// ── Email export ──────────────────────────────────────────────────────────────
+
+async function exportEmail() {
+  const btn = document.getElementById('btn-email');
+  btn.disabled = true; btn.textContent = 'Generuji…';
+  try {
+    const r = await apiFetch('/api/blacklist/export/email', { method: 'POST' });
+    if (!r.ok) { showToast(r.msg || 'Chyba.', true); return; }
+    if (!r.html) { showToast(r.message || 'Žádné nové změny.'); return; }
+    document.getElementById('email-preview-wrap').innerHTML = r.html;
+    document.getElementById('email-textarea').value = r.html;
+    document.getElementById('email-modal-title').textContent = 'E-mail vygenerován';
+    showOverlay('overlay-email');
+  } catch(e) {
+    showToast('Chyba: ' + e.message, true);
+  } finally {
+    btn.disabled = false; btn.textContent = 'Export e-mail';
+  }
+}
+
+function copyEmail() {
+  const ta = document.getElementById('email-textarea');
+  ta.select();
+  document.execCommand('copy');
+  showToast('HTML zkopírováno do schránky.');
+}
+
+function downloadEmail() {
+  const html = document.getElementById('email-textarea').value;
+  const blob = new Blob([html], { type: 'text/html;charset=utf-8' });
+  const url  = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  const now = new Date();
+  const pad2 = n => String(n).padStart(2,'0');
+  a.href = url;
+  a.download = `blacklist_email_${now.getFullYear()}${pad2(now.getMonth()+1)}${pad2(now.getDate())}.html`;
+  a.click();
+  URL.revokeObjectURL(url);
+}
+
+// ── Event listeners ───────────────────────────────────────────────────────────
+
+document.getElementById('btn-add').addEventListener('click', openAddModal);
+document.getElementById('btn-add-more').addEventListener('click', () => {
+  const blocks = document.querySelectorAll('#person-blocks .person-block');
+  document.getElementById('person-blocks').appendChild(createPersonBlock(blocks.length + 1));
+});
+document.getElementById('btn-add-cancel').addEventListener('click', () => hideOverlay('overlay-add'));
+document.getElementById('btn-add-submit').addEventListener('click', submitAdd);
+
+document.getElementById('btn-remove-mode').addEventListener('click', enterRemoveMode);
+document.getElementById('btn-remove-cancel').addEventListener('click', exitRemoveMode);
+document.getElementById('btn-remove-selected').addEventListener('click', openRemoveModal);
+document.getElementById('btn-rem-cancel').addEventListener('click', () => hideOverlay('overlay-remove'));
+document.getElementById('btn-rem-submit').addEventListener('click', submitRemove);
+
+document.getElementById('btn-intro').addEventListener('click', openIntroModal);
+document.getElementById('btn-intro-cancel').addEventListener('click', () => hideOverlay('overlay-intro'));
+document.getElementById('btn-intro-submit').addEventListener('click', submitIntro);
+
+document.getElementById('btn-history').addEventListener('click', openHistory);
+document.getElementById('btn-hist-back').addEventListener('click', closeHistory);
+document.getElementById('hist-filter-action').addEventListener('change', renderHistory);
+document.getElementById('hist-filter-from').addEventListener('change', renderHistory);
+document.getElementById('hist-filter-to').addEventListener('change', renderHistory);
+
+document.getElementById('btn-pdf').addEventListener('click', exportPdf);
+document.getElementById('btn-email').addEventListener('click', exportEmail);
+document.getElementById('btn-email-close').addEventListener('click', () => hideOverlay('overlay-email'));
+document.getElementById('btn-email-copy').addEventListener('click', copyEmail);
+document.getElementById('btn-email-download').addEventListener('click', downloadEmail);
+
+document.getElementById('search').addEventListener('input', applyFilter);
+
+// Close overlays on backdrop click
+['overlay-add','overlay-remove','overlay-intro','overlay-email'].forEach(id => {
+  document.getElementById(id).addEventListener('click', function(e) {
+    if (e.target === this) hideOverlay(id);
+  });
+});
+
+// ── Init ──────────────────────────────────────────────────────────────────────
+
+async function init() {
+  try {
+    const me = await fetch('/api/me').then(r => r.ok ? r.json() : null);
+    currentUser = me;
+  } catch(e) {}
+
+  await Promise.all([loadEntries(), loadIntro()]);
+}
+
+init();
+</script>
+</body>
+</html>

@@ -693,6 +693,429 @@ app.post('/api/user-prefs/default', requireLogin, async (req, res) => {
   }
 });
 
+// ── Blacklist ─────────────────────────────────────────────────────────────────
+
+app.get('/blacklist', requireLogin, (req, res) =>
+  res.sendFile(path.join(__dirname, 'public', 'blacklist.html'))
+);
+
+function blFormatDate(val) {
+  if (!val) return '';
+  const s = String(val);
+  const m = s.match(/^(\d{4})-(\d{2})-(\d{2})/);
+  if (m) return `${m[3]}.${m[2]}.${m[1]}`;
+  return s;
+}
+
+function blStripHtml(html) {
+  return (html || '')
+    .replace(/<br\s*\/?>/gi, '\n')
+    .replace(/<\/p>/gi, '\n')
+    .replace(/<\/div>/gi, '\n')
+    .replace(/<\/li>/gi, '\n')
+    .replace(/<[^>]+>/g, '')
+    .replace(/&nbsp;/g, ' ')
+    .replace(/&amp;/g, '&')
+    .replace(/&lt;/g, '<')
+    .replace(/&gt;/g, '>')
+    .replace(/&quot;/g, '"')
+    .replace(/\n{3,}/g, '\n\n')
+    .trim();
+}
+
+app.get('/api/blacklist/entries', requireLogin, async (req, res) => {
+  try {
+    const db = getPool();
+    const { rows } = await db.query(
+      'SELECT id, name, hotel, birth_date, damage, stay_date, reason, added_at, added_by FROM blacklist_entries'
+    );
+    rows.sort((a, b) => a.name.localeCompare(b.name, 'cs', { sensitivity: 'base' }));
+    res.json(rows);
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ ok: false, msg: 'Chyba serveru.' });
+  }
+});
+
+app.post('/api/blacklist/entries', requireLogin, async (req, res) => {
+  const { entries } = req.body;
+  if (!Array.isArray(entries) || entries.length === 0)
+    return res.status(400).json({ ok: false, msg: 'Chybí data.' });
+  const addedBy = req.session.user.name;
+  try {
+    const db = getPool();
+    const added = [];
+    for (const e of entries) {
+      if (!e.name?.trim() || !e.reason?.trim())
+        return res.status(400).json({ ok: false, msg: 'Jméno a důvod jsou povinné.' });
+      const stayDate = e.stayDate && /^\d{4}-\d{2}-\d{2}$/.test(e.stayDate) ? e.stayDate : null;
+      const { rows } = await db.query(
+        `INSERT INTO blacklist_entries (name, hotel, birth_date, damage, stay_date, reason, added_by)
+         VALUES ($1,$2,$3,$4,$5,$6,$7) RETURNING *`,
+        [e.name.trim(), e.hotel?.trim() || null, e.birthDate?.trim() || null,
+         e.damage?.trim() || null, stayDate, e.reason.trim(), addedBy]
+      );
+      const entry = rows[0];
+      added.push(entry);
+      await db.query(
+        `INSERT INTO blacklist_audit (action, payload, user_name) VALUES ('ADD',$1,$2)`,
+        [JSON.stringify({ entry }), addedBy]
+      );
+    }
+    res.json({ ok: true, added });
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ ok: false, msg: 'Chyba serveru.' });
+  }
+});
+
+app.post('/api/blacklist/remove', requireLogin, async (req, res) => {
+  const { removals } = req.body;
+  if (!Array.isArray(removals) || removals.length === 0)
+    return res.status(400).json({ ok: false, msg: 'Chybí data.' });
+  const removedBy = req.session.user.name;
+  try {
+    const db = getPool();
+    for (const r of removals) {
+      if (!r.id || !r.reason?.trim())
+        return res.status(400).json({ ok: false, msg: 'ID a důvod jsou povinné.' });
+      const { rows } = await db.query('SELECT * FROM blacklist_entries WHERE id = $1', [r.id]);
+      if (!rows[0]) continue;
+      const e = rows[0];
+      await db.query(
+        `INSERT INTO blacklist_removed
+         (original_id,original_name,original_hotel,original_birth_date,original_damage,
+          original_stay_date,original_reason,original_added_at,original_added_by,removal_reason,removed_by)
+         VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11)`,
+        [e.id, e.name, e.hotel, e.birth_date, e.damage,
+         e.stay_date, e.reason, e.added_at, e.added_by, r.reason.trim(), removedBy]
+      );
+      await db.query('DELETE FROM blacklist_entries WHERE id = $1', [r.id]);
+      await db.query(
+        `INSERT INTO blacklist_audit (action, payload, user_name) VALUES ('REMOVE',$1,$2)`,
+        [JSON.stringify({ entry: e, removalReason: r.reason.trim() }), removedBy]
+      );
+    }
+    res.json({ ok: true });
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ ok: false, msg: 'Chyba serveru.' });
+  }
+});
+
+app.get('/api/blacklist/intro', requireLogin, async (req, res) => {
+  try {
+    const db = getPool();
+    const { rows } = await db.query('SELECT * FROM blacklist_intro WHERE id = 1');
+    res.json(rows[0] || { content: '', updated_at: null, updated_by: null });
+  } catch (err) {
+    res.status(500).json({ ok: false, msg: 'Chyba serveru.' });
+  }
+});
+
+app.put('/api/blacklist/intro', requireLogin, async (req, res) => {
+  const { content } = req.body;
+  if (!content?.trim()) return res.status(400).json({ ok: false, msg: 'Obsah nesmí být prázdný.' });
+  const updatedBy = req.session.user.name;
+  try {
+    const db = getPool();
+    await db.query(
+      `INSERT INTO blacklist_intro (id, content, updated_by, updated_at) VALUES (1,$1,$2,NOW())
+       ON CONFLICT (id) DO UPDATE SET content=$1, updated_by=$2, updated_at=NOW()`,
+      [content.trim(), updatedBy]
+    );
+    await db.query(
+      `INSERT INTO blacklist_audit (action, payload, user_name) VALUES ('EDIT_INTRO',$1,$2)`,
+      [JSON.stringify({ snippet: content.trim().substring(0, 100) }), updatedBy]
+    );
+    res.json({ ok: true });
+  } catch (err) {
+    res.status(500).json({ ok: false, msg: 'Chyba serveru.' });
+  }
+});
+
+app.get('/api/blacklist/audit', requireLogin, async (req, res) => {
+  try {
+    const db = getPool();
+    const { rows } = await db.query(
+      `SELECT id, action, payload, user_name, timestamp, notified_by_email
+       FROM blacklist_audit ORDER BY timestamp DESC LIMIT 1000`
+    );
+    res.json(rows);
+  } catch (err) {
+    res.status(500).json({ ok: false, msg: 'Chyba serveru.' });
+  }
+});
+
+app.post('/api/blacklist/export/email', requireLogin, async (req, res) => {
+  try {
+    const db = getPool();
+    const { rows } = await db.query(
+      `SELECT id, action, payload, user_name, timestamp FROM blacklist_audit
+       WHERE notified_by_email = FALSE AND action IN ('ADD','REMOVE') ORDER BY timestamp ASC`
+    );
+    if (rows.length === 0)
+      return res.json({ ok: true, html: null, message: 'Žádné nové změny k odeslání e-mailem.' });
+
+    const adds    = rows.filter(r => r.action === 'ADD');
+    const removes = rows.filter(r => r.action === 'REMOVE');
+
+    let html = `<div style="font-family: Calibri, Arial, sans-serif; font-size: 11pt; max-width: 720px; color: #1a1a1a; line-height: 1.5;">`;
+    html += `<p>Vážení recepční,</p>`;
+
+    if (removes.length > 0) {
+      const pl = removes.length === 1
+        ? 'byla <strong>odstraněna</strong> následující osoba'
+        : 'byly <strong>odstraněny</strong> následující osoby';
+      html += `<p>z Blacklistu ${pl}:</p>`;
+      for (const r of removes) {
+        const p = r.payload;
+        const e = p.entry || p;
+        const name    = e.original_name    || e.name    || '';
+        const hotel   = e.original_hotel   || e.hotel   || '—';
+        const birth   = blFormatDate(e.original_birth_date || e.birth_date || e.birthDate) || '—';
+        const reason  = e.original_reason  || e.reason  || '';
+        const remReas = p.removalReason || p.removal_reason || '';
+        html += `<table width="100%" cellpadding="0" cellspacing="0" style="margin: 10px 0; border-collapse: collapse;">
+          <tr><td style="padding: 12px 16px; border-left: 4px solid #2e75b6; background: #f4f7fb; font-size: 11pt;">
+            <strong>${name}</strong><br>
+            <span style="color: #555; font-size: 10pt;">nar. ${birth} | hotel ${hotel}</span><br>
+            <em>Původní důvod zařazení: ${reason}</em><br>
+            <strong>Důvod odstranění:</strong> ${remReas}
+          </td></tr>
+        </table>`;
+      }
+      html += `<p>Tuto osobu prosím <strong>již nenahlašujte</strong> ani s ní nezacházejte jako s rizikovou.</p>`;
+    }
+
+    if (adds.length > 0) {
+      if (removes.length > 0) html += `<hr style="margin: 16px 0; border: none; border-top: 1px solid #ddd;">`;
+      const pl = adds.length === 1
+        ? 'byla <strong>přidána</strong> následující osoba'
+        : 'byly <strong>přidány</strong> následující osoby';
+      html += `<p>na Blacklist ${pl}:</p>`;
+      for (const r of adds) {
+        const p = r.payload;
+        const e = p.entry || p;
+        const name  = e.name  || '';
+        const hotel = e.hotel || '—';
+        const birth = blFormatDate(e.birth_date || e.birthDate) || '—';
+        const reason = e.reason || '';
+        html += `<table width="100%" cellpadding="0" cellspacing="0" style="margin: 10px 0; border-collapse: collapse;">
+          <tr><td style="padding: 12px 16px; border-left: 4px solid #c0392b; background: #fdf3f1; font-size: 11pt;">
+            <strong>${name}</strong><br>
+            <span style="color: #555; font-size: 10pt;">nar. ${birth} | hotel ${hotel}</span><br>
+            <em>Důvod zařazení: ${reason}</em>
+          </td></tr>
+        </table>`;
+      }
+      html += `<p>Tyto hosty v žádném případě neubytovávejte.</p>`;
+    }
+
+    html += `<p><strong>Prosím:</strong></p>
+    <ul>
+      <li>informujte své kolegy o této změně,</li>
+      <li>vytiskněte si aktuální verzi z přílohy či ze složky <em>nastenka\\Blacklist</em>,</li>
+      <li>starší verze nahraďte aktuální.</li>
+    </ul>
+    <p><strong>Postup pro hosty z Blacklistu:</strong></p>
+    <ul>
+      <li>Pokud se některá z osob na blacklistu přijde ubytovat, přečtěte si důvod zařazení.</li>
+      <li>Pokud dle vzezření hosta a důvodu usoudíte, že nechcete jít s hostem do konfliktu, <strong>volejte VRQ</strong>.</li>
+    </ul>
+    <p>S pozdravem</p>
+    </div>`;
+
+    const ids = rows.map(r => r.id);
+    await db.query(`UPDATE blacklist_audit SET notified_by_email = TRUE WHERE id = ANY($1::uuid[])`, [ids]);
+
+    res.json({ ok: true, html });
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ ok: false, msg: 'Chyba serveru.' });
+  }
+});
+
+app.get('/api/blacklist/export/pdf', requireLogin, async (req, res) => {
+  try {
+    const PDFDocument = require('pdfkit');
+    const db = getPool();
+
+    const [entRes, introRes] = await Promise.all([
+      db.query('SELECT * FROM blacklist_entries'),
+      db.query('SELECT content FROM blacklist_intro WHERE id = 1')
+    ]);
+
+    const entries = entRes.rows;
+    entries.sort((a, b) => a.name.localeCompare(b.name, 'cs', { sensitivity: 'base' }));
+
+    const introContent = introRes.rows[0]?.content || '';
+    const introText    = blStripHtml(introContent);
+    const userName     = req.session.user.name;
+    const now          = new Date();
+    const pad2         = n => String(n).padStart(2, '0');
+    const dateStr      = `${pad2(now.getDate())}.${pad2(now.getMonth()+1)}.${now.getFullYear()}`;
+    const filename     = `${now.getFullYear()}_${pad2(now.getMonth()+1)}_${pad2(now.getDate())}_BLACKLIST.pdf`;
+
+    const mL = 34, mT = 34, mB = 43;
+    const pageW = 595.28, pageH = 841.89;
+    const tableW = pageW - 2 * mL;
+
+    const cols = [
+      { key: 'name',       label: 'Jméno',        w: 124.74 },
+      { key: 'hotel',      label: 'Hotel',         w: 34.02  },
+      { key: 'birth_date', label: 'Datum nar.',    w: 53.87  },
+      { key: 'damage',     label: 'Škoda',         w: 48.20  },
+      { key: 'stay_date',  label: 'Datum pobytu',  w: 53.87  },
+      { key: 'reason',     label: 'Popis',         w: 212.58 }
+    ];
+
+    function cellVal(entry, key) {
+      if (key === 'birth_date') return blFormatDate(entry.birth_date);
+      if (key === 'stay_date')  return blFormatDate(entry.stay_date);
+      return String(entry[key] || '');
+    }
+
+    function buildPDF(dataFS) {
+      const hdrFS = dataFS + 1;
+      const cellPad = 1.5;
+
+      const doc = new PDFDocument({
+        size: 'A4',
+        margins: { top: mT, bottom: mB, left: mL, right: mL },
+        autoFirstPage: true
+      });
+
+      function rowHeight(entry, isHeader, fs) {
+        doc.font(isHeader ? 'Helvetica-Bold' : 'Helvetica').fontSize(fs);
+        let maxH = 0;
+        for (const col of cols) {
+          const text = isHeader ? col.label : cellVal(entry, col.key);
+          const h = doc.heightOfString(text || ' ', { width: col.w - 2 * cellPad });
+          if (h > maxH) maxH = h;
+        }
+        return maxH + 2 * cellPad;
+      }
+
+      function drawRow(y, entry, isHeader, fs) {
+        const rh = rowHeight(entry, isHeader, fs);
+        let x = mL;
+        for (const col of cols) {
+          const text = isHeader ? col.label : cellVal(entry, col.key);
+          doc.save();
+          if (isHeader) {
+            doc.rect(x, y, col.w, rh).fill('#A9D08E');
+          } else {
+            doc.rect(x, y, col.w, rh).fill('#ffffff');
+          }
+          doc.restore();
+          doc.rect(x, y, col.w, rh).stroke('#000000');
+          doc.font(isHeader ? 'Helvetica-Bold' : 'Helvetica')
+            .fontSize(fs)
+            .fillColor('#000000')
+            .text(text || '', x + cellPad, y + cellPad, {
+              width: col.w - 2 * cellPad,
+              lineBreak: true
+            });
+          x += col.w;
+        }
+        return rh;
+      }
+
+      // Title
+      let y = mT;
+      doc.font('Helvetica-Bold').fontSize(15).fillColor('#000000')
+        .text('AVEhotels - Blacklist', mL, y, { align: 'center', width: tableW });
+      y += doc.heightOfString('AVEhotels - Blacklist', { width: tableW, fontSize: 15 }) + 6;
+
+      // Intro
+      doc.font('Helvetica-Bold').fontSize(8.5).fillColor('#000000')
+        .text(introText, mL, y, { width: tableW });
+      y += doc.heightOfString(introText, { width: tableW, fontSize: 8.5 }) + 8;
+
+      // Header row
+      const hdrH = rowHeight(null, true, hdrFS);
+      drawRow(y, null, true, hdrFS);
+      y += hdrH;
+
+      // Data rows
+      for (const entry of entries) {
+        const rh = rowHeight(entry, false, dataFS);
+        if (y + rh > pageH - mB - 20) {
+          doc.addPage();
+          y = mT;
+          drawRow(y, null, true, hdrFS);
+          y += hdrH;
+        }
+        drawRow(y, entry, false, dataFS);
+        y += rh;
+      }
+
+      // Signature
+      doc.font('Helvetica-Bold').fontSize(8).fillColor('#000000')
+        .text(`${dateStr}, ${userName}`, mL, pageH - mB + 2, { align: 'right', width: tableW });
+
+      return doc;
+    }
+
+    // Estimate page count at given fontSize to decide auto-shrink
+    function estimatePages(dataFS) {
+      const hdrFS = dataFS + 1;
+      const cellPad = 1.5;
+      const tmpDoc = new PDFDocument({ size: 'A4', autoFirstPage: false });
+
+      function rh(entry, isHeader, fs) {
+        tmpDoc.font(isHeader ? 'Helvetica-Bold' : 'Helvetica').fontSize(fs);
+        let maxH = 0;
+        for (const col of cols) {
+          const text = isHeader ? col.label : cellVal(entry, col.key);
+          const h = tmpDoc.heightOfString(text || ' ', { width: col.w - 2 * cellPad });
+          if (h > maxH) maxH = h;
+        }
+        return maxH + 2 * cellPad;
+      }
+
+      let pages = 1;
+      let y = mT;
+      tmpDoc.font('Helvetica-Bold').fontSize(15);
+      y += tmpDoc.heightOfString('AVEhotels - Blacklist', { width: tableW }) + 6;
+      tmpDoc.font('Helvetica-Bold').fontSize(8.5);
+      y += tmpDoc.heightOfString(introText, { width: tableW }) + 8;
+      y += rh(null, true, hdrFS);
+      for (const entry of entries) {
+        const h = rh(entry, false, dataFS);
+        if (y + h > pageH - mB - 20) { pages++; y = mT + rh(null, true, hdrFS); }
+        y += h;
+      }
+      return pages;
+    }
+
+    let dataFS = 6.2;
+    let pageCount = estimatePages(dataFS);
+    let warning = false;
+    while (pageCount > 4 && dataFS > 5.5) {
+      dataFS = Math.round((dataFS - 0.5) * 10) / 10;
+      pageCount = estimatePages(dataFS);
+    }
+    if (pageCount > 4) warning = true;
+
+    const doc = buildPDF(dataFS);
+    const chunks = [];
+    doc.on('data', c => chunks.push(c));
+    doc.on('end', () => {
+      const buf = Buffer.concat(chunks);
+      res.setHeader('Content-Type', 'application/pdf');
+      res.setHeader('Content-Disposition', `attachment; filename="${filename}"`);
+      if (warning) res.setHeader('X-PDF-Warning', 'Přesahuje 4 stránky, písmo nelze dále zmenšit.');
+      res.send(buf);
+    });
+    doc.end();
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ ok: false, msg: 'Chyba serveru při generování PDF.' });
+  }
+});
+
 // ── Start ─────────────────────────────────────────────────────────────────────
 
 init()

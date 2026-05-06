@@ -1,0 +1,1594 @@
+[
+  {
+    "name": "Alidzhanova Veronika",
+    "hotel": "T",
+    "birthDate": "1998-06-27",
+    "damage": null,
+    "stayDate": "2024-03-09",
+    "reason": "odmítali opustit pokoj, skvrny od krve, svíček, kouření na pokoji"
+  },
+  {
+    "name": "ARDELEANU ION",
+    "hotel": "A",
+    "birthDate": "1994-02-23",
+    "damage": null,
+    "stayDate": "2024-05-05",
+    "reason": "Odcizené nádobí, karty a nenahlášené přespání cizích osob na pokoji."
+  },
+  {
+    "name": "Baláž Robert",
+    "hotel": "I",
+    "birthDate": "1979-07-27",
+    "damage": "2275 (2 osoby)",
+    "stayDate": "2020-11-05",
+    "reason": "ODCIZENÝ klíč nutno vyměnit zámek, Věčné pozdní úhrady ubytování"
+  },
+  {
+    "name": "Banda Lukaš",
+    "hotel": "T",
+    "birthDate": "1990-03-26",
+    "damage": null,
+    "stayDate": "2023-01-18",
+    "reason": "Cigarety v posteli ve skleničkách, jídlo v posteli, máslo v posteli. Rozházené jídlo na zemí a po podlaze."
+  },
+  {
+    "name": "Banda Roman",
+    "hotel": "T",
+    "birthDate": "2000-08-04",
+    "damage": null,
+    "stayDate": "2023-01-18",
+    "reason": "Cigarety v posteli ve skleničkách, jídlo v posteli, máslo v posteli. Rozházené jídlo na zemí a po podlaze."
+  },
+  {
+    "name": "Barbaro Vera",
+    "hotel": "I",
+    "birthDate": "1986-05-30",
+    "damage": "2550 kč",
+    "stayDate": "2020-11-19",
+    "reason": "Nezaplacené ubytování, odjezd bez zaplacení"
+  },
+  {
+    "name": "Barkociová Žaneta",
+    "hotel": "A",
+    "birthDate": "1994-05-08",
+    "damage": "900 /3 os.",
+    "stayDate": "2020-11-05",
+    "reason": "Zaplatili 1/2 ceny a při odjezdu odejeli \"do bankomatu\" již nepřijeli"
+  },
+  {
+    "name": "BARTON VILEM",
+    "hotel": "W",
+    "birthDate": "1988-06-25",
+    "damage": null,
+    "stayDate": "2021-05-30",
+    "reason": "Rušení nočního klidu, musela být přivolána PČR"
+  },
+  {
+    "name": "Bartoš Michal",
+    "hotel": "A",
+    "birthDate": null,
+    "damage": null,
+    "stayDate": "2022-03-30",
+    "reason": "Host přijel již v 10:00 po oznámení, že je možné se ubytovat až po 14:00 spustil salvu hrubých nadávek na recepčního a VR."
+  },
+  {
+    "name": "Basultová Milena",
+    "hotel": "A",
+    "birthDate": "1995-10-16",
+    "damage": null,
+    "stayDate": "2023-04-04",
+    "reason": "Známá Bruna Vinše, velký nepořádek, opakovaný odnos snídaně na pokoj, odjezd bez zaplacení."
+  },
+  {
+    "name": "BAUDYSOVA VERONIKA",
+    "hotel": "T",
+    "birthDate": "1986-03-25",
+    "damage": null,
+    "stayDate": "2023-09-17",
+    "reason": "Poskytování prostituce z hotelového pokoje, nedovolené návštevy. "
+  },
+  {
+    "name": "Bažo Josef",
+    "hotel": "I",
+    "birthDate": "1981-01-12",
+    "damage": 39,
+    "stayDate": "2021-01-06",
+    "reason": "Neopuštěný pokoj po ukončení rentu, vyhýbání se zaplacení. Použita kauce s pokrytí škod"
+  },
+  {
+    "name": "BEJCEK DAVID",
+    "hotel": "A",
+    "birthDate": "1996-10-02",
+    "damage": null,
+    "stayDate": "2023-04-13",
+    "reason": "Kouření na pokoji, nedodržení hotelevého řádu"
+  },
+  {
+    "name": "Bejčková Veronika",
+    "hotel": "A",
+    "birthDate": "1997-06-10",
+    "damage": null,
+    "stayDate": "2020-11-05",
+    "reason": "Poničený pokoj, ubytování nenahlášených kamarádů na pokoji"
+  },
+  {
+    "name": "Belej Ivanna",
+    "hotel": "H",
+    "birthDate": "2000-09-24",
+    "damage": null,
+    "stayDate": "2023-08-01",
+    "reason": "Drobné krádeže na pokoji a nechtěla opustit pokoj."
+  },
+  {
+    "name": "Bentsa Roman",
+    "hotel": "T",
+    "birthDate": "1978-05-30",
+    "damage": null,
+    "stayDate": "2025-07-04",
+    "reason": "Zničili nábytek a zeď v pokoji"
+  },
+  {
+    "name": "Bentsa Halyna",
+    "hotel": "T",
+    "birthDate": "1988-06-23",
+    "damage": null,
+    "stayDate": "2025-07-04",
+    "reason": "Zničili nábytek a zeď v pokoji"
+  },
+  {
+    "name": "Beňák Karel",
+    "hotel": "I+A",
+    "birthDate": "1985-04-17",
+    "damage": null,
+    "stayDate": "2021-05-15",
+    "reason": "Opakované vytváření rezervací přes BOO s neplatnou kartou. Nerespektování vládních opatření a domovního řádu hotelu."
+  },
+  {
+    "name": "BENES RICHARD",
+    "hotel": "I",
+    "birthDate": "1986-05-08",
+    "damage": 1710,
+    "stayDate": "2023-07-26",
+    "reason": "Dluží 1710 za neuhrazené ubytování a nereaguje na push-platby."
+  },
+  {
+    "name": "Beslaneyev Zamyr",
+    "hotel": "A",
+    "birthDate": "1986-08-07",
+    "damage": null,
+    "stayDate": "2020-11-05",
+    "reason": "Poničený pokoj, ubytování nenahlášených kamarádů na pokoji"
+  },
+  {
+    "name": "Paulo Ilicic",
+    "hotel": "I",
+    "birthDate": "1984-07-17",
+    "damage": null,
+    "stayDate": "2026-03-22",
+    "reason": "Feťáci - Hluk, Špinavý pokoj, zakrvácné povleční"
+  },
+  {
+    "name": "Bláhová Kateřina",
+    "hotel": "T",
+    "birthDate": "1994-03-30",
+    "damage": null,
+    "stayDate": "2024-12-21",
+    "reason": "Spousta odpadků, špinavené povlečení, házeli vajgly z okna"
+  },
+  {
+    "name": "Domen Koljensic",
+    "hotel": "I",
+    "birthDate": "1987-12-03",
+    "damage": null,
+    "stayDate": "2026-03-22",
+    "reason": "Feťáci - Hluk, Špinavý pokoj, zakrvácné povleční"
+  },
+  {
+    "name": "Blumentritt Matej",
+    "hotel": "I+T",
+    "birthDate": "1991-08-12",
+    "damage": null,
+    "stayDate": "2026-01-27",
+    "reason": "Feťáci, zakrvácené povlečení, nepořádek"
+  },
+  {
+    "name": "BOCEANU PETRUTA",
+    "hotel": "A",
+    "birthDate": "1977-01-15",
+    "damage": null,
+    "stayDate": "2024-05-05",
+    "reason": "Odcizené nádobí, karty a nenahlášené přespání cizích osob na pokoji."
+  },
+  {
+    "name": "Bohata Vladislav",
+    "hotel": "I",
+    "birthDate": "1974-05-18",
+    "damage": null,
+    "stayDate": "2021-12-31",
+    "reason": "Odmítal opustit a uvolnit pokoj, znečištěné povlečení."
+  },
+  {
+    "name": "BORUSINSKI STEFAN",
+    "hotel": "T",
+    "birthDate": "1994-11-08",
+    "damage": null,
+    "stayDate": "2023-05-19",
+    "reason": "Bordel po celém pokoji, ručníky a povlečení od krve, kouření na pokoji"
+  },
+  {
+    "name": "BOSTANDZIC VEDRAN",
+    "hotel": "T",
+    "birthDate": "1983-09-03",
+    "damage": null,
+    "stayDate": "2021-08-27",
+    "reason": "Zanechané exkrementy v umyvadle. Stejným materiálem znečištěná postel, ručníky a lůžkoviny"
+  },
+  {
+    "name": "Bostandzic Verdan",
+    "hotel": "I",
+    "birthDate": "1983-09-03",
+    "damage": "2000 /2 os.",
+    "stayDate": "2021-01-06",
+    "reason": "Propálená sedačka, kouření na pokoji, znečištěné stěny"
+  },
+  {
+    "name": "Bruno Vinš",
+    "hotel": "A",
+    "birthDate": "1997-06-24",
+    "damage": null,
+    "stayDate": "2023-04-04",
+    "reason": "Velký nepořádek, opakovaný odnos snídaně na pokoj, odjezd bez zaplacení."
+  },
+  {
+    "name": "BURDA MATYAS",
+    "hotel": "W",
+    "birthDate": "1992-04-11",
+    "damage": null,
+    "stayDate": "2021-05-30",
+    "reason": "Rušení nočního klidu, musela být přivolána PČR"
+  },
+  {
+    "name": "Burešová Nikola",
+    "hotel": "A + I",
+    "birthDate": "1995-04-30",
+    "damage": null,
+    "stayDate": "2020-11-05",
+    "reason": "Nezaplacené minibary, zdemolovaný pokoj, ubytování nenahášených osob"
+  },
+  {
+    "name": "CEAUSU CRISTINA",
+    "hotel": "A",
+    "birthDate": "1998-03-17",
+    "damage": null,
+    "stayDate": "2024-05-05",
+    "reason": "Odcizené nádobí, karty a nenahlášené přespání cizích osob na pokoji."
+  },
+  {
+    "name": "Cina Jan",
+    "hotel": "U",
+    "birthDate": "1993-09-17",
+    "damage": null,
+    "stayDate": "2025-07-14",
+    "reason": "Odmítají se včas checkoutovat, nechávají za sebou velmi špinavý pokoj (již několikrát to bylo stejně i na Taurusu)"
+  },
+  {
+    "name": "CIOBOTARU ARUN",
+    "hotel": "I",
+    "birthDate": "1986-07-30",
+    "damage": null,
+    "stayDate": "2022-11-16",
+    "reason": "Velký nepořádek na pokoji, špinavé prostěradlo a kouření na pokoji."
+  },
+  {
+    "name": "COLEMAN GABRIEL NICHOLAS",
+    "hotel": "A",
+    "birthDate": "1975-04-29",
+    "damage": null,
+    "stayDate": "2020-11-05",
+    "reason": "Alkohlik,rušení nočního klidu, pozdní úhrady ubytování"
+  },
+  {
+    "name": "Černý Jan",
+    "hotel": "C",
+    "birthDate": "1988-10-24",
+    "damage": null,
+    "stayDate": "2021-11-04",
+    "reason": "Dealer - za pánem chodili časté, krátké návštěvy i po upozornění nepřestali."
+  },
+  {
+    "name": "Černý Josef",
+    "hotel": "T",
+    "birthDate": "1997-06-28",
+    "damage": null,
+    "stayDate": "2024-03-06",
+    "reason": "Feťák, kouření na pokoji (smrad + vajgly za dveřmi), po napomínání odešli z pokoje ve 12:00 hodin"
+  },
+  {
+    "name": "Danic Fabius",
+    "hotel": "T",
+    "birthDate": "1998-07-21",
+    "damage": null,
+    "stayDate": "2024-01-29",
+    "reason": "Kouření na pokoji"
+  },
+  {
+    "name": "DOELZ THOMAS AUGUST",
+    "hotel": "I",
+    "birthDate": "1958-01-05",
+    "damage": null,
+    "stayDate": "2023-07-24",
+    "reason": "Neskutečné znečištění na pokoji a cizí návštěva na pokoji (prostituce)."
+  },
+  {
+    "name": "Dolejší Milan",
+    "hotel": "W",
+    "birthDate": "36708",
+    "damage": null,
+    "stayDate": "2021-04-26",
+    "reason": "Nezaplacený minibar, znečištený pokoj, ucpaný záchod. Urgence k opuštění pokoje"
+  },
+  {
+    "name": "Donkova Antonak Palina",
+    "hotel": "",
+    "birthDate": "1994-04-23",
+    "damage": null,
+    "stayDate": "2020-11-19",
+    "reason": "Použité injekční jehly na pokoji"
+  },
+  {
+    "name": "Drahota Michal",
+    "hotel": "T",
+    "birthDate": "1979-09-11",
+    "damage": null,
+    "stayDate": "2024-02-07",
+    "reason": "Feťáci, kouření na pokoji, zničené ručníky, bez dovolení odnášeli snídani na pokoj, nechtěli se checkoutovat."
+  },
+  {
+    "name": "FALTUS GEORGII",
+    "hotel": "A",
+    "birthDate": "1975-03-09",
+    "damage": null,
+    "stayDate": "2023-03-16",
+    "reason": "Velký nepořádek a smrad na pokoji, postel znečištěna exkrementy"
+  },
+  {
+    "name": "Faustová Daniela",
+    "hotel": "A",
+    "birthDate": "1997-02-03",
+    "damage": 942,
+    "stayDate": "2023-05-10",
+    "reason": "Narkoman s dítětem, utekli bez placení."
+  },
+  {
+    "name": "FEJNEŠ ROMAN",
+    "hotel": "A",
+    "birthDate": "1981-08-15",
+    "damage": 2000,
+    "stayDate": "2022-07-07",
+    "reason": "Rozbitá TV, nepořádek a injekční jehly na pokoji. Společně s Kopecká Dana (také na Blacklistu)."
+  },
+  {
+    "name": "FERENCIKOVA MARIE",
+    "hotel": "A",
+    "birthDate": "2008-10-28",
+    "damage": null,
+    "stayDate": "2024-05-29",
+    "reason": "Zničené ručníky, odlomený držák na mýdlo, kouření trávy na pokoji"
+  },
+  {
+    "name": "FILIPKOVA ANETA",
+    "hotel": "G",
+    "birthDate": "1985-08-04",
+    "damage": 5000,
+    "stayDate": "2023-05-19",
+    "reason": "Vykradený pokoj (kávovar,hrnky,minibar)"
+  },
+  {
+    "name": "FILIPOVICOVA LENKA",
+    "hotel": "T",
+    "birthDate": "1977-02-21",
+    "damage": null,
+    "stayDate": "2023-05-19",
+    "reason": "Bordel po celém pokoji, ručníky a povlečení od krve, kouření na pokoji"
+  },
+  {
+    "name": "FRIEDRICH PETR",
+    "hotel": "A",
+    "birthDate": "33915",
+    "damage": null,
+    "stayDate": "2021-04-26",
+    "reason": "Rušení klidu na hotelu, stížnosti ostatních hostů. Poškozené dveře"
+  },
+  {
+    "name": "Fuchs Jeffrey Sean",
+    "hotel": "B",
+    "birthDate": "1982-07-30",
+    "damage": null,
+    "stayDate": "2026-04-20",
+    "reason": "Feťák, sprosťák, krade minibar"
+  },
+  {
+    "name": "Gažiová Andrea",
+    "hotel": "I",
+    "birthDate": "1993-08-13",
+    "damage": null,
+    "stayDate": "2022-03-16",
+    "reason": "Známá Krajnaka Romana (také na Blacklistu), neohlášené návštěvy na pokoji a následné hádky mezi nimi, neustálý řev v noci na chodbách, hádky s recepčním, vyžadovali peníze zpátky za ubytování."
+  },
+  {
+    "name": "Geil Andreas",
+    "hotel": "I",
+    "birthDate": "1967-11-13",
+    "damage": null,
+    "stayDate": "2023-01-30",
+    "reason": "Velmi arogantní a nepřijemný host, odmítal zaplatit ubytování i MP."
+  },
+  {
+    "name": "GOROLOVA PETRA",
+    "hotel": "T",
+    "birthDate": "2005-04-12",
+    "damage": 2000,
+    "stayDate": "2024-01-22",
+    "reason": "Rozbité držáky na mýdlo, ukradený ventilátor a kouření na pokoji."
+  },
+  {
+    "name": "GRAJD ALEXANDR",
+    "hotel": "H",
+    "birthDate": "1966-10-04",
+    "damage": null,
+    "stayDate": "2023-06-01",
+    "reason": "Podivné existence, strašný zápach a bordel na pokoji."
+  },
+  {
+    "name": "Grundzova Beata",
+    "hotel": "I",
+    "birthDate": "1999-04-22",
+    "damage": null,
+    "stayDate": "2021-12-31",
+    "reason": "Poskytování prostituce z hotelového pokoje, pokus o krádež"
+  },
+  {
+    "name": "GUERTLEROVA BLANKA",
+    "hotel": "H",
+    "birthDate": "1959-04-30",
+    "damage": null,
+    "stayDate": "2022-11-22",
+    "reason": "Velký nepořádek na pokoji, opakovaně si na hotel nosila mnoho tašek s věcmi a pak nechtěla opustit hotel."
+  },
+  {
+    "name": "HAJKOVA SANDRA",
+    "hotel": "I",
+    "birthDate": "1999-06-04",
+    "damage": 2000,
+    "stayDate": "2023-04-21",
+    "reason": "Rozbitá TV a ovladač od klimatizace a odzizený klíč od nouz. Východu."
+  },
+  {
+    "name": "Halusková Andrea",
+    "hotel": "A",
+    "birthDate": "1994-01-03",
+    "damage": null,
+    "stayDate": "2020-11-05",
+    "reason": "Opakované pozdní úhrady ubytování"
+  },
+  {
+    "name": "Halusková Ivana",
+    "hotel": "A",
+    "birthDate": "1991-09-27",
+    "damage": null,
+    "stayDate": "2020-11-05",
+    "reason": "Opakované pozdní úhrady ubytování"
+  },
+  {
+    "name": "HAVLENA TOMAS",
+    "hotel": "I",
+    "birthDate": "1987-09-13",
+    "damage": null,
+    "stayDate": "2020-11-05",
+    "reason": "Toxikoman, při posledním ubytování se málem předávkoval"
+  },
+  {
+    "name": "Herainova Nina",
+    "hotel": "I",
+    "birthDate": "2000-05-05",
+    "damage": "2000 /2 os.",
+    "stayDate": "2021-01-06",
+    "reason": "Propálená sedačka, kouření na pokoji, znečištěné stěny"
+  },
+  {
+    "name": "HERAINOVA NINA",
+    "hotel": "T",
+    "birthDate": "2000-05-05",
+    "damage": null,
+    "stayDate": "2021-08-27",
+    "reason": "Zanechané exkrementy v umyvadle. Stejným materiálem znečištěná postel, ručníky a lůžkoviny"
+  },
+  {
+    "name": "Hlavatá Veronika",
+    "hotel": "A",
+    "birthDate": "1978-03-30",
+    "damage": null,
+    "stayDate": "2020-12-26",
+    "reason": "Kouření na pokoji, pochybné návštěvy (podezření na dealery), riziko infekce"
+  },
+  {
+    "name": "Hli%náková Jana",
+    "hotel": "A",
+    "birthDate": "1984-01-23",
+    "damage": null,
+    "stayDate": "2022-11-23",
+    "reason": "Pokoj velmi znečištěn, ukradené froté a vytrhané mýdelníky."
+  },
+  {
+    "name": "Hliňák Petr",
+    "hotel": "A",
+    "birthDate": "1976-05-24",
+    "damage": null,
+    "stayDate": "2022-11-23",
+    "reason": "Pokoj velmi znečištěn, ukradené froté a vytrhané mýdelníky."
+  },
+  {
+    "name": "Hodaň Jakub",
+    "hotel": "A",
+    "birthDate": "1988-04-26",
+    "damage": "1500 kč",
+    "stayDate": "2023-04-04",
+    "reason": "podvodník, vydává se za zaměstnance firmy a tvrdí, že přijde majitel zaplatit, odjel bez placení."
+  },
+  {
+    "name": "Holečkova Eliška",
+    "hotel": "A",
+    "birthDate": "2002-03-27",
+    "damage": null,
+    "stayDate": "2020-11-05",
+    "reason": "Vystěvhována z hotelu pro nezaplacení ubytování, přespávají návštevy na pokoji"
+  },
+  {
+    "name": "Holub Jan",
+    "hotel": "B+C",
+    "birthDate": "????",
+    "damage": "260+(240) €",
+    "stayDate": "2023-07-05",
+    "reason": "Podvodník jenž si vytváří rezervace na Black Star, uteče bez placení a pak tvrdí že zaplatí převodem. Což neudělá!!!"
+  },
+  {
+    "name": "Holub Martin",
+    "hotel": "PČR",
+    "birthDate": "?.?.1989",
+    "damage": null,
+    "stayDate": "2022-07-27",
+    "reason": "Upozornila nás PČR abychom jej neubytovávali, zdemoloval několi pokojů na cizích hotelech."
+  },
+  {
+    "name": "Holub Štefan",
+    "hotel": "H",
+    "birthDate": "1988-07-31",
+    "damage": null,
+    "stayDate": "2022-03-30",
+    "reason": "Narkoman, injekční jehly zanechány na pokoji. Stížnost ostatních pokojů na hluk."
+  },
+  {
+    "name": "Holubová Žaneta",
+    "hotel": "A",
+    "birthDate": "1993-06-20",
+    "damage": null,
+    "stayDate": "2020-11-05",
+    "reason": "Feťačka, ubytovávání neohlášených hostů, nařčení personálu z krádeže, bordel"
+  },
+  {
+    "name": "Horová Nikola",
+    "hotel": "T",
+    "birthDate": "1994-04-02",
+    "damage": 500,
+    "stayDate": "2023-10-09",
+    "reason": "Poskytování prostituce z hotelového pokoje, nedovolené návštevy. Nenahlásila odjezd a odjela s klíčem."
+  },
+  {
+    "name": "Horváthová Gabriela",
+    "hotel": "I",
+    "birthDate": "OP: 208561345",
+    "damage": null,
+    "stayDate": "2022-04-22",
+    "reason": "Narkomanka, nedodržení domovního řádu, pochybné návštěvy, nehodlala opustit pokoj"
+  },
+  {
+    "name": "HOSKOVA ZDENKA",
+    "hotel": "T",
+    "birthDate": "1998-03-31",
+    "damage": null,
+    "stayDate": "2023-04-13",
+    "reason": "kouření na pokoji, vajgly a prezervativy na podlaze, rozsypaný odpadkový koš,  rozbité skleničky"
+  },
+  {
+    "name": "Hošková Martina",
+    "hotel": "T",
+    "birthDate": "1991-10-04",
+    "damage": null,
+    "stayDate": "2020-11-05",
+    "reason": "Vykradla vozidlo údržbáře, předtím označila pro PČR recepčního z odcizení 10000kč"
+  },
+  {
+    "name": "HRDA KRISTYNA",
+    "hotel": "L",
+    "birthDate": "1993-03-31",
+    "damage": null,
+    "stayDate": null,
+    "reason": "Narkomanka, nalezené drogy a injekční jehly na pokoji, pokoj a stěna na chodbě od krve."
+  },
+  {
+    "name": "Hrdina Zdeněk",
+    "hotel": "A + I",
+    "birthDate": "1989-02-10",
+    "damage": null,
+    "stayDate": "2020-11-05",
+    "reason": "Odcizená peřina, silně zaneřáděný pokoj"
+  },
+  {
+    "name": "Chaloupka Ladislav",
+    "hotel": "W",
+    "birthDate": "252.2.2000",
+    "damage": null,
+    "stayDate": "2021-04-26",
+    "reason": "Nezaplacený minibar, znečištený pokoj, ucpaný záchod. Urgence k opuštění pokoje"
+  },
+  {
+    "name": "Chmela Tomáš",
+    "hotel": "A",
+    "birthDate": "1990-07-04",
+    "damage": null,
+    "stayDate": "2020-11-19",
+    "reason": "Použité injekční jehly na pokoji"
+  },
+  {
+    "name": "INGRIS PETER",
+    "hotel": "I",
+    "birthDate": "1963-10-18",
+    "damage": 1495,
+    "stayDate": "2023-07-31",
+    "reason": "Nepříjemný pán, vykrucoval se ze zaplacení svého ubytování a následně vyhrožoval personálu"
+  },
+  {
+    "name": "Ištok Tomáš",
+    "hotel": "A",
+    "birthDate": "1983-02-12",
+    "damage": null,
+    "stayDate": "2020-11-05",
+    "reason": "Nezaplacené minibary, zdemolovaný pokoj, ubytování nenahášených osob"
+  },
+  {
+    "name": "IZO VICTOR",
+    "hotel": "T",
+    "birthDate": "1991-01-14",
+    "damage": null,
+    "stayDate": "2022-04-22",
+    "reason": "Nedodržení domovního řádu, pochybné návštěvy, nehodlal opustit pokoj"
+  },
+  {
+    "name": "JAKOUBEK PAVEL",
+    "hotel": "A",
+    "birthDate": "1949-12-31",
+    "damage": null,
+    "stayDate": "2020-11-05",
+    "reason": "Využívá jako hodinový hotel,  poté nechá pokoj prostitutce která obarví ručníky barvou na vlasy"
+  },
+  {
+    "name": "Jakubů Petra",
+    "hotel": "A",
+    "birthDate": "1986-07-10",
+    "damage": 400,
+    "stayDate": "2020-11-05",
+    "reason": "Pokoj neobyvatelný po jejich odjezdu - nutnost blokace další noci"
+  },
+  {
+    "name": "JANCIK PAVEL",
+    "hotel": "T",
+    "birthDate": "1991-01-02",
+    "damage": null,
+    "stayDate": "2023-04-13",
+    "reason": "kouření na pokoji, vajgly a prezervativy na podlaze, rozsypaný odpadkový koš,  rozbité skleničky"
+  },
+  {
+    "name": "Janovsky Jindřich",
+    "hotel": "M",
+    "birthDate": "1997-03-17",
+    "damage": null,
+    "stayDate": "2022-09-12",
+    "reason": "Rušení nočního klidu, ignorování recepce i výhrůžek policie, rušení všech hostů v okolních pokojích."
+  },
+  {
+    "name": "Jaroš Matěj",
+    "hotel": "A",
+    "birthDate": "1996-08-09",
+    "damage": null,
+    "stayDate": "2020-11-05",
+    "reason": "Poničený pokoj, ubytování nenahlášených kamarádů na pokoji"
+  },
+  {
+    "name": "Jelínek Šimon",
+    "hotel": "T",
+    "birthDate": "1999-12-02",
+    "damage": null,
+    "stayDate": "2020-10-03",
+    "reason": "Pán má soudní zákaz pro vstup na území Prahy, nemůžeme jej ubytovat, jsme nuceni přivolat PČR. Na hotelu se pokusil o drobné krádeže."
+  },
+  {
+    "name": "Jelínková Barbora",
+    "hotel": "I+T",
+    "birthDate": "2002-07-26",
+    "damage": null,
+    "stayDate": "2026-01-27",
+    "reason": "Feťáci, zakrvácené povlečení, nepořádek"
+  },
+  {
+    "name": "JEZIK MAREK",
+    "hotel": "M + T",
+    "birthDate": "1994-01-06",
+    "damage": null,
+    "stayDate": "2022-04-01",
+    "reason": "Zajímá se o něj policie, recepce na M ho musela nahánět, aby zaplatil pobyt, celkově problémový host."
+  },
+  {
+    "name": "Kapusta Peter",
+    "hotel": "H",
+    "birthDate": "1970-03-13",
+    "damage": null,
+    "stayDate": "2022-12-05",
+    "reason": "Konfliktní člověk, hádal se a urážel recepční."
+  },
+  {
+    "name": "KARAPYSH IHOR",
+    "hotel": "H",
+    "birthDate": "2008-09-06",
+    "damage": 1000,
+    "stayDate": "2023-10-26",
+    "reason": "Odmítal opustit pokoj, udělal velký nepořádek a ukradl ručníky."
+  },
+  {
+    "name": "KARAPYSH LIUBOV",
+    "hotel": "H",
+    "birthDate": "1980-03-21",
+    "damage": 1000,
+    "stayDate": "2023-10-26",
+    "reason": "Odmítala opustit pokoj, udělala velký nepořádek a ukradla ručníky."
+  },
+  {
+    "name": "KASO STANISLAV",
+    "hotel": "A",
+    "birthDate": "2007-03-30",
+    "damage": null,
+    "stayDate": "2024-05-29",
+    "reason": "Zničené ručníky, odlomený držák na mýdlo, kouření trávy na pokoji"
+  },
+  {
+    "name": "Katriňák Robert",
+    "hotel": "A",
+    "birthDate": "1988-01-18",
+    "damage": "900 /3 os.",
+    "stayDate": "2020-11-05",
+    "reason": "Zaplatili 1/2 ceny a při odjezdu odejeli \"do bankomatu\" již nepřijeli"
+  },
+  {
+    "name": "KAZAKHASHVILI GLAKHO",
+    "hotel": "G",
+    "birthDate": "1978-11-25",
+    "damage": null,
+    "stayDate": "2022-12-29",
+    "reason": "Hluk a rušení nočního klidu. Musela být přivolána M. Policie."
+  },
+  {
+    "name": "KLECKANICS JEVGENYIJ",
+    "hotel": "H",
+    "birthDate": "1992-08-31",
+    "damage": null,
+    "stayDate": "2023-08-01",
+    "reason": "Drobné krádeže na pokoji a nechtěl opustit pokoj."
+  },
+  {
+    "name": "Kohoutová Veronika",
+    "hotel": "I",
+    "birthDate": "1980-12-31",
+    "damage": 600,
+    "stayDate": "2022-01-06",
+    "reason": "Narkomanka, odcizený klíč od pokoje, nutno měnit zámek, ponechané jehly na pokoji, bordel. "
+  },
+  {
+    "name": "KOPECKA DANA",
+    "hotel": "A",
+    "birthDate": "1985-08-29",
+    "damage": 2000,
+    "stayDate": "2022-07-07",
+    "reason": "Rozbitá TV, nepořádek a injekční jehly na pokoji. Společně s Fejneš Roman (také na Blacklistu)."
+  },
+  {
+    "name": "Kopecky Tomas",
+    "hotel": "H",
+    "birthDate": "1991-12-03",
+    "damage": null,
+    "stayDate": "2025-07-19",
+    "reason": "Vyhrožoval recepčnímu, chtěl se s ním prát, shazoval věci (již po check-outu, z hotelu byl vyveden)"
+  },
+  {
+    "name": "Kortanová Blanka",
+    "hotel": "I",
+    "birthDate": "1988-05-20",
+    "damage": 250,
+    "stayDate": "2020-11-05",
+    "reason": "Ložní prádlo + ručníky od krve, riziko infekce"
+  },
+  {
+    "name": "KOVÁŘOVÁ JANA",
+    "hotel": "H",
+    "birthDate": "1961-06-30",
+    "damage": null,
+    "stayDate": "2023-10-23",
+    "reason": "Psychicky labilní narkomanka, obrovský bordel na pokoji a následné dohadování recepční. "
+  },
+  {
+    "name": "KRAJNAK PETR",
+    "hotel": "T + I",
+    "birthDate": "1976-04-18",
+    "damage": null,
+    "stayDate": "2020-11-05",
+    "reason": "Odešel z Taurusu bez zaplacení 800kč, vybrány při pokusu ubytovat se na Theatrinu. Kouření na pokoji."
+  },
+  {
+    "name": "KRAJNAK ROMAN",
+    "hotel": "I",
+    "birthDate": "1981-05-05",
+    "damage": null,
+    "stayDate": "2022-03-16",
+    "reason": "Známý Gažiové Andrey (také na Blacklistu), neohlášené návštěvy na pokoji a následné hádky mezi nimi, neustálý řev v noci na chodbách, hádky s recepčním, vyžadovali peníze zpátky za ubytování."
+  },
+  {
+    "name": "KRAMLOVA LENKA",
+    "hotel": "T",
+    "birthDate": null,
+    "damage": null,
+    "stayDate": "2023-05-19",
+    "reason": "Opakované vytváření REF rezervací přes BOO/AVP s neplatnou kartou a následným nedojezdem."
+  },
+  {
+    "name": "KRASNIQI KUJTIM",
+    "hotel": "T",
+    "birthDate": "1979-06-29",
+    "damage": null,
+    "stayDate": "2024-08-28",
+    "reason": "extrémně divný člověk, pozoroval ze dveří studentky ze skupiny, problém s odchodem"
+  },
+  {
+    "name": "Kratochvil Pavel",
+    "hotel": "A",
+    "birthDate": "1980-01-28",
+    "damage": 500,
+    "stayDate": "2020-11-05",
+    "reason": "propálené povlečení, kouření na pokoji, neopustili pokoj až do 13:00"
+  },
+  {
+    "name": "KRAVETS OLEKSANDR",
+    "hotel": "H",
+    "birthDate": "1989-05-14",
+    "damage": null,
+    "stayDate": "2023-06-01",
+    "reason": "Podivné existence, strašný zápach a bordel na pokoji."
+  },
+  {
+    "name": "Krecek Pavel",
+    "hotel": "A",
+    "birthDate": "1995-09-10",
+    "damage": null,
+    "stayDate": "2023-03-07",
+    "reason": "Neustále vyhýbání se placení"
+  },
+  {
+    "name": "KRIVANEK LUKAS",
+    "hotel": "T",
+    "birthDate": "1989-12-15",
+    "damage": null,
+    "stayDate": "2023-03-18",
+    "reason": "Narkomané, rušící klid hotelu a hostů, kouření na pokoji a rodinní příbuzní jenž už jsou na blacklistu."
+  },
+  {
+    "name": "KRIVANKOVA GABRIELA",
+    "hotel": "T",
+    "birthDate": "1989-07-10",
+    "damage": null,
+    "stayDate": "2023-03-18",
+    "reason": "Narkomané, rušící klid hotelu a hostů, kouření na pokoji a rodinní příbuzní jenž už jsou na blacklistu."
+  },
+  {
+    "name": "Křivánek Tomáš",
+    "hotel": "A",
+    "birthDate": "1989-09-28",
+    "damage": null,
+    "stayDate": "2020-11-05",
+    "reason": "Feťák, ponechané jehly na pokoji, riziko infekce, bordel"
+  },
+  {
+    "name": "KUDRÍK KAREL",
+    "hotel": "A",
+    "birthDate": "1991-08-20",
+    "damage": null,
+    "stayDate": "2024-05-29",
+    "reason": "Zničené ručníky, odlomený držák na mýdlo, kouření trávy na pokoji"
+  },
+  {
+    "name": "Kulíšek Jan",
+    "hotel": "A",
+    "birthDate": "1982-06-13",
+    "damage": null,
+    "stayDate": "2020-12-26",
+    "reason": "Kouření na pokoji, pochybné návštěvy (podezření na dealery), riziko infekce"
+  },
+  {
+    "name": "Kumstová Denisa",
+    "hotel": "I",
+    "birthDate": "1986-07-08",
+    "damage": null,
+    "stayDate": "2022-07-09",
+    "reason": "Silně znečištěný pokoj, jídlo ze snídaně v posteli, pokoj zasmraděn. V noci stížnosti na hluk."
+  },
+  {
+    "name": "KUTA PETR",
+    "hotel": "H",
+    "birthDate": "1968-05-17",
+    "damage": null,
+    "stayDate": "2023-01-31",
+    "reason": "Pochybné návštěvy, snažil se ubytovat Horváthovou Gabrielu, která je již na blacklistu."
+  },
+  {
+    "name": "Kvasnak Jan",
+    "hotel": "H",
+    "birthDate": "1983-06-17",
+    "damage": null,
+    "stayDate": "2022-11-11",
+    "reason": "Kouření v pokoji, silně znečištěny ručníky a prostěradlo."
+  },
+  {
+    "name": "Labuť Lukáš",
+    "hotel": "",
+    "birthDate": "1997-07-17",
+    "damage": null,
+    "stayDate": "2021-04-26",
+    "reason": "Rušení klidu na hotelu, stížnosti ostatních hostů. Poškozené dveře"
+  },
+  {
+    "name": "Lakatošová Simona",
+    "hotel": "C",
+    "birthDate": "1997-07-16",
+    "damage": null,
+    "stayDate": "2023-12-11",
+    "reason": "Odmítali opustit pokoj přes několikanásobné výzvy, opustili ho až po 17 hod., od pohledu feťáci"
+  },
+  {
+    "name": "Laouani Marios",
+    "hotel": "M",
+    "birthDate": "1995-07-07",
+    "damage": null,
+    "stayDate": "2021-09-17",
+    "reason": "Problém s platbami při prodloužení, neopuštěný pokoj, osočování z rasismu. Přivolána PČR"
+  },
+  {
+    "name": "LIUBYVYI OLEKSANDR",
+    "hotel": "I",
+    "birthDate": "1992-06-07",
+    "damage": null,
+    "stayDate": "2023-11-16",
+    "reason": "Host byl opilý, agresivní a vulgární vůči hostům a recepční. Volána policie."
+  },
+  {
+    "name": "Lukáš Kostka",
+    "hotel": "A",
+    "birthDate": "1996-06-30",
+    "damage": 942,
+    "stayDate": "2023-05-10",
+    "reason": "Narkoman s dítětem, utekli bez placení."
+  },
+  {
+    "name": "MAHNKE NILS",
+    "hotel": "I",
+    "birthDate": "1963-07-26",
+    "damage": null,
+    "stayDate": "2023-07-23",
+    "reason": "Neskutečné znečištění na pokoji a cizí návštěva na pokoji (prostituce)."
+  },
+  {
+    "name": "MAKUNOVA ANNA",
+    "hotel": "I",
+    "birthDate": "2004-03-19",
+    "damage": null,
+    "stayDate": "2023-06-01",
+    "reason": "Problémový host, pochybné návštěvy a urážení hostů ve snídárně."
+  },
+  {
+    "name": "Masinova Tereza",
+    "hotel": "I",
+    "birthDate": "2002-03-25",
+    "damage": null,
+    "stayDate": "2022-01-13",
+    "reason": "Podezřejí z používání drog na pokoji a poničené závěsy."
+  },
+  {
+    "name": "Mihaltov Maria",
+    "hotel": "A",
+    "birthDate": "1992-03-06",
+    "damage": null,
+    "stayDate": "2020-11-05",
+    "reason": "alkoholik, velká rvačka se spolubydlícím"
+  },
+  {
+    "name": "Michael Pawel",
+    "hotel": "A",
+    "birthDate": "1986-10-25",
+    "damage": null,
+    "stayDate": "2020-11-05",
+    "reason": "alkoholik, velká rvačka se spolubydlícím"
+  },
+  {
+    "name": "Mirga David",
+    "hotel": "T",
+    "birthDate": "1985-09-12",
+    "damage": null,
+    "stayDate": "2024-01-29",
+    "reason": "ukradené mýdlo ze sprchy a umyvadla, záclonka u okna, 2x polštářek + dekorativní přehoz, kompletní povlečení"
+  },
+  {
+    "name": "Mirga Dušan",
+    "hotel": "T",
+    "birthDate": "2005-01-05",
+    "damage": 2000,
+    "stayDate": "2024-01-22",
+    "reason": "Rozbité držáky na mýdlo, ukradený ventilátor a kouření na pokoji."
+  },
+  {
+    "name": "Mlynárková Lucie",
+    "hotel": "A",
+    "birthDate": "1993-09-17",
+    "damage": "1500 /2 os.",
+    "stayDate": "2020-11-05",
+    "reason": "Ubytování v noci na dvě noci, po první noci nezaplatili a utekli z hotelu"
+  },
+  {
+    "name": "Mlynářová Martina",
+    "hotel": "A",
+    "birthDate": "1993-06-10",
+    "damage": null,
+    "stayDate": "2020-11-05",
+    "reason": "Opakované porušení domovního řádu, přespávání návštev na pokoji"
+  },
+  {
+    "name": "MOLNAROVA LAURA",
+    "hotel": "H",
+    "birthDate": "2000-07-08",
+    "damage": null,
+    "stayDate": "2023-01-31",
+    "reason": "Problém s platbou za ubytování, kouření na pokoji."
+  },
+  {
+    "name": "Muchová Ketrin",
+    "hotel": "A",
+    "birthDate": "2002-01-19",
+    "damage": null,
+    "stayDate": "2020-11-05",
+    "reason": "Poničený pokoj, ubytování nenahlášených kamarádů na pokoji"
+  },
+  {
+    "name": "Musil Jan",
+    "hotel": "A",
+    "birthDate": "1989-09-13",
+    "damage": 5490,
+    "stayDate": "2020-11-05",
+    "reason": "Ukradený lux z chodby hotelu"
+  },
+  {
+    "name": "MYKHAYLO PRODAN",
+    "hotel": "I",
+    "birthDate": "1980-03-04",
+    "damage": null,
+    "stayDate": "2023-05-20",
+    "reason": "Osoba hledaná Policií ČR. Můžeme ubytovat, ale po ubytování volat policii!!!"
+  },
+  {
+    "name": "Nguyen Huu Hai",
+    "hotel": "E",
+    "birthDate": "1986-11-01",
+    "damage": 200,
+    "stayDate": "2023-07-08",
+    "reason": "Koření na pokoji marihuana. Pokoj by pak neprodejný a i když to věděl tak utekl bez zaplacení pokuty."
+  },
+  {
+    "name": "Nosko Julius",
+    "hotel": "T",
+    "birthDate": "1965-05-30",
+    "damage": null,
+    "stayDate": null,
+    "reason": "popíjí klidně celou noc alkohol v lobby, je hlučný, neustále otravuje recepční a pořád se o něčem dohaduje"
+  },
+  {
+    "name": "Nurná Tereza",
+    "hotel": "A+ I",
+    "birthDate": "1999-05-04",
+    "damage": 1000,
+    "stayDate": "2020-11-05",
+    "reason": "Odcizená peřina, silně zaneřáděný pokoj"
+  },
+  {
+    "name": "Nykl Denis",
+    "hotel": "A",
+    "birthDate": "1990-08-18",
+    "damage": null,
+    "stayDate": "2020-11-19",
+    "reason": "Použité injekční jehly na pokoji"
+  },
+  {
+    "name": "Otčenášek Václav",
+    "hotel": "I",
+    "birthDate": "1994-07-23",
+    "damage": null,
+    "stayDate": "2022-03-05",
+    "reason": "Narkoman, známý pana Řezníčka  (také na Blacklistu), nehodlal opustit hotel, výhružky VR."
+  },
+  {
+    "name": "Pavlíček Tomáš",
+    "hotel": "I",
+    "birthDate": "1995-09-15",
+    "damage": null,
+    "stayDate": "2020-11-19",
+    "reason": "Vpustil na pokoj další osoby, které nebyly registrovány a přespali na pokoji"
+  },
+  {
+    "name": "PAVLIUK NADIIA",
+    "hotel": "H",
+    "birthDate": "1977-02-06",
+    "damage": null,
+    "stayDate": "2023-06-01",
+    "reason": "Podivné existence, strašný zápach a bordel na pokoji."
+  },
+  {
+    "name": "Pechackova Nikol",
+    "hotel": "T",
+    "birthDate": "2002-10-31",
+    "damage": null,
+    "stayDate": "2022-12-07",
+    "reason": "Pokoj silně znečištěn od psa, výkaly po pokoji."
+  },
+  {
+    "name": "Pelantova Zlata",
+    "hotel": "A",
+    "birthDate": "1966-04-08",
+    "damage": null,
+    "stayDate": "2023-01-28",
+    "reason": "Kouření na čerstvě vymalovaném pokoji, pochybné návštěvy a nedodržování hotel. řádu."
+  },
+  {
+    "name": "Petrovova Sofie",
+    "hotel": "T",
+    "birthDate": "2000-02-16",
+    "damage": 1777,
+    "stayDate": "2022-10-17",
+    "reason": "Utekla bez zaplacení druhé noci.Dluží 1777,- kč."
+  },
+  {
+    "name": "Phamová Anh Thuy",
+    "hotel": "M",
+    "birthDate": "2003-06-07",
+    "damage": null,
+    "stayDate": "2022-09-12",
+    "reason": "Rušení nočního klidu, ignorování recepce i výhrůžek policie, rušení všech hostů v okolních pokojích."
+  },
+  {
+    "name": "Pivoňková Nikola",
+    "hotel": "T",
+    "birthDate": "1993-02-28",
+    "damage": null,
+    "stayDate": "2024-02-07",
+    "reason": "Feťáci, kouření na pokoji, zničené ručníky, bez dovolení odnášeli snídani na pokoj, nechtěli se checkoutovat."
+  },
+  {
+    "name": "Plachý Ctibor",
+    "hotel": "I",
+    "birthDate": "1974-07-18",
+    "damage": null,
+    "stayDate": "2022-05-26",
+    "reason": "Opakované prohřešky - zákaz od T. Drbohlava"
+  },
+  {
+    "name": "Plemenikova Kristyna",
+    "hotel": "T",
+    "birthDate": "1997-10-03",
+    "damage": null,
+    "stayDate": "2022-12-07",
+    "reason": "Pokoj silně znečištěn od psa, výkaly po pokoji."
+  },
+  {
+    "name": "PROCHAZKOVA LUCIE",
+    "hotel": "A",
+    "birthDate": "35096",
+    "damage": null,
+    "stayDate": "2021-04-26",
+    "reason": "Rušení klidu na hotelu, stížnosti ostatních hostů. Poškozené dveře"
+  },
+  {
+    "name": "Prouzová Kristýna",
+    "hotel": "C",
+    "birthDate": "1991-02-04",
+    "damage": null,
+    "stayDate": "2022-05-03",
+    "reason": "Injekční jehly a různé tabletky všude po pokoji, nepořádek, kouření na pokoji, společně se Smejkalem Markem (také na Blacklistu)"
+  },
+  {
+    "name": "Rafaj Michal",
+    "hotel": "I",
+    "birthDate": "1983-07-26",
+    "damage": 600,
+    "stayDate": "2022-01-03",
+    "reason": "Pravděpodobně dealer a narkoman. Rezervace sice platí, ale pokaždé odjíždí s klíči od pokoje, musela se měnit vložka do dveří za 600,- Kč."
+  },
+  {
+    "name": "Ratimec Petr",
+    "hotel": "T",
+    "birthDate": "1989-07-13",
+    "damage": null,
+    "stayDate": "2020-11-06",
+    "reason": "Přítel sl. Hoškové, spoluúčast na vykradení auta údržby."
+  },
+  {
+    "name": "Rokos David",
+    "hotel": "A",
+    "birthDate": "1983-06-01",
+    "damage": null,
+    "stayDate": "2023-01-12",
+    "reason": "Kouření na pokoji, rozbité věci, počmárané prostěradlo a podivné lidé chodí za nima."
+  },
+  {
+    "name": "Rybnickova Klara",
+    "hotel": "U",
+    "birthDate": "1987-09-16",
+    "damage": null,
+    "stayDate": "2025-07-14",
+    "reason": "Odmítají se včas checkoutovat, nechávají za sebou velmi špinavý pokoj (již několikrát to bylo stejně i na Taurusu)"
+  },
+  {
+    "name": "Řezniček Jindřich",
+    "hotel": "I",
+    "birthDate": "2003-12-22",
+    "damage": null,
+    "stayDate": "2022-03-05",
+    "reason": "Nehodlal opustit pokoj, hádal se o platbě, zavolal na místo PČR."
+  },
+  {
+    "name": "Říhová Kateřina",
+    "hotel": "A",
+    "birthDate": "1990-05-12",
+    "damage": null,
+    "stayDate": "2023-01-12",
+    "reason": "Kouření na pokoji, rozbité věci, počmárané prostěradlo a podivné lidé chodí za nima."
+  },
+  {
+    "name": "Sabatová Tereza",
+    "hotel": "W",
+    "birthDate": "36208",
+    "damage": null,
+    "stayDate": "2021-04-27",
+    "reason": "Nezaplacený minibar, znečištený pokoj, ucpaný záchod. Urgence k opuštění pokoje"
+  },
+  {
+    "name": "Salimová Michaela",
+    "hotel": "A",
+    "birthDate": "1991-11-25",
+    "damage": 500,
+    "stayDate": "2020-11-05",
+    "reason": "Zakrvácené matrace, ložní prádlo i ručníky, riziko infekce"
+  },
+  {
+    "name": "SARKOZIOVA JANA",
+    "hotel": "T",
+    "birthDate": "1994-12-02",
+    "damage": null,
+    "stayDate": "2023-01-20",
+    "reason": "narkomanka, problémy s check outem, noční (ranní) návštěvy."
+  },
+  {
+    "name": "SICHOROVA LUCIE",
+    "hotel": "I",
+    "birthDate": "1986-06-09",
+    "damage": "2275 (2 osoby)",
+    "stayDate": "2020-11-05",
+    "reason": "ODCIZENÝ klíč nutno vyměnit zámek, Věčné pozdní úhrady ubytování"
+  },
+  {
+    "name": "Sindelarova Oldriska",
+    "hotel": "T",
+    "birthDate": "1995-12-16",
+    "damage": null,
+    "stayDate": "2024-03-06",
+    "reason": "Feťák, kouření na pokoji (smrad + vajgly za dveřmi), po napomínání odešli z pokoje ve 12:00 hodin"
+  },
+  {
+    "name": "Skaláková  Tereza",
+    "hotel": "A",
+    "birthDate": "1996-07-30",
+    "damage": 500,
+    "stayDate": "2020-11-05",
+    "reason": "propálené povlečení, kouření na pokoji, neopustili pokoj až do 13:01"
+  },
+  {
+    "name": "Slabý Pavel",
+    "hotel": "I",
+    "birthDate": "1982-06-23",
+    "damage": null,
+    "stayDate": "2021-05-15",
+    "reason": "Nerespektování vládních opatření a domovního řádu hotelu. Slovní napadání zaměstnanců hotelu"
+  },
+  {
+    "name": "SMEJKAL MAREK",
+    "hotel": "C",
+    "birthDate": "1994-01-27",
+    "damage": null,
+    "stayDate": "2022-05-03",
+    "reason": "Injekční jehly a různé tabletky všude po pokoji, nepořádek, kouření na pokoji, společně s Prouzovou Kristýnou (také na Blacklistu)"
+  },
+  {
+    "name": "Smutny Miroslav",
+    "hotel": "T",
+    "birthDate": "1993-04-24",
+    "damage": null,
+    "stayDate": "2023-03-19",
+    "reason": "Na pokoji rozšlapaný banán na zemi, zakrvácené prostěradlo, rozbité skleničky, špinavá zeď."
+  },
+  {
+    "name": "STEFAN LUKAS",
+    "hotel": "H",
+    "birthDate": "1991-06-22",
+    "damage": null,
+    "stayDate": "2023-02-05",
+    "reason": "Velký bordel na pokoji, kouření na pokoji,  po celém pokoji roztroušené oční stíny."
+  },
+  {
+    "name": "STEJSKALOVA ANDREA",
+    "hotel": "I",
+    "birthDate": "1979-02-17",
+    "damage": null,
+    "stayDate": "2023-01-23",
+    "reason": "Odmítali opustit pokoj, bordel na pokoji, odmítali vrátit klíč od pokoje."
+  },
+  {
+    "name": "SUCHY LADISLAV",
+    "hotel": "I",
+    "birthDate": "1979-08-28",
+    "damage": null,
+    "stayDate": "2022-01-10",
+    "reason": "Kouření na pokoji, narkoman, velký nepořádek na pokoji."
+  },
+  {
+    "name": "SVIATOHOR VIKTORIIA",
+    "hotel": "T",
+    "birthDate": "2000-06-24",
+    "damage": null,
+    "stayDate": "2023-10-11",
+    "reason": "Nechtěla opustil pokoj + agresivita vůči personálu."
+  },
+  {
+    "name": "Sysala Jakub",
+    "hotel": "C",
+    "birthDate": "1991-04-20",
+    "damage": 6000,
+    "stayDate": "2020-11-05",
+    "reason": "Nezaplacené ubytování, odjezd bez zaplacení"
+  },
+  {
+    "name": "Szitai Petr",
+    "hotel": "A",
+    "birthDate": "1985-06-25",
+    "damage": "900 /3 os.",
+    "stayDate": "2020-11-05",
+    "reason": "Zaplatili 1/2 ceny a při odjezdu odejeli \"do bankomatu\" již nepřijeli"
+  },
+  {
+    "name": "Šenlot Jiří",
+    "hotel": "A",
+    "birthDate": "2000-03-27",
+    "damage": null,
+    "stayDate": "2021-01-04",
+    "reason": "Kouření na pokoji, zničené vybavení pokoje (ručníky, nerez. Tác, …)"
+  },
+  {
+    "name": "Šlepl Patrik",
+    "hotel": "A",
+    "birthDate": "1987-07-04",
+    "damage": "1500 /2 os.",
+    "stayDate": "2020-11-05",
+    "reason": "Ubytování v noci na dvě noci, po první noci nezaplatili a utekli z hotelu"
+  },
+  {
+    "name": "Štiková Charlotte",
+    "hotel": "H",
+    "birthDate": "1996-08-05",
+    "damage": null,
+    "stayDate": "2022-04-08",
+    "reason": "Poskytování prostituce z hotelového pokoje, nedovolené návštevy. "
+  },
+  {
+    "name": "Tashilian Chekdar",
+    "hotel": "T",
+    "birthDate": "1995-04-25",
+    "damage": null,
+    "stayDate": "2024-03-09",
+    "reason": "odmítali opustit pokoj, skvrny od krve, svíček, kouření na pokoji"
+  },
+  {
+    "name": "Teplý Jaroslav",
+    "hotel": "I/H",
+    "birthDate": "1954-08-28",
+    "damage": null,
+    "stayDate": "2024-07-07",
+    "reason": "velmi problematický, stále prodlužuje a nechce platit, je těžké z něj dostat peníze, agresivní, evidentně nemocný"
+  },
+  {
+    "name": "TKACHUK MYKHAILO",
+    "hotel": "T",
+    "birthDate": "1992-10-11",
+    "damage": null,
+    "stayDate": "2023-10-11",
+    "reason": "Nechtěl opustil pokoj + agresivita vůči personálu."
+  },
+  {
+    "name": "Toman Martin",
+    "hotel": "I",
+    "birthDate": "1999-05-28",
+    "damage": 60000,
+    "stayDate": "2023-12-04",
+    "reason": "Zničil pokoj, válel se nahý na chodbě, napadl zaměstnance a způsobil mu otřes mozku"
+  },
+  {
+    "name": "Trousil Radek",
+    "hotel": "T",
+    "birthDate": "1992-04-19",
+    "damage": null,
+    "stayDate": "2024-02-01",
+    "reason": "Extrémní znečištění výkaly"
+  },
+  {
+    "name": "Trumpešová Denisa",
+    "hotel": "A",
+    "birthDate": "1997-01-11",
+    "damage": null,
+    "stayDate": "2020-11-05",
+    "reason": "Feťák, ponechané jehly na pokoji, riziko infekce, bordel"
+  },
+  {
+    "name": "TUREK JAKUB",
+    "hotel": "A",
+    "birthDate": "1990-06-22",
+    "damage": null,
+    "stayDate": "2023-06-01",
+    "reason": "Bordel po celém pokoji, kouření v pokoji s nedopalky po pokoji, pomalované zrcadlo."
+  },
+  {
+    "name": "TURKOVA TEREZA MICHAELA",
+    "hotel": "A",
+    "birthDate": "1997-01-10",
+    "damage": null,
+    "stayDate": "2022-09-12",
+    "reason": "Volají pod různými jmény, vymýšlejí si, že mají potvrzenou rezervaci, velký nepořádek na pokoji, problémoví hosté."
+  },
+  {
+    "name": "Turták FRANKO",
+    "hotel": "A",
+    "birthDate": "1991-09-15",
+    "damage": null,
+    "stayDate": "2020-11-05",
+    "reason": "nalezené injekční jehly"
+  },
+  {
+    "name": "VACHUTKOVA LUCIE",
+    "hotel": "T",
+    "birthDate": "1990-09-26",
+    "damage": null,
+    "stayDate": "2023-03-19",
+    "reason": "Na pokoji rozšlapaný banán na zemi, zakrvácené prostěradlo, rozbité skleničky, špinavá zeď."
+  },
+  {
+    "name": "Vajc Jakub",
+    "hotel": "T",
+    "birthDate": "1994-08-13",
+    "damage": null,
+    "stayDate": "2024-12-21",
+    "reason": "Spousta odpadků, špinavené povlečení, házeli vajgly z okna"
+  },
+  {
+    "name": "Vesely Julian",
+    "hotel": "T",
+    "birthDate": "1994-12-17",
+    "damage": null,
+    "stayDate": "2024-01-29",
+    "reason": "Kouření na pokoji"
+  },
+  {
+    "name": "VILHUTSKA VITALIYA",
+    "hotel": "A",
+    "birthDate": "1979-02-12",
+    "damage": null,
+    "stayDate": "2023-03-16",
+    "reason": "Velký nepořádek a smrad na pokoji, postel znečištěna exkrementy"
+  },
+  {
+    "name": "Vinnichenko Vitaliy",
+    "hotel": "A",
+    "birthDate": "1976-07-02",
+    "damage": null,
+    "stayDate": "2021-05-10",
+    "reason": "Značně znečištěný pokoj a koupelna výkaly"
+  },
+  {
+    "name": "Vladislav Tomáš",
+    "hotel": "T",
+    "birthDate": "2000-02-12",
+    "damage": 800,
+    "stayDate": "2023-03-02",
+    "reason": "Neustále problém s placením rezervace v moměntě check-inu, blokování pokoje po check-outu a naposled odcizen klíč T503 proto 800 Kč"
+  },
+  {
+    "name": "Vokalová Veronika",
+    "hotel": "A",
+    "birthDate": "2001-02-25",
+    "damage": null,
+    "stayDate": "2021-01-04",
+    "reason": "Kouření na pokoji, zničené vybavení pokoje (ručníky, nerez. Tác, …)"
+  },
+  {
+    "name": "VOSYKA Karel",
+    "hotel": "C",
+    "birthDate": "15.3.198",
+    "damage": "1895kč",
+    "stayDate": "2021-01-05",
+    "reason": "Dluží 1895 za neuhrazení ubytování v hotelu"
+  },
+  {
+    "name": "VOTIPKA LUBOS",
+    "hotel": "I",
+    "birthDate": "1980-12-01",
+    "damage": null,
+    "stayDate": "2023-01-23",
+    "reason": "Odmítali opustit pokoj, bordel na pokoji, odmítali vrátit klíč od pokoje."
+  },
+  {
+    "name": "Wamser David",
+    "hotel": "I",
+    "birthDate": null,
+    "damage": null,
+    "stayDate": "2023-03-18",
+    "reason": "Neodevzdal klíč jenž byl zaseknutý ve dveřích. Kouření na pokoji."
+  },
+  {
+    "name": "WHITE LAURENCE MICHAEL GEOFFREY",
+    "hotel": "M",
+    "birthDate": "1988-01-29",
+    "damage": null,
+    "stayDate": "2022-01-03",
+    "reason": "Psychicky narušený či narkoman, odmítal opustit hotel, volána policie."
+  },
+  {
+    "name": "WOOLLEY MASON KENNETH",
+    "hotel": "G",
+    "birthDate": "1987-09-23",
+    "damage": null,
+    "stayDate": "2024-06-04",
+    "reason": "Velmi zvláštní host, odmítl zaplatit minibar, sprostě urážel a vyhrožoval zaměstancům."
+  },
+  {
+    "name": "Yurina Hanna",
+    "hotel": "I",
+    "birthDate": "2001-10-25",
+    "damage": null,
+    "stayDate": "2024-06-23",
+    "reason": "odešla bez check-outu, v pokoji velký nepořádek, vytržené mýdlo, rozlámaný větrák"
+  },
+  {
+    "name": "ZNAMENACEK NIKOLA",
+    "hotel": "T",
+    "birthDate": "1986-12-09",
+    "damage": 860,
+    "stayDate": "2022-01-10",
+    "reason": "Kouření na pokoji, velký nepořádek, utekl bez zaplacení."
+  }
+]

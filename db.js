@@ -115,6 +115,84 @@ async function init() {
     )
   `);
 
+  // ── Blacklist ─────────────────────────────────────────────────────────────
+
+  await db.query(`
+    CREATE TABLE IF NOT EXISTS blacklist_entries (
+      id         UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+      name       VARCHAR(200) NOT NULL,
+      hotel      VARCHAR(100),
+      birth_date TEXT,
+      damage     VARCHAR(200),
+      stay_date  DATE,
+      reason     TEXT NOT NULL,
+      added_at   TIMESTAMPTZ DEFAULT NOW(),
+      added_by   VARCHAR(200) NOT NULL
+    )
+  `);
+
+  await db.query(`
+    CREATE TABLE IF NOT EXISTS blacklist_removed (
+      id                  UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+      original_id         UUID,
+      original_name       VARCHAR(200),
+      original_hotel      VARCHAR(100),
+      original_birth_date TEXT,
+      original_damage     VARCHAR(200),
+      original_stay_date  DATE,
+      original_reason     TEXT,
+      original_added_at   TIMESTAMPTZ,
+      original_added_by   VARCHAR(200),
+      removal_reason      TEXT NOT NULL,
+      removed_at          TIMESTAMPTZ DEFAULT NOW(),
+      removed_by          VARCHAR(200) NOT NULL
+    )
+  `);
+
+  await db.query(`
+    CREATE TABLE IF NOT EXISTS blacklist_intro (
+      id         INTEGER PRIMARY KEY DEFAULT 1,
+      content    TEXT NOT NULL,
+      updated_at TIMESTAMPTZ DEFAULT NOW(),
+      updated_by VARCHAR(200)
+    )
+  `);
+
+  await db.query(`
+    CREATE TABLE IF NOT EXISTS blacklist_audit (
+      id                UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+      action            VARCHAR(20) NOT NULL,
+      payload           JSONB NOT NULL,
+      user_name         VARCHAR(200) NOT NULL,
+      timestamp         TIMESTAMPTZ DEFAULT NOW(),
+      notified_by_email BOOLEAN DEFAULT FALSE
+    )
+  `);
+
+  // Seed: výchozí úvodní text
+  const introCheck = await db.query('SELECT COUNT(*) AS cnt FROM blacklist_intro');
+  if (parseInt(introCheck.rows[0].cnt, 10) === 0) {
+    const defaultIntro = `<p>Tyto hosty v žádném případě neubytovávat!!! Ani v případě, kdy tvrdí, že jsme jim ubytování potvrdili.</p><p>Pokud posoudíte, že jste schopni od bývalých hostů níže vybrat dlužnou částku při kasírování „nové" <u>fiktivní</u> rezervace a poté je až odmítnout učiňte tak. Pokud se však obáváte konfliktu, nepouštějte se do něj a rovnou je odmítněte ubytovat, až poté je požádejte o uhrazení dlužné částky.</p><p>V případě potíží při odmítnutí ubytovat hosta či stížností na vybranou částku za předešlé škody, volejte VRQ.</p>`;
+    await db.query(`INSERT INTO blacklist_intro (id, content) VALUES (1, $1)`, [defaultIntro]);
+  }
+
+  // Seed: počáteční data (199 osob) pokud je tabulka prázdná
+  const blCheck = await db.query('SELECT COUNT(*) AS cnt FROM blacklist_entries');
+  if (parseInt(blCheck.rows[0].cnt, 10) === 0) {
+    const seedData = require('./seed_data.json');
+    for (const entry of seedData) {
+      const stayDate = entry.stayDate && /^\d{4}-\d{2}-\d{2}$/.test(entry.stayDate) ? entry.stayDate : null;
+      const birthDate = entry.birthDate != null ? String(entry.birthDate) : null;
+      const damage = entry.damage != null ? String(entry.damage) : null;
+      await db.query(
+        `INSERT INTO blacklist_entries (name, hotel, birth_date, damage, stay_date, reason, added_at, added_by)
+         VALUES ($1, $2, $3, $4, $5, $6, NOW(), $7)`,
+        [entry.name, entry.hotel || null, birthDate, damage, stayDate, entry.reason, 'Import (původní Excel)']
+      );
+    }
+    console.log(`Blacklist: importováno ${seedData.length} záznamů.`);
+  }
+
   // Skupiny oprávnění
   await db.query(`
     CREATE TABLE IF NOT EXISTS permission_groups (
