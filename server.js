@@ -702,6 +702,11 @@ app.get('/blacklist', requireLogin, (req, res) =>
 
 function blFormatDate(val) {
   if (!val) return '';
+  if (val instanceof Date) {
+    const d = String(val.getUTCDate()).padStart(2, '0');
+    const mo = String(val.getUTCMonth() + 1).padStart(2, '0');
+    return `${d}.${mo}.${val.getUTCFullYear()}`;
+  }
   const s = String(val);
   const m = s.match(/^(\d{4})-(\d{2})-(\d{2})/);
   if (m) return `${m[3]}.${m[2]}.${m[1]}`;
@@ -739,40 +744,48 @@ function blHtmlEscape(s) {
 }
 
 function blBuildEmailHtml(adds, removes) {
-  let html = `<div style="font-family: Calibri, Arial, sans-serif; font-size: 11pt; max-width: 720px; color: #1a1a1a; line-height: 1.5;">`;
-  html += `<p>Vážení recepční,</p>`;
+  const SP = 'margin: 0 0 12px 0;';  // standard paragraph spacing
+
+  function personCard(borderColor, bgColor, lines) {
+    return `<table cellpadding="0" cellspacing="0" style="margin: 0 0 10px 0; border-collapse: collapse;">
+      <tr><td style="padding: 11px 15px; border-left: 4px solid ${borderColor}; border: 1px dashed ${borderColor}88; background: ${bgColor}; font-size: 11pt; word-break: break-word; white-space: normal;">
+        ${lines.join('<br>')}
+      </td></tr>
+    </table>`;
+  }
+
+  let html = `<div style="font-family: Calibri, Arial, sans-serif; font-size: 11pt; max-width: 640px; color: #1a1a1a; line-height: 1.6;">`;
+  html += `<p style="${SP}">Vážení recepční,</p>`;
 
   if (removes.length > 0) {
     const pl = removes.length === 1
       ? 'byla <strong>odstraněna</strong> následující osoba'
       : 'byly <strong>odstraněny</strong> následující osoby';
-    html += `<p>z Blacklistu ${pl}:</p>`;
+    html += `<p style="${SP}">z Blacklistu ${pl}:</p>`;
     for (const r of removes) {
       const p = r.payload;
       const e = p.entry || p;
-      const name    = blHtmlEscape(e.original_name    || e.name    || '');
-      const hotel   = blHtmlEscape(e.original_hotel   || e.hotel   || '—');
+      const name    = blHtmlEscape(e.original_name   || e.name   || '');
+      const hotel   = blHtmlEscape(e.original_hotel  || e.hotel  || '—');
       const birth   = blHtmlEscape(blFormatDate(e.original_birth_date || e.birth_date || e.birthDate) || '—');
-      const reason  = blHtmlEscape(e.original_reason  || e.reason  || '');
-      const remReas = blHtmlEscape(p.removalReason || p.removal_reason || '');
-      html += `<table cellpadding="0" cellspacing="0" style="margin: 10px 0; border-collapse: collapse; width: 100%;">
-        <tr><td style="padding: 12px 16px; border-left: 4px solid #2e75b6; background: #f4f7fb; font-size: 11pt; word-break: break-word;">
-          <strong>${name}</strong><br>
-          <span style="color: #555; font-size: 10pt;">nar. ${birth} | hotel ${hotel}</span><br>
-          <em>Původní důvod zařazení: ${reason}</em><br>
-          <strong>Důvod odstranění:</strong> ${remReas}
-        </td></tr>
-      </table>`;
+      const reason  = blHtmlEscape(e.original_reason || e.reason || '');
+      const remReas = blHtmlEscape(p.removalReason   || p.removal_reason || '');
+      html += personCard('#2e75b6', '#eef3fb', [
+        `<strong style="font-size:12pt;">${name}</strong>`,
+        `<span style="color:#555;font-size:10pt;">nar. ${birth}&nbsp;&nbsp;|&nbsp;&nbsp;hotel ${hotel}</span>`,
+        `<em style="color:#444;font-size:10pt;">Původní důvod zařazení: ${reason}</em>`,
+        `<strong>Důvod odstranění:</strong> ${remReas}`
+      ]);
     }
-    html += `<p>Tuto osobu prosím <strong>již nenahlašujte</strong> ani s ní nezacházejte jako s rizikovou.</p>`;
+    html += `<p style="${SP}">Tuto osobu prosím <strong>již nenahlašujte</strong> ani s ní nezacházejte jako s rizikovou.</p>`;
   }
 
   if (adds.length > 0) {
-    if (removes.length > 0) html += `<hr style="margin: 16px 0; border: none; border-top: 1px solid #ddd;">`;
+    if (removes.length > 0) html += `<hr style="margin: 14px 0; border: none; border-top: 1px solid #ddd;">`;
     const pl = adds.length === 1
       ? 'byla <strong>přidána</strong> následující osoba'
       : 'byly <strong>přidány</strong> následující osoby';
-    html += `<p>na Blacklist ${pl}:</p>`;
+    html += `<p style="${SP}">na Blacklist ${pl}:</p>`;
     for (const r of adds) {
       const p = r.payload;
       const e = p.entry || p;
@@ -780,29 +793,27 @@ function blBuildEmailHtml(adds, removes) {
       const hotel  = blHtmlEscape(e.hotel || '—');
       const birth  = blHtmlEscape(blFormatDate(e.birth_date || e.birthDate) || '—');
       const reason = blHtmlEscape(e.reason || '');
-      html += `<table cellpadding="0" cellspacing="0" style="margin: 10px 0; border-collapse: collapse; width: 100%;">
-        <tr><td style="padding: 12px 16px; border-left: 4px solid #c0392b; background: #fdf3f1; font-size: 11pt; word-break: break-word;">
-          <strong>${name}</strong><br>
-          <span style="color: #555; font-size: 10pt;">nar. ${birth} | hotel ${hotel}</span><br>
-          <em>Důvod zařazení: ${reason}</em>
-        </td></tr>
-      </table>`;
+      html += personCard('#c0392b', '#fdf3f1', [
+        `<strong style="font-size:12pt;">${name}</strong>`,
+        `<span style="color:#555;font-size:10pt;">nar. ${birth}&nbsp;&nbsp;|&nbsp;&nbsp;hotel ${hotel}</span>`,
+        `<em style="color:#444;font-size:10pt;">Důvod zařazení: ${reason}</em>`
+      ]);
     }
-    html += `<p>Tyto hosty v žádném případě neubytovávejte.</p>`;
+    html += `<p style="${SP}">Tyto hosty v žádném případě neubytovávejte.</p>`;
   }
 
-  html += `<p><strong>Prosím:</strong></p>
-  <ul>
-    <li>informujte své kolegy o této změně,</li>
-    <li>vytiskněte si aktuální verzi z přílohy či ze složky <em>nastenka\\Blacklist</em>,</li>
+  html += `<p style="margin: 16px 0 6px 0;"><strong>Prosím:</strong></p>
+  <ul style="margin: 0 0 14px 0; padding-left: 22px;">
+    <li style="margin-bottom:5px;">informujte své kolegy o této změně,</li>
+    <li style="margin-bottom:5px;">vytiskněte si aktuální verzi z přílohy či ze složky <em>nastenka\\Blacklist</em>,</li>
     <li>starší verze nahraďte aktuální.</li>
   </ul>
-  <p><strong>Postup pro hosty z Blacklistu:</strong></p>
-  <ul>
-    <li>Pokud se některá z osob na blacklistu přijde ubytovat, přečtěte si důvod zařazení.</li>
+  <p style="margin: 0 0 6px 0;"><strong>Postup pro hosty z Blacklistu:</strong></p>
+  <ul style="margin: 0 0 16px 0; padding-left: 22px;">
+    <li style="margin-bottom:5px;">Pokud se některá z osob na blacklistu přijde ubytovat, přečtěte si důvod zařazení.</li>
     <li>Pokud dle vzezření hosta a důvodu usoudíte, že nechcete jít s hostem do konfliktu, <strong>volejte VRQ</strong>.</li>
   </ul>
-  <p>S pozdravem</p>
+  <p style="${SP}">S pozdravem</p>
   </div>`;
   return html;
 }
