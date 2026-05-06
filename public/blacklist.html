@@ -225,6 +225,8 @@ td.col-edit { width: 36px; text-align: center; padding: 4px; }
 }
 .btn-restore-hist:hover { background: #1a7a1a; color: #fff; }
 .badge-action.EDIT { background: #fff3cd; color: #856404; border: 1px solid #ffc107; }
+#history-table tbody tr.hist-selected { background: #fde8e8; }
+#history-table tbody tr.hist-selected:hover { background: #fdd8d8; }
 #bl-table tbody tr {
   border-bottom: 1px solid #e8e8e4;
   transition: background .1s;
@@ -790,12 +792,14 @@ td.col-remove {
         <option value="">Vše</option>
         <option value="ADD">Přidání</option>
         <option value="REMOVE">Odebrání</option>
+        <option value="EDIT">Úprava záznamu</option>
         <option value="EDIT_INTRO">Úprava textu</option>
       </select>
       <label>Od:</label>
       <input type="date" id="hist-filter-from">
       <label>Do:</label>
       <input type="date" id="hist-filter-to">
+      <button id="btn-hist-del-sel" style="display:none;padding:5px 12px;border-radius:5px;border:1px solid #8b1a1a;background:#8b1a1a;color:#fff;font-size:11px;cursor:pointer;font-family:inherit;white-space:nowrap;">Smazat vybrané (0)</button>
       <button id="btn-hist-back" style="padding:5px 14px;border-radius:5px;border:1px solid #4a4a4a;background:#3a3a3a;color:#e0e0e0;font-size:11px;cursor:pointer;font-family:inherit;white-space:nowrap;">← Zpět na seznam</button>
     </div>
 
@@ -803,11 +807,12 @@ td.col-remove {
       <table id="history-table">
         <thead>
           <tr>
+            <th style="width:30px;text-align:center;"><input type="checkbox" id="hist-sel-all" title="Vybrat / zrušit vše"></th>
             <th>Datum a čas</th>
             <th>Uživatel</th>
             <th>Akce</th>
             <th>Detaily</th>
-            <th style="width:36px;"></th>
+            <th style="width:60px;"></th>
           </tr>
         </thead>
         <tbody id="hist-body"></tbody>
@@ -941,6 +946,7 @@ let sortKey = 'name';
 let sortDir = 'asc';
 let activeHotel = '';
 let editingId = null;
+let selectedHistory = new Set();
 
 // ── Helpers ──────────────────────────────────────────────────────────────────
 
@@ -1334,6 +1340,7 @@ async function submitIntro() {
 // ── History ───────────────────────────────────────────────────────────────────
 
 async function openHistory() {
+  selectedHistory.clear();
   document.getElementById('list-view').style.display = 'none';
   document.getElementById('history-view').style.display = 'block';
   document.getElementById('controls-bar').classList.add('hidden');
@@ -1385,7 +1392,9 @@ function renderHistory() {
     const restoreBtn = r.action === 'REMOVE'
       ? `<button class="btn-restore-hist" onclick="restoreFromHistory('${escHtml(r.id)}')" title="Přidat zpět na blacklist">↩</button>`
       : '';
-    return `<tr>
+    const isSel = selectedHistory.has(r.id);
+    return `<tr class="${isSel ? 'hist-selected' : ''}">
+      <td style="width:30px;text-align:center;padding:4px;"><input type="checkbox" class="hist-cb" data-id="${escHtml(r.id)}" ${isSel ? 'checked' : ''} onchange="toggleHistSelect('${escHtml(r.id)}',this.checked)"></td>
       <td style="white-space:nowrap;">${escHtml(formatDatetime(r.timestamp))}</td>
       <td>${escHtml(r.user_name)}</td>
       <td><span class="badge-action ${r.action}">${actionLabel[r.action] || r.action}</span></td>
@@ -1393,6 +1402,47 @@ function renderHistory() {
       <td style="padding:4px;text-align:center;white-space:nowrap;">${restoreBtn}<button class="btn-hist-del" onclick="deleteHistoryEntry('${escHtml(r.id)}')" title="Smazat záznam">×</button></td>
     </tr>`;
   }).join('');
+
+  // sync select-all checkbox
+  const allIds = rows.map(r => r.id);
+  const selAll = document.getElementById('hist-sel-all');
+  if (selAll) selAll.checked = allIds.length > 0 && allIds.every(id => selectedHistory.has(id));
+  updateHistSelBtn();
+}
+
+function toggleHistSelect(id, checked) {
+  if (checked) selectedHistory.add(id);
+  else selectedHistory.delete(id);
+  const row = document.querySelector(`.hist-cb[data-id="${id}"]`)?.closest('tr');
+  if (row) row.classList.toggle('hist-selected', checked);
+  const allIds = [...document.querySelectorAll('.hist-cb')].map(cb => cb.dataset.id);
+  const selAll = document.getElementById('hist-sel-all');
+  if (selAll) selAll.checked = allIds.length > 0 && allIds.every(id => selectedHistory.has(id));
+  updateHistSelBtn();
+}
+
+function updateHistSelBtn() {
+  const btn = document.getElementById('btn-hist-del-sel');
+  if (!btn) return;
+  const n = selectedHistory.size;
+  btn.style.display = n > 0 ? '' : 'none';
+  btn.textContent = `Smazat vybrané (${n})`;
+}
+
+async function deleteSelectedHistory() {
+  const ids = [...selectedHistory];
+  if (ids.length === 0) return;
+  if (!confirm(`Trvale smazat ${ids.length} ${ids.length === 1 ? 'záznam' : ids.length < 5 ? 'záznamy' : 'záznamů'} z historie?`)) return;
+  try {
+    const r = await apiFetch('/api/blacklist/audit/bulk', { method: 'DELETE', body: JSON.stringify({ ids }) });
+    if (!r.ok) throw new Error(r.msg);
+    auditLog = auditLog.filter(x => !selectedHistory.has(x.id));
+    selectedHistory.clear();
+    renderHistory();
+    showToast(`Smazáno ${r.deleted} záznamů.`);
+  } catch(e) {
+    showToast('Chyba: ' + e.message, true);
+  }
 }
 
 async function deleteHistoryEntry(id) {
@@ -1559,6 +1609,15 @@ document.getElementById('btn-intro-submit').addEventListener('click', submitIntr
 
 document.getElementById('btn-history').addEventListener('click', openHistory);
 document.getElementById('btn-hist-back').addEventListener('click', closeHistory);
+document.getElementById('btn-hist-del-sel').addEventListener('click', deleteSelectedHistory);
+document.getElementById('hist-sel-all').addEventListener('change', function() {
+  const visible = [...document.querySelectorAll('.hist-cb')].map(cb => cb.dataset.id);
+  visible.forEach(id => {
+    if (this.checked) selectedHistory.add(id);
+    else selectedHistory.delete(id);
+  });
+  renderHistory();
+});
 document.getElementById('hist-filter-action').addEventListener('change', renderHistory);
 document.getElementById('hist-filter-from').addEventListener('change', renderHistory);
 document.getElementById('hist-filter-to').addEventListener('change', renderHistory);

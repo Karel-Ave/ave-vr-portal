@@ -972,6 +972,23 @@ app.get('/api/blacklist/audit', requireLogin, async (req, res) => {
   }
 });
 
+// DELETE multiple audit entries at once
+app.delete('/api/blacklist/audit/bulk', requireLogin, async (req, res) => {
+  const { ids } = req.body;
+  if (!Array.isArray(ids) || ids.length === 0)
+    return res.status(400).json({ ok: false, msg: 'Chybí seznam ID.' });
+  try {
+    const db = getPool();
+    const { rowCount } = await db.query(
+      `DELETE FROM blacklist_audit WHERE id = ANY($1::uuid[])`, [ids]
+    );
+    res.json({ ok: true, deleted: rowCount });
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ ok: false, msg: 'Chyba serveru.' });
+  }
+});
+
 // DELETE a single audit/history entry permanently
 app.delete('/api/blacklist/audit/:id', requireLogin, async (req, res) => {
   try {
