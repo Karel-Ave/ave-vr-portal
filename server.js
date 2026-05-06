@@ -1006,13 +1006,12 @@ app.get('/api/blacklist/export/pdf', requireLogin, async (req, res) => {
     const entries = entRes.rows;
     entries.sort((a, b) => a.name.localeCompare(b.name, 'cs', { sensitivity: 'base' }));
 
-    const introContent = introRes.rows[0]?.content || '';
-    const introText    = blStripHtml(introContent);
-    const userName     = req.session.user.name;
-    const now          = new Date();
-    const pad2         = n => String(n).padStart(2, '0');
-    const dateStr      = `${pad2(now.getDate())}.${pad2(now.getMonth()+1)}.${now.getFullYear()}`;
-    const filename     = `${now.getFullYear()}_${pad2(now.getMonth()+1)}_${pad2(now.getDate())}_BLACKLIST.pdf`;
+    const introText = pdfSafe(blStripHtml(introRes.rows[0]?.content || ''));
+    const userName  = req.session.user.name;
+    const now       = new Date();
+    const pad2      = n => String(n).padStart(2, '0');
+    const dateStr   = `${pad2(now.getDate())}.${pad2(now.getMonth()+1)}.${now.getFullYear()}`;
+    const filename  = `${now.getFullYear()}_${pad2(now.getMonth()+1)}_${pad2(now.getDate())}_BLACKLIST.pdf`;
 
     const mL = 34, mT = 34, mB = 43;
     const pageW = 595.28, pageH = 841.89;
@@ -1020,44 +1019,46 @@ app.get('/api/blacklist/export/pdf', requireLogin, async (req, res) => {
     const cellPad = 1.5;
 
     const cols = [
-      { key: 'name',       label: 'Jméno',        w: 124.74 },
+      { key: 'name',       label: 'Jmeno',        w: 124.74 },
       { key: 'hotel',      label: 'Hotel',         w: 34.02  },
       { key: 'birth_date', label: 'Datum nar.',    w: 53.87  },
-      { key: 'damage',     label: 'Škoda',         w: 48.20  },
+      { key: 'damage',     label: 'Skoda',         w: 48.20  },
       { key: 'stay_date',  label: 'Datum pobytu',  w: 53.87  },
       { key: 'reason',     label: 'Popis',         w: 212.58 }
     ];
 
     function cellVal(entry, key) {
-      if (key === 'birth_date') return blFormatDate(entry.birth_date);
-      if (key === 'stay_date')  return blFormatDate(entry.stay_date);
-      return String(entry[key] || '');
+      if (key === 'birth_date') return pdfSafe(blFormatDate(entry.birth_date));
+      if (key === 'stay_date')  return pdfSafe(blFormatDate(entry.stay_date));
+      return pdfSafe(String(entry[key] || ''));
     }
 
-    // Approximate page count (avoids second PDFDocument)
+    // Use a measurement-only doc (autoFirstPage:false) to estimate page count
     function estimatePages(dataFS) {
       const hdrFS = dataFS + 1;
-      const avgCW = dataFS * 0.52;
-      function apH(entry, isHeader, fs) {
-        const cw = fs * 0.52;
+      const tmp = new PDFDocument({ size: 'A4', autoFirstPage: false });
+
+      function rh(entry, isHeader, fs) {
+        tmp.font(isHeader ? 'Helvetica-Bold' : 'Helvetica').fontSize(fs);
         let maxH = 0;
         for (const col of cols) {
           const text = isHeader ? col.label : cellVal(entry, col.key);
-          const cpp  = Math.max(1, Math.floor((col.w - 2*cellPad) / cw));
-          const lines = Math.max(1, Math.ceil((text || ' ').length / cpp));
-          const h = lines * fs * 1.4 + 2*cellPad;
+          const h = tmp.heightOfString(text || ' ', { width: col.w - 2*cellPad });
           if (h > maxH) maxH = h;
         }
-        return maxH;
+        return maxH + 2*cellPad;
       }
-      const introCpp = Math.max(1, Math.floor(tableW / (8.5 * 0.52)));
-      const introLines = Math.max(1, Math.ceil((introText || ' ').length / introCpp));
-      let y = mT + 20 + 6 + introLines * 8.5 * 1.4 + 8 + apH(null, true, hdrFS);
-      let pages = 1;
+
+      let pages = 1, y = mT;
+      tmp.font('Helvetica-Bold').fontSize(15);
+      y += tmp.heightOfString('AVEhotels - Blacklist', { width: tableW }) + 6;
+      tmp.font('Helvetica-Bold').fontSize(8.5);
+      y += tmp.heightOfString(introText, { width: tableW }) + 8;
+      y += rh(null, true, hdrFS);
       for (const entry of entries) {
-        const rh = apH(entry, false, dataFS);
-        if (y + rh > pageH - mB - 15) { pages++; y = mT + apH(null, true, hdrFS); }
-        y += rh;
+        const h = rh(entry, false, dataFS);
+        if (y + h > pageH - mB - 20) { pages++; y = mT + rh(null, true, hdrFS); }
+        y += h;
       }
       return pages;
     }
@@ -1068,98 +1069,84 @@ app.get('/api/blacklist/export/pdf', requireLogin, async (req, res) => {
       dataFS = Math.round((dataFS - 0.5) * 10) / 10;
     if (estimatePages(dataFS) > 4) warning = true;
 
-    const hdrFS = dataFS + 1;
+    // Build the actual PDF — draw everything, then register listeners, then end()
+    function buildPDF(dataFS) {
+      const hdrFS = dataFS + 1;
+      const doc = new PDFDocument({
+        size: 'A4',
+        margins: { top: mT, bottom: mB, left: mL, right: mL },
+        autoFirstPage: true
+      });
 
-    // Create doc & register listeners BEFORE any drawing (avoids lost data events on multi-page)
-    const doc = new PDFDocument({
-      size: 'A4',
-      margins: { top: mT, bottom: mB, left: mL, right: mL },
-      autoFirstPage: true
-    });
+      function rowHeight(entry, isHeader, fs) {
+        doc.font(isHeader ? 'Helvetica-Bold' : 'Helvetica').fontSize(fs);
+        let maxH = 0;
+        for (const col of cols) {
+          const text = isHeader ? col.label : cellVal(entry, col.key);
+          const h = doc.heightOfString(text || ' ', { width: col.w - 2*cellPad });
+          if (h > maxH) maxH = h;
+        }
+        return maxH + 2*cellPad;
+      }
 
+      function drawRow(y, entry, isHeader, fs) {
+        const rh = rowHeight(entry, isHeader, fs);
+        let x = mL;
+        for (const col of cols) {
+          const text = isHeader ? col.label : cellVal(entry, col.key);
+          doc.save();
+          doc.rect(x, y, col.w, rh).fill(isHeader ? '#A9D08E' : '#ffffff');
+          doc.restore();
+          doc.rect(x, y, col.w, rh).stroke('#000000');
+          doc.font(isHeader ? 'Helvetica-Bold' : 'Helvetica')
+            .fontSize(fs).fillColor('#000000')
+            .text(text || '', x+cellPad, y+cellPad, { width: col.w-2*cellPad, lineBreak: true });
+          x += col.w;
+        }
+        return rh;
+      }
+
+      let y = mT;
+      doc.font('Helvetica-Bold').fontSize(15).fillColor('#000000')
+        .text('AVEhotels - Blacklist', mL, y, { align: 'center', width: tableW });
+      y += doc.heightOfString('AVEhotels - Blacklist', { width: tableW }) + 6;
+
+      doc.font('Helvetica-Bold').fontSize(8.5).fillColor('#000000')
+        .text(introText, mL, y, { width: tableW });
+      y += doc.heightOfString(introText, { width: tableW }) + 8;
+
+      const hdrH = rowHeight(null, true, hdrFS);
+      drawRow(y, null, true, hdrFS);
+      y += hdrH;
+
+      for (const entry of entries) {
+        const rh = rowHeight(entry, false, dataFS);
+        if (y + rh > pageH - mB - 20) {
+          doc.addPage();
+          y = mT;
+          drawRow(y, null, true, hdrFS);
+          y += hdrH;
+        }
+        drawRow(y, entry, false, dataFS);
+        y += rh;
+      }
+
+      doc.font('Helvetica-Bold').fontSize(8).fillColor('#000000')
+        .text(pdfSafe(`${dateStr}, ${userName}`), mL, pageH - mB + 2, { align: 'right', width: tableW });
+
+      return doc;
+    }
+
+    const doc = buildPDF(dataFS);
     const chunks = [];
     doc.on('data', c => chunks.push(c));
-    doc.on('error', err => {
-      console.error('pdfkit error:', err.stack || err);
-      if (!res.headersSent) res.status(500).json({ ok: false, msg: 'pdfkit: ' + (err.message || err) });
-    });
     doc.on('end', () => {
-      if (res.headersSent) return;
       const buf = Buffer.concat(chunks);
       res.setHeader('Content-Type', 'application/pdf');
       res.setHeader('Content-Disposition', `attachment; filename="${filename}"`);
-      if (warning) res.setHeader('X-PDF-Warning', 'Přesahuje 4 stránky, písmo nelze dále zmenšit.');
+      if (warning) res.setHeader('X-PDF-Warning', 'Presahuje 4 stranky.');
       res.send(buf);
     });
-
-    function rowH(entry, isHeader, fs) {
-      const avgCW = fs * 0.52;
-      let maxH = 0;
-      for (const col of cols) {
-        const text = isHeader ? col.label : cellVal(entry, col.key);
-        const usableW = col.w - 2*cellPad;
-        const cpl = Math.max(1, Math.floor(usableW / avgCW));
-        const rawLines = (text || ' ').split('\n');
-        let lines = 0;
-        for (const rl of rawLines) lines += Math.max(1, Math.ceil((rl.length || 1) / cpl));
-        const h = lines * fs * 1.4 + 2*cellPad;
-        if (h > maxH) maxH = h;
-      }
-      return maxH;
-    }
-
-    function drawRow(y, entry, isHeader, fs) {
-      const rh = rowH(entry, isHeader, fs);
-      let x = mL;
-      const bg = isHeader ? '#A9D08E' : '#ffffff';
-      for (const col of cols) {
-        const text = pdfSafe(isHeader ? col.label : cellVal(entry, col.key));
-        doc.save();
-        doc.rect(x, y, col.w, rh).fillColor(bg).fill();
-        doc.rect(x, y, col.w, rh).strokeColor('#000000').lineWidth(0.4).stroke();
-        doc.restore();
-        doc.font(isHeader ? 'Helvetica-Bold' : 'Helvetica').fontSize(fs).fillColor('#000000')
-          .text(text || '', x+cellPad, y+cellPad, { width: col.w-2*cellPad, lineBreak: true });
-        x += col.w;
-      }
-      return rh;
-    }
-
-    // Draw content
-    let y = mT;
-    doc.font('Helvetica-Bold').fontSize(15).fillColor('#000000')
-      .text('AVEhotels - Blacklist', mL, y, { align: 'center', width: tableW });
-    y += 15 * 1.4 + 6;
-
-    const safeIntro = pdfSafe(introText);
-    doc.font('Helvetica-Bold').fontSize(8.5).fillColor('#000000')
-      .text(safeIntro, mL, y, { width: tableW });
-    const introCpl = Math.max(1, Math.floor(tableW / (8.5 * 0.52)));
-    const introLineCount = (safeIntro || ' ').split('\n').reduce((acc, line) => {
-      return acc + Math.max(1, Math.ceil((line.length || 1) / introCpl));
-    }, 0);
-    y += introLineCount * 8.5 * 1.4 + 8;
-
-    const hh = rowH(null, true, hdrFS);
-    drawRow(y, null, true, hdrFS);
-    y += hh;
-
-    for (const entry of entries) {
-      const rh = rowH(entry, false, dataFS);
-      if (y + rh > pageH - mB - 15) {
-        doc.addPage();
-        y = mT;
-        drawRow(y, null, true, hdrFS);
-        y += hh;
-      }
-      drawRow(y, entry, false, dataFS);
-      y += rh;
-    }
-
-    // Signature bottom-right of last page
-    doc.font('Helvetica-Bold').fontSize(8).fillColor('#000000')
-      .text(pdfSafe(`${dateStr}, ${userName}`), mL, pageH - mB - 2, { align: 'right', width: tableW });
-
     doc.end();
   } catch (err) {
     console.error('PDF error:', err.stack || err);
