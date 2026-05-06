@@ -722,6 +722,7 @@ td.col-remove {
 }
 .cdp-foot button:hover { background: #e8e8e8; }
 /* History filter date pickers - smaller */
+.history-filters .cdp-wrap { width: 120px; }
 .history-filters .cdp-text { padding: 5px 8px; font-size: 12px; }
 .history-filters .cdp-icon-btn { height: 30px; font-size: 12px; }
 </style>
@@ -799,6 +800,7 @@ td.col-remove {
       <input type="date" id="hist-filter-from">
       <label>Do:</label>
       <input type="date" id="hist-filter-to">
+      <button id="btn-hist-restore-sel" style="display:none;padding:5px 12px;border-radius:5px;border:1px solid #1a7a1a;background:#1a7a1a;color:#fff;font-size:11px;cursor:pointer;font-family:inherit;white-space:nowrap;">Obnovit vybrané (0)</button>
       <button id="btn-hist-del-sel" style="display:none;padding:5px 12px;border-radius:5px;border:1px solid #8b1a1a;background:#8b1a1a;color:#fff;font-size:11px;cursor:pointer;font-family:inherit;white-space:nowrap;">Smazat vybrané (0)</button>
       <button id="btn-hist-back" style="padding:5px 14px;border-radius:5px;border:1px solid #4a4a4a;background:#3a3a3a;color:#e0e0e0;font-size:11px;cursor:pointer;font-family:inherit;white-space:nowrap;">← Zpět na seznam</button>
     </div>
@@ -1362,7 +1364,10 @@ function renderHistory() {
 
   const tbody = document.getElementById('hist-body');
   if (rows.length === 0) {
-    tbody.innerHTML = `<tr><td colspan="4" style="text-align:center;padding:32px;color:#888;">Žádné záznamy.</td></tr>`;
+    tbody.innerHTML = `<tr><td colspan="6" style="text-align:center;padding:32px;color:#888;">Žádné záznamy.</td></tr>`;
+    const selAll = document.getElementById('hist-sel-all');
+    if (selAll) selAll.checked = false;
+    updateHistBtns();
     return;
   }
 
@@ -1407,7 +1412,7 @@ function renderHistory() {
   const allIds = rows.map(r => r.id);
   const selAll = document.getElementById('hist-sel-all');
   if (selAll) selAll.checked = allIds.length > 0 && allIds.every(id => selectedHistory.has(id));
-  updateHistSelBtn();
+  updateHistBtns();
 }
 
 function toggleHistSelect(id, checked) {
@@ -1418,15 +1423,53 @@ function toggleHistSelect(id, checked) {
   const allIds = [...document.querySelectorAll('.hist-cb')].map(cb => cb.dataset.id);
   const selAll = document.getElementById('hist-sel-all');
   if (selAll) selAll.checked = allIds.length > 0 && allIds.every(id => selectedHistory.has(id));
-  updateHistSelBtn();
+  updateHistBtns();
 }
 
-function updateHistSelBtn() {
-  const btn = document.getElementById('btn-hist-del-sel');
-  if (!btn) return;
+function updateHistBtns() {
+  const delBtn     = document.getElementById('btn-hist-del-sel');
+  const restoreBtn = document.getElementById('btn-hist-restore-sel');
   const n = selectedHistory.size;
-  btn.style.display = n > 0 ? '' : 'none';
-  btn.textContent = `Smazat vybrané (${n})`;
+  const restoreCount = [...selectedHistory].filter(id => auditLog.find(r => r.id === id)?.action === 'REMOVE').length;
+  if (delBtn) {
+    delBtn.style.display = n > 0 ? '' : 'none';
+    delBtn.textContent = `Smazat vybrané (${n})`;
+  }
+  if (restoreBtn) {
+    restoreBtn.style.display = restoreCount > 0 ? '' : 'none';
+    restoreBtn.textContent = `Obnovit vybrané (${restoreCount})`;
+  }
+}
+
+async function restoreSelectedHistory() {
+  const toRestore = [...selectedHistory]
+    .map(id => auditLog.find(r => r.id === id))
+    .filter(r => r?.action === 'REMOVE');
+  if (toRestore.length === 0) return;
+  if (!confirm(`Přidat zpět na blacklist ${toRestore.length} ${toRestore.length === 1 ? 'osobu' : toRestore.length < 5 ? 'osoby' : 'osob'}?`)) return;
+  let ok = 0, fail = 0;
+  for (const rec of toRestore) {
+    const p = rec.payload;
+    const e = p.entry || p;
+    const name   = e.original_name      || e.name       || '';
+    const hotel  = e.original_hotel     || e.hotel      || '';
+    const birth  = e.original_birth_date || e.birth_date || '';
+    const damage = e.original_damage    || e.damage     || '';
+    const stay   = e.original_stay_date  || e.stay_date  || '';
+    const reason = e.original_reason    || e.reason     || '';
+    if (!name || !reason) { fail++; continue; }
+    try {
+      const r = await apiFetch('/api/blacklist/entries', {
+        method: 'POST',
+        body: JSON.stringify({ entries: [{ name, hotel: hotel || null, birthDate: toISODate(birth) || null, damage: damage || null, stayDate: toISODate(stay) || null, reason }] })
+      });
+      if (r.ok) ok++; else fail++;
+    } catch { fail++; }
+  }
+  await loadEntries();
+  selectedHistory.clear();
+  closeHistory();
+  showToast(fail === 0 ? `Obnoveno ${ok} osob.` : `Obnoveno ${ok}, nepodařilo se ${fail}.`, fail > 0);
 }
 
 async function deleteSelectedHistory() {
@@ -1437,9 +1480,10 @@ async function deleteSelectedHistory() {
     const r = await apiFetch('/api/blacklist/audit/bulk', { method: 'DELETE', body: JSON.stringify({ ids }) });
     if (!r.ok) throw new Error(r.msg);
     auditLog = auditLog.filter(x => !selectedHistory.has(x.id));
+    const deleted = r.deleted;
     selectedHistory.clear();
     renderHistory();
-    showToast(`Smazáno ${r.deleted} záznamů.`);
+    showToast(`Smazáno ${deleted} záznamů.`);
   } catch(e) {
     showToast('Chyba: ' + e.message, true);
   }
@@ -1609,6 +1653,7 @@ document.getElementById('btn-intro-submit').addEventListener('click', submitIntr
 
 document.getElementById('btn-history').addEventListener('click', openHistory);
 document.getElementById('btn-hist-back').addEventListener('click', closeHistory);
+document.getElementById('btn-hist-restore-sel').addEventListener('click', restoreSelectedHistory);
 document.getElementById('btn-hist-del-sel').addEventListener('click', deleteSelectedHistory);
 document.getElementById('hist-sel-all').addEventListener('change', function() {
   const visible = [...document.querySelectorAll('.hist-cb')].map(cb => cb.dataset.id);
