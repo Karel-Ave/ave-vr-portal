@@ -73,15 +73,22 @@
   --hotel-double: #2E2A14;
 }
 
-/* In dark mode cells inherit body text (light) — inputs explicitly too */
+/* Dark mode: name column stays light (cream bg, dark text) for readability */
+[data-theme="dark"] .sch-name {
+  background: #ECEAE2 !important;
+  color: #1A1A18 !important;
+}
+/* Dark mode: schedule cells — light/white text on dark backgrounds */
 [data-theme="dark"] .sch-cell,
-[data-theme="dark"] .sch-name,
-[data-theme="dark"] .sch-sum { color: var(--text); }
-/* Cells that keep bright background need dark text even in dark mode */
-[data-theme="dark"] .day-weekend-d,
-[data-theme="dark"] .day-weekend-night,
+[data-theme="dark"] .sch-cell input,
+[data-theme="dark"] .sch-sum { color: #E8E6DC; }
+/* Sum cells keep surface background */
+[data-theme="dark"] .sch-sum { background: var(--surface); }
+/* Weekend / holiday cells keep their vivid bg with white text */
+[data-theme="dark"] .day-weekend-d { color: #fff; }
+[data-theme="dark"] .day-weekend-night { color: #fff; }
 [data-theme="dark"] .day-holiday-hdr { color: #fff; }
-[data-theme="dark"] .day-cancelled { color: var(--text-muted); }
+[data-theme="dark"] .day-cancelled { color: #aaa; }
 
 * { box-sizing: border-box; margin: 0; padding: 0; }
 
