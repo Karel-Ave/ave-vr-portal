@@ -358,7 +358,7 @@
   fetch('/api/me').then(r => r.json()).then(u => { myId = u.id; loadUsers(); loadGroups(); });
 
   // ── TABS ──────────────────────────────────────────────────────────────────────
-  const TAB_KEYS = ['users', 'logs', 'groups'];
+  const TAB_KEYS = ['users', 'groups', 'logs'];
   function showTab(t) {
     document.getElementById('tab-users').style.display  = t === 'users'  ? '' : 'none';
     document.getElementById('tab-logs').style.display   = t === 'logs'   ? '' : 'none';

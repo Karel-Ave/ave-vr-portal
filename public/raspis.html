@@ -304,7 +304,7 @@ table.staff-tbl td select:focus { background: var(--input-bg); color: var(--text
 }
 /* Všechna akční tlačítka — stejná pevná šířka jako "Vyber recepční" */
 #toggle-hotels-btn, #btn-filter-day, #btn-filter-night,
-#btn-select-mode, #btn-toggle-highlight,
+#btn-select-mode, #btn-avail-filter,
 .sc-mid .hb {
   width: 88px;
   min-width: 88px;
@@ -330,6 +330,17 @@ table.staff-tbl td select:focus { background: var(--input-bg); color: var(--text
 #toggle-hotels-btn:hover { background:#ffcc80 !important; border-color:#c97a2a !important; color:#7a4010 !important; }
 #btn-select-mode:hover { background:#99c2ff !important; border-color:#3366bb !important; }
 #btn-toggle-highlight:hover { background:#c8c8c8 !important; border-color:#888 !important; color:#333 !important; }
+#btn-avail-filter:hover { background:#4caf50 !important; border-color:#388e3c !important; color:#fff !important; }
+/* sc-mid 2×2 grid */
+.sc-mid-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 3px;
+}
+/* When avail-select-mode is active: pointer cursor on d/n sub-headers */
+#scheduleTable.avail-select-mode .th-dn { cursor: pointer; }
+#scheduleTable.avail-select-mode .th-dn:hover { border-color: #388e3c !important; }
+.th-dn.avail-selected { border-color: #388e3c !important; border-width: 2px !important; box-shadow: inset 0 0 0 1px #4caf50; }
 #btn-remember-req:hover, #schedule-controls #btn-remember-req:hover { background:#d4b8f0 !important; border-color:#7a4db0 !important; color:#3a1060 !important; }
 #btn-remember-req.remembered:hover, #schedule-controls #btn-remember-req.remembered:hover { background:#dcc8f5 !important; border-color:#6a2d90 !important; color:#3a1060 !important; }
 /* last-child hover odstraněn - btn-clear-req již neexistuje */
@@ -3154,14 +3165,18 @@ table.staff-tbl td select:focus { background: var(--input-bg); color: var(--text
             <button class="hb" id="btn-filter-day" onclick="filterByShiftType('day')" style="background:#F8FF35; border-color:#ccc;">Jen denní</button>
             <button class="hb" id="btn-filter-night" onclick="filterByShiftType('night')" style="background:#4DC3F5; border-color:#ccc;">Jen noční</button>
             <button class="hb" id="btn-select-mode" onclick="toggleSelectMode()" style="background:#cce0ff;border-color:#6699cc;color:#1a4a8a;">Označ vybrané</button>
-            <button class="hb" id="btn-toggle-highlight" onclick="toggleRowHighlight()" style="background:#e0e0e0;border-color:#aaa;color:#333;">Hover on</button>
+            <button class="hb" id="btn-avail-filter" onclick="toggleAvailFilter()" style="background:#c8f0c8;border-color:#4caf50;color:#1a5c1a;">Jen dostupní</button>
             <button class="hb" id="btn-show-hidden" onclick="showAllHidden()" style="display:none">Zobraz skryté</button>
             <button class="hb hb-danger" id="btn-cancel-select" onclick="cancelSelectMode()" style="display:none">Zruš výběr</button>
           </div>
-          <!-- Střed -->
+          <!-- Střed: 2×2 grid (Hover on | Aktuální den / Zpět | Vpřed) -->
           <div class="sc-mid">
-            <button class="hb" onclick="historyUndo()">↩ Zpět</button>
-            <button class="hb" onclick="historyRedo()">↪ Vpřed</button>
+            <div class="sc-mid-grid">
+              <button class="hb" id="btn-toggle-highlight" onclick="toggleRowHighlight()" style="background:#e0e0e0;border-color:#aaa;color:#333;">Hover on</button>
+              <button class="hb" id="btn-today-col" onclick="toggleTodayCol()" style="background:#e53030;border-color:#b02020;color:#fff;">Aktuální den</button>
+              <button class="hb" onclick="historyUndo()">↩ Zpět</button>
+              <button class="hb" onclick="historyRedo()">↪ Vpřed</button>
+            </div>
           </div>
           <!-- Pravá zóna řádek 2 — stejný grid -->
           <div class="sc-right-grid" style="margin-left:auto;">
@@ -3337,6 +3352,32 @@ window.onload = () => {
   renderStaff();
   buildSchedule();
   buildHotelBtns();
+
+  // Defaults: "Jen hodiny" + "Skrýt hotely" active on first open (reset on logout/page reload)
+  toggleHoursOnly();  // activate hoursonly mode
+  toggleHotelRows();  // hide hotel rows (starts visible, toggle → hidden)
+
+  // Event delegation: th-dn click in avail-select-mode
+  document.getElementById('scheduleTable').addEventListener('click', function(e) {
+    const thDn = e.target.closest('.th-dn[data-ci]');
+    if (!thDn || !availFilterMode) return;
+    const ci = parseInt(thDn.dataset.ci);
+    const col = calCols[ci];
+    if (!col) return;
+    if (availFilterDay === ci) {
+      // Click same column again → deselect
+      availFilterDay = null;
+      availFilterDn  = null;
+      document.querySelectorAll('.th-dn.avail-selected').forEach(el => el.classList.remove('avail-selected'));
+    } else {
+      availFilterDay = ci;
+      availFilterDn  = col.dn;
+      document.querySelectorAll('.th-dn.avail-selected').forEach(el => el.classList.remove('avail-selected'));
+      thDn.classList.add('avail-selected');
+    }
+    applyAvailFilter();
+  });
+
   // Show "Zruš požadavky" if requirements were saved
   if (state.requirements && Object.keys(state.requirements).length > 0) {
     setTimeout(() => {
@@ -4036,6 +4077,62 @@ function toggleHotelRows() {
 // 'all' | 'day' | 'night'
 let shiftTypeFilter = 'all';
 
+// ── "Jen dostupní" avail filter ────────────────────────────────────────────
+let availFilterMode = false;
+let availFilterDay = null; // selected column ci
+let availFilterDn  = null; // 'd' | 'n'
+
+function isFreeDNSlot(val) {
+  if (!val || val.trim() === '') return true;
+  const v = val.trim();
+  return v === 'ž' || v === 'Ž'; // ž = žádost (absence request) — treated as free
+}
+
+function toggleAvailFilter() {
+  availFilterMode = !availFilterMode;
+  const btn = document.getElementById('btn-avail-filter');
+  if (availFilterMode) {
+    btn.classList.add('selected');
+    btn.style.background = '';
+    btn.style.borderColor = '';
+    btn.style.color = '';
+    availFilterDay = null;
+    availFilterDn  = null;
+    document.getElementById('scheduleTable').classList.add('avail-select-mode');
+  } else {
+    btn.classList.remove('selected');
+    btn.style.background = '#c8f0c8';
+    btn.style.borderColor = '#4caf50';
+    btn.style.color = '#1a5c1a';
+    availFilterDay = null;
+    availFilterDn  = null;
+    document.querySelectorAll('.th-dn.avail-selected').forEach(el => el.classList.remove('avail-selected'));
+    document.getElementById('scheduleTable').classList.remove('avail-select-mode');
+  }
+  applyAvailFilter();
+}
+
+function applyAvailFilter() {
+  const SPECIAL_TYPES = ['Vedoucí', 'Pohotovost', 'Speciální'];
+  document.querySelectorAll('#sch-tbody tr.sch-row').forEach(tr => {
+    if (!availFilterMode || availFilterDay === null) {
+      tr.dataset.availHidden = '0';
+      return;
+    }
+    const si = parseInt(tr.dataset.staffIdx);
+    const type = state.staff[si]?.type || '';
+    let hide = false;
+    if (SPECIAL_TYPES.includes(type)) {
+      hide = true;
+    } else {
+      const val = getScheduleVal(si, availFilterDay);
+      hide = !isFreeDNSlot(val);
+    }
+    tr.dataset.availHidden = hide ? '1' : '0';
+  });
+  applyHotelFilter();
+}
+
 function filterByShiftType(mode) {
   if (shiftTypeFilter === mode) {
     // toggle off
@@ -4067,7 +4164,7 @@ function applyShiftTypeFilter() {
       tr.dataset.shiftHidden = hide ? '1' : '0';
     });
   }
-  applyHotelFilter(); // re-apply to respect both filters
+  applyAvailFilter(); // → applyHotelFilter()
 }
 
 // sum view modes: 'all' | 'hidden' | 'hoursonly'
@@ -4527,40 +4624,83 @@ function recalcAll() {
 }
 
 // ── Zvýraznění sloupce s aktuálním dnem ────────────────────────────────────
+let todayColVisible = true;
+let _todayCis = new Set();
+let _todayDay = null;
+
+function clearTodayMarks() {
+  if (_todayDay !== null) {
+    document.querySelectorAll(`.th-daynum[data-day="${_todayDay}"]`).forEach(el => {
+      el.style.background = '';
+      el.style.color = '';
+    });
+    _todayDay = null;
+  }
+  _todayCis.forEach(ci => {
+    document.querySelectorAll(`[data-ci="${ci}"]`).forEach(el => {
+      if (el.classList.contains('sch-cell')) {
+        el.style.boxShadow = '';
+      } else if (el.classList.contains('th-dn')) {
+        el.style.borderTop = '';
+      } else {
+        el.style.outline = '';
+        el.style.outlineOffset = '';
+      }
+    });
+  });
+  _todayCis.clear();
+}
+
 function markTodayColumn(month, year) {
+  clearTodayMarks();
+  if (!todayColVisible) return;
+
   const now = new Date();
   if (now.getMonth() + 1 !== month || now.getFullYear() !== year) return;
 
   const todayDay = now.getDate();
 
   // Find column indices for today (day + night)
-  const todayCis = new Set();
   calCols.forEach((col, ci) => {
-    if (!col.nextYear && col.day === todayDay) todayCis.add(ci);
+    if (!col.nextYear && col.day === todayDay) _todayCis.add(ci);
   });
-  if (!todayCis.size) return;
+  if (!_todayCis.size) return;
+  _todayDay = todayDay;
 
-  // Day-number header: red background + white text (inline style overrides existing inline style)
+  // Day-number header: red background + white text
   document.querySelectorAll(`.th-daynum[data-day="${todayDay}"]`).forEach(el => {
     el.style.background = '#c0392b';
     el.style.color = '#fff';
   });
 
-  // All cells in today's columns: use inline styles directly
-  todayCis.forEach(ci => {
+  // All cells in today's columns: inline styles
+  _todayCis.forEach(ci => {
     document.querySelectorAll(`[data-ci="${ci}"]`).forEach(el => {
       if (el.classList.contains('sch-cell')) {
-        // Side bars via box-shadow (preserves cell background color)
         el.style.boxShadow = 'inset 2px 0 0 rgba(192,57,43,.7), inset -2px 0 0 rgba(192,57,43,.7)';
       } else if (el.classList.contains('th-dn')) {
         el.style.borderTop = '3px solid #c0392b';
       } else {
-        // cover row, hotel cells
         el.style.outline = '1px solid rgba(192,57,43,.8)';
         el.style.outlineOffset = '-1px';
       }
     });
   });
+}
+
+function toggleTodayCol() {
+  todayColVisible = !todayColVisible;
+  const btn = document.getElementById('btn-today-col');
+  if (todayColVisible) {
+    btn.style.background = '#e53030';
+    btn.style.borderColor = '#b02020';
+    btn.style.color = '#fff';
+  } else {
+    btn.style.background = '#e0e0e0';
+    btn.style.borderColor = '#aaa';
+    btn.style.color = '#333';
+  }
+  markTodayColumn(month, year);
 }
 
 function recalcSums(si) {
@@ -4750,7 +4890,7 @@ function applyHotelFilter() {
   // Show/hide staff rows based on hotel selection
   if (all) {
     document.querySelectorAll('#sch-tbody tr.sch-row').forEach(tr => {
-      const hidden = tr.dataset.shiftHidden === '1' || tr.dataset.manualHidden === '1';
+      const hidden = tr.dataset.shiftHidden === '1' || tr.dataset.manualHidden === '1' || tr.dataset.availHidden === '1';
       tr.style.display = hidden ? 'none' : '';
     });
   } else {
@@ -4768,7 +4908,7 @@ function applyHotelFilter() {
     });
     document.querySelectorAll('#sch-tbody tr.sch-row').forEach(tr => {
       const si = parseInt(tr.dataset.staffIdx);
-      const hidden = tr.dataset.shiftHidden === '1' || tr.dataset.manualHidden === '1';
+      const hidden = tr.dataset.shiftHidden === '1' || tr.dataset.manualHidden === '1' || tr.dataset.availHidden === '1';
       // Always show selected staff (unless shift-hidden), regardless of hotel filter
       const isSelected = selectedStaff.has(si);
       tr.style.display = ((si_set.has(si) || isSelected) && !hidden) ? '' : 'none';
