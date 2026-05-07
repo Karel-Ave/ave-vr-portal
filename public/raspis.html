@@ -340,7 +340,20 @@ table.staff-tbl td select:focus { background: var(--input-bg); color: var(--text
 /* When avail-select-mode is active: pointer cursor on d/n sub-headers */
 #scheduleTable.avail-select-mode .th-dn { cursor: pointer; }
 #scheduleTable.avail-select-mode .th-dn:hover { border-color: #388e3c !important; }
-.th-dn.avail-selected { border-color: #388e3c !important; border-width: 2px !important; box-shadow: inset 0 0 0 1px #4caf50; }
+.th-dn.avail-selected { border-color: #388e3c !important; border-width: 2px !important; }
+
+/* ── Mobile: hotel buttons 2 rows + abbreviated button labels ── */
+@media (max-width: 640px) {
+  /* Hotel buttons wrap to 2 rows */
+  #hotel-btns { display: inline-flex !important; flex-wrap: wrap !important; gap: 2px; }
+  /* Abbreviated action button labels via data-short attribute */
+  .hb[data-short] { font-size: 0 !important; padding: 2px 2px !important;
+    min-width: 20px !important; max-width: 26px !important; width: auto !important;
+    text-align: center; }
+  .hb[data-short]::before { content: attr(data-short); font-size: 10px; white-space: nowrap; }
+  /* sc-mid grid buttons also abbreviated */
+  .sc-mid-grid .hb[data-short] { width: auto !important; min-width: 20px !important; }
+}
 #btn-remember-req:hover, #schedule-controls #btn-remember-req:hover { background:#d4b8f0 !important; border-color:#7a4db0 !important; color:#3a1060 !important; }
 #btn-remember-req.remembered:hover, #schedule-controls #btn-remember-req.remembered:hover { background:#dcc8f5 !important; border-color:#6a2d90 !important; color:#3a1060 !important; }
 /* last-child hover odstraněn - btn-clear-req již neexistuje */
@@ -3161,21 +3174,21 @@ table.staff-tbl td select:focus { background: var(--input-bg); color: var(--text
         <div style="display:flex; align-items:center; gap:3px; position:relative; min-height:45px;">
           <!-- Levá zóna řádek 2 -->
           <div class="sc-left" id="sc-left2">
-            <button class="hb" id="toggle-hotels-btn" onclick="toggleHotelRows()" style="background:#FFE0B2;border-color:#e0924a;color:#7a4010;">Skrýt hotely</button>
-            <button class="hb" id="btn-filter-day" onclick="filterByShiftType('day')" style="background:#F8FF35; border-color:#ccc;">Jen denní</button>
-            <button class="hb" id="btn-filter-night" onclick="filterByShiftType('night')" style="background:#4DC3F5; border-color:#ccc;">Jen noční</button>
-            <button class="hb" id="btn-select-mode" onclick="toggleSelectMode()" style="background:#cce0ff;border-color:#6699cc;color:#1a4a8a;">Označ vybrané</button>
-            <button class="hb" id="btn-avail-filter" onclick="toggleAvailFilter()" style="background:#c8f0c8;border-color:#4caf50;color:#1a5c1a;">Jen dostupní</button>
+            <button class="hb" id="toggle-hotels-btn" data-short="H" onclick="toggleHotelRows()" style="background:#FFE0B2;border-color:#e0924a;color:#7a4010;">Skrýt hotely</button>
+            <button class="hb" id="btn-filter-day" data-short="D" onclick="filterByShiftType('day')" style="background:#F8FF35; border-color:#ccc;">Jen denní</button>
+            <button class="hb" id="btn-filter-night" data-short="N" onclick="filterByShiftType('night')" style="background:#4DC3F5; border-color:#ccc;">Jen noční</button>
+            <button class="hb" id="btn-select-mode" data-short="OV" onclick="toggleSelectMode()" style="background:#cce0ff;border-color:#6699cc;color:#1a4a8a;">Označ vybrané</button>
+            <button class="hb" id="btn-avail-filter" data-short="JD" onclick="toggleAvailFilter()" style="background:#c8f0c8;border-color:#4caf50;color:#1a5c1a;">Jen dostupní</button>
             <button class="hb" id="btn-show-hidden" onclick="showAllHidden()" style="display:none">Zobraz skryté</button>
             <button class="hb hb-danger" id="btn-cancel-select" onclick="cancelSelectMode()" style="display:none">Zruš výběr</button>
           </div>
           <!-- Střed: 2×2 grid (Hover on | Aktuální den / Zpět | Vpřed) -->
           <div class="sc-mid">
             <div class="sc-mid-grid">
-              <button class="hb" id="btn-toggle-highlight" onclick="toggleRowHighlight()" style="background:#e0e0e0;border-color:#aaa;color:#333;">Hover on</button>
-              <button class="hb" id="btn-today-col" onclick="toggleTodayCol()" style="background:#e53030;border-color:#b02020;color:#fff;">Aktuální den</button>
-              <button class="hb" onclick="historyUndo()">↩ Zpět</button>
-              <button class="hb" onclick="historyRedo()">↪ Vpřed</button>
+              <button class="hb" id="btn-toggle-highlight" data-short="Ho" onclick="toggleRowHighlight()" style="background:#e0e0e0;border-color:#aaa;color:#333;">Hover off</button>
+              <button class="hb" id="btn-today-col" data-short="AD" onclick="toggleTodayCol()" style="background:#e0e0e0;border-color:#aaa;color:#333;">Aktuální den</button>
+              <button class="hb" data-short="&lt;" onclick="historyUndo()">↩ Zpět</button>
+              <button class="hb" data-short="&gt;" onclick="historyRedo()">↪ Vpřed</button>
             </div>
           </div>
           <!-- Pravá zóna řádek 2 — stejný grid -->
@@ -3362,6 +3375,23 @@ window.onload = () => {
   renderStaff();
   buildSchedule();
   buildHotelBtns();
+
+  // Mobile: auto-scroll to today-3 on load (if viewing current month)
+  if (window.innerWidth <= 768) {
+    const now = new Date();
+    if (now.getMonth() + 1 === state.month && now.getFullYear() === state.year) {
+      const today = now.getDate();
+      if (today > 3) {
+        const ci = calCols.findIndex(col => !col.nextYear && col.day === today - 3 && col.dn === 'd');
+        if (ci > 0) {
+          setTimeout(() => {
+            const wrap = document.getElementById('schedule-wrap');
+            if (wrap) wrap.scrollLeft = ci * 16;
+          }, 150);
+        }
+      }
+    }
+  }
 
   // Show "Zruš požadavky" if requirements were saved
   if (state.requirements && Object.keys(state.requirements).length > 0) {
@@ -4066,6 +4096,23 @@ let shiftTypeFilter = 'all';
 let availFilterMode = false;
 let availFilterDay = null; // selected column ci
 let availFilterDn  = null; // 'd' | 'n'
+let _availColCi = null;   // tracks which ci currently has column highlight
+
+function updateAvailColHighlight() {
+  // Clear previous column highlight
+  if (_availColCi !== null) {
+    document.querySelectorAll(`[data-ci="${_availColCi}"]`).forEach(el => {
+      el.style.boxShadow = '';
+    });
+    _availColCi = null;
+  }
+  if (availFilterDay === null) return;
+  _availColCi = availFilterDay;
+  // Green bars on both sides of selected column
+  document.querySelectorAll(`[data-ci="${_availColCi}"]`).forEach(el => {
+    el.style.boxShadow = 'inset 2px 0 0 rgba(76,175,80,.9), inset -2px 0 0 rgba(76,175,80,.9)';
+  });
+}
 
 function isFreeDNSlot(val) {
   if (!val || val.trim() === '') return true;
@@ -4093,6 +4140,7 @@ function toggleAvailFilter() {
     availFilterDn  = null;
     document.querySelectorAll('.th-dn.avail-selected').forEach(el => el.classList.remove('avail-selected'));
     document.getElementById('scheduleTable').classList.remove('avail-select-mode');
+    updateAvailColHighlight(); // clear column highlight
   }
   applyAvailFilter();
 }
@@ -4297,6 +4345,7 @@ function buildSchedule() {
           document.querySelectorAll('.th-dn.avail-selected').forEach(el => el.classList.remove('avail-selected'));
           this.classList.add('avail-selected');
         }
+        updateAvailColHighlight();
         applyAvailFilter();
       };
     })(ci, col);
@@ -4630,7 +4679,7 @@ function recalcAll() {
 }
 
 // ── Zvýraznění sloupce s aktuálním dnem ────────────────────────────────────
-let todayColVisible = true;
+let todayColVisible = false; // default OFF; activates on button click
 let _todayCis = new Set();
 let _todayDay = null;
 
@@ -4644,17 +4693,22 @@ function clearTodayMarks() {
   }
   _todayCis.forEach(ci => {
     document.querySelectorAll(`[data-ci="${ci}"]`).forEach(el => {
-      if (el.classList.contains('sch-cell')) {
-        el.style.boxShadow = '';
-      } else if (el.classList.contains('th-dn')) {
-        el.style.borderTop = '';
-      } else {
-        el.style.outline = '';
-        el.style.outlineOffset = '';
-      }
+      el.style.boxShadow = '';
     });
   });
   _todayCis.clear();
+}
+
+function scrollToToday() {
+  const now = new Date();
+  if (now.getMonth() + 1 !== state.month || now.getFullYear() !== state.year) return;
+  const today = now.getDate();
+  if (today <= 3) return; // already near the start
+  const targetDay = today - 3;
+  const ci = calCols.findIndex(col => !col.nextYear && col.day === targetDay && col.dn === 'd');
+  if (ci < 0) return;
+  const wrap = document.getElementById('schedule-wrap');
+  if (wrap) wrap.scrollLeft = ci * 16; // --cell-w = 16px
 }
 
 function markTodayColumn(month, year) {
@@ -4666,30 +4720,25 @@ function markTodayColumn(month, year) {
 
   const todayDay = now.getDate();
 
-  // Find column indices for today (day + night)
+  // Find column indices for today (d and n)
   calCols.forEach((col, ci) => {
     if (!col.nextYear && col.day === todayDay) _todayCis.add(ci);
   });
   if (!_todayCis.size) return;
   _todayDay = todayDay;
 
-  // Day-number header: red background + white text
+  // Day-number header: green background + white text
   document.querySelectorAll(`.th-daynum[data-day="${todayDay}"]`).forEach(el => {
-    el.style.background = '#c0392b';
+    el.style.background = '#27ae60';
     el.style.color = '#fff';
   });
 
-  // All cells in today's columns: inline styles
+  // Green outer bars: left on d-column, right on n-column (no internal row borders)
   _todayCis.forEach(ci => {
+    const isDcol = calCols[ci]?.dn === 'd';
+    const shadow = isDcol ? 'inset 3px 0 0 #27ae60' : 'inset -3px 0 0 #27ae60';
     document.querySelectorAll(`[data-ci="${ci}"]`).forEach(el => {
-      if (el.classList.contains('sch-cell')) {
-        el.style.boxShadow = 'inset 2px 0 0 rgba(192,57,43,.7), inset -2px 0 0 rgba(192,57,43,.7)';
-      } else if (el.classList.contains('th-dn')) {
-        el.style.borderTop = '3px solid #c0392b';
-      } else {
-        el.style.outline = '1px solid rgba(192,57,43,.8)';
-        el.style.outlineOffset = '-1px';
-      }
+      el.style.boxShadow = shadow;
     });
   });
 }
@@ -4698,15 +4747,17 @@ function toggleTodayCol() {
   todayColVisible = !todayColVisible;
   const btn = document.getElementById('btn-today-col');
   if (todayColVisible) {
-    btn.style.background = '#e53030';
-    btn.style.borderColor = '#b02020';
+    btn.style.background = '#27ae60';
+    btn.style.borderColor = '#1e8a4a';
     btn.style.color = '#fff';
+    markTodayColumn(state.month, state.year);
+    scrollToToday();
   } else {
     btn.style.background = '#e0e0e0';
     btn.style.borderColor = '#aaa';
     btn.style.color = '#333';
+    clearTodayMarks();
   }
-  markTodayColumn(state.month, state.year);
 }
 
 function recalcSums(si) {
@@ -5383,7 +5434,8 @@ function toggleRowHighlight() {
   const tbl = document.getElementById('scheduleTable');
   const btn = document.getElementById('btn-toggle-highlight');
   const isOn = tbl.classList.toggle('highlight-on');
-  btn.textContent = isOn ? 'Hover on' : 'Hover off';
+  // Button text shows what the NEXT click will do
+  btn.textContent = isOn ? 'Hover off' : 'Hover on';
 }
 
 function cancelSelectMode() {

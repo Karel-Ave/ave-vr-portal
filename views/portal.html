@@ -165,6 +165,25 @@
     font-size: 28px;
     margin-bottom: 14px;
     line-height: 1;
+    display: flex;
+    justify-content: center;
+  }
+  /* Dynamic calendar icon for Raspis card */
+  .cal-icon {
+    display: inline-flex; flex-direction: column; align-items: center;
+    width: 42px; height: 42px; background: #e53030; border-radius: 7px;
+    overflow: hidden; line-height: 1; box-shadow: 0 2px 5px rgba(0,0,0,.28);
+  }
+  .cal-mon {
+    background: #b02020; width: 100%; color: #fff;
+    font-size: 9px; font-weight: 700; text-align: center;
+    padding: 4px 0 3px; text-transform: uppercase; letter-spacing: .05em;
+    font-family: 'Segoe UI', system-ui, sans-serif;
+  }
+  .cal-day {
+    color: #fff; font-size: 19px; font-weight: 800;
+    flex: 1; display: flex; align-items: center; justify-content: center;
+    font-family: 'Segoe UI', system-ui, sans-serif;
   }
   .card-title {
     font-size: 14px;
@@ -517,9 +536,16 @@
 </div>
 
 <script>
+  // ── Dynamic calendar icon (shows today's date like iOS calendar icon) ──────
+  function calendarIcon() {
+    const now = new Date();
+    const months = ['led','úno','bře','dub','kvě','čvn','čvc','srp','zář','říj','lis','pro'];
+    return `<span class="cal-icon"><span class="cal-mon">${months[now.getMonth()]}</span><span class="cal-day">${now.getDate()}</span></span>`;
+  }
+
   // ── Card definitions ──────────────────────────────────────────────────────
   const CARDS_HLAVNI = [
-    { icon: '📅', title: 'Rozpis', desc: 'Prohlížení a editace publikovaných rozpisů', href: '/rozpis-view' },
+    { icon: calendarIcon(), title: 'Rozpis', desc: 'Prohlížení a editace publikovaných rozpisů', href: '/rozpis-view' },
     { icon: '⭐', title: 'Odměny', desc: 'Záznamy odměn recepčních', href: null },
     { icon: '💰', title: 'Provize', desc: 'Provize z prodeje a směnárny', href: null }
   ];
