@@ -1205,11 +1205,11 @@ app.get('/api/blacklist/export/pdf', requireLogin, async (req, res) => {
         for (const col of cols) {
           const text = isHeader ? col.label : cellVal(entry, col.key);
           doc.save();
-          doc.rect(x, y, col.w, rh).fill(isHeader ? '#A9D08E' : '#ffffff');
+          doc.rect(x, y, col.w, rh).fill(isHeader ? '#2C3540' : '#ffffff');
           doc.restore();
           doc.rect(x, y, col.w, rh).stroke('#000000');
           doc.font(isHeader ? 'Helvetica-Bold' : 'Helvetica')
-            .fontSize(fs).fillColor('#000000')
+            .fontSize(fs).fillColor(isHeader ? '#E8E6DC' : '#000000')
             .text(text || '', x+cellPad, y+cellPad, { width: col.w-2*cellPad, lineBreak: true });
           x += col.w;
         }
