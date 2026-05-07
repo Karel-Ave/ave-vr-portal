@@ -649,6 +649,27 @@ table.staff-tbl td select:focus { background: var(--input-bg); color: var(--text
 
 .leg-box { width: 12px; height: 12px; border: 1px solid #888; border-radius: 2px; flex-shrink: 0; }
 
+/* ── Zvýraznění aktuálního dne ── */
+.th-daynum.col-today {
+  background: #c0392b !important;
+  color: #ffffff !important;
+}
+.th-dn.col-today {
+  border-top: 2px solid #c0392b !important;
+}
+.th-cover.col-today,
+.hotel-cell.col-today {
+  border-top: 1px solid #c0392b !important;
+  border-bottom: 1px solid #c0392b !important;
+}
+.sch-cell.col-today {
+  box-shadow: inset 2px 0 0 rgba(192,57,43,.55), inset -2px 0 0 rgba(192,57,43,.55) !important;
+}
+[data-theme="dark"] .th-daynum.col-today { background: #a93226 !important; }
+[data-theme="dark"] .sch-cell.col-today {
+  box-shadow: inset 2px 0 0 rgba(192,57,43,.75), inset -2px 0 0 rgba(192,57,43,.75) !important;
+}
+
 /* ── MOBILNÍ ZOBRAZENÍ ── */
 @media (max-width: 768px) {
   /* ── Topbar: jednořádkový bez absolutního středu ── */
@@ -699,8 +720,8 @@ table.staff-tbl td select:focus { background: var(--input-bg); color: var(--text
   .btn-sm { padding: 3px 7px; font-size: 10px; min-height: 28px; }
   #import-area { flex-wrap: wrap; gap: 4px; }
 
-  /* ── Tabulka — menší buňky ── */
-  :root { --cell-w: 12px; --name-w: 100px; --row-h: 18px; }
+  /* ── Tabulka — zachovat šířku buněk (16px), jen menší jméno a font ── */
+  :root { --name-w: 100px; --row-h: 18px; }
   .sch-name { font-size: 9px; }
   .sch-cell input { font-size: 9px !important; }
   .sch-sum { font-size: 8px; }
@@ -4185,6 +4206,7 @@ function buildSchedule() {
   calCols.forEach((col, ci) => {
     const th = document.createElement('th');
     th.className = 'th-dn';
+    th.dataset.ci = ci;
     th.style.top = '18px';
     const isWe = isWeekend(col, month, year);
     if (isWe && col.dn === 'd') th.style.background = 'var(--cell-weekend-day)';
@@ -4517,6 +4539,33 @@ function buildSchedule() {
 function recalcAll() {
   state.staff.forEach((_, si) => recalcSums(si));
   recalcHotelStatus();
+  markTodayColumn(month, year);
+}
+
+// ── Zvýraznění sloupce s aktuálním dnem ────────────────────────────────────
+function markTodayColumn(month, year) {
+  // Remove previous highlights
+  document.querySelectorAll('.col-today').forEach(el => el.classList.remove('col-today'));
+
+  const now = new Date();
+  if (now.getMonth() + 1 !== month || now.getFullYear() !== year) return;
+
+  const todayDay = now.getDate();
+
+  // Find column indices for today (day + night)
+  const todayCis = new Set();
+  calCols.forEach((col, ci) => {
+    if (!col.nextYear && col.day === todayDay) todayCis.add(ci);
+  });
+  if (!todayCis.size) return;
+
+  // Highlight day-number header (th-daynum has data-day)
+  document.querySelectorAll(`.th-daynum[data-day="${todayDay}"]`).forEach(el => el.classList.add('col-today'));
+
+  // Highlight d/n sub-header, cover row, hotel cells, schedule cells — all have data-ci
+  todayCis.forEach(ci => {
+    document.querySelectorAll(`[data-ci="${ci}"]`).forEach(el => el.classList.add('col-today'));
+  });
 }
 
 function recalcSums(si) {
