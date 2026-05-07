@@ -632,6 +632,111 @@ td.col-edit { width: 68px; text-align: center; padding: 4px; display: flex; gap:
 }
 @keyframes spin { to { transform: rotate(360deg); } }
 
+/* ── Hamburger tlačítko blacklistu (skryté na desktopu) ── */
+#bl-hamburger {
+  display: none;
+  padding: 4px 10px;
+  border-radius: 5px;
+  border: 1px solid var(--btn-top-border);
+  background: transparent;
+  color: var(--btn-top-color);
+  font-size: 18px;
+  cursor: pointer;
+  line-height: 1;
+  font-family: inherit;
+  transition: all .15s;
+  margin-left: auto;
+}
+#bl-hamburger:hover { background: var(--btn-top-hover-bg); color: #fff; }
+
+/* ── Mobilní slide-down menu blacklistu ── */
+#bl-mobile-menu {
+  display: none;
+  flex-direction: column;
+  background: var(--bg-topbar);
+  border-bottom: 2px solid rgba(0,0,0,.5);
+  box-shadow: 0 6px 20px rgba(0,0,0,.3);
+  flex-shrink: 0;
+}
+#bl-mobile-menu.open { display: flex; }
+.bl-mob-btn {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 14px 18px;
+  background: transparent;
+  border: none;
+  border-bottom: 1px solid rgba(255,255,255,.05);
+  color: var(--text-topbar);
+  font-size: 14px;
+  text-align: left;
+  cursor: pointer;
+  font-family: inherit;
+  transition: background .15s;
+}
+.bl-mob-btn:last-child { border-bottom: none; }
+.bl-mob-btn:hover { background: rgba(255,255,255,.08); }
+
+/* ── Mobilní responzivita blacklistu ── */
+@media (max-width: 640px) {
+
+  /* Topbar: auto výška, bez wrappování */
+  #topbar {
+    height: auto;
+    min-height: 48px;
+    flex-wrap: nowrap;
+    padding: 8px 12px;
+    gap: 6px;
+  }
+  #topbar-title { font-size: 13px; flex-shrink: 0; }
+
+  /* Schovat méně důležité akce do menu */
+  #btn-pdf, #btn-email, #btn-intro, #btn-history { display: none; }
+  #bl-hamburger { display: flex; align-items: center; justify-content: center; }
+
+  /* Primární tlačítko + přidat: prominentní */
+  #btn-add { padding: 7px 14px; font-size: 12px; min-height: 36px; }
+
+  /* Controls bar: search přes celou šířku */
+  #controls-bar { padding: 10px 12px 8px; }
+  #search-row { flex-direction: column; align-items: stretch; gap: 6px; }
+  #search { max-width: 100%; font-size: 16px; min-height: 42px; }
+  #count-badge { font-size: 11px; text-align: right; }
+
+  /* Hotel filtry: větší dotyk (doplnění k theme.css) */
+  #hotel-filter-row { gap: 4px; margin-top: 4px; }
+
+  /* Tabulka: scroll + text trochu větší pro lepší čitelnost */
+  #bl-table { font-size: 13px; }
+  #bl-table td { padding: 8px 10px; }
+
+  /* Tlačítka v řádcích tabulky: větší dotykový cíl */
+  .btn-edit-row, .btn-del-row, .btn-restore-hist {
+    width: 36px !important;
+    height: 36px !important;
+    font-size: 15px !important;
+  }
+  .btn-hist-del { width: 32px !important; height: 32px !important; }
+
+  /* Historie: filtry → sloupec */
+  .history-filters { flex-direction: column; align-items: stretch; gap: 6px; }
+  .history-filters .cdp-wrap { width: 100%; }
+  .history-filters .cdp-text { font-size: 16px; }
+
+  /* Personální bloky (add modal): padding */
+  .person-block { padding: 12px 12px; }
+
+  /* Date picker: zarovnat do šířky */
+  .cdp-popup { width: calc(100vw - 40px); max-width: 300px; }
+
+  /* Footer info */
+  #footer-info { font-size: 10px; text-align: center; }
+
+  /* E-mail select list: větší checkboxy */
+  .email-select-row { padding: 12px; }
+  .email-select-row input[type=checkbox] { width: 18px; height: 18px; }
+}
+
 /* ── Custom date picker ── */
 .cdp-wrap { position: relative; display: block; width: 100%; }
 .cdp-row { display: flex; align-items: center; width: 100%; }
@@ -746,6 +851,15 @@ td.col-edit { width: 68px; text-align: center; padding: 4px; display: flex; gap:
   <button class="btn-top" id="btn-email">Export e-mail</button>
   <button class="btn-top" id="btn-intro">Upravit text</button>
   <button class="btn-top" id="btn-history">Historie</button>
+  <button id="bl-hamburger" onclick="toggleBlMenu()" aria-label="Více akcí" title="Více akcí">☰</button>
+</div>
+
+<!-- Mobilní menu blacklistu (skryté na desktopu) -->
+<div id="bl-mobile-menu">
+  <button class="bl-mob-btn" id="bl-mob-pdf">📄&nbsp; Export PDF</button>
+  <button class="bl-mob-btn" id="bl-mob-email">📧&nbsp; Export e-mail</button>
+  <button class="bl-mob-btn" id="bl-mob-intro">✏️&nbsp; Upravit úvodní text</button>
+  <button class="bl-mob-btn" id="bl-mob-history">🕐&nbsp; Historie změn</button>
 </div>
 
 <!-- Controls bar (always visible, above scroll) -->
@@ -1916,6 +2030,32 @@ async function restoreFromHistory(auditId) {
 }
 
 // Theme toggle handled by /static/theme.js
+
+// ── Mobilní hamburger menu ────────────────────────────────────────────────────
+function toggleBlMenu() {
+  const menu = document.getElementById('bl-mobile-menu');
+  if (menu.classList.contains('open')) closeBlMenu();
+  else { menu.classList.add('open'); }
+}
+function closeBlMenu() {
+  document.getElementById('bl-mobile-menu').classList.remove('open');
+}
+
+// Mobilní menu — propojit akce s existujícími handlery
+document.getElementById('bl-mob-pdf').addEventListener('click', function() { closeBlMenu(); exportPdf(); });
+document.getElementById('bl-mob-email').addEventListener('click', function() { closeBlMenu(); exportEmail(); });
+document.getElementById('bl-mob-intro').addEventListener('click', function() { closeBlMenu(); openIntroModal(); });
+document.getElementById('bl-mob-history').addEventListener('click', function() { closeBlMenu(); openHistory(); });
+
+// Zavřít menu kliknutím mimo
+document.addEventListener('click', function(e) {
+  const menu = document.getElementById('bl-mobile-menu');
+  const btn  = document.getElementById('bl-hamburger');
+  if (menu && menu.classList.contains('open') &&
+      !menu.contains(e.target) && e.target !== btn && !btn.contains(e.target)) {
+    closeBlMenu();
+  }
+});
 
 // ── Init ──────────────────────────────────────────────────────────────────────
 

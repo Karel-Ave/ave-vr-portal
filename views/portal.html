@@ -326,6 +326,105 @@
   .msg { font-size: 12px; min-height: 18px; margin-top: 6px; }
   .msg.ok  { color: #5cb85c; }
   .msg.err { color: #e05555; }
+
+  /* ── Hamburger tlačítko (skryté na desktopu) ── */
+  #btn-hamburger {
+    display: none;
+    padding: 5px 10px;
+    border-radius: 6px;
+    border: 1px solid var(--btn-top-border);
+    background: transparent;
+    color: var(--btn-top-color);
+    font-size: 18px;
+    cursor: pointer;
+    line-height: 1;
+    transition: all .15s;
+    font-family: inherit;
+  }
+  #btn-hamburger:hover { background: var(--btn-top-hover-bg); color: #fff; }
+
+  /* ── Mobilní slide-down menu ── */
+  #mobile-menu {
+    display: none;
+    position: fixed;
+    top: 58px;
+    left: 0;
+    width: 100%;
+    background: var(--bg-topbar);
+    border-bottom: 2px solid rgba(0,0,0,.5);
+    z-index: 9998;
+    flex-direction: column;
+    box-shadow: 0 6px 20px rgba(0,0,0,.35);
+  }
+  #mobile-menu.open { display: flex; }
+  #mobile-menu-user {
+    padding: 12px 20px 6px;
+    font-size: 11px;
+    color: rgba(255,255,255,.38);
+    text-transform: uppercase;
+    letter-spacing: .09em;
+    border-bottom: 1px solid rgba(255,255,255,.06);
+  }
+  .mob-menu-btn {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    width: 100%;
+    padding: 15px 20px;
+    background: transparent;
+    border: none;
+    border-bottom: 1px solid rgba(255,255,255,.05);
+    color: var(--text-topbar);
+    font-size: 14px;
+    text-align: left;
+    cursor: pointer;
+    font-family: inherit;
+    text-decoration: none;
+    transition: background .15s;
+  }
+  .mob-menu-btn:last-child { border-bottom: none; }
+  .mob-menu-btn:hover { background: rgba(255,255,255,.08); }
+
+  /* ── Responzivita portálu ── */
+  @media (max-width: 640px) {
+
+    /* Topbar: kompaktní */
+    #topbar { padding: 0 12px; }
+    .topbar-logo img { height: 40px; }
+    .topbar-copy { display: none; }
+
+    /* Schovat desktop prvky, ukázat hamburger */
+    .user-badge { display: none; }
+    #btn-pw-change { display: none; }
+    #btn-logout    { display: none; }
+    #btn-hamburger { display: inline-flex; align-items: center; justify-content: center; }
+
+    /* Home button: jen šipka */
+    .home-label { display: none; }
+
+    /* Karty: menší padding */
+    .main { padding: 20px 14px; }
+    .welcome h1 { font-size: 20px; }
+    .welcome p  { font-size: 13px; }
+    .section-label { font-size: 9px; }
+    .section-block { margin-top: 22px; }
+
+    /* Mřížka karet: min šířka menší pro 2 sloupce na větších telefonech */
+    .grid { grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); gap: 10px; }
+    .card { padding: 14px 14px 12px; }
+    .card-icon { font-size: 24px; margin-bottom: 10px; }
+    .card-title { font-size: 13px; }
+    .card-desc  { font-size: 11px; }
+
+    /* Modál změny hesla: full width přes theme.css, ale parent má padding */
+    .modal h2   { font-size: 14px; }
+    .modal input { min-height: 46px; }
+  }
+
+  @media (max-width: 380px) {
+    /* Na nejmenších displejích: 1 sloupec karet */
+    .grid { grid-template-columns: 1fr; }
+  }
 </style>
 </head>
 <body>
@@ -333,7 +432,7 @@
 <div id="topbar">
   <!-- Left: Home button (visible only when app is loaded) -->
   <div class="topbar-left">
-    <button id="btn-home" class="btn-top" onclick="goHome()">&#8592; Back to Dashboard</button>
+    <button id="btn-home" class="btn-top" onclick="goHome()">&#8592;<span class="home-label">&nbsp;Zpět na přehled</span></button>
   </div>
 
   <!-- Center: Logo (always visible) -->
@@ -345,10 +444,18 @@
   <!-- Right: User controls -->
   <div class="topbar-right">
     <span class="user-badge" id="user-label"></span>
-    <button class="btn-top" onclick="document.getElementById('pw-overlay').classList.add('show')">Změnit heslo</button>
-    <a href="/logout" class="btn-top">Odhlásit</a>
+    <button id="btn-pw-change" class="btn-top" onclick="document.getElementById('pw-overlay').classList.add('show')">Změnit heslo</button>
+    <a id="btn-logout" href="/logout" class="btn-top">Odhlásit</a>
     <button id="btn-theme" title="Přepnout světlé / tmavé téma">🌙</button>
+    <button id="btn-hamburger" onclick="toggleMobileMenu()" aria-label="Menu" title="Menu">☰</button>
   </div>
+</div>
+
+<!-- Mobilní slide-down menu (skryté na desktopu) -->
+<div id="mobile-menu" aria-hidden="true">
+  <div id="mobile-menu-user"></div>
+  <button class="mob-menu-btn" onclick="openPwModal()">🔑&nbsp; Změnit heslo</button>
+  <a class="mob-menu-btn" href="/logout">⎋&nbsp; Odhlásit</a>
 </div>
 
 <!-- Cards view -->
@@ -541,6 +648,47 @@
 
   document.getElementById('pw-overlay').addEventListener('click', e => {
     if (e.target === document.getElementById('pw-overlay')) closePwModal();
+  });
+
+  // Otevřít modál změny hesla (přes hamburger menu i desktop tlačítko)
+  function openPwModal() {
+    closeMobileMenu();
+    document.getElementById('pw-overlay').classList.add('show');
+  }
+  // Přepsat onclick původního tlačítka
+  document.getElementById('btn-pw-change').onclick = openPwModal;
+
+  // ── Mobilní hamburger menu ─────────────────────────────────────────
+  function toggleMobileMenu() {
+    const menu = document.getElementById('mobile-menu');
+    if (menu.classList.contains('open')) closeMobileMenu();
+    else openMobileMenu();
+  }
+
+  function openMobileMenu() {
+    const menu = document.getElementById('mobile-menu');
+    menu.classList.add('open');
+    menu.setAttribute('aria-hidden', 'false');
+    // Aktualizovat jméno uživatele v menu
+    const username = document.getElementById('user-label').textContent;
+    const userEl = document.getElementById('mobile-menu-user');
+    if (userEl && username) userEl.textContent = username;
+  }
+
+  function closeMobileMenu() {
+    const menu = document.getElementById('mobile-menu');
+    menu.classList.remove('open');
+    menu.setAttribute('aria-hidden', 'true');
+  }
+
+  // Zavřít menu kliknutím mimo
+  document.addEventListener('click', function(e) {
+    const menu = document.getElementById('mobile-menu');
+    const btn  = document.getElementById('btn-hamburger');
+    if (menu && menu.classList.contains('open') &&
+        !menu.contains(e.target) && e.target !== btn && !btn.contains(e.target)) {
+      closeMobileMenu();
+    }
   });
 
   // ── Auto-logout after 10 min inactivity ──────────────────────────────────

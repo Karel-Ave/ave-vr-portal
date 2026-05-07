@@ -162,3 +162,95 @@
   --spinner-border:     #333A42;
   --spinner-top:        #C4A96A;
 }
+
+/* ═══════════════════════════════════════════════════════════════════════
+   Mobilní responzivita — sdílená základna pro všechny stránky
+   ───────────────────────────────────────────────────────────────────────
+   Každá stránka s <link href="/static/theme.css"> dostane automaticky:
+     • iOS anti-zoom na inputech (font-size ≥ 16 px)
+     • Modály přizpůsobené šířce displeje
+     • Formulářové mřížky → jeden sloupec
+     • Tlačítka modálu přes celou šířku (primární akce nahoře)
+     • Tabulky s horizontálním scrollem
+     • Větší dotykové cíle pro hotel-filtry
+     • Toast přes celou šířku dole
+   Nové stránky nemusí nic přidávat — mobilní podpora je zdarma.
+   ═══════════════════════════════════════════════════════════════════════ */
+
+/* ── Tablety a telefony (≤ 768 px) ────────────────────────────────── */
+@media (max-width: 768px) {
+
+  /* 1. iOS Safari: inputy s font-size < 16 px způsobují auto-zoom */
+  input:not([type="checkbox"]):not([type="radio"]):not([type="range"]),
+  select,
+  textarea {
+    font-size: 16px !important;
+  }
+
+  /* 2. Modály: přizpůsobit šířce displeje */
+  .modal {
+    width: calc(100vw - 32px) !important;
+    max-width: 100% !important;
+    padding: 20px 16px !important;
+    box-sizing: border-box;
+  }
+  .overlay {
+    padding: 12px !important;
+    align-items: flex-start !important;
+    overflow-y: auto;
+  }
+
+  /* 3. Formulářové mřížky → vždy jeden sloupec */
+  .form-row,
+  .form-row.three {
+    grid-template-columns: 1fr !important;
+    gap: 0 !important;
+  }
+
+  /* 4. Tlačítka v modálu → celá šířka, primární nahoře */
+  .modal-btns {
+    flex-direction: column-reverse !important;
+    gap: 8px !important;
+  }
+  .modal-btns > * {
+    width: 100% !important;
+    justify-content: center !important;
+    min-height: 46px !important;
+    display: flex !important;
+    align-items: center !important;
+    box-sizing: border-box;
+  }
+
+  /* 5. Tabulky: horizontální scroll */
+  .table-wrap {
+    overflow-x: auto !important;
+    -webkit-overflow-scrolling: touch;
+  }
+
+  /* 6. Hotelové filtry: větší dotykový cíl */
+  .hotel-btn {
+    min-height: 36px;
+    padding: 6px 14px !important;
+    font-size: 12px !important;
+  }
+
+  /* 7. Toast: celá šířka */
+  #toast {
+    left: 12px !important;
+    right: 12px !important;
+    bottom: 16px !important;
+    width: auto !important;
+    text-align: center;
+  }
+}
+
+/* ── Malé telefony (≤ 480 px) ─────────────────────────────────────── */
+@media (max-width: 480px) {
+  .modal {
+    width: calc(100vw - 16px) !important;
+    padding: 16px 12px !important;
+  }
+  .overlay {
+    padding: 6px !important;
+  }
+}

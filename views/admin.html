@@ -110,6 +110,72 @@
   .msg.ok  { color: #5cb85c; }
   .msg.err { color: #e05555; }
   #pw-overlay .modal { width: 360px; }
+
+  /* ── Modály s fixní šířkou: maximální šířka místo pevné ── */
+  #user-overlay .modal    { width: 460px; max-width: 100%; }
+  #overrides-overlay .modal { width: 500px; max-width: 100%; max-height: 82vh; overflow-y: auto; }
+  #addgroup-overlay .modal  { width: 380px; max-width: 100%; }
+  #pw-overlay .modal        { width: 360px; max-width: 100%; }
+
+  /* ── Mobilní responzivita správy uživatelů ── */
+  @media (max-width: 640px) {
+
+    /* Hlavní obsah: menší okraje */
+    .main { margin: 16px auto; padding: 0 14px; }
+
+    /* Záložky: plná šířka */
+    .tabs { overflow-x: auto; -webkit-overflow-scrolling: touch; }
+    .tab-btn { padding: 8px 14px; font-size: 12px; white-space: nowrap; }
+
+    /* Nadpis stránky: stack */
+    .page-header { flex-direction: column; align-items: flex-start; gap: 10px; }
+    .page-header h1 { font-size: 16px; }
+    .btn-add { width: 100%; text-align: center; min-height: 44px; }
+
+    /* Tabulka uživatelů: scroll */
+    .table-wrap { overflow-x: auto; -webkit-overflow-scrolling: touch; }
+    table { min-width: 500px; }
+    thead th { padding: 8px 10px; font-size: 10px; }
+    td { padding: 8px 10px; font-size: 12px; }
+    .td-actions { white-space: nowrap; }
+    .btn-action { padding: 5px 8px; font-size: 11px; min-height: 34px; }
+
+    /* Skupiny & oprávnění: sidebar nad panelem */
+    .groups-layout {
+      flex-direction: column;
+      gap: 12px;
+    }
+    .groups-sidebar {
+      width: 100%;
+      display: flex;
+      flex-wrap: wrap;
+      gap: 6px;
+    }
+    .group-item {
+      flex: 1;
+      min-width: 120px;
+      padding: 10px 12px;
+    }
+    .groups-panel-inner { padding: 14px; }
+    .groups-panel-inner h3 { font-size: 13px; }
+
+    /* Toggle přepínače: větší cíl */
+    .toggle-track { width: 40px; height: 22px; border-radius: 11px; }
+    .toggle-track::after { width: 18px; height: 18px; }
+    .toggle-track.on::after { left: 20px; }
+
+    /* Oprávnění řádky */
+    .perm-row, .over-btn-row { padding: 10px 0; }
+    .perm-label, .over-btn-label { font-size: 13px; }
+
+    /* Formulář v modálu: 1 sloupec (doplnění k theme.css) */
+    .form-row { gap: 0; }
+    .form-group { margin-bottom: 12px; }
+    .form-group input, .form-group select { min-height: 46px; }
+
+    /* Modal scrollovatelný */
+    #overrides-overlay .modal { max-height: 90vh; }
+  }
 </style>
 </head>
 <body>
@@ -191,7 +257,7 @@
 
 <!-- Modál: Individuální oprávnění -->
 <div class="overlay" id="overrides-overlay">
-  <div class="modal" style="width:500px;max-height:82vh;overflow-y:auto;">
+  <div class="modal">
     <h2>Oprávnění: <span id="overrides-uname" style="color:#2a5caa;"></span></h2>
     <p style="font-size:12px;color:#888;margin-bottom:16px;">Standardně platí oprávnění skupiny. Zde lze nastavit individuální výjimky.</p>
     <div id="overrides-content"></div>
@@ -206,7 +272,7 @@
 
 <!-- Modál: Přidat skupinu -->
 <div class="overlay" id="addgroup-overlay">
-  <div class="modal" style="width:380px;">
+  <div class="modal">
     <h2>Přidat skupinu</h2>
     <div class="form-group">
       <label>Klíč skupiny (interní, bez mezer)</label>

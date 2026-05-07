@@ -22,7 +22,7 @@
     background: var(--modal-bg);
     border-radius: 14px;
     padding: 44px 40px 36px;
-    width: 360px;
+    width: min(360px, calc(100vw - 32px));
     box-shadow: var(--modal-shadow);
     border: 1px solid var(--modal-border);
     position: relative;
@@ -108,6 +108,15 @@
     transition: all .15s;
   }
   #btn-theme:hover { background: var(--surface-alt); }
+
+  /* ── Mobilní úpravy ── */
+  @media (max-width: 480px) {
+    body { padding: 16px; align-items: flex-start; padding-top: 48px; }
+    .card { padding: 32px 20px 28px; border-radius: 12px; }
+    .logo img { height: 44px; }
+    input { padding: 12px; }
+    .btn { padding: 14px; font-size: 15px; }
+  }
 </style>
 </head>
 <body>
