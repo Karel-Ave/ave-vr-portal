@@ -96,20 +96,22 @@
     display: none;
   }
   .error.show { display: block; }
-  /* Theme toggle – bottom right corner of card */
+  /* Theme toggle – vpravo dole mimo kartu */
   #btn-theme {
-    position: absolute;
-    bottom: 12px;
-    right: 14px;
-    padding: 3px 8px;
+    position: fixed;
+    bottom: 16px;
+    right: 16px;
+    padding: 6px 10px;
     border: 1px solid var(--border);
-    border-radius: 5px;
-    background: transparent;
+    border-radius: 6px;
+    background: var(--modal-bg);
     color: var(--text-muted);
-    font-size: 14px;
+    font-size: 15px;
     cursor: pointer;
     line-height: 1;
     transition: all .15s;
+    box-shadow: 0 2px 8px rgba(0,0,0,.12);
+    z-index: 10;
   }
   #btn-theme:hover { background: var(--surface-alt); }
 
