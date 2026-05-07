@@ -4,7 +4,6 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0">
 <title>AVE VR</title>
 <link rel="icon" type="image/png" href="/static/logo.png">
-<script src="/static/theme.js"></script>
 <link rel="stylesheet" href="/static/theme.css">
 <link href="https://fonts.googleapis.com/css2?family=DM+Mono:wght@300;400;500&amp;family=DM+Sans:wght@300;400;500;600&amp;display=swap" rel="stylesheet">
 <style>
@@ -117,20 +116,7 @@ body {
   position: relative;
 }
 #topbar h1 { font-size: 14px; font-weight: 600; letter-spacing: 0.05em; white-space: nowrap; }
-/* Theme toggle in topbar */
-#btn-theme {
-  padding: 3px 9px;
-  border-radius: 5px;
-  border: 1px solid var(--btn-top-border);
-  background: transparent;
-  color: var(--btn-top-color);
-  font-size: 14px;
-  cursor: pointer;
-  transition: all .15s;
-  line-height: 1;
-  font-family: inherit;
-}
-#btn-theme:hover { background: var(--btn-top-hover-bg); color: #fff; }
+
 .tabs { display: flex; gap: 2px; }
 .tab {
   padding: 4px 14px;
@@ -731,7 +717,6 @@ table.staff-tbl td select:focus { background: var(--input-bg); color: var(--text
   </div>
   <div style="margin-left:auto;display:flex;align-items:center;gap:6px;">
     <button id="portal-export-btn" class="btn btn-sm" onclick="exportXlsx()" style="background:#4caf50;color:#fff;border-color:#388e3c;">Export do .xlsx</button>
-    <button id="btn-theme" title="Přepnout světlé / tmavé téma">🌙</button>
   </div>
 </div>
 <div id="content">

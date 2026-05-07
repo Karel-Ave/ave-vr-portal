@@ -51,6 +51,12 @@
     }).catch(function () {});
   }
 
+  // React to theme changes made in other windows/frames (e.g. portal topbar
+  // toggling while blacklist is open in the iframe)
+  window.addEventListener('storage', function (e) {
+    if (e.key === KEY) applyTheme(e.newValue === 'dark');
+  });
+
   if (document.readyState === 'loading') {
     document.addEventListener('DOMContentLoaded', setup);
   } else {
