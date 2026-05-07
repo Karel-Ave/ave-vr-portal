@@ -537,26 +537,51 @@
   });
 
   // ── Auto-logout after 10 min inactivity ──────────────────────────────────
+  // Activity is shared across ALL browser windows/tabs via localStorage,
+  // so moving the mouse on another monitor (another window of the same
+  // browser) also counts as activity and resets the timer here.
   (function() {
-    const IDLE_MS = 10 * 60 * 1000;
-    let idleTimer = setTimeout(() => { window.location.href = '/logout'; }, IDLE_MS);
-    function resetIdle() { clearTimeout(idleTimer); idleTimer = setTimeout(() => { window.location.href = '/logout'; }, IDLE_MS); }
-    document.addEventListener('mousemove', resetIdle, true);
-    document.addEventListener('keydown', resetIdle, true);
-    document.addEventListener('click', resetIdle, true);
-    document.addEventListener('touchstart', resetIdle, true);
+    const IDLE_MS   = 10 * 60 * 1000;
+    const LS_KEY    = 'ave-last-activity';
+    let idleTimer;
+
+    function resetIdle() {
+      clearTimeout(idleTimer);
+      idleTimer = setTimeout(() => { window.location.href = '/logout'; }, IDLE_MS);
+    }
+
+    function signalActivity() {
+      // Write timestamp so other windows/tabs pick it up via storage event
+      try { localStorage.setItem(LS_KEY, Date.now()); } catch(e) {}
+      resetIdle();
+    }
+
+    // Listen for activity signals from other windows / monitors
+    window.addEventListener('storage', function(e) {
+      if (e.key === LS_KEY) resetIdle();
+    });
+
+    // This window's own events
+    document.addEventListener('mousemove',  signalActivity, true);
+    document.addEventListener('keydown',    signalActivity, true);
+    document.addEventListener('click',      signalActivity, true);
+    document.addEventListener('touchstart', signalActivity, true);
+
     // Also track activity inside the iframe
     const frame = document.getElementById('app-frame');
     if (frame) {
       frame.addEventListener('load', function() {
         try {
           const d = frame.contentDocument || frame.contentWindow.document;
-          d.addEventListener('mousemove', resetIdle, true);
-          d.addEventListener('keydown', resetIdle, true);
-          d.addEventListener('click', resetIdle, true);
+          d.addEventListener('mousemove',  signalActivity, true);
+          d.addEventListener('keydown',    signalActivity, true);
+          d.addEventListener('click',      signalActivity, true);
         } catch(e) {}
       });
     }
+
+    // Start the timer
+    resetIdle();
   })();
 </script>
 </body>

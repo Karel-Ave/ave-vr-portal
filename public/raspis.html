@@ -63,7 +63,24 @@
   --cover-ok: #252B32;
   --cell-weekday-day: #2A2E36;
   --cell-weekday-night: #1E2228;
+  /* weekend / special cells keep their colours but need readable text */
+  --cell-weekend-day: #1A3A50;
+  --cell-weekend-night: #0D2A40;
+  --cell-cannot: #3A2020;
+  --cell-cancelled: #2E2318;
+  --hotel-filled: #1A3020;
+  --hotel-double: #2E2A14;
 }
+
+/* In dark mode cells inherit body text (light) — inputs explicitly too */
+[data-theme="dark"] .sch-cell,
+[data-theme="dark"] .sch-name,
+[data-theme="dark"] .sch-sum { color: var(--text); }
+/* Cells that keep bright background need dark text even in dark mode */
+[data-theme="dark"] .day-weekend-d,
+[data-theme="dark"] .day-weekend-night,
+[data-theme="dark"] .day-holiday-hdr { color: #fff; }
+[data-theme="dark"] .day-cancelled { color: var(--text-muted); }
 
 * { box-sizing: border-box; margin: 0; padding: 0; }
 
@@ -222,9 +239,10 @@ table.staff-tbl td select {
   width: 100%;
   outline: none;
   padding: 1px 2px;
+  color: inherit;
 }
 table.staff-tbl td input[type=text]:focus,
-table.staff-tbl td select:focus { background: #fff; border-radius: 2px; }
+table.staff-tbl td select:focus { background: var(--input-bg); color: var(--text); border-radius: 2px; }
 .td-name { min-width: 175px; width: 175px; max-width: 175px; }
 .td-type { width: 80px; }
 .td-contract { width: 70px; }
@@ -491,6 +509,7 @@ table.staff-tbl td select:focus { background: #fff; border-radius: 2px; }
   border: 1px solid #888;
   user-select: none;
   position: relative;
+  color: inherit;
 }
 .sch-cell input {
   position: absolute;
@@ -506,6 +525,7 @@ table.staff-tbl td select:focus { background: #fff; border-radius: 2px; }
   font-weight: 400;
   cursor: pointer;
   padding: 0;
+  color: inherit;
 }
 .sch-sum {
   text-align: center;
@@ -6388,6 +6408,7 @@ document.addEventListener('mouseup', (e) => {
   let _isAdmin = false;
   let _editMode = false;
   let _myUserId = null;
+  let _hasEditPerm = false;
   let _lockPollTimer = null;
   let _autosaveTimer = null;
   const LOCK_APP = 'raspis-view';
@@ -6410,8 +6431,22 @@ document.addEventListener('mouseup', (e) => {
       show('portal-import-btn', btns.import);
       show('portal-delete-btn', btns.delete);
       show('portal-trash-btn',  btns.trash);
-      show('portal-edit-btn',   btns.edit);
       show('portal-export-btn', btns.export);
+      // Edit button: set permission flag, then check lock immediately
+      _hasEditPerm = btns.edit !== false;
+      if (_hasEditPerm) {
+        // Fetch current lock state before showing the button to avoid
+        // briefly showing "Editovat" when someone else is already editing
+        try {
+          const lr   = await fetch('/api/lock/' + LOCK_APP);
+          const lj   = await lr.json();
+          updateLockUI(false, lj.lock);
+        } catch(e) {
+          // API unavailable — show button as fallback
+          show('portal-edit-btn', true);
+        }
+      }
+      // No edit permission → button stays hidden (already hidden by default display:none in HTML or kept from show)
     } catch(e) { /* not inside portal, ignore */ }
 
     setReadOnly(true);
@@ -6538,10 +6573,12 @@ document.addEventListener('mouseup', (e) => {
         status.style.cssText = 'font-size:12px;color:#c00;font-weight:600;white-space:nowrap;display:inline;';
       }
     } else {
-      // No lock — show Editovat button normally
-      editBtn.style.display = '';
-      editBtn.textContent = 'Editovat';
-      editBtn.style.cssText = 'background:#f0c800;color:#333;border-color:#c8a800;font-weight:600;display:inline-block;';
+      // No lock — show Editovat button only if user has permission
+      if (_hasEditPerm) {
+        editBtn.style.display = '';
+        editBtn.textContent = 'Editovat';
+        editBtn.style.cssText = 'background:#f0c800;color:#333;border-color:#c8a800;font-weight:600;display:inline-block;';
+      }
       if (saveBtn) saveBtn.style.display = 'none';
       if (status)  { status.textContent = ''; status.style.display = 'none'; }
     }
