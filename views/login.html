@@ -32,8 +32,12 @@
     margin-bottom: 36px;
   }
   .logo img {
-    height: 52px;
+    height: 64px;
     object-fit: contain;
+    filter: brightness(0);          /* light mode: logo černé */
+  }
+  [data-theme="dark"] .logo img {
+    filter: brightness(0) invert(1); /* dark mode: logo bílé */
   }
   .logo-sub {
     font-size: 11px;
