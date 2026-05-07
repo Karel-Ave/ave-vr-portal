@@ -875,6 +875,7 @@ td.col-edit { width: 68px; text-align: center; padding: 4px; display: flex; gap:
     <span id="count-badge"></span>
   </div>
   <div id="hotel-filter-row"></div>
+  <div id="letter-filter-row"></div>
 </div>
 
 <!-- Main content -->
@@ -1063,7 +1064,8 @@ let auditLog = [];
 let currentUser = null;
 let sortKey = 'name';
 let sortDir = 'asc';
-let activeHotel = '';
+let activeHotel  = '';
+let activeLetter = '';
 let editingId = null;
 let selectedHistory = new Set();
 
@@ -1124,6 +1126,7 @@ async function loadEntries() {
   const data = await apiFetch('/api/blacklist/entries');
   entries = data;
   renderHotelFilter();
+  renderLetterFilter();
   applyFilter();
   updateFooter();
 }
@@ -1134,7 +1137,8 @@ function applyFilter() {
     const matchQ = !q || [e.name, e.hotel, e.birth_date, e.damage, e.stay_date, e.reason, e.added_by]
       .some(v => String(v || '').toLowerCase().includes(q));
     const matchH = !activeHotel || (e.hotel || '') === activeHotel;
-    return matchQ && matchH;
+    const matchL = !activeLetter || (e.name || '').toUpperCase().startsWith(activeLetter);
+    return matchQ && matchH && matchL;
   });
   renderTable();
 }
@@ -1151,6 +1155,23 @@ function renderHotelFilter() {
 function setHotelFilter(h) {
   activeHotel = h;
   renderHotelFilter();
+  applyFilter();
+}
+
+function renderLetterFilter() {
+  const letters = [...new Set(
+    entries.map(e => (e.name || '').charAt(0).toUpperCase()).filter(Boolean)
+  )].sort((a, b) => a.localeCompare(b, 'cs'));
+  const row = document.getElementById('letter-filter-row');
+  if (letters.length < 2) { row.innerHTML = ''; return; }
+  row.innerHTML = `<span class="hotel-label">Jméno:</span>` +
+    `<button class="hotel-btn${!activeLetter ? ' active' : ''}" onclick="setLetterFilter('')">Vše</button>` +
+    letters.map(l => `<button class="hotel-btn${activeLetter === l ? ' active' : ''}" onclick="setLetterFilter('${l}')">${l}</button>`).join('');
+}
+
+function setLetterFilter(l) {
+  activeLetter = l;
+  renderLetterFilter();
   applyFilter();
 }
 

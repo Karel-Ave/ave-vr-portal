@@ -173,6 +173,18 @@ async function init() {
     )
   `);
 
+  // Záznamy (logy) systémových akcí
+  await db.query(`
+    CREATE TABLE IF NOT EXISTS logs (
+      id         SERIAL PRIMARY KEY,
+      timestamp  TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+      user_id    INTEGER REFERENCES users(id) ON DELETE SET NULL,
+      user_name  VARCHAR(100) NOT NULL,
+      action     VARCHAR(50)  NOT NULL,
+      details    JSONB        NOT NULL DEFAULT '{}'
+    )
+  `);
+
   // Seed: výchozí úvodní text
   const introCheck = await db.query('SELECT COUNT(*) AS cnt FROM blacklist_intro');
   if (parseInt(introCheck.rows[0].cnt, 10) === 0) {

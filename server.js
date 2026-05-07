@@ -48,6 +48,20 @@ function setLockTimer(key) {
   lockTimers[key] = setTimeout(() => { delete locks[key]; delete lockTimers[key]; }, LOCK_TTL);
 }
 
+// ── Logging helper ────────────────────────────────────────────────────────────
+
+async function logEvent(userId, userName, action, details = {}) {
+  try {
+    const db = getPool();
+    await db.query(
+      `INSERT INTO logs (user_id, user_name, action, details) VALUES ($1, $2, $3, $4)`,
+      [userId || null, userName, action, JSON.stringify(details)]
+    );
+  } catch (err) {
+    console.error('logEvent chyba:', err.message);
+  }
+}
+
 // ── Stránky ───────────────────────────────────────────────────────────────────
 
 app.get('/', (req, res) =>
@@ -105,6 +119,7 @@ app.post('/login', async (req, res) => {
       role: user.role,
       theme: user.theme || 'light'
     };
+    logEvent(user.id, user.username, 'login', { role: user.role });
     res.redirect('/portal');
   } catch (err) {
     console.error('Chyba přihlášení:', err);
@@ -285,6 +300,20 @@ app.put('/api/admin/users/:id/overrides', requireLogin, requireAdmin, async (req
     await db.query('UPDATE users SET perm_overrides = $1 WHERE id = $2', [val, req.params.id]);
     res.json({ ok: true });
   } catch(err) { res.json({ ok: false, msg: 'Chyba serveru.' }); }
+});
+
+app.get('/api/admin/logs', requireLogin, requireAdmin, async (req, res) => {
+  try {
+    const db = getPool();
+    const { rows } = await db.query(
+      `SELECT id, timestamp, user_id, user_name, action, details
+       FROM logs ORDER BY timestamp DESC LIMIT 500`
+    );
+    res.json(rows);
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ ok: false, msg: 'Chyba serveru.' });
+  }
 });
 
 app.get('/api/my-permissions', requireLogin, async (req, res) => {
@@ -471,6 +500,7 @@ app.post('/api/rozpisy/publish', requireLogin, requireAdmin, async (req, res) =>
        ON CONFLICT (key) DO UPDATE SET data = $5, published_at = NOW(), published_by = $6`,
       [key, month, year, label, JSON.stringify(data), req.session.user.name]
     );
+    logEvent(req.session.user.id, req.session.user.username, 'raspis_publish', { key, label });
     res.json({ ok: true, key, label });
   } catch (err) {
     console.error('Chyba uložení rozpisu:', err);
@@ -631,6 +661,7 @@ app.post('/api/rozpisy/save-edits', requireLogin, async (req, res) => {
       [JSON.stringify(data), key]
     );
     if (!rowCount) return res.json({ ok: false, msg: 'Raspis nenalezen.' });
+    logEvent(req.session.user.id, req.session.user.username, 'raspis_save', { key });
     const lockKey = 'raspis-view';
     if (locks[lockKey]?.userId === req.session.user.id) {
       locks[lockKey].until = new Date(Date.now() + LOCK_TTL).toISOString();

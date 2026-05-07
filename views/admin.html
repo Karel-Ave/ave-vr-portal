@@ -135,6 +135,11 @@
     /* Tabulka uživatelů: schovat "Přidán" sloupec aby se vešla tlačítka */
     #tab-users table thead th:nth-child(5),
     #tab-users table tbody td:nth-child(5) { display: none; }
+    /* Tabulka logů: schovat "#" a "Detail" na mobilu */
+    #tab-logs table thead th:nth-child(1),
+    #tab-logs table tbody td:nth-child(1),
+    #tab-logs table thead th:nth-child(5),
+    #tab-logs table tbody td:nth-child(5) { display: none; }
     thead th { padding: 8px 8px; font-size: 10px; }
     td { padding: 8px 8px; font-size: 12px; }
     .td-actions { white-space: nowrap; }
@@ -188,6 +193,7 @@
   <div class="tabs">
     <button class="tab-btn active" onclick="showTab('users')">Uživatelé</button>
     <button class="tab-btn" onclick="showTab('groups')">Skupiny &amp; Oprávnění</button>
+    <button class="tab-btn" onclick="showTab('logs')">Záznamy</button>
   </div>
 
   <!-- ── Tab: Uživatelé ── -->
@@ -203,6 +209,24 @@
         </thead>
         <tbody id="users-tbody">
           <tr class="empty-row"><td colspan="6">Načítám…</td></tr>
+        </tbody>
+      </table>
+    </div>
+  </div>
+
+  <!-- ── Tab: Záznamy (logy) ── -->
+  <div id="tab-logs" style="display:none;">
+    <div class="page-header">
+      <h1>Záznamy</h1>
+      <button class="btn-add" onclick="loadLogs()">↻ Obnovit</button>
+    </div>
+    <div class="table-wrap">
+      <table>
+        <thead>
+          <tr><th>#</th><th>Čas</th><th>Uživatel</th><th>Akce</th><th>Detail</th></tr>
+        </thead>
+        <tbody id="logs-tbody">
+          <tr class="empty-row"><td colspan="5">Vyberte záložku pro načtení…</td></tr>
         </tbody>
       </table>
     </div>
@@ -311,6 +335,17 @@
     raspis: { label: 'Rozpis', buttons: {
       import: 'Nahrát rozpis', delete: 'Smazat', trash: 'Koš',
       edit: 'Editovat / Uložit', export: 'Export do .xlsx'
+    }},
+    blacklist: { label: 'Blacklist', buttons: {
+      view:           'Zobrazit',
+      add:            'Přidat záznam',
+      remove:         'Odebrat záznam',
+      edit:           'Upravit záznam',
+      export_pdf:     'Export PDF',
+      export_email:   'Export e-mail',
+      edit_intro:     'Upravit úvod',
+      history:        'Zobrazit historii',
+      history_delete: 'Smazat historii'
     }}
   };
 
@@ -323,10 +358,13 @@
   fetch('/api/me').then(r => r.json()).then(u => { myId = u.id; loadUsers(); loadGroups(); });
 
   // ── TABS ──────────────────────────────────────────────────────────────────────
+  const TAB_KEYS = ['users', 'logs', 'groups'];
   function showTab(t) {
     document.getElementById('tab-users').style.display  = t === 'users'  ? '' : 'none';
+    document.getElementById('tab-logs').style.display   = t === 'logs'   ? '' : 'none';
     document.getElementById('tab-groups').style.display = t === 'groups' ? '' : 'none';
-    document.querySelectorAll('.tab-btn').forEach((b, i) => b.classList.toggle('active', (i === 0) === (t === 'users')));
+    document.querySelectorAll('.tab-btn').forEach((b, i) => b.classList.toggle('active', TAB_KEYS[i] === t));
+    if (t === 'logs') loadLogs();
   }
 
   // ── UŽIVATELÉ ─────────────────────────────────────────────────────────────────
@@ -665,6 +703,49 @@
     const r = await fetch('/api/admin/groups', { method: 'POST', headers: {'Content-Type':'application/json'}, body: JSON.stringify({ name, displayName }) });
     const data = await r.json();
     if (data.ok) { closeAddGroupModal(); await loadGroups(); } else setMsg(msg, 'err', data.msg || 'Chyba.');
+  }
+
+  // ── ZÁZNAMY (LOGY) ─────────────────────────────────────────────────────────────
+  const ACTION_LABELS = {
+    login:          'Přihlášení',
+    raspis_publish: 'Publikování rozpisu',
+    raspis_save:    'Uložení rozpisu'
+  };
+
+  function formatDateTime(iso) {
+    if (!iso) return '—';
+    const d = new Date(iso);
+    return d.toLocaleDateString('cs-CZ', { day: '2-digit', month: '2-digit', year: 'numeric' }) + ' ' +
+           d.toLocaleTimeString('cs-CZ', { hour: '2-digit', minute: '2-digit' });
+  }
+
+  function formatLogDetails(action, details) {
+    if (!details || Object.keys(details).length === 0) return '—';
+    if (action === 'login') return details.role ? `Skupina: ${esc(details.role)}` : '—';
+    if (action === 'raspis_publish') return details.label ? esc(details.label) : (details.key ? esc(details.key) : '—');
+    if (action === 'raspis_save') return details.key ? `Klíč: ${esc(details.key)}` : '—';
+    return esc(JSON.stringify(details));
+  }
+
+  async function loadLogs() {
+    const tbody = document.getElementById('logs-tbody');
+    tbody.innerHTML = '<tr class="empty-row"><td colspan="5">Načítám…</td></tr>';
+    try {
+      const rows = await fetch('/api/admin/logs').then(r => r.json());
+      if (!Array.isArray(rows) || rows.length === 0) {
+        tbody.innerHTML = '<tr class="empty-row"><td colspan="5">Žádné záznamy.</td></tr>';
+        return;
+      }
+      tbody.innerHTML = rows.map((r, i) => `<tr>
+        <td style="color:#888;font-size:12px">${i + 1}</td>
+        <td style="font-size:12px;white-space:nowrap;">${formatDateTime(r.timestamp)}</td>
+        <td style="font-family:monospace;font-size:12px">${esc(r.user_name)}</td>
+        <td style="font-size:12px">${ACTION_LABELS[r.action] || esc(r.action)}</td>
+        <td style="font-size:12px;color:#666;">${formatLogDetails(r.action, r.details)}</td>
+      </tr>`).join('');
+    } catch {
+      tbody.innerHTML = '<tr class="empty-row"><td colspan="5">Chyba načtení.</td></tr>';
+    }
   }
 
   // ── HESLO ──────────────────────────────────────────────────────────────────────
