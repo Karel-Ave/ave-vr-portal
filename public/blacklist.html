@@ -874,7 +874,6 @@ td.col-edit { width: 68px; text-align: center; padding: 4px; display: flex; gap:
     <input id="search" placeholder="Hledat jméno, hotel, důvod…" autocomplete="off">
     <span id="count-badge"></span>
   </div>
-  <div id="hotel-filter-row"></div>
   <div id="letter-filter-row"></div>
 </div>
 
@@ -1064,7 +1063,6 @@ let auditLog = [];
 let currentUser = null;
 let sortKey = 'name';
 let sortDir = 'asc';
-let activeHotel  = '';
 let activeLetter = '';
 let editingId = null;
 let selectedHistory = new Set();
@@ -1125,7 +1123,6 @@ async function apiFetch(url, opts) {
 async function loadEntries() {
   const data = await apiFetch('/api/blacklist/entries');
   entries = data;
-  renderHotelFilter();
   renderLetterFilter();
   applyFilter();
   updateFooter();
@@ -1136,26 +1133,10 @@ function applyFilter() {
   filtered = entries.filter(e => {
     const matchQ = !q || [e.name, e.hotel, e.birth_date, e.damage, e.stay_date, e.reason, e.added_by]
       .some(v => String(v || '').toLowerCase().includes(q));
-    const matchH = !activeHotel || (e.hotel || '') === activeHotel;
     const matchL = !activeLetter || (e.name || '').toUpperCase().startsWith(activeLetter);
-    return matchQ && matchH && matchL;
+    return matchQ && matchL;
   });
   renderTable();
-}
-
-function renderHotelFilter() {
-  const hotels = [...new Set(entries.map(e => e.hotel || '').filter(Boolean))].sort((a,b) => a.localeCompare(b,'cs'));
-  const row = document.getElementById('hotel-filter-row');
-  if (hotels.length < 2) { row.innerHTML = ''; return; }
-  row.innerHTML = `<span class="hotel-label">Hotel:</span>` +
-    `<button class="hotel-btn${!activeHotel ? ' active' : ''}" onclick="setHotelFilter('')">Vše</button>` +
-    hotels.map(h => `<button class="hotel-btn${activeHotel === h ? ' active' : ''}" onclick="setHotelFilter('${escHtml(h)}')">${escHtml(h)}</button>`).join('');
-}
-
-function setHotelFilter(h) {
-  activeHotel = h;
-  renderHotelFilter();
-  applyFilter();
 }
 
 function renderLetterFilter() {
