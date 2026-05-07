@@ -649,25 +649,9 @@ table.staff-tbl td select:focus { background: var(--input-bg); color: var(--text
 
 .leg-box { width: 12px; height: 12px; border: 1px solid #888; border-radius: 2px; flex-shrink: 0; }
 
-/* ── Zvýraznění aktuálního dne ── */
-.th-daynum.col-today {
-  background: #c0392b !important;
-  color: #ffffff !important;
-}
-.th-dn.col-today {
-  border-top: 2px solid #c0392b !important;
-}
-.th-cover.col-today,
-.hotel-cell.col-today {
-  border-top: 1px solid #c0392b !important;
-  border-bottom: 1px solid #c0392b !important;
-}
+/* ── Zvýraznění aktuálního dne (záloha — primárně inline styly z JS) ── */
 .sch-cell.col-today {
-  box-shadow: inset 2px 0 0 rgba(192,57,43,.55), inset -2px 0 0 rgba(192,57,43,.55) !important;
-}
-[data-theme="dark"] .th-daynum.col-today { background: #a93226 !important; }
-[data-theme="dark"] .sch-cell.col-today {
-  box-shadow: inset 2px 0 0 rgba(192,57,43,.75), inset -2px 0 0 rgba(192,57,43,.75) !important;
+  box-shadow: inset 2px 0 0 rgba(192,57,43,.7), inset -2px 0 0 rgba(192,57,43,.7) !important;
 }
 
 /* ── MOBILNÍ ZOBRAZENÍ ── */
@@ -4544,9 +4528,6 @@ function recalcAll() {
 
 // ── Zvýraznění sloupce s aktuálním dnem ────────────────────────────────────
 function markTodayColumn(month, year) {
-  // Remove previous highlights
-  document.querySelectorAll('.col-today').forEach(el => el.classList.remove('col-today'));
-
   const now = new Date();
   if (now.getMonth() + 1 !== month || now.getFullYear() !== year) return;
 
@@ -4559,12 +4540,26 @@ function markTodayColumn(month, year) {
   });
   if (!todayCis.size) return;
 
-  // Highlight day-number header (th-daynum has data-day)
-  document.querySelectorAll(`.th-daynum[data-day="${todayDay}"]`).forEach(el => el.classList.add('col-today'));
+  // Day-number header: red background + white text (inline style overrides existing inline style)
+  document.querySelectorAll(`.th-daynum[data-day="${todayDay}"]`).forEach(el => {
+    el.style.background = '#c0392b';
+    el.style.color = '#fff';
+  });
 
-  // Highlight d/n sub-header, cover row, hotel cells, schedule cells — all have data-ci
+  // All cells in today's columns: use inline styles directly
   todayCis.forEach(ci => {
-    document.querySelectorAll(`[data-ci="${ci}"]`).forEach(el => el.classList.add('col-today'));
+    document.querySelectorAll(`[data-ci="${ci}"]`).forEach(el => {
+      if (el.classList.contains('sch-cell')) {
+        // Side bars via box-shadow (preserves cell background color)
+        el.style.boxShadow = 'inset 2px 0 0 rgba(192,57,43,.7), inset -2px 0 0 rgba(192,57,43,.7)';
+      } else if (el.classList.contains('th-dn')) {
+        el.style.borderTop = '3px solid #c0392b';
+      } else {
+        // cover row, hotel cells
+        el.style.outline = '1px solid rgba(192,57,43,.8)';
+        el.style.outlineOffset = '-1px';
+      }
+    });
   });
 }
 
