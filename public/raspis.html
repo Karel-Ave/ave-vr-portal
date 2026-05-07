@@ -4,6 +4,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0">
 <title>AVE VR</title>
 <link rel="icon" type="image/png" href="/static/logo.png">
+<link rel="apple-touch-icon" href="/static/logo.png">
 <link rel="stylesheet" href="/static/theme.css">
 <link href="https://fonts.googleapis.com/css2?family=DM+Mono:wght@300;400;500&amp;family=DM+Sans:wght@300;400;500;600&amp;display=swap" rel="stylesheet">
 <style>
@@ -361,8 +362,12 @@ table.staff-tbl td select:focus { background: var(--input-bg); color: var(--text
   .sc-mid { display: none !important; }
   /* Show mobile nav buttons on the right */
   #sc-nav-mobile { display: flex !important; }
-  /* Vertical scroll: real DOM spacer inside schedule-wrap ensures last rows reachable on iOS */
-  #mobile-scroll-spacer { height: 100px; display: block !important; }
+  /* iOS scroll fix: min-height:0 forces flex children to shrink correctly */
+  #content { min-height: 0; }
+  #panel-schedule { min-height: 0; }
+  #schedule-wrap { min-height: 0; overflow-y: scroll; }
+  /* DOM spacer adds real content below last row so iOS can scroll there */
+  #mobile-scroll-spacer { height: 200px; display: block !important; }
   /* Hide legend on mobile (not critical for phone use) */
   #legend { display: none !important; }
   /* Single-row controls on mobile */
