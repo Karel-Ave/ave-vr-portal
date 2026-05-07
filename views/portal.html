@@ -113,6 +113,9 @@
   }
 
   /* ── Sekce ── */
+  .section-block {
+    margin-top: 36px;
+  }
   .section-label {
     font-size: 10px;
     font-weight: 700;
@@ -120,9 +123,7 @@
     text-transform: uppercase;
     color: var(--text-muted);
     margin-bottom: 14px;
-    margin-top: 32px;
   }
-  .section-label:first-of-type { margin-top: 0; }
 
   /* ── Mřížka karet ── */
   .grid {
@@ -351,17 +352,21 @@
       <p>Interní portál AVE Hotels</p>
     </div>
 
-    <!-- Karta skupiny: Rozpis -->
-    <div class="section-label">Rozpis směn</div>
-    <div class="grid" id="grid-rozpis"></div>
+    <!-- Karta skupiny: Rozpis, výplaty -->
+    <div class="section-block">
+      <div class="section-label">Rozpis, výplaty</div>
+      <div class="grid" id="grid-hlavni"></div>
+    </div>
 
-    <!-- Karta skupiny: Ostatní moduly -->
-    <div class="section-label">Ostatní moduly</div>
-    <div class="grid" id="grid-moduly"></div>
+    <!-- Karta skupiny: Smlouvy, blacklist -->
+    <div class="section-block">
+      <div class="section-label">Smlouvy, blacklist</div>
+      <div class="grid" id="grid-smlouvy"></div>
+    </div>
 
     <!-- Karta skupiny: Správa (jen admin) -->
-    <div id="section-admin" style="display:none">
-      <div class="section-label">Správa</div>
+    <div class="section-block" id="section-admin" style="display:none">
+      <div class="section-label">Správa uživatelů</div>
       <div class="grid" id="grid-admin"></div>
     </div>
   </div>
@@ -396,12 +401,12 @@
 
 <script>
   // ── Card definitions ──────────────────────────────────────────────────────
-  const CARDS_ROZPIS = [
-    { icon: '📅', title: 'Rozpis', desc: 'Prohlížení a editace publikovaných rozpisů', href: '/rozpis-view' }
-  ];
-  const CARDS_MODULY = [
+  const CARDS_HLAVNI = [
+    { icon: '📅', title: 'Rozpis', desc: 'Prohlížení a editace publikovaných rozpisů', href: '/rozpis-view' },
     { icon: '⭐', title: 'Odměny', desc: 'Záznamy odměn recepčních', href: null },
-    { icon: '💰', title: 'Provize', desc: 'Provize z prodeje a směnárny', href: null },
+    { icon: '💰', title: 'Provize', desc: 'Provize z prodeje a směnárny', href: null }
+  ];
+  const CARDS_SMLOUVY = [
     { icon: '📄', title: 'Pracovní smlouvy', desc: 'Generování a správa smluv', href: null },
     { icon: '🚫', title: 'Blacklist', desc: 'Správa blacklistu hostů', href: '/blacklist' }
   ];
@@ -488,11 +493,11 @@
 
     const isAdmin = user.role === 'admin';
 
-    const grRozpis = document.getElementById('grid-rozpis');
-    CARDS_ROZPIS.forEach(c => grRozpis.appendChild(makeCard(c)));
+    const grHlavni = document.getElementById('grid-hlavni');
+    CARDS_HLAVNI.forEach(c => grHlavni.appendChild(makeCard(c)));
 
-    const grModuly = document.getElementById('grid-moduly');
-    CARDS_MODULY.forEach(c => grModuly.appendChild(makeCard(c)));
+    const grSmlouvy = document.getElementById('grid-smlouvy');
+    CARDS_SMLOUVY.forEach(c => grSmlouvy.appendChild(makeCard(c)));
 
     if (isAdmin) {
       document.getElementById('section-admin').style.display = 'block';
