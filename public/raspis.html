@@ -284,7 +284,8 @@ table.staff-tbl td select:focus { background: var(--input-bg); color: var(--text
   gap: 3px;
 }
 .sc-left { display: flex; gap: 3px; align-items: center; }
-.sc-mid  { position:absolute; left:50%; transform:translateX(-50%); display: flex; justify-content: center; gap: 3px; pointer-events:auto; }
+/* sc-mid: flex row (desktop) — Hover + nav */
+.sc-mid  { position:absolute; left:50%; transform:translateX(-50%); display: flex; justify-content: center; gap: 3px; align-items: center; pointer-events:auto; }
 .sc-right { display: flex; gap: 3px; align-items: center; }
 /* Pravé 4 tlačítka ve 2 sloupcích — šířka dle nejširšího (Zapamatuj požadavky) */
 .sc-right-grid {
@@ -304,7 +305,7 @@ table.staff-tbl td select:focus { background: var(--input-bg); color: var(--text
 }
 /* Všechna akční tlačítka — stejná pevná šířka jako "Vyber recepční" */
 #toggle-hotels-btn, #btn-filter-day, #btn-filter-night,
-#btn-select-mode, #btn-avail-filter,
+#btn-select-mode, #btn-today-col, #btn-avail-filter,
 .sc-mid .hb {
   width: 88px;
   min-width: 88px;
@@ -331,16 +332,15 @@ table.staff-tbl td select:focus { background: var(--input-bg); color: var(--text
 #btn-select-mode:hover { background:#99c2ff !important; border-color:#3366bb !important; }
 #btn-toggle-highlight:hover { background:#c8c8c8 !important; border-color:#888 !important; color:#333 !important; }
 #btn-avail-filter:hover { background:#4caf50 !important; border-color:#388e3c !important; color:#fff !important; }
-/* sc-mid 2×2 grid */
-.sc-mid-grid {
-  display: grid;
-  grid-template-columns: 1fr 1fr;
-  gap: 3px;
-}
+/* sc-mid-grid no longer used (sc-mid is now a flat flex row) */
 /* When avail-select-mode is active: pointer cursor on d/n sub-headers */
 #scheduleTable.avail-select-mode .th-dn { cursor: pointer; }
 #scheduleTable.avail-select-mode .th-dn:hover { border-color: #388e3c !important; }
 .th-dn.avail-selected { border-color: #388e3c !important; border-width: 2px !important; }
+
+/* Fix D button: yellow bg → need dark text when selected */
+#btn-filter-day.selected { color: #4a3a00 !important; }
+#btn-filter-day.selected::before { color: #4a3a00 !important; }
 
 /* ── Mobile: hotel buttons 2 rows + abbreviated button labels ── */
 @media (max-width: 640px) {
@@ -348,11 +348,22 @@ table.staff-tbl td select:focus { background: var(--input-bg); color: var(--text
   #hotel-btns { display: inline-flex !important; flex-wrap: wrap !important; gap: 2px; }
   /* Abbreviated action button labels via data-short attribute */
   .hb[data-short] { font-size: 0 !important; padding: 2px 2px !important;
-    min-width: 20px !important; max-width: 26px !important; width: auto !important;
+    min-width: 34px !important; max-width: 34px !important; width: 34px !important;
     text-align: center; }
-  .hb[data-short]::before { content: attr(data-short); font-size: 10px; white-space: nowrap; }
-  /* sc-mid grid buttons also abbreviated */
-  .sc-mid-grid .hb[data-short] { width: auto !important; min-width: 20px !important; }
+  .hb[data-short]::before { content: attr(data-short); font-size: 11px; white-space: nowrap; }
+  /* Hide hover button, sum toggle buttons on mobile */
+  #btn-toggle-highlight { display: none !important; }
+  #btn-toggle-sums { display: none !important; }
+  #btn-toggle-hoursonly { display: none !important; }
+  .sc-right-grid { display: none !important; }
+  /* Hide sc-mid on mobile (Hover+nav move to right) */
+  .sc-mid { display: none !important; }
+  /* Show mobile nav buttons on the right */
+  #sc-nav-mobile { display: flex !important; }
+  /* Vertical scroll fix: ensure last rows reachable on iOS */
+  #schedule-wrap { padding-bottom: 60px; }
+  /* Remove min-height constraint set for desktop 2x2 grid */
+  #sc-row2 { min-height: 30px !important; }
 }
 #btn-remember-req:hover, #schedule-controls #btn-remember-req:hover { background:#d4b8f0 !important; border-color:#7a4db0 !important; color:#3a1060 !important; }
 #btn-remember-req.remembered:hover, #schedule-controls #btn-remember-req.remembered:hover { background:#dcc8f5 !important; border-color:#6a2d90 !important; color:#3a1060 !important; }
@@ -3171,30 +3182,33 @@ table.staff-tbl td select:focus { background: var(--input-bg); color: var(--text
           <!-- Pravá zóna řádek 1 — grid 2 sloupce -->
           <!-- btn-clear-req odstraněno, funkce přesunuta do btn-remember-req -->
         </div>
-        <div style="display:flex; align-items:center; gap:3px; position:relative; min-height:45px;">
+        <div id="sc-row2" style="display:flex; align-items:center; gap:3px; position:relative; min-height:30px;">
           <!-- Levá zóna řádek 2 -->
           <div class="sc-left" id="sc-left2">
             <button class="hb" id="toggle-hotels-btn" data-short="H" onclick="toggleHotelRows()" style="background:#FFE0B2;border-color:#e0924a;color:#7a4010;">Skrýt hotely</button>
             <button class="hb" id="btn-filter-day" data-short="D" onclick="filterByShiftType('day')" style="background:#F8FF35; border-color:#ccc;">Jen denní</button>
             <button class="hb" id="btn-filter-night" data-short="N" onclick="filterByShiftType('night')" style="background:#4DC3F5; border-color:#ccc;">Jen noční</button>
             <button class="hb" id="btn-select-mode" data-short="OV" onclick="toggleSelectMode()" style="background:#cce0ff;border-color:#6699cc;color:#1a4a8a;">Označ vybrané</button>
+            <button class="hb" id="btn-today-col" data-short="AD" onclick="toggleTodayCol()" style="background:#ffcdd2;border-color:#ef9a9a;color:#c62828;">Aktuální den</button>
             <button class="hb" id="btn-avail-filter" data-short="JD" onclick="toggleAvailFilter()" style="background:#c8f0c8;border-color:#4caf50;color:#1a5c1a;">Jen dostupní</button>
             <button class="hb" id="btn-show-hidden" onclick="showAllHidden()" style="display:none">Zobraz skryté</button>
             <button class="hb hb-danger" id="btn-cancel-select" onclick="cancelSelectMode()" style="display:none">Zruš výběr</button>
           </div>
-          <!-- Střed: 2×2 grid (Hover on | Aktuální den / Zpět | Vpřed) -->
+          <!-- Střed: Hover + Zpět + Vpřed (desktop; hidden on mobile) -->
           <div class="sc-mid">
-            <div class="sc-mid-grid">
-              <button class="hb" id="btn-toggle-highlight" data-short="Ho" onclick="toggleRowHighlight()" style="background:#e0e0e0;border-color:#aaa;color:#333;">Hover off</button>
-              <button class="hb" id="btn-today-col" data-short="AD" onclick="toggleTodayCol()" style="background:#e0e0e0;border-color:#aaa;color:#333;">Aktuální den</button>
-              <button class="hb" data-short="&lt;" onclick="historyUndo()">↩ Zpět</button>
-              <button class="hb" data-short="&gt;" onclick="historyRedo()">↪ Vpřed</button>
-            </div>
+            <button class="hb" id="btn-toggle-highlight" data-short="Ho" onclick="toggleRowHighlight()" style="background:#e0e0e0;border-color:#aaa;color:#333;">Hover off</button>
+            <button class="hb" onclick="historyUndo()">↩ Zpět</button>
+            <button class="hb" onclick="historyRedo()">↪ Vpřed</button>
           </div>
-          <!-- Pravá zóna řádek 2 — stejný grid -->
+          <!-- Pravá zóna řádek 2 — desktop sum toggles -->
           <div class="sc-right-grid" style="margin-left:auto;">
             <button class="hb sc-right-btn" id="btn-toggle-sums" onclick="toggleSums()">Skrýt součty</button>
             <button class="hb sc-right-btn" id="btn-toggle-hoursonly" onclick="toggleHoursOnly()">Jen hodiny</button>
+          </div>
+          <!-- Mobilní navigace Zpět/Vpřed (vpravo; hidden on desktop) -->
+          <div id="sc-nav-mobile" style="margin-left:auto; display:none; gap:3px;">
+            <button class="hb" style="width:38px;min-width:38px;" onclick="historyUndo()">&lt;</button>
+            <button class="hb" style="width:38px;min-width:38px;" onclick="historyRedo()">&gt;</button>
           </div>
         </div>
       </div>
@@ -4124,14 +4138,16 @@ function toggleAvailFilter() {
   availFilterMode = !availFilterMode;
   const btn = document.getElementById('btn-avail-filter');
   if (availFilterMode) {
-    btn.classList.add('selected');
-    btn.style.background = '';
-    btn.style.borderColor = '';
-    btn.style.color = '';
+    // Active: dark green (use inline styles, NOT .selected class which would make it accent-blue)
+    btn.classList.remove('selected');
+    btn.style.background = '#2e7d32';
+    btn.style.borderColor = '#1b5e20';
+    btn.style.color = '#fff';
     availFilterDay = null;
     availFilterDn  = null;
     document.getElementById('scheduleTable').classList.add('avail-select-mode');
   } else {
+    // Inactive: light green
     btn.classList.remove('selected');
     btn.style.background = '#c8f0c8';
     btn.style.borderColor = '#4caf50';
@@ -4727,16 +4743,16 @@ function markTodayColumn(month, year) {
   if (!_todayCis.size) return;
   _todayDay = todayDay;
 
-  // Day-number header: green background + white text
+  // Day-number header: red background + white text
   document.querySelectorAll(`.th-daynum[data-day="${todayDay}"]`).forEach(el => {
-    el.style.background = '#27ae60';
+    el.style.background = '#e53030';
     el.style.color = '#fff';
   });
 
-  // Green outer bars: left on d-column, right on n-column (no internal row borders)
+  // Red outer bars: left on d-column, right on n-column (no internal row borders)
   _todayCis.forEach(ci => {
     const isDcol = calCols[ci]?.dn === 'd';
-    const shadow = isDcol ? 'inset 3px 0 0 #27ae60' : 'inset -3px 0 0 #27ae60';
+    const shadow = isDcol ? 'inset 3px 0 0 #e53030' : 'inset -3px 0 0 #e53030';
     document.querySelectorAll(`[data-ci="${ci}"]`).forEach(el => {
       el.style.boxShadow = shadow;
     });
@@ -4747,15 +4763,17 @@ function toggleTodayCol() {
   todayColVisible = !todayColVisible;
   const btn = document.getElementById('btn-today-col');
   if (todayColVisible) {
-    btn.style.background = '#27ae60';
-    btn.style.borderColor = '#1e8a4a';
+    // Active: dark red
+    btn.style.background = '#c62828';
+    btn.style.borderColor = '#b71c1c';
     btn.style.color = '#fff';
     markTodayColumn(state.month, state.year);
     scrollToToday();
   } else {
-    btn.style.background = '#e0e0e0';
-    btn.style.borderColor = '#aaa';
-    btn.style.color = '#333';
+    // Inactive: light red (matches default button style in HTML)
+    btn.style.background = '#ffcdd2';
+    btn.style.borderColor = '#ef9a9a';
+    btn.style.color = '#c62828';
     clearTodayMarks();
   }
 }
