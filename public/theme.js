@@ -37,16 +37,28 @@
       });
     }
 
-    // Sync with server preference (overrides localStorage if different)
+    // Sync with server preference.
+    // Rule: if localStorage already has a value (user has chosen before on
+    // this browser), that value wins and is pushed to the server.
+    // Only when localStorage has never been set (truly new device/browser)
+    // do we pull the server preference — this gives cross-device sync on
+    // first login while respecting any explicit local choice (e.g. toggling
+    // on the login page before signing in).
     fetch('/api/me').then(function (r) {
       return r.ok ? r.json() : null;
     }).then(function (user) {
       if (!user || !user.theme) return;
       var serverDark = user.theme === 'dark';
-      var localDark  = localStorage.getItem(KEY) === 'dark';
-      if (serverDark !== localDark) {
+      var localRaw   = localStorage.getItem(KEY); // null = never set on this browser
+
+      if (localRaw === null) {
+        // New browser / cleared storage → adopt server preference
         localStorage.setItem(KEY, serverDark ? 'dark' : 'light');
         applyTheme(serverDark);
+      } else {
+        // Local preference exists → push it to server to keep in sync
+        var localDark = localRaw === 'dark';
+        if (serverDark !== localDark) saveToServer(localDark);
       }
     }).catch(function () {});
   }
