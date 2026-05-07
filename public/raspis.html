@@ -79,8 +79,8 @@
   color: #1A1A18 !important;
 }
 /* Dark mode: schedule cells — light/white text on dark backgrounds */
-[data-theme="dark"] .sch-cell,
-[data-theme="dark"] .sch-cell input,
+[data-theme="dark"] .sch-cell { color: #E8E6DC !important; }
+[data-theme="dark"] .sch-cell input { color: #E8E6DC !important; }
 [data-theme="dark"] .sch-sum { color: #E8E6DC; }
 /* Sum cells keep surface background */
 [data-theme="dark"] .sch-sum { background: var(--surface); }
@@ -4274,11 +4274,12 @@ function buildSchedule() {
     tr.className = 'sch-row';
     tr.dataset.staffIdx = si;
 
-    // Name cell
+    // Name cell — always dark text so it's readable on the bright type colours
     const nameTd = document.createElement('td');
     nameTd.className = 'sch-name';
     const nameBg = s.type === 'Denní' ? '#F8FF35' : s.type === 'Noční' ? '#4DC3F5' : s.type === 'Obojí' ? '#A8E05A' : s.type === 'Vedoucí' ? '#FFB347' : s.type === 'Speciální' ? '#FF8585' : '#fff';
     nameTd.style.background = nameBg;
+    nameTd.style.color = '#1A1A18';
     // Fond dot + name
     const fondDot = document.createElement('span');
     fondDot.className = 'fond-dot';
@@ -4373,8 +4374,9 @@ function buildSchedule() {
       // Background
       const bg = getStaffCellBg(col, month, year, si);
       td.style.background = bg;
+      const _dark = document.documentElement.getAttribute('data-theme') === 'dark';
       if ((col.dn === 'n' && !isWeekend(col, month, year)) || (isWeekend(col, month, year) && col.dn === 'n')) {
-        td.style.color = '#000';
+        td.style.color = _dark ? '#E8E6DC' : '#000';
       }
 
       // Input
@@ -4384,7 +4386,7 @@ function buildSchedule() {
       inp.value = getScheduleVal(si, ci);
       inp.dataset.si = si;
       inp.dataset.ci = ci;
-      inp.style.color = '#000';
+      inp.style.color = _dark ? '#E8E6DC' : '#000';
 
       inp.addEventListener('keydown', (e) => {
         if (e.key === 'Delete' || e.key === 'Backspace') {
@@ -4541,7 +4543,7 @@ function recalcSums(si) {
     const val = (getScheduleVal(si, ci) || '').toUpperCase();
     if (val !== 'P') return;
     const inp = document.querySelector(`input[data-si="${si}"][data-ci="${ci}"]`);
-    if (inp) inp.style.color = pCount > 1 ? '#cc0000' : '#000';
+    if (inp) inp.style.color = pCount > 1 ? '#cc0000' : (document.documentElement.getAttribute('data-theme') === 'dark' ? '#E8E6DC' : '#000');
   });
 
   // Conditional coloring of totHrs based on contract type and fond
@@ -6836,6 +6838,11 @@ document.addEventListener('mouseup', (e) => {
     });
 
     initPortal();
+
+    // Rebuild schedule when theme toggles so inline cell colours update
+    new MutationObserver(function () {
+      if (typeof buildSchedule === 'function') buildSchedule();
+    }).observe(document.documentElement, { attributes: true, attributeFilter: ['data-theme'] });
   });
 })();
 </script>

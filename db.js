@@ -32,6 +32,10 @@ async function init() {
       created_at TIMESTAMPTZ DEFAULT NOW()
     )
   `);
+  // Safe migration: add theme column if it doesn't exist yet
+  await db.query(`
+    ALTER TABLE users ADD COLUMN IF NOT EXISTS theme VARCHAR(5) DEFAULT 'light'
+  `);
 
   await db.query(`
     CREATE TABLE IF NOT EXISTS settings (

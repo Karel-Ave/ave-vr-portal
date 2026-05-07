@@ -76,6 +76,19 @@ app.get('/rozpis-view', requireLogin, (req, res) =>
 
 app.get('/api/me', requireLogin, (req, res) => res.json(req.session.user));
 
+// Save theme preference for the current user
+app.patch('/api/me/theme', requireLogin, async (req, res) => {
+  const theme = req.body.theme === 'dark' ? 'dark' : 'light';
+  try {
+    const db = getPool();
+    await db.query('UPDATE users SET theme = $1 WHERE id = $2', [theme, req.session.user.id]);
+    req.session.user.theme = theme;
+    res.json({ ok: true });
+  } catch (err) {
+    res.json({ ok: false });
+  }
+});
+
 app.post('/login', async (req, res) => {
   const { username, password } = req.body;
   try {
@@ -89,7 +102,8 @@ app.post('/login', async (req, res) => {
       id: user.id,
       name: user.name,
       username: user.username,
-      role: user.role
+      role: user.role,
+      theme: user.theme || 'light'
     };
     res.redirect('/portal');
   } catch (err) {

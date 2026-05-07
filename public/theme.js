@@ -11,18 +11,44 @@
     if (btn) btn.textContent = dark ? '☀️' : '🌙';
   }
 
-  // Apply immediately (before DOM ready) to prevent FOUC
+  // Apply immediately from localStorage to prevent FOUC
   applyTheme(localStorage.getItem(KEY) === 'dark');
+
+  function saveToServer(dark) {
+    try {
+      fetch('/api/me/theme', {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ theme: dark ? 'dark' : 'light' })
+      }).catch(function () {});
+    } catch (e) {}
+  }
 
   function setup() {
     var btn = document.getElementById('btn-theme');
-    if (!btn) return;
-    btn.textContent = document.documentElement.getAttribute('data-theme') === 'dark' ? '☀️' : '🌙';
-    btn.addEventListener('click', function () {
-      var isDark = document.documentElement.getAttribute('data-theme') === 'dark';
-      localStorage.setItem(KEY, isDark ? 'light' : 'dark');
-      applyTheme(!isDark);
-    });
+    if (btn) {
+      btn.textContent = document.documentElement.getAttribute('data-theme') === 'dark' ? '☀️' : '🌙';
+      btn.addEventListener('click', function () {
+        var isDark = document.documentElement.getAttribute('data-theme') === 'dark';
+        var newDark = !isDark;
+        localStorage.setItem(KEY, newDark ? 'dark' : 'light');
+        applyTheme(newDark);
+        saveToServer(newDark);
+      });
+    }
+
+    // Sync with server preference (overrides localStorage if different)
+    fetch('/api/me').then(function (r) {
+      return r.ok ? r.json() : null;
+    }).then(function (user) {
+      if (!user || !user.theme) return;
+      var serverDark = user.theme === 'dark';
+      var localDark  = localStorage.getItem(KEY) === 'dark';
+      if (serverDark !== localDark) {
+        localStorage.setItem(KEY, serverDark ? 'dark' : 'light');
+        applyTheme(serverDark);
+      }
+    }).catch(function () {});
   }
 
   if (document.readyState === 'loading') {
