@@ -3158,7 +3158,7 @@ table.staff-tbl td select:focus { background: var(--input-bg); color: var(--text
           <!-- Pravá zóna řádek 1 — grid 2 sloupce -->
           <!-- btn-clear-req odstraněno, funkce přesunuta do btn-remember-req -->
         </div>
-        <div style="display:flex; align-items:center; gap:3px; position:relative;">
+        <div style="display:flex; align-items:center; gap:3px; position:relative; min-height:45px;">
           <!-- Levá zóna řádek 2 -->
           <div class="sc-left" id="sc-left2">
             <button class="hb" id="toggle-hotels-btn" onclick="toggleHotelRows()" style="background:#FFE0B2;border-color:#e0924a;color:#7a4010;">Skrýt hotely</button>
@@ -3347,36 +3347,21 @@ window.onload = () => {
   const urlPath = window.location.pathname;
   const urlName = urlPath.split('/').pop();
   if (urlName && urlName.endsWith('.html')) state.fileName = urlName;
+  // Set defaults BEFORE buildSchedule so every build respects them (incl. portal async reload)
+  // Default: "Jen hodiny" active
+  sumViewMode = 'hoursonly';
+  document.getElementById('scheduleTable').classList.add('sums-hoursonly');
+  document.getElementById('btn-toggle-hoursonly').textContent = 'Všechny součty';
+  document.getElementById('btn-toggle-sums').style.display = 'none';
+  // Default: "Skrýt hotely" active
+  state.hotelsVisible = false;
+  document.getElementById('toggle-hotels-btn').textContent = 'Zobrazit hotely';
+
   const loaded = autoLoad();
   if (!loaded) loadDefaultStaff();
   renderStaff();
   buildSchedule();
   buildHotelBtns();
-
-  // Defaults: "Jen hodiny" + "Skrýt hotely" active on first open (reset on logout/page reload)
-  toggleHoursOnly();  // activate hoursonly mode
-  toggleHotelRows();  // hide hotel rows (starts visible, toggle → hidden)
-
-  // Event delegation: th-dn click in avail-select-mode
-  document.getElementById('scheduleTable').addEventListener('click', function(e) {
-    const thDn = e.target.closest('.th-dn[data-ci]');
-    if (!thDn || !availFilterMode) return;
-    const ci = parseInt(thDn.dataset.ci);
-    const col = calCols[ci];
-    if (!col) return;
-    if (availFilterDay === ci) {
-      // Click same column again → deselect
-      availFilterDay = null;
-      availFilterDn  = null;
-      document.querySelectorAll('.th-dn.avail-selected').forEach(el => el.classList.remove('avail-selected'));
-    } else {
-      availFilterDay = ci;
-      availFilterDn  = col.dn;
-      document.querySelectorAll('.th-dn.avail-selected').forEach(el => el.classList.remove('avail-selected'));
-      thDn.classList.add('avail-selected');
-    }
-    applyAvailFilter();
-  });
 
   // Show "Zruš požadavky" if requirements were saved
   if (state.requirements && Object.keys(state.requirements).length > 0) {
@@ -4222,6 +4207,10 @@ function buildSchedule() {
 
   calCols = getCalCols(month, year);
 
+  // Reset avail filter column selection (old th-dn cells are about to be destroyed)
+  availFilterDay = null;
+  availFilterDn  = null;
+
   const thead = document.getElementById('sch-thead');
   const tbody = document.getElementById('sch-tbody');
   thead.innerHTML = '';
@@ -4294,6 +4283,23 @@ function buildSchedule() {
     else if (isWe && col.dn === 'n') { th.style.background = 'var(--cell-weekend-night)'; th.style.color = '#fff'; }
     else if (col.dn === 'n') th.style.background = 'var(--cell-weekday-night)';
     th.textContent = col.dn;
+    // Avail filter: direct onclick (more reliable than event delegation)
+    th.onclick = (function(capturedCi, capturedCol) {
+      return function() {
+        if (!availFilterMode) return;
+        if (availFilterDay === capturedCi) {
+          availFilterDay = null;
+          availFilterDn  = null;
+          document.querySelectorAll('.th-dn.avail-selected').forEach(el => el.classList.remove('avail-selected'));
+        } else {
+          availFilterDay = capturedCi;
+          availFilterDn  = capturedCol.dn;
+          document.querySelectorAll('.th-dn.avail-selected').forEach(el => el.classList.remove('avail-selected'));
+          this.classList.add('avail-selected');
+        }
+        applyAvailFilter();
+      };
+    })(ci, col);
     rowDN.appendChild(th);
   });
   thead.appendChild(rowDN);
@@ -4620,7 +4626,7 @@ function buildSchedule() {
 function recalcAll() {
   state.staff.forEach((_, si) => recalcSums(si));
   recalcHotelStatus();
-  markTodayColumn(month, year);
+  markTodayColumn(state.month, state.year);
 }
 
 // ── Zvýraznění sloupce s aktuálním dnem ────────────────────────────────────
@@ -4700,7 +4706,7 @@ function toggleTodayCol() {
     btn.style.borderColor = '#aaa';
     btn.style.color = '#333';
   }
-  markTodayColumn(month, year);
+  markTodayColumn(state.month, state.year);
 }
 
 function recalcSums(si) {
