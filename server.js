@@ -15,6 +15,9 @@ app.use(express.urlencoded({ extended: true }));
 
 // Statické soubory
 app.use('/static', express.static(path.join(__dirname, 'public')));
+// Apple touch icon (pro iOS Oblíbené/plochu)
+app.get('/apple-touch-icon.png', (req, res) => res.sendFile(path.join(__dirname, 'public', 'apple-touch-icon.png')));
+app.get('/apple-touch-icon-precomposed.png', (req, res) => res.sendFile(path.join(__dirname, 'public', 'apple-touch-icon.png')));
 
 // Sessions uložené v PostgreSQL
 const pgSession = require('connect-pg-simple')(session);
