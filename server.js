@@ -755,11 +755,9 @@ function blBuildEmailHtml(adds, removes) {
   const SP = 'margin: 0 0 12px 0;';  // standard paragraph spacing
 
   function personCard(borderColor, bgColor, lines) {
-    return `<table cellpadding="0" cellspacing="0" width="100%" style="margin: 0 0 10px 0; border-collapse: collapse; width: 100%;">
-      <tr><td style="padding: 11px 15px; border: 1px dashed ${borderColor}88; border-left: 4px solid ${borderColor}; background: ${bgColor}; font-size: 11pt; word-break: break-word; white-space: normal;">
-        ${lines.join('<br>')}
-      </td></tr>
-    </table>`;
+    return `<div style="margin: 0 0 10px 0; padding: 11px 15px; border: 1px dashed ${borderColor}88; border-left: 4px solid ${borderColor}; background: ${bgColor}; font-size: 11pt; word-break: break-word; line-height: 1.6; box-sizing: border-box;">
+      ${lines.join('<br>')}
+    </div>`;
   }
 
   let html = `<div style="font-family: Calibri, Arial, sans-serif; font-size: 11pt; max-width: 640px; color: #1a1a1a; line-height: 1.6;">`;
