@@ -657,7 +657,7 @@ table.staff-tbl td select:focus { background: #fff; border-radius: 2px; }
     <button id="portal-import-btn" class="btn btn-sm">Nahrát rozpis</button>
     <input type="file" id="portal-import-input" accept=".json" style="display:none">
     <button id="portal-delete-btn" class="btn btn-sm btn-danger" style="display:none">Smazat</button>
-    <button id="portal-trash-btn" class="btn btn-sm" style="display:none">Koš</button>
+    <button id="portal-trash-btn" class="btn btn-sm" style="display:none">Archiv</button>
   </div>
   <div style="position:absolute;left:50%;transform:translateX(-50%);display:flex;align-items:center;gap:6px;">
     <button id="portal-edit-btn" class="btn btn-sm" style="background:#f0c800;color:#333;border-color:#c8a800;font-weight:600;">Editovat</button>
@@ -6490,18 +6490,20 @@ document.addEventListener('mouseup', (e) => {
       if (saveBtn) saveBtn.style.display = '';
       if (status)  { status.textContent = ''; status.style.display = 'none'; }
     } else if (lockInfo && lockInfo.userId !== _myUserId) {
-      editBtn.textContent = 'Editovat';
-      editBtn.style.cssText = 'background:#f0c800;color:#333;border-color:#c8a800;font-weight:600;opacity:0.5;cursor:not-allowed;';
+      // Someone else is editing — hide the button, show only the status text
+      editBtn.style.display = 'none';
       if (saveBtn) saveBtn.style.display = 'none';
       if (status) {
         const since = new Date(lockInfo.since);
         const t = since.toLocaleTimeString('cs-CZ', {hour:'2-digit', minute:'2-digit'});
-        status.textContent = 'Právě edituje ' + lockInfo.userName + ' od ' + t;
-        status.style.display = '';
+        status.textContent = '🔒 Edituje ' + lockInfo.userName + ' od ' + t;
+        status.style.cssText = 'font-size:12px;color:#c00;font-weight:600;white-space:nowrap;display:inline;';
       }
     } else {
+      // No lock — show Editovat button normally
+      editBtn.style.display = '';
       editBtn.textContent = 'Editovat';
-      editBtn.style.cssText = 'background:#f0c800;color:#333;border-color:#c8a800;font-weight:600;';
+      editBtn.style.cssText = 'background:#f0c800;color:#333;border-color:#c8a800;font-weight:600;display:inline-block;';
       if (saveBtn) saveBtn.style.display = 'none';
       if (status)  { status.textContent = ''; status.style.display = 'none'; }
     }

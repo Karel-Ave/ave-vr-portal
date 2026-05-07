@@ -614,7 +614,7 @@ td.col-edit { width: 68px; text-align: center; padding: 4px; display: flex; gap:
   font-family: inherit;
   background: #fff;
   outline: none;
-  cursor: pointer;
+  cursor: text;
   transition: border-color .15s;
   width: 0;
 }
@@ -734,7 +734,7 @@ td.col-edit { width: 68px; text-align: center; padding: 4px; display: flex; gap:
             <th class="sortable" data-sort="hotel">Hotel <span class="sort-arrow" id="sa-hotel"></span></th>
             <th class="sortable" data-sort="birth_date">Datum nar. <span class="sort-arrow" id="sa-birth_date"></span></th>
             <th>Škoda</th>
-            <th class="sortable" data-sort="stay_date">Datum pobytu <span class="sort-arrow" id="sa-stay_date"></span></th>
+            <th class="sortable" data-sort="stay_date">Datum odjezdu <span class="sort-arrow" id="sa-stay_date"></span></th>
             <th>Důvod</th>
             <th id="th-edit" style="width:68px;"></th>
           </tr>
@@ -883,7 +883,7 @@ td.col-edit { width: 68px; text-align: center; padding: 4px; display: flex; gap:
         <input type="text" id="edit-damage" placeholder="1500 Kč, 2275 /2 os." autocomplete="off">
       </div>
       <div class="form-field">
-        <label>Datum pobytu</label>
+        <label>Datum odjezdu</label>
         <input type="date" id="edit-sdate">
       </div>
     </div>
@@ -1097,7 +1097,7 @@ function createPersonBlock(num) {
         <input type="text" class="f-damage" placeholder="1500 Kč, 2275 /2 os." autocomplete="off">
       </div>
       <div class="form-field">
-        <label>Datum pobytu</label>
+        <label>Datum odjezdu</label>
         <input type="date" class="f-sdate">
       </div>
     </div>
@@ -1631,7 +1631,7 @@ document.getElementById('search').addEventListener('input', applyFilter);
 
     const row = document.createElement('div');
     row.className = 'cdp-row';
-    row.innerHTML = `<input type="text" class="cdp-text" readonly placeholder="dd.mm.rrrr">` +
+    row.innerHTML = `<input type="text" class="cdp-text" placeholder="dd.mm.rrrr">` +
                     `<button type="button" class="cdp-icon-btn" tabindex="-1">&#128197;</button>`;
     wrap.insertBefore(row, input);
 
@@ -1739,11 +1739,30 @@ document.getElementById('search').addEventListener('input', applyFilter);
       openPopup = popup;
     }
 
-    dispInp.addEventListener('mousedown', function(e) {
-      e.preventDefault();
-      if (popup.style.display !== 'none') { closeAll(); return; }
-      openPopupFn();
+    // Text field: manual typing — parse on blur
+    dispInp.addEventListener('blur', function() {
+      const val = this.value.trim();
+      if (!val) { clearValue(); return; }
+      // Accept dd.mm.yyyy or d.m.yyyy
+      const m = val.match(/^(\d{1,2})\.(\d{1,2})\.(\d{4})$/);
+      if (m) {
+        const d = +m[1], mo = +m[2] - 1, y = +m[3];
+        if (mo >= 0 && mo <= 11 && d >= 1 && d <= 31 && y >= 1900) {
+          viewYear = y; viewMonth = mo;
+          setValue(y, mo, d);
+          return;
+        }
+      }
+      // Invalid — restore from native input
+      if (input.value) {
+        const p = input.value.split('-');
+        this.value = `${p[2]}.${p[1]}.${p[0]}`;
+      } else {
+        this.value = '';
+      }
     });
+    // Prevent popup from closing when clicking inside text field
+    dispInp.addEventListener('mousedown', function(e) { e.stopPropagation(); });
     iconBtn.addEventListener('mousedown', function(e) {
       e.preventDefault();
       if (popup.style.display !== 'none') { closeAll(); return; }

@@ -80,7 +80,7 @@ app.post('/login', async (req, res) => {
   const { username, password } = req.body;
   try {
     const db = getPool();
-    const { rows } = await db.query('SELECT * FROM users WHERE username = $1', [username]);
+    const { rows } = await db.query('SELECT * FROM users WHERE LOWER(username) = LOWER($1)', [username]);
     const user = rows[0];
     if (!user || !bcrypt.compareSync(password, user.password_hash)) {
       return res.redirect('/?error=1');
@@ -170,7 +170,7 @@ app.post('/api/users', requireLogin, requireAdmin, async (req, res) => {
 
 app.patch('/api/users/:id', requireLogin, requireAdmin, async (req, res) => {
   const id = parseInt(req.params.id, 10);
-  const { name, role, password } = req.body;
+  const { name, role, password, username } = req.body;
 
   if (id === req.session.user.id && role && role !== 'admin') {
     return res.json({ ok: false, msg: 'Nemůžete si sami odebrat roli admina.' });
@@ -178,6 +178,14 @@ app.patch('/api/users/:id', requireLogin, requireAdmin, async (req, res) => {
 
   try {
     const db = getPool();
+    if (username) {
+      // Check username not taken by someone else
+      const { rows: taken } = await db.query(
+        'SELECT id FROM users WHERE LOWER(username) = LOWER($1) AND id != $2', [username.trim(), id]
+      );
+      if (taken.length > 0) return res.json({ ok: false, msg: 'Toto uživatelské jméno je již obsazeno.' });
+      await db.query('UPDATE users SET username = $1 WHERE id = $2', [username.trim(), id]);
+    }
     if (name) await db.query('UPDATE users SET name = $1 WHERE id = $2', [name.trim(), id]);
     if (role) await db.query('UPDATE users SET role = $1 WHERE id = $2', [role, id]);
     if (password) {
@@ -747,8 +755,8 @@ function blBuildEmailHtml(adds, removes) {
   const SP = 'margin: 0 0 12px 0;';  // standard paragraph spacing
 
   function personCard(borderColor, bgColor, lines) {
-    return `<table cellpadding="0" cellspacing="0" style="margin: 0 0 10px 0; border-collapse: collapse;">
-      <tr><td style="padding: 11px 15px; border-left: 4px solid ${borderColor}; border: 1px dashed ${borderColor}88; background: ${bgColor}; font-size: 11pt; word-break: break-word; white-space: normal;">
+    return `<table cellpadding="0" cellspacing="0" width="100%" style="margin: 0 0 10px 0; border-collapse: collapse; width: 100%;">
+      <tr><td style="padding: 11px 15px; border: 1px dashed ${borderColor}88; border-left: 4px solid ${borderColor}; background: ${bgColor}; font-size: 11pt; word-break: break-word; white-space: normal;">
         ${lines.join('<br>')}
       </td></tr>
     </table>`;
@@ -799,7 +807,7 @@ function blBuildEmailHtml(adds, removes) {
         `<em style="color:#444;font-size:10pt;">Důvod zařazení: ${reason}</em>`
       ]);
     }
-    html += `<p style="${SP}">Tyto hosty v žádném případě neubytovávejte.</p>`;
+    html += `<p style="${SP}">${adds.length === 1 ? 'Tohoto hosta' : 'Tyto hosty'} v žádném případě neubytovávejte.</p>`;
   }
 
   const LI = 'font-size:11pt;font-family:Calibri,Arial,sans-serif;';
@@ -1081,7 +1089,7 @@ app.get('/api/blacklist/export/pdf', requireLogin, async (req, res) => {
       { key: 'hotel',      label: 'Hotel',         w: 34.02  },
       { key: 'birth_date', label: 'Datum nar.',    w: 53.87  },
       { key: 'damage',     label: 'Skoda',         w: 48.20  },
-      { key: 'stay_date',  label: 'Datum pobytu',  w: 53.87  },
+      { key: 'stay_date',  label: 'Datum odjezdu', w: 53.87  },
       { key: 'reason',     label: 'Popis',         w: 212.58 }
     ];
 

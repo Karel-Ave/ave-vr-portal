@@ -325,7 +325,7 @@
     document.getElementById('u-name').value = name;
     document.getElementById('u-username').value = username;
     document.getElementById('u-password').value = '';
-    document.getElementById('u-username').disabled = true;
+    document.getElementById('u-username').disabled = false;
     document.getElementById('pw-hint-label').style.display = 'inline';
     populateRoleSelect(document.getElementById('u-role'), role);
     clearMsg('user-msg');
@@ -348,7 +348,8 @@
       if (!password) { setMsg(msg, 'err', 'Zadejte heslo.'); return; }
       r = await fetch('/api/users', { method: 'POST', headers: {'Content-Type':'application/json'}, body: JSON.stringify({ name, username, password, role }) });
     } else {
-      const body = { name, role }; if (password) body.password = password;
+      if (!username) { setMsg(msg, 'err', 'Zadejte uživatelské jméno.'); return; }
+      const body = { name, role, username }; if (password) body.password = password;
       r = await fetch(`/api/users/${currentUserId}`, { method: 'PATCH', headers: {'Content-Type':'application/json'}, body: JSON.stringify(body) });
     }
     const data = await r.json();
