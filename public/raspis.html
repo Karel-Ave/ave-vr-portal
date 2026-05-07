@@ -2,7 +2,8 @@
 <html lang="cs"><head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0">
-<title>Super Rozpis</title>
+<title>AVE VR</title>
+<link rel="icon" type="image/png" href="/static/logo.png">
 <script src="/static/theme.js"></script>
 <link rel="stylesheet" href="/static/theme.css">
 <link href="https://fonts.googleapis.com/css2?family=DM+Mono:wght@300;400;500&amp;family=DM+Sans:wght@300;400;500;600&amp;display=swap" rel="stylesheet">
@@ -6413,7 +6414,7 @@ document.addEventListener('mouseup', (e) => {
   let _autosaveTimer = null;
   const LOCK_APP = 'raspis-view';
   const AUTOSAVE_INTERVAL = 2 * 60 * 1000;
-  const POLL_INTERVAL = 30 * 1000;
+  const POLL_INTERVAL = 8 * 1000;
 
   // ── Load user info ──────────────────────────────────────────────────────────
   async function initPortal() {

@@ -3,7 +3,8 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>AVE Hotels – Portál</title>
+<title>AVE VR</title>
+<link rel="icon" type="image/png" href="/static/logo.png">
 <script src="/static/theme.js"></script>
 <link rel="stylesheet" href="/static/theme.css">
 <style>
@@ -447,7 +448,8 @@
       frame.classList.add('visible');
     };
     frame.src = url;
-    history.pushState({ app: url }, '', url);
+    // Use hash so F5 always reloads /portal (not the sub-app URL directly)
+    history.pushState({ app: url }, '', '/portal#' + url.replace(/^\//, ''));
   }
 
   // ── Return to home / card grid ────────────────────────────────────────────
@@ -472,7 +474,6 @@
     if (e.state && e.state.app) {
       loadApp(e.state.app);
     } else {
-      // Back to home without adding another history entry
       const frame = document.getElementById('app-frame');
       const cardsView = document.getElementById('cards-view');
       const btnHome = document.getElementById('btn-home');
