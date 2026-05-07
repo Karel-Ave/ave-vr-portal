@@ -651,38 +651,75 @@ table.staff-tbl td select:focus { background: var(--input-bg); color: var(--text
 
 /* ── MOBILNÍ ZOBRAZENÍ ── */
 @media (max-width: 768px) {
-  /* Topbar */
-  #topbar { height: auto; flex-wrap: wrap; padding: 6px 10px; gap: 8px; }
-  #topbar h1 { font-size: 12px; }
+  /* ── Topbar: jednořádkový bez absolutního středu ── */
+  #topbar {
+    height: auto !important;
+    min-height: 44px;
+    flex-wrap: nowrap;
+    padding: 6px 8px;
+    gap: 6px;
+    overflow: hidden;
+  }
+  #topbar h1 { font-size: 12px; display: none; } /* schovat název — ušetřit místo */
   .tab { padding: 3px 10px; font-size: 11px; }
 
-  /* Ovládací lišta */
+  /* Schovat tlačítka zbytečná na mobilu */
+  #portal-import-btn,
+  #portal-delete-btn,
+  #portal-trash-btn,
+  #portal-export-btn { display: none !important; }
+
+  /* Střed (Editovat + lock + Uložit): odebrat absolutní pozici → inline */
+  #portal-controls ~ div {
+    position: static !important;
+    transform: none !important;
+    margin-left: 0 !important;
+    flex-shrink: 0;
+  }
+
+  /* Dropdown rozpis: kompaktní */
+  #portal-rozpis-sel { max-width: 130px; font-size: 10px !important; }
+
+  /* ── Oprava fontu v buňkách (theme.css nastavuje 16px !important na vš.inputy) ── */
+  /* Tato pravidla musí mít !important aby přepsala theme.css */
+  .sch-cell input,
+  .sch-sum input,
+  table.staff-tbl td input[type=text],
+  table.staff-tbl td select,
+  .field-group input,
+  .field-group select,
+  #schedule-controls input,
+  #schedule-controls select {
+    font-size: 11px !important;
+  }
+
+  /* ── Ovládací lišta ── */
   #schedule-controls { flex-wrap: wrap; gap: 4px; padding: 4px 6px; }
   .hotel-btn { padding: 2px 5px; font-size: 10px; }
-  .btn-sm { padding: 2px 6px; font-size: 10px; }
+  .btn-sm { padding: 3px 7px; font-size: 10px; min-height: 28px; }
   #import-area { flex-wrap: wrap; gap: 4px; }
 
-  /* Tabulka — menší buňky */
+  /* ── Tabulka — menší buňky ── */
   :root { --cell-w: 12px; --name-w: 100px; --row-h: 18px; }
   .sch-name { font-size: 9px; }
-  .sch-cell input { font-size: 9px; }
+  .sch-cell input { font-size: 9px !important; }
   .sch-sum { font-size: 8px; }
   .th-sum { font-size: 7px; }
   .th-daynum { font-size: 8px; }
   .th-dn { font-size: 7px; }
   .hotel-name-cell { font-size: 8px; }
 
-  /* Scroll bez zaseknutí */
+  /* ── Scroll bez zaseknutí na iOS ── */
   #schedule-wrap {
     -webkit-overflow-scrolling: touch;
     overflow: scroll;
   }
 
-  /* Legenda menší */
+  /* ── Legenda menší ── */
   #legend { padding: 4px 6px; gap: 6px; }
   .leg { font-size: 9px; }
 
-  /* Nastavení */
+  /* ── Nastavení ── */
   #panel-settings { padding: 8px; }
   .settings-top { grid-template-columns: 1fr 1fr; gap: 8px; }
   table.staff-tbl { font-size: 10px; }
