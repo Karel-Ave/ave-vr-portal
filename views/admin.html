@@ -132,13 +132,13 @@
     .page-header h1 { font-size: 16px; }
     .btn-add { width: 100%; text-align: center; min-height: 44px; }
 
-    /* Tabulka uživatelů: scroll */
-    .table-wrap { overflow-x: auto; -webkit-overflow-scrolling: touch; }
-    table { min-width: 500px; }
-    thead th { padding: 8px 10px; font-size: 10px; }
-    td { padding: 8px 10px; font-size: 12px; }
+    /* Tabulka uživatelů: schovat "Přidán" sloupec aby se vešla tlačítka */
+    #tab-users table thead th:nth-child(5),
+    #tab-users table tbody td:nth-child(5) { display: none; }
+    thead th { padding: 8px 8px; font-size: 10px; }
+    td { padding: 8px 8px; font-size: 12px; }
     .td-actions { white-space: nowrap; }
-    .btn-action { padding: 5px 8px; font-size: 11px; min-height: 34px; }
+    .btn-action { padding: 5px 7px; font-size: 11px; min-height: 34px; }
 
     /* Skupiny & oprávnění: sidebar nad panelem */
     .groups-layout {

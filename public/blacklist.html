@@ -239,8 +239,14 @@ td.col-edit { width: 68px; text-align: center; padding: 4px; display: flex; gap:
   cursor: pointer;
   font-size: 13px;
   display: inline-flex; align-items: center; justify-content: center;
-  margin-right: 3px;
   transition: all .15s;
+}
+/* Obálka pro tlačítka ↩ a × v historii — zajistí mezeru na všech zařízeních */
+.hist-action-btns {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+  justify-content: center;
 }
 .btn-restore-hist:hover { background: #1a7a1a; color: #fff; }
 .badge-action.EDIT { background: #fff3cd; color: #856404; border: 1px solid #ffc107; }
@@ -1475,7 +1481,7 @@ function renderHistory() {
       <td>${escHtml(r.user_name)}</td>
       <td><span class="badge-action ${r.action}">${actionLabel[r.action] || r.action}</span></td>
       <td>${detail}</td>
-      <td style="padding:4px;text-align:center;white-space:nowrap;">${restoreBtn}<button class="btn-hist-del" onclick="deleteHistoryEntry('${escHtml(r.id)}')" title="Smazat záznam">×</button></td>
+      <td style="padding:4px;text-align:center;"><div class="hist-action-btns">${restoreBtn}<button class="btn-hist-del" onclick="deleteHistoryEntry('${escHtml(r.id)}')" title="Smazat záznam">×</button></div></td>
     </tr>`;
   }).join('');
 
