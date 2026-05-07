@@ -4,89 +4,15 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Blacklist – AVEhotels</title>
+<script src="/static/theme.js"></script>
+<link rel="stylesheet" href="/static/theme.css">
 <style>
-/* ══════════════════════════════════════════════
-   AVE Hotels Portal – Theme variables
-   ══════════════════════════════════════════════ */
+/* Blacklist-specific aliases for shared accent vars */
 :root {
-  --bg:               #F5F4EE;
-  --bg-topbar:        #1E2228;
-  --bg-controls:      #ECEAE2;
-  --bg-controls-border: #D8D5CC;
-  --surface:          #FFFFFF;
-  --surface-alt:      #F0EFE8;
-  --border:           #D4D0C8;
-  --text:             #1A1A18;
-  --text-muted:       #6A6A64;
-  --text-topbar:      #DDDDDD;
-  --btn-top-border:   #3E3E3E;
-  --btn-top-color:    #BBBBBB;
-  --btn-top-hover-bg: #2A2A2A;
-  --thead-bg:         #2C3540;
-  --thead-text:       #E8E6DC;
-  --thead-border:     #3C4550;
-  --thead-hover:      #384050;
-  --thead-active:     #3C4858;
-  --row-hover:        #F5F4EC;
-  --row-border:       #E4E2DA;
-  --input-border:     #CCCCCC;
-  --input-bg:         #FFFFFF;
-  --modal-bg:         #FFFFFF;
-  --modal-shadow:     0 8px 32px rgba(0,0,0,.18);
-  --overlay-bg:       rgba(0,0,0,.55);
-  --card-bg:          #F8F8F4;
-  --card-border:      #E0DED8;
-  --hotel-btn-bg:     #FFFFFF;
-  --hotel-btn-color:  #444444;
-  --hotel-btn-border: #BBBBBB;
-  --hotel-btn-active-bg:     #2C3540;
-  --hotel-btn-active-border: #2C3540;
-  --hotel-btn-active-color:  #FFFFFF;
-  --removal-bg:       #FFF5F5;
-  --removal-border:   #F0C0C0;
-  --accent-primary:   #2C3540;
-  --accent-primary-h: #1E2830;
+  --accent-primary:   var(--accent);
+  --accent-primary-h: var(--accent-h);
 }
 
-[data-theme="dark"] {
-  --bg:               #141618;
-  --bg-topbar:        #0E1014;
-  --bg-controls:      #1A1E24;
-  --bg-controls-border: #272D36;
-  --surface:          #1E2228;
-  --surface-alt:      #252B32;
-  --border:           #2E333A;
-  --text:             #E8E6DC;
-  --text-muted:       #8A8A82;
-  --text-topbar:      #C8C6BC;
-  --btn-top-border:   #454C55;
-  --btn-top-color:    #9A9890;
-  --btn-top-hover-bg: #252B32;
-  --thead-bg:         #252B32;
-  --thead-text:       #C4A96A;
-  --thead-border:     #2E333A;
-  --thead-hover:      #2E353E;
-  --thead-active:     #323A44;
-  --row-hover:        #22262C;
-  --row-border:       #2A2E36;
-  --input-border:     #3E444C;
-  --input-bg:         #252B32;
-  --modal-bg:         #1E2228;
-  --modal-shadow:     0 8px 32px rgba(0,0,0,.5);
-  --overlay-bg:       rgba(0,0,0,.75);
-  --card-bg:          #252B32;
-  --card-border:      #2E333A;
-  --hotel-btn-bg:     #252B32;
-  --hotel-btn-color:  #C8C6BC;
-  --hotel-btn-border: #3E444C;
-  --hotel-btn-active-bg:     #C4A96A;
-  --hotel-btn-active-border: #C4A96A;
-  --hotel-btn-active-color:  #1A1A18;
-  --removal-bg:       #2A2020;
-  --removal-border:   #5A2E2E;
-  --accent-primary:   #C4A96A;
-  --accent-primary-h: #D4B97A;
-}
 
 * { box-sizing: border-box; margin: 0; padding: 0; }
 
@@ -2003,35 +1929,7 @@ async function restoreFromHistory(auditId) {
   }
 }
 
-// ── Theme toggle ──────────────────────────────────────────────────────────────
-
-(function() {
-  const KEY = 'ave-bl-theme';
-  const html = document.documentElement;
-  const btn  = document.getElementById('btn-theme');
-
-  function applyTheme(dark) {
-    if (dark) {
-      html.setAttribute('data-theme', 'dark');
-      if (btn) btn.textContent = '☀️';
-      if (btn) btn.title = 'Přepnout na světlé téma';
-    } else {
-      html.removeAttribute('data-theme');
-      if (btn) btn.textContent = '🌙';
-      if (btn) btn.title = 'Přepnout na tmavé téma';
-    }
-  }
-
-  // Load saved preference
-  const saved = localStorage.getItem(KEY);
-  applyTheme(saved === 'dark');
-
-  if (btn) btn.addEventListener('click', () => {
-    const isDark = html.getAttribute('data-theme') === 'dark';
-    localStorage.setItem(KEY, isDark ? 'light' : 'dark');
-    applyTheme(!isDark);
-  });
-})();
+// Theme toggle handled by /static/theme.js
 
 // ── Init ──────────────────────────────────────────────────────────────────────
 

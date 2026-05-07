@@ -1,0 +1,164 @@
+/* ══════════════════════════════════════════════════════════
+   AVE Hotels Portal – Shared theme variables
+   Světlé téma (výchozí) + Tmavé téma [data-theme="dark"]
+   ══════════════════════════════════════════════════════════ */
+
+:root {
+  /* Pozadí */
+  --bg:                 #F5F4EE;
+  --bg-topbar:          #1E2228;
+  --bg-controls:        #ECEAE2;
+  --bg-controls-border: #D8D5CC;
+
+  /* Povrchy / karty */
+  --surface:            #FFFFFF;
+  --surface-alt:        #F0EFE8;
+  --card-bg:            #F8F8F4;
+  --card-border:        #E0DED8;
+
+  /* Ohraničení */
+  --border:             #D4D0C8;
+  --border-strong:      #AAAAAA;
+
+  /* Text */
+  --text:               #1A1A18;
+  --text-muted:         #6A6A64;
+  --text-topbar:        #DDDDDD;
+
+  /* Topbar tlačítka */
+  --btn-top-border:     #3E3E3E;
+  --btn-top-color:      #BBBBBB;
+  --btn-top-hover-bg:   #2A2A2A;
+
+  /* Záhlaví tabulky */
+  --thead-bg:           #2C3540;
+  --thead-text:         #E8E6DC;
+  --thead-border:       #3C4550;
+  --thead-hover:        #384050;
+  --thead-active:       #3C4858;
+
+  /* Řádky tabulky */
+  --row-hover:          #F5F4EC;
+  --row-border:         #E4E2DA;
+
+  /* Inputy */
+  --input-border:       #CCCCCC;
+  --input-bg:           #FFFFFF;
+
+  /* Modály */
+  --modal-bg:           #FFFFFF;
+  --modal-border:       #E0DED8;
+  --modal-shadow:       0 8px 32px rgba(0,0,0,.18);
+  --overlay-bg:         rgba(0,0,0,.55);
+
+  /* Akcenty */
+  --accent:             #2C3540;
+  --accent-h:           #1E2830;
+  --accent-light:       #EAF0F8;
+
+  /* Hotel filtry */
+  --hotel-btn-bg:             #FFFFFF;
+  --hotel-btn-color:          #444444;
+  --hotel-btn-border:         #BBBBBB;
+  --hotel-btn-active-bg:      #2C3540;
+  --hotel-btn-active-border:  #2C3540;
+  --hotel-btn-active-color:   #FFFFFF;
+
+  /* Odebrání (removal) blok */
+  --removal-bg:         #FFF5F5;
+  --removal-border:     #F0C0C0;
+
+  /* Portal karty */
+  --portal-card-bg:         #FFFFFF;
+  --portal-card-border:     #D4D0C8;
+  --portal-card-hover-bg:   #F5F4EC;
+  --portal-card-text:       #1A1A18;
+  --portal-card-desc:       #6A6A64;
+  --portal-badge-bg:        #F0EFE8;
+  --portal-badge-text:      #999990;
+  --portal-badge-border:    #E0DED8;
+
+  /* Načítání / spinner */
+  --spinner-border:     #DDDDDD;
+  --spinner-top:        #555555;
+}
+
+[data-theme="dark"] {
+  /* Pozadí */
+  --bg:                 #141618;
+  --bg-topbar:          #0E1014;
+  --bg-controls:        #1A1E24;
+  --bg-controls-border: #272D36;
+
+  /* Povrchy / karty */
+  --surface:            #1E2228;
+  --surface-alt:        #252B32;
+  --card-bg:            #252B32;
+  --card-border:        #2E333A;
+
+  /* Ohraničení */
+  --border:             #2E333A;
+  --border-strong:      #404850;
+
+  /* Text */
+  --text:               #E8E6DC;
+  --text-muted:         #8A8A82;
+  --text-topbar:        #C8C6BC;
+
+  /* Topbar tlačítka */
+  --btn-top-border:     #454C55;
+  --btn-top-color:      #9A9890;
+  --btn-top-hover-bg:   #252B32;
+
+  /* Záhlaví tabulky */
+  --thead-bg:           #252B32;
+  --thead-text:         #C4A96A;
+  --thead-border:       #2E333A;
+  --thead-hover:        #2E353E;
+  --thead-active:       #323A44;
+
+  /* Řádky tabulky */
+  --row-hover:          #22262C;
+  --row-border:         #2A2E36;
+
+  /* Inputy */
+  --input-border:       #3E444C;
+  --input-bg:           #252B32;
+
+  /* Modály */
+  --modal-bg:           #1E2228;
+  --modal-border:       #2E333A;
+  --modal-shadow:       0 8px 32px rgba(0,0,0,.5);
+  --overlay-bg:         rgba(0,0,0,.75);
+
+  /* Akcenty */
+  --accent:             #C4A96A;
+  --accent-h:           #D4B97A;
+  --accent-light:       #2E2820;
+
+  /* Hotel filtry */
+  --hotel-btn-bg:             #252B32;
+  --hotel-btn-color:          #C8C6BC;
+  --hotel-btn-border:         #3E444C;
+  --hotel-btn-active-bg:      #C4A96A;
+  --hotel-btn-active-border:  #C4A96A;
+  --hotel-btn-active-color:   #1A1A18;
+
+  /* Odebrání blok */
+  --removal-bg:         #2A2020;
+  --removal-border:     #5A2E2E;
+
+  /* Portal karty */
+  --portal-card-bg:         #1E2228;
+  --portal-card-border:     #2E333A;
+  --portal-card-hover-bg:   #252B32;
+  --portal-card-text:       #E8E6DC;
+  --portal-card-desc:       #7A7A72;
+  --portal-badge-bg:        #1A1E24;
+  --portal-badge-text:      #4A5060;
+  --portal-badge-border:    #2A2E36;
+
+  /* Načítání / spinner */
+  --spinner-border:     #333A42;
+  --spinner-top:        #C4A96A;
+}

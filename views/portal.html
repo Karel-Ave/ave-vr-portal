@@ -4,20 +4,23 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>AVE Hotels – Portál</title>
+<script src="/static/theme.js"></script>
+<link rel="stylesheet" href="/static/theme.css">
 <style>
   * { box-sizing: border-box; margin: 0; padding: 0; }
 
   body {
     min-height: 100vh;
-    background: #e8e8e4;
+    background: var(--bg);
     font-family: 'Segoe UI', system-ui, sans-serif;
-    color: #1a1a1a;
+    color: var(--text);
     padding-top: 58px;
+    transition: background .25s, color .25s;
   }
 
   /* ── Horní lišta ── */
   #topbar {
-    background: #0f0f0f;
+    background: var(--bg-topbar);
     height: 58px;
     display: flex;
     align-items: center;
@@ -27,7 +30,7 @@
     left: 0;
     width: 100%;
     z-index: 9999;
-    border-bottom: 1px solid #1e1e1e;
+    border-bottom: 1px solid rgba(0,0,0,.4);
   }
   .topbar-logo {
     position: absolute;
@@ -61,15 +64,15 @@
     gap: 10px;
   }
   .user-badge {
-    color: #666;
+    color: var(--text-muted);
     font-size: 13px;
   }
   .btn-top {
     padding: 5px 14px;
     border-radius: 6px;
-    border: 1px solid #333;
+    border: 1px solid var(--btn-top-border);
     background: transparent;
-    color: #aaa;
+    color: var(--btn-top-color);
     font-size: 12px;
     cursor: pointer;
     transition: all .15s;
@@ -79,7 +82,7 @@
     align-items: center;
     gap: 5px;
   }
-  .btn-top:hover { background: #222; color: #fff; border-color: #555; }
+  .btn-top:hover { background: var(--btn-top-hover-bg); color: #fff; border-color: #666; }
 
   /* ── Home button (hidden by default) ── */
   #btn-home {
@@ -101,11 +104,11 @@
   .welcome h1 {
     font-size: 24px;
     font-weight: 600;
-    color: #1a1a1a;
+    color: var(--text);
     margin-bottom: 4px;
   }
   .welcome p {
-    color: #666;
+    color: var(--text-muted);
     font-size: 14px;
   }
 
@@ -115,7 +118,7 @@
     font-weight: 700;
     letter-spacing: 0.14em;
     text-transform: uppercase;
-    color: #777;
+    color: var(--text-muted);
     margin-bottom: 14px;
     margin-top: 32px;
   }
@@ -130,8 +133,8 @@
 
   /* ── Karta ── */
   .card {
-    background: #2e2e2e;
-    border: 1px solid #3e3e3e;
+    background: var(--portal-card-bg);
+    border: 1px solid var(--portal-card-border);
     border-radius: 12px;
     padding: 24px 20px 20px;
     cursor: pointer;
@@ -141,8 +144,8 @@
     display: block;
   }
   .card:hover {
-    background: #3a3a3a;
-    border-color: #4e4e4e;
+    background: var(--portal-card-hover-bg);
+    border-color: var(--border-strong);
     transform: translateY(-2px);
   }
   .card.disabled {
@@ -158,12 +161,12 @@
   .card-title {
     font-size: 14px;
     font-weight: 600;
-    color: #e0e0e0;
+    color: var(--portal-card-text);
     margin-bottom: 5px;
   }
   .card-desc {
     font-size: 12px;
-    color: #555;
+    color: var(--portal-card-desc);
     line-height: 1.4;
   }
   .badge-soon {
@@ -171,9 +174,9 @@
     font-size: 9px;
     font-weight: 600;
     letter-spacing: 0.08em;
-    background: #222;
-    color: #555;
-    border: 1px solid #2e2e2e;
+    background: var(--portal-badge-bg);
+    color: var(--portal-badge-text);
+    border: 1px solid var(--portal-badge-border);
     border-radius: 4px;
     padding: 2px 7px;
     margin-top: 8px;
@@ -189,7 +192,7 @@
     width: 100%;
     height: calc(100vh - 58px);
     border: none;
-    background: #e8e8e4;
+    background: var(--bg);
   }
   #app-frame.visible {
     display: block;
@@ -205,13 +208,13 @@
     left: 0;
     width: 100%;
     height: calc(100vh - 58px);
-    background: #e8e8e4;
+    background: var(--bg);
     z-index: 100;
     align-items: center;
     justify-content: center;
     flex-direction: column;
     gap: 12px;
-    color: #888;
+    color: var(--text-muted);
     font-size: 13px;
     transition: opacity .2s;
   }
@@ -220,8 +223,8 @@
   .spinner {
     width: 28px;
     height: 28px;
-    border: 3px solid #ddd;
-    border-top-color: #555;
+    border: 3px solid var(--spinner-border);
+    border-top-color: var(--spinner-top);
     border-radius: 50%;
     animation: spin .7s linear infinite;
   }
@@ -232,26 +235,26 @@
     display: none;
     position: fixed;
     inset: 0;
-    background: rgba(0,0,0,.7);
+    background: var(--overlay-bg);
     z-index: 10000;
     align-items: center;
     justify-content: center;
   }
   .overlay.show { display: flex; }
   .modal {
-    background: #1e1e1e;
-    border: 1px solid #2e2e2e;
+    background: var(--modal-bg);
+    border: 1px solid var(--modal-border);
     border-radius: 12px;
     padding: 28px;
     width: 360px;
-    box-shadow: 0 12px 40px rgba(0,0,0,.6);
+    box-shadow: var(--modal-shadow);
   }
-  .modal h2 { font-size: 15px; font-weight: 600; color: #e0e0e0; margin-bottom: 20px; }
+  .modal h2 { font-size: 15px; font-weight: 600; color: var(--text); margin-bottom: 20px; }
   .modal label {
     display: block;
     font-size: 10px;
     font-weight: 700;
-    color: #666;
+    color: var(--text-muted);
     text-transform: uppercase;
     letter-spacing: 0.07em;
     margin-bottom: 5px;
@@ -259,34 +262,34 @@
   .modal input {
     width: 100%;
     padding: 9px 11px;
-    background: #111;
-    border: 1px solid #333;
+    background: var(--input-bg);
+    border: 1px solid var(--input-border);
     border-radius: 6px;
     font-size: 13px;
-    color: #e0e0e0;
+    color: var(--text);
     margin-bottom: 14px;
     outline: none;
     font-family: inherit;
     transition: border-color .15s;
   }
-  .modal input:focus { border-color: #555; }
+  .modal input:focus { border-color: var(--border-strong); }
   .modal-btns { display: flex; gap: 8px; justify-content: flex-end; margin-top: 6px; }
   .btn-secondary {
     padding: 7px 16px;
     background: transparent;
-    border: 1px solid #333;
+    border: 1px solid var(--border);
     border-radius: 6px;
-    color: #888;
+    color: var(--text-muted);
     font-size: 13px;
     cursor: pointer;
     font-family: inherit;
     transition: all .15s;
   }
-  .btn-secondary:hover { background: #222; color: #ccc; }
+  .btn-secondary:hover { background: var(--surface-alt); color: var(--text); }
   .btn-primary {
     padding: 7px 16px;
-    background: #e0e0e0;
-    color: #111;
+    background: var(--accent);
+    color: #fff;
     border: none;
     border-radius: 6px;
     font-size: 13px;
@@ -295,7 +298,23 @@
     font-family: inherit;
     transition: background .15s;
   }
-  .btn-primary:hover { background: #fff; }
+  .btn-primary:hover { background: var(--accent-h); }
+
+  /* Theme toggle button */
+  #btn-theme {
+    padding: 5px 10px;
+    border-radius: 6px;
+    border: 1px solid var(--btn-top-border);
+    background: transparent;
+    color: var(--btn-top-color);
+    font-size: 14px;
+    cursor: pointer;
+    transition: all .15s;
+    line-height: 1;
+    font-family: inherit;
+  }
+  #btn-theme:hover { background: var(--btn-top-hover-bg); color: #fff; }
+
   .msg { font-size: 12px; min-height: 18px; margin-top: 6px; }
   .msg.ok  { color: #5cb85c; }
   .msg.err { color: #e05555; }
@@ -320,6 +339,7 @@
     <span class="user-badge" id="user-label"></span>
     <button class="btn-top" onclick="document.getElementById('pw-overlay').classList.add('show')">Změnit heslo</button>
     <a href="/logout" class="btn-top">Odhlásit</a>
+    <button id="btn-theme" title="Přepnout světlé / tmavé téma">🌙</button>
   </div>
 </div>
 
