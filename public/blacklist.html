@@ -2,7 +2,7 @@
 <html lang="cs">
 <head>
 <meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
 <title>AVE VR</title>
 <link rel="icon" type="image/png" href="/static/logo.png">
 <script src="/static/theme.js"></script>
@@ -72,7 +72,14 @@ body {
   flex: 1;
   overflow-y: auto;
   padding: 20px;
+  padding-bottom: max(20px, env(safe-area-inset-bottom, 20px));
   transition: background .25s;
+}
+/* Extra spacer pro iOS home indicator */
+#main-content::after {
+  content: '';
+  display: block;
+  height: max(60px, env(safe-area-inset-bottom, 60px));
 }
 
 /* ── Email selection modal ── */
@@ -139,6 +146,18 @@ body {
   flex-wrap: wrap;
 }
 .hotel-label { font-size: 11px; font-weight: 700; color: var(--text-muted); text-transform: uppercase; letter-spacing:.05em; }
+#letter-filter-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 5px;
+  margin-top: 8px;
+}
+/* Písmena – stejná šířka pro rovnoměrnou mřížku */
+.letter-btn {
+  min-width: 34px;
+  padding: 3px 6px !important;
+  text-align: center;
+}
 .hotel-btn {
   padding: 3px 11px;
   font-size: 11px;
@@ -1145,9 +1164,9 @@ function renderLetterFilter() {
   )].sort((a, b) => a.localeCompare(b, 'cs'));
   const row = document.getElementById('letter-filter-row');
   if (letters.length < 2) { row.innerHTML = ''; return; }
-  row.innerHTML = `<span class="hotel-label">Jméno:</span>` +
-    `<button class="hotel-btn${!activeLetter ? ' active' : ''}" onclick="setLetterFilter('')">Vše</button>` +
-    letters.map(l => `<button class="hotel-btn${activeLetter === l ? ' active' : ''}" onclick="setLetterFilter('${l}')">${l}</button>`).join('');
+  row.innerHTML =
+    `<button class="hotel-btn letter-btn${!activeLetter ? ' active' : ''}" onclick="setLetterFilter('')">Vše</button>` +
+    letters.map(l => `<button class="hotel-btn letter-btn${activeLetter === l ? ' active' : ''}" onclick="setLetterFilter('${l}')">${l}</button>`).join('');
 }
 
 function setLetterFilter(l) {
