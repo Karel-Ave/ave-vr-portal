@@ -221,10 +221,10 @@ table.staff-tbl tr:hover td { background: var(--accent-light); }
 /* Zvýraznění řádku — filter zachovává barvy buněk */
 #scheduleTable.highlight-on tbody tr.sch-row:hover td.sch-cell { filter: brightness(0.88); }
 #scheduleTable.highlight-on tbody tr.sch-row:hover td.sch-name { filter: brightness(0.92); }
-/* Buňka přímo pod kurzorem — zvýraznění zapnuto */
-#scheduleTable.highlight-on tbody tr.sch-row td.sch-cell.cell-hover { filter: brightness(0.72) !important; outline: 2px solid #2d7a2d; outline-offset: -2px; z-index: 2; position: relative; }
-/* Buňka přímo pod kurzorem — zvýraznění vypnuto (jen rámeček) */
-#scheduleTable:not(.highlight-on) tbody tr.sch-row td.sch-cell.cell-hover { outline: 2px solid #2d7a2d; outline-offset: -2px; z-index: 2; position: relative; }
+/* Buňka přímo pod kurzorem — zelený overlay místo šedého tmavnutí (brightness by splynul s nočními buňkami) */
+#scheduleTable.highlight-on tbody tr.sch-row td.sch-cell.cell-hover { filter: none !important; box-shadow: inset 0 0 0 9999px rgba(45,122,45,0.22) !important; outline: 2px solid #2d7a2d; outline-offset: -2px; z-index: 2; position: relative; }
+/* Buňka přímo pod kurzorem — zvýraznění vypnuto (jen rámeček + jemný zelený overlay) */
+#scheduleTable:not(.highlight-on) tbody tr.sch-row td.sch-cell.cell-hover { box-shadow: inset 0 0 0 9999px rgba(45,122,45,0.22) !important; outline: 2px solid #2d7a2d; outline-offset: -2px; z-index: 2; position: relative; }
 @media (hover: none) {
   #scheduleTable.highlight-on tbody tr.sch-row:hover td { filter: none !important; }
 }
@@ -396,9 +396,9 @@ table.staff-tbl td select:focus { background: var(--input-bg); color: var(--text
   #legend { display: none !important; }
   /* Single-row controls on mobile */
   #sc-row2 { min-height: 30px !important; }
-  /* Mobile cell hover: green border only, no brightness filter (gray blends with night cells) */
+  /* Mobile cell hover: green overlay + border (brightness filter splýval s nočními buňkami) */
   #scheduleTable tbody tr.sch-row:hover td.sch-cell { filter: none !important; }
-  #scheduleTable tbody tr.sch-row td.sch-cell.cell-hover { filter: none !important; outline: 2px solid #2d7a2d; outline-offset: -2px; z-index: 2; position: relative; }
+  #scheduleTable tbody tr.sch-row td.sch-cell.cell-hover { filter: none !important; box-shadow: inset 0 0 0 9999px rgba(45,122,45,0.22) !important; outline: 2px solid #2d7a2d; outline-offset: -2px; z-index: 2; position: relative; }
   /* Mobile: show AD button in sc-left2 */
   #btn-today-col-m { display: inline-flex !important; align-items: center; justify-content: center; }
   /* Mobile: name click never hides row — handled in JS */
