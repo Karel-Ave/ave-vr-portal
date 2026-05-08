@@ -6824,6 +6824,28 @@ document.addEventListener('mouseup', (e) => {
   const AUTOSAVE_INTERVAL = 2 * 60 * 1000;
   const POLL_INTERVAL = 8 * 1000;
 
+  // ── Inactivity auto-release (10 min nečinnosti → uvolní editaci) ────────────
+  let _lastActivity = Date.now();
+  let _inactivityTimer = null;
+  const INACTIVITY_TIMEOUT = 10 * 60 * 1000; // 10 minut
+
+  function _resetActivity() { _lastActivity = Date.now(); }
+
+  function _startInactivityWatch() {
+    ['mousemove', 'keydown', 'click', 'scroll', 'touchstart'].forEach(ev =>
+      document.addEventListener(ev, _resetActivity, { passive: true })
+    );
+    if (_inactivityTimer) clearInterval(_inactivityTimer);
+    _inactivityTimer = setInterval(async () => {
+      if (!_editMode) return;
+      if (Date.now() - _lastActivity >= INACTIVITY_TIMEOUT) {
+        await releaseEdit(true); // autosave + uvolní zámek
+        if (typeof showHint === 'function')
+          showHint('Editace ukončena — 10 minut nečinnosti. Data byla automaticky uložena.');
+      }
+    }, 30 * 1000); // kontrola každých 30 sekund
+  }
+
   // ── Load user info ──────────────────────────────────────────────────────────
   async function initPortal() {
     try {
@@ -6860,6 +6882,7 @@ document.addEventListener('mouseup', (e) => {
 
     setReadOnly(true);
     startLockPoll();
+    _startInactivityWatch();
     await loadRozpisyList();
   }
 
@@ -7011,6 +7034,7 @@ document.addEventListener('mouseup', (e) => {
       const json = await r.json();
       if (json.ok) {
         _editMode = true;
+        _lastActivity = Date.now(); // reset inactivity timer
         setReadOnly(false);
         updateLockUI(true, json.lock);
         startAutosave();
