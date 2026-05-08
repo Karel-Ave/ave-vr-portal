@@ -472,6 +472,12 @@ table.staff-tbl td select:focus { background: var(--input-bg); color: var(--text
   display: block;
   height: max(60px, env(safe-area-inset-bottom, 60px));
 }
+/* Portrait mobile: potřebuje více místa (skrytá lišta prohlížeče + safe area) */
+@media (max-width: 640px) and (orientation: portrait) {
+  #schedule-wrap::after {
+    height: max(140px, calc(env(safe-area-inset-bottom, 0px) + 140px));
+  }
+}
 
 #scheduleTable {
   border-collapse: separate;
