@@ -10,6 +10,7 @@
 <link rel="stylesheet" href="/static/theme.css">
 <link href="https://fonts.googleapis.com/css2?family=DM+Mono:wght@300;400;500&amp;family=DM+Sans:wght@300;400;500;600&amp;display=swap" rel="stylesheet">
 <style>
+html { -webkit-text-size-adjust: 100%; text-size-adjust: 100%; }
 :root {
   /* Raspis overrides — keep blue accent for functional clarity */
   --bg: #e8e8e4;
@@ -643,6 +644,8 @@ table.staff-tbl td select:focus { background: var(--input-bg); color: var(--text
   padding: 0 3px;
   background: transparent;
 }
+/* ±hod input centered on both desktop and mobile */
+.sch-sum-extra input { text-align: center; }
 
 /* Hotel rows */
 .hotel-row td {
@@ -784,8 +787,9 @@ table.staff-tbl td select:focus { background: var(--input-bg); color: var(--text
 
   /* ── Oprava fontu v buňkách (theme.css nastavuje 16px !important na vš.inputy) ── */
   /* Tato pravidla musí mít !important aby přepsala theme.css */
-  .sch-cell input,
-  .sch-sum input,
+  #scheduleTable .sch-cell input,
+  #scheduleTable .sch-sum input,
+  #scheduleTable .sch-note-input,
   table.staff-tbl td input[type=text],
   table.staff-tbl td select,
   .field-group input,
@@ -804,8 +808,10 @@ table.staff-tbl td select:focus { background: var(--input-bg); color: var(--text
   /* ── Tabulka — zachovat šířku buněk (16px), jen menší jméno a font ── */
   :root { --name-w: 100px; --row-h: 18px; }
   .sch-name { font-size: 9px; }
-  .sch-cell input { font-size: 9px !important; }
+  #scheduleTable .sch-cell input { font-size: 9px !important; }
   .sch-sum { font-size: 8px; }
+  #scheduleTable .sch-sum input,
+  #scheduleTable .sch-note-input { font-size: 8px !important; }
   .th-sum { font-size: 7px; }
   .th-daynum { font-size: 8px; }
   .th-dn { font-size: 7px; }
@@ -3468,12 +3474,19 @@ window.onload = () => {
   buildSchedule();
   buildHotelBtns();
 
-  // Hide loading overlay after schedule is built
-  const _overlay = document.getElementById('loading-overlay');
-  if (_overlay) {
-    _overlay.classList.add('fade-out');
-    setTimeout(() => _overlay.remove(), 400);
-  }
+  // Overlay stays visible until portal integration finishes loading.
+  // loadRozpis() will call window.__hideLoadingOverlay() once data is rendered.
+  window.__hideLoadingOverlay = function() {
+    const _ov = document.getElementById('loading-overlay');
+    if (!_ov) return;
+    _ov.classList.add('fade-out');
+    setTimeout(() => { if (_ov.parentNode) _ov.remove(); }, 400);
+    window.__hideLoadingOverlay = null;
+  };
+  // Safety fallback: hide after 5s if portal integration never fires (standalone mode)
+  window.__overlayFallback = setTimeout(() => {
+    if (typeof window.__hideLoadingOverlay === 'function') window.__hideLoadingOverlay();
+  }, 5000);
 
   // Mobile: auto-scroll to today-3 on load (if viewing current month)
   if (window.innerWidth <= 768) {
@@ -4732,6 +4745,7 @@ function buildSchedule() {
         inp.type = 'text';
         inp.className = 'sch-note-input';
         inp.style.width = '40px';
+        inp.style.textAlign = 'center';
         inp.placeholder = "";
         inp.value = (state.extras[si]?.hours) || '';
         inp.addEventListener('change', () => {
@@ -4775,6 +4789,7 @@ function buildSchedule() {
   });
 
   recalcAll();
+  applyHotelFilter(); // Always apply immediately so hotel rows are hidden when state.hotelsVisible===false
   setTimeout(() => {
     fixStickyTops();
     applyShiftTypeFilter();
@@ -6898,9 +6913,20 @@ document.addEventListener('mouseup', (e) => {
       localStorage.setItem('super_rozpis_data', JSON.stringify(data));
       if (typeof applyData === 'function') {
         applyData(data);
+        // Portal always opens with hotels hidden — force it regardless of saved state
+        if (typeof state !== 'undefined') {
+          state.hotelsVisible = false;
+          const _thb = document.getElementById('toggle-hotels-btn');
+          if (_thb) _thb.textContent = 'Zobrazit hotely';
+        }
         if (typeof buildSchedule === 'function') buildSchedule();
         else if (typeof renderStaff === 'function') renderStaff();
         else if (typeof showTab === 'function') showTab('schedule');
+        // Dismiss overlay now that schedule is rendered with hotels properly hidden
+        setTimeout(() => {
+          clearTimeout(window.__overlayFallback);
+          if (typeof window.__hideLoadingOverlay === 'function') window.__hideLoadingOverlay();
+        }, 80); // ≥ buildSchedule's own 50ms setTimeout
         // Re-apply deleted-cell highlighting and button state if requirements are saved
         if (data.requirements && Object.keys(data.requirements).length > 0) {
           setTimeout(() => {

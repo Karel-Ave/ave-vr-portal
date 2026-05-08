@@ -803,7 +803,7 @@ function blBuildEmailHtml(adds, removes) {
   const SP = 'margin: 0 0 12px 0;';  // standard paragraph spacing
 
   function personCard(borderColor, bgColor, lines) {
-    return `<div style="margin: 0 0 10px 0; padding: 11px 15px; border: 1px dashed ${borderColor}88; border-left: 4px solid ${borderColor}; background: ${bgColor}; font-size: 11pt; word-break: break-word; line-height: 1.6; box-sizing: border-box;">
+    return `<div style="display: table; margin: 0 0 10px 0; padding: 11px 15px; border: 1px dashed ${borderColor}88; border-left: 4px solid ${borderColor}; background: ${bgColor}; font-size: 11pt; word-break: break-word; line-height: 1.6; box-sizing: border-box; max-width: 100%;">
       ${lines.join('<br>')}
     </div>`;
   }
