@@ -29,7 +29,8 @@ app.use(session({
   secret: process.env.SESSION_SECRET || 'ave-portal-2026-secret',
   resave: false,
   saveUninitialized: false,
-  cookie: { maxAge: 12 * 60 * 60 * 1000 } // 12 hodin
+  rolling: true,                                    // reset 30 dní při každém požadavku
+  cookie: { maxAge: 30 * 24 * 60 * 60 * 1000 }    // 30 dní
 }));
 
 // ── Auth helpery ──────────────────────────────────────────────────────────────
@@ -130,11 +131,23 @@ app.post('/login', async (req, res) => {
   }
 });
 
-app.get('/logout', (req, res) => {
-  if (req.session.user) {
+app.get('/logout', async (req, res) => {
+  const userId = req.session.user?.id;
+  if (userId) {
+    // Uvolni zámky
     Object.keys(locks).forEach(k => {
-      if (locks[k]?.userId === req.session.user.id) delete locks[k];
+      if (locks[k]?.userId === userId) delete locks[k];
     });
+    // Smaž VŠECHNY session tohoto uživatele z DB (odhlášení ze všech zařízení)
+    try {
+      const db = getPool();
+      await db.query(
+        `DELETE FROM session WHERE sess::json->'user'->>'id' = $1`,
+        [String(userId)]
+      );
+    } catch(e) {
+      console.error('Global logout error:', e.message);
+    }
   }
   req.session.destroy(() => res.redirect('/'));
 });
@@ -803,7 +816,7 @@ function blBuildEmailHtml(adds, removes) {
   const SP = 'margin: 0 0 12px 0;';  // standard paragraph spacing
 
   function personCard(borderColor, bgColor, lines) {
-    return `<div style="display: table; margin: 0 0 10px 0; padding: 11px 15px; border: 1px dashed ${borderColor}88; border-left: 4px solid ${borderColor}; background: ${bgColor}; font-size: 11pt; word-break: break-word; line-height: 1.6; box-sizing: border-box; max-width: 100%;">
+    return `<div style="margin: 0 0 10px 0; padding: 11px 15px; border: 1px dashed ${borderColor}88; border-left: 4px solid ${borderColor}; background: ${bgColor}; font-size: 11pt; word-break: break-word; line-height: 1.6; box-sizing: border-box; width: 100%;">
       ${lines.join('<br>')}
     </div>`;
   }

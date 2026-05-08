@@ -13,8 +13,10 @@
     min-height: 100vh;
     background: var(--bg);
     display: flex;
+    flex-direction: column;
     align-items: center;
     justify-content: center;
+    gap: 20px;
     font-family: 'Segoe UI', system-ui, sans-serif;
     transition: background .25s;
   }
@@ -32,7 +34,7 @@
     margin-bottom: 36px;
   }
   .logo img {
-    height: 64px;
+    height: 96px;
     object-fit: contain;
     filter: brightness(0);          /* light mode: logo černé */
   }
@@ -96,12 +98,9 @@
     display: none;
   }
   .error.show { display: block; }
-  /* Theme toggle – vpravo dole mimo kartu */
+  /* Theme toggle – pod kartou, na mobilu na středu; landscape: vedle karty */
   #btn-theme {
-    position: fixed;
-    bottom: 16px;
-    right: 16px;
-    padding: 6px 10px;
+    padding: 8px 14px;
     border: 1px solid var(--border);
     border-radius: 6px;
     background: var(--modal-bg);
@@ -111,15 +110,20 @@
     line-height: 1;
     transition: all .15s;
     box-shadow: 0 2px 8px rgba(0,0,0,.12);
-    z-index: 10;
+    flex-shrink: 0;
   }
   #btn-theme:hover { background: var(--surface-alt); }
 
+  /* Landscape mobile: karta vlevo, toggle vpravo uprostřed */
+  @media (orientation: landscape) and (max-height: 600px) {
+    body { flex-direction: row; align-items: center; justify-content: center; gap: 32px; }
+  }
+
   /* ── Mobilní úpravy ── */
   @media (max-width: 480px) {
-    body { padding: 16px; align-items: flex-start; padding-top: 48px; }
+    body { padding: 16px 16px 32px; }
     .card { padding: 32px 20px 28px; border-radius: 12px; }
-    .logo img { height: 44px; }
+    .logo img { height: 66px; }
     input { padding: 12px; }
     .btn { padding: 14px; font-size: 15px; }
   }
@@ -139,8 +143,8 @@
     <input type="password" name="password" autocomplete="current-password" required>
     <button class="btn" type="submit">Přihlásit se</button>
   </form>
-  <button id="btn-theme" title="Přepnout světlé / tmavé téma">🌙</button>
 </div>
+<button id="btn-theme" title="Přepnout světlé / tmavé téma">🌙</button>
 <script>
   if (location.search.includes('error=1')) {
     document.getElementById('err').classList.add('show');
