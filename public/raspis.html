@@ -349,6 +349,25 @@ table.staff-tbl td select:focus { background: var(--input-bg); color: var(--text
 #btn-filter-day.selected { color: #4a3a00 !important; }
 #btn-filter-day.selected::before { color: #4a3a00 !important; }
 
+/* ── Loading overlay ── */
+#loading-overlay {
+  position: absolute; inset: 0; z-index: 500;
+  background: var(--bg);
+  display: flex; flex-direction: column; align-items: center; justify-content: center;
+  gap: 14px; opacity: 1; transition: opacity .35s ease;
+  pointer-events: all;
+}
+#loading-overlay.fade-out { opacity: 0; pointer-events: none; }
+.loading-spinner {
+  width: 36px; height: 36px;
+  border: 3px solid var(--border);
+  border-top-color: var(--accent);
+  border-radius: 50%;
+  animation: ld-spin .75s linear infinite;
+}
+@keyframes ld-spin { to { transform: rotate(360deg); } }
+.loading-text { font-size: 13px; color: var(--text-muted); letter-spacing: .03em; }
+
 /* ── Mobile: hotel buttons 2 rows + abbreviated button labels ── */
 @media (max-width: 640px) {
   /* Hotel buttons wrap to 2 rows */
@@ -3210,7 +3229,11 @@ table.staff-tbl td select:focus { background: var(--input-bg); color: var(--text
   </div>
 
   <!-- ROZPIS -->
-  <div id="panel-schedule" class="panel active">
+  <div id="panel-schedule" class="panel active" style="position:relative;">
+    <div id="loading-overlay">
+      <div class="loading-spinner"></div>
+      <div class="loading-text">Načítám rozpis…</div>
+    </div>
     <div id="schedule-controls">
       <div style="display:flex; flex-direction:column; gap:3px;">
         <!-- Wrapper: levá část + střed + pravý grid -->
@@ -3444,6 +3467,13 @@ window.onload = () => {
   renderStaff();
   buildSchedule();
   buildHotelBtns();
+
+  // Hide loading overlay after schedule is built
+  const _overlay = document.getElementById('loading-overlay');
+  if (_overlay) {
+    _overlay.classList.add('fade-out');
+    setTimeout(() => _overlay.remove(), 400);
+  }
 
   // Mobile: auto-scroll to today-3 on load (if viewing current month)
   if (window.innerWidth <= 768) {
