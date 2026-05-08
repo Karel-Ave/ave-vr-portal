@@ -1,7 +1,9 @@
 ﻿<!DOCTYPE html>
 <html lang="cs"><head>
 <meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, viewport-fit=cover">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 <title>AVE VR</title>
 <link rel="icon" type="image/png" href="/static/logo.png">
 <link rel="apple-touch-icon" href="/apple-touch-icon.png">
@@ -108,7 +110,7 @@ body {
 #topbar {
   background: var(--bg-topbar);
   color: var(--text-topbar);
-  padding: 0 16px;
+  padding: 0 max(16px, env(safe-area-inset-right)) 0 max(16px, env(safe-area-inset-left));
   display: flex;
   align-items: center;
   gap: 10px;
@@ -3424,12 +3426,13 @@ window.onload = () => {
   sumViewMode = 'hoursonly';
   document.getElementById('btn-toggle-hoursonly').textContent = 'Všechny součty';
   document.getElementById('btn-toggle-sums').style.display = 'none';
-  // Default: "Skrýt hotely" active
-  state.hotelsVisible = false;
-  document.getElementById('toggle-hotels-btn').textContent = 'Zobrazit hotely';
 
   const loaded = autoLoad();
   if (!loaded) loadDefaultStaff();
+
+  // Force defaults AFTER autoLoad — autoLoad restores saved state which may have hotelsVisible:true
+  state.hotelsVisible = false;
+  document.getElementById('toggle-hotels-btn').textContent = 'Zobrazit hotely';
 
   // Always default to current month on open
   const _now = new Date();

@@ -2,7 +2,9 @@
 <html lang="cs">
 <head>
 <meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 <title>AVE VR</title>
 <link rel="icon" type="image/png" href="/static/logo.png">
 <link rel="apple-touch-icon" href="/apple-touch-icon.png">
@@ -441,6 +443,18 @@
     /* Modál změny hesla: full width přes theme.css, ale parent má padding */
     .modal h2   { font-size: 14px; }
     .modal input { min-height: 46px; }
+  }
+
+  /* Landscape mobile — hide overlapping topbar elements */
+  @media (max-width: 1000px) and (orientation: landscape) {
+    #topbar { padding: 0 env(safe-area-inset-right, 12px) 0 env(safe-area-inset-left, 12px); }
+    .topbar-copy { display: none; }
+    .user-badge  { display: none; }
+    #btn-pw-change { display: none; }
+    #btn-logout    { display: none; }
+    #btn-hamburger { display: inline-flex; align-items: center; justify-content: center; }
+    .home-label    { display: none; }
+    .topbar-logo img { height: 36px; }
   }
 
   @media (max-width: 380px) {
