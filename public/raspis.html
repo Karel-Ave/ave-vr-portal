@@ -4817,6 +4817,16 @@ function buildSchedule() {
       inp.dataset.si = si;
       inp.dataset.ci = ci;
       inp.style.color = _dark ? '#E8E6DC' : '#000';
+      inp.setAttribute('inputmode', 'none'); // zabrání klávesnici na mobilu i při focus
+
+      // Mobil: přímý touchstart listener (spolehlivější než bubbling přes document)
+      inp.addEventListener('touchstart', function(e) {
+        if (window.innerWidth > 900) return;
+        if (!window.__raspisIsEditMode?.()) return;
+        e.preventDefault();
+        e.stopPropagation();
+        showHotelOverlay(inp);
+      }, { passive: false });
 
       inp.addEventListener('keydown', (e) => {
         if (e.key === 'Delete' || e.key === 'Backspace') {
@@ -4884,7 +4894,16 @@ function buildSchedule() {
         inp.style.width = '40px';
         inp.style.textAlign = 'center';
         inp.placeholder = "";
+        inp.setAttribute('inputmode', 'none');
         inp.value = (state.extras[si]?.hours) || '';
+        // Mobil: přímý touchstart listener pro numpad overlay
+        inp.addEventListener('touchstart', function(e) {
+          if (window.innerWidth > 900) return;
+          if (!window.__raspisIsEditMode?.()) return;
+          e.preventDefault();
+          e.stopPropagation();
+          showNumpadOverlay(inp);
+        }, { passive: false });
         inp.addEventListener('focus', () => { inp._logOld = inp.value; });
         inp.addEventListener('change', () => {
           if (!state.extras[si]) state.extras[si] = {};
@@ -7728,27 +7747,7 @@ function hideCellEditOverlay() {
   _cellEditInp = null;
 }
 
-// ── touchstart handler (zabraňuje focusu/klávesnici/scrollu na iOS) ─────────
-document.addEventListener('touchstart', function(e) {
-  const inp = e.target;
-  if (window.innerWidth > 900) return;        // jen mobil
-  if (!window.__raspisIsEditMode?.()) return; // jen v edit módu
-
-  // Hotelová buňka schedulu
-  if (inp.matches('#scheduleTable td input')) {
-    e.preventDefault(); // zabrání focusu, klávesnici i iOS scrollu
-    showHotelOverlay(inp);
-    return;
-  }
-
-  // +-hodiny buňka
-  if (inp.classList.contains('sch-note-input') && inp.closest('td[data-sum-id="extra"]')) {
-    e.preventDefault();
-    showNumpadOverlay(inp);
-    return;
-  }
-  // Ostatní vstupy → normální chování
-}, { passive: false }); // passive: false je nutné, aby preventDefault fungovalo
+// (Mobil touch handlery jsou přidány přímo na každý input při buildu tabulky)
 
 /* ── Log změn ── */
 async function scheduleLogChange(entry) {
