@@ -7586,31 +7586,10 @@ function _celLabel(inp, isHours) {
   return `${staffName} — ${d}.${m < 10 ? '0' + m : m}. ${dn}`;
 }
 
-// ── Scroll: pokud je řádek 12+, posun na pozici 8 ───────────────────────────
-function _celScrollRow(inp) {
-  const rowEl = inp?.closest('tr');
-  if (!rowEl) return;
-  const allVisRows = Array.from(document.querySelectorAll('#sch-tbody tr.sch-row'))
-    .filter(tr => tr.style.display !== 'none');
-  const rowIdx = allVisRows.indexOf(rowEl);
-  if (rowIdx < 11) return;
-  const targetRow = allVisRows[Math.max(0, rowIdx - 7)];
-  const schedWrap = document.getElementById('schedule-wrap');
-  const thead = document.querySelector('#scheduleTable thead');
-  if (schedWrap && targetRow) {
-    const wrapRect  = schedWrap.getBoundingClientRect();
-    const targRect  = targetRow.getBoundingClientRect();
-    const theadH    = thead ? thead.getBoundingClientRect().height : 0;
-    schedWrap.scrollTop += targRect.top - wrapRect.top - theadH;
-  }
-}
-
 // ── Zobraz overlay ──────────────────────────────────────────────────────────
 function showHotelOverlay(inp) {
   _cellEditInp = inp;
-  inp.blur();  // žádná klávesnice
   document.getElementById('cell-edit-label').textContent = _celLabel(inp, false);
-  _celScrollRow(inp);
 
   // Sestav hotelová tlačítka
   const hotels  = typeof getDisplayHotels === 'function' ? getDisplayHotels() : ['A','B','C','D','E','G','H','I','J','L','M','N','S','T','U','P'];
@@ -7668,7 +7647,6 @@ function showHotelOverlay(inp) {
 
 function showNumpadOverlay(inp) {
   _cellEditInp = inp;
-  inp.blur();  // žádná klávesnice
   document.getElementById('cell-edit-label').textContent = _celLabel(inp, true);
   _numpadValue = inp.value || '';
   document.getElementById('cel-numpad-display').textContent = _numpadValue || '—';
@@ -7750,15 +7728,15 @@ function hideCellEditOverlay() {
   _cellEditInp = null;
 }
 
-// ── focusin handler ──────────────────────────────────────────────────────────
-document.addEventListener('focusin', function(e) {
+// ── touchstart handler (zabraňuje focusu/klávesnici/scrollu na iOS) ─────────
+document.addEventListener('touchstart', function(e) {
   const inp = e.target;
   if (window.innerWidth > 900) return;        // jen mobil
   if (!window.__raspisIsEditMode?.()) return; // jen v edit módu
 
   // Hotelová buňka schedulu
   if (inp.matches('#scheduleTable td input')) {
-    e.preventDefault();
+    e.preventDefault(); // zabrání focusu, klávesnici i iOS scrollu
     showHotelOverlay(inp);
     return;
   }
@@ -7769,8 +7747,8 @@ document.addEventListener('focusin', function(e) {
     showNumpadOverlay(inp);
     return;
   }
-  // Poznámka → normální klávesnice (nic nedeláme)
-});
+  // Ostatní vstupy → normální chování
+}, { passive: false }); // passive: false je nutné, aby preventDefault fungovalo
 
 /* ── Log změn ── */
 async function scheduleLogChange(entry) {
