@@ -237,15 +237,17 @@
 
   /* ── Zprávy ── */
   #messages-section {
-    margin-top: 28px;
-    display: flex;
-    flex-direction: column;
-    align-items: center;
+    margin-bottom: 24px;
+  }
+  #messages-list {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
     gap: 12px;
   }
+  @media (min-width: 960px) {
+    #messages-list { grid-template-columns: repeat(3, 1fr); }
+  }
   .msg-card {
-    width: 100%;
-    max-width: 540px;
     background: var(--modal-bg);
     border: 1px solid var(--modal-border);
     border-left: 4px solid #e8a020;
@@ -300,18 +302,14 @@
     margin-left: auto;
   }
   .msg-btn-delete:hover { background: #fdd; }
-  #msg-compose-btn {
-    padding: 8px 18px;
-    border-radius: 8px;
-    border: 1px dashed var(--border-strong);
-    background: var(--modal-bg);
-    color: var(--text-muted);
-    font-size: 13px;
-    cursor: pointer;
-    font-family: inherit;
-    transition: all .15s;
+  /* Compose tlačítko v topbaru */
+  #btn-compose-topbar { display: none; }
+  #btn-compose-topbar .compose-desk { display: inline; }
+  #btn-compose-topbar .compose-mob  { display: none; }
+  @media (max-width: 640px) {
+    #btn-compose-topbar .compose-desk { display: none; }
+    #btn-compose-topbar .compose-mob  { display: inline; font-size: 16px; }
   }
-  #msg-compose-btn:hover { background: var(--surface-alt); color: var(--text); }
   /* Compose modal */
   #compose-overlay {
     display: none;
@@ -629,6 +627,9 @@
   <!-- Right: User controls -->
   <div class="topbar-right">
     <span class="user-badge" id="user-label"></span>
+    <button id="btn-compose-topbar" class="btn-top" onclick="openComposeModal()" title="Napsat zprávu uživatelům">
+      <span class="compose-desk">✉&nbsp;Napsat zprávu</span><span class="compose-mob">✏</span>
+    </button>
     <button id="btn-pw-change" class="btn-top" onclick="document.getElementById('pw-overlay').classList.add('show')">Změnit heslo</button>
     <a id="btn-logout" href="/logout" class="btn-top">Odhlásit</a>
     <button id="btn-theme" title="Přepnout světlé / tmavé téma">🌙</button>
@@ -649,12 +650,12 @@
     <div class="welcome">
       <h1>Vítej, <span id="greet-name"></span>!</h1>
     </div>
-    <div class="grid" id="grid-all"></div>
-    <!-- Zprávy pro uživatele -->
+    <!-- Zprávy nad boxíky aplikací -->
     <div id="messages-section" style="display:none;">
       <div id="messages-list"></div>
-      <button id="msg-compose-btn" style="display:none;" onclick="openComposeModal()">✉ Napsat zprávu</button>
     </div>
+    <!-- Boxíky aplikací -->
+    <div class="grid" id="grid-all"></div>
   </div>
 </div>
 
@@ -1033,14 +1034,13 @@
       const data = await fetch('/api/messages').then(r => r.json());
       const section = document.getElementById('messages-section');
       const list = document.getElementById('messages-list');
-      const composeBtn = document.getElementById('msg-compose-btn');
+      const composeBtn = document.getElementById('btn-compose-topbar');
 
       if (data.canWrite) composeBtn.style.display = '';
 
       if (!data.messages || data.messages.length === 0) {
         list.innerHTML = '';
-        // Show section only if user can write (so they see compose button)
-        section.style.display = data.canWrite ? '' : 'none';
+        section.style.display = 'none';
         return;
       }
 
@@ -1061,10 +1061,9 @@
     await fetch(`/api/messages/${msgId}/dismiss`, { method: 'POST' });
     const card = document.getElementById(`msgcard-${msgId}`);
     if (card) card.remove();
-    // Hide section if no more messages and can't write
+    // Hide section if no more messages
     const list = document.getElementById('messages-list');
-    const composeBtn = document.getElementById('msg-compose-btn');
-    if (!list.children.length && composeBtn.style.display === 'none') {
+    if (!list.children.length) {
       document.getElementById('messages-section').style.display = 'none';
     }
   }
