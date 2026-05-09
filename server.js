@@ -332,6 +332,23 @@ app.get('/api/admin/logs', requireLogin, requireAdmin, async (req, res) => {
   }
 });
 
+// Smazat všechny logy (nebo starší než N dní)
+app.delete('/api/admin/logs', requireLogin, requireAdmin, async (req, res) => {
+  try {
+    const db = getPool();
+    const days = parseInt(req.query.days);
+    if (days > 0) {
+      await db.query(`DELETE FROM logs WHERE timestamp < NOW() - INTERVAL '${days} days'`);
+    } else {
+      await db.query(`DELETE FROM logs`);
+    }
+    res.json({ ok: true });
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ ok: false, msg: 'Chyba serveru.' });
+  }
+});
+
 app.get('/api/my-permissions', requireLogin, async (req, res) => {
   try {
     const db   = getPool();
@@ -346,14 +363,15 @@ app.get('/api/my-permissions', requireLogin, async (req, res) => {
     for (const appKey of allApps) {
       const gp   = groupPerms[appKey] || DEFAULTS[appKey] || { enabled: true, buttons: {} };
       const uo   = userOv[appKey] || {};
-      const enabled = (uo.enabled != null) ? uo.enabled : gp.enabled;
+      const enabled = (uo.enabled != null) ? uo.enabled : (gp.enabled != null ? gp.enabled : true);
+      const visible = (uo.visible != null) ? uo.visible : (gp.visible != null ? gp.visible : true);
       const buttons = {};
       const allBtns = new Set([...Object.keys(gp.buttons || {}), ...Object.keys(uo.buttons || {})]);
       for (const btnKey of allBtns) {
         const gb = (gp.buttons || {})[btnKey]; const ub = (uo.buttons || {})[btnKey];
         buttons[btnKey] = (ub != null) ? ub : (gb != null ? gb : true);
       }
-      result[appKey] = { enabled, buttons };
+      result[appKey] = { enabled, visible, buttons };
     }
     res.json(result);
   } catch(err) { console.error(err); res.json({}); }
@@ -743,6 +761,35 @@ app.get('/api/user-prefs', requireLogin, async (req, res) => {
     res.json({ default_raspis_key: rows[0]?.default_raspis_key || null });
   } catch (err) {
     res.json({ default_raspis_key: null });
+  }
+});
+
+// Pořadí aplikací na dashboardu
+app.get('/api/user-prefs/app-order', requireLogin, async (req, res) => {
+  try {
+    const db = getPool();
+    const { rows } = await db.query('SELECT app_order FROM user_preferences WHERE user_id = $1', [req.session.user.id]);
+    const order = rows[0]?.app_order ? JSON.parse(rows[0].app_order) : [];
+    res.json({ order });
+  } catch (err) {
+    res.json({ order: [] });
+  }
+});
+
+app.put('/api/user-prefs/app-order', requireLogin, async (req, res) => {
+  const { order } = req.body;
+  if (!Array.isArray(order)) return res.json({ ok: false });
+  try {
+    const db = getPool();
+    await db.query(
+      `INSERT INTO user_preferences (user_id, app_order, updated_at)
+       VALUES ($1, $2, NOW())
+       ON CONFLICT (user_id) DO UPDATE SET app_order = $2, updated_at = NOW()`,
+      [req.session.user.id, JSON.stringify(order)]
+    );
+    res.json({ ok: true });
+  } catch (err) {
+    res.json({ ok: false });
   }
 });
 

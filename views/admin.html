@@ -218,7 +218,11 @@
   <div id="tab-logs" style="display:none;">
     <div class="page-header">
       <h1>Záznamy</h1>
-      <button class="btn-add" onclick="loadLogs()">↻ Obnovit</button>
+      <div style="display:flex;gap:8px;flex-wrap:wrap;">
+        <button class="btn-add" onclick="loadLogs()">↻ Obnovit</button>
+        <button class="btn-action" style="background:#8b1a1a;color:#fff;border-color:#8b1a1a;" onclick="deleteLogs(7)">🗑 Smazat starší 7 dní</button>
+        <button class="btn-action" style="background:#5a0a0a;color:#fff;border-color:#5a0a0a;" onclick="deleteLogs(0)">🗑 Smazat vše</button>
+      </div>
     </div>
     <div class="table-wrap">
       <table>
@@ -336,6 +340,9 @@
       import: 'Nahrát rozpis', delete: 'Smazat', trash: 'Koš',
       edit: 'Editovat / Uložit', export: 'Export do .xlsx'
     }},
+    odmeny:  { label: 'Odměny', buttons: {} },
+    provize: { label: 'Provize', buttons: {} },
+    smlouvy: { label: 'Pracovní smlouvy', buttons: {} },
     blacklist: { label: 'Blacklist', buttons: {
       view:           'Zobrazit',
       add:            'Přidat záznam',
@@ -613,7 +620,8 @@
     const perms = grp.perms || {};
     let html = `<div class="groups-panel-inner"><h3>Skupina: ${esc(grp.displayName)}</h3>`;
     for (const [appKey, appDef] of Object.entries(DEFINED_APPS)) {
-      const ap = perms[appKey] || { enabled: true, buttons: {} };
+      const ap = perms[appKey] || { enabled: true, visible: true, buttons: {} };
+      const isVisible = ap.visible !== false;
       html += `<div class="app-block">
         <div class="app-header" onclick="toggleAppSection(this)">
           <div class="toggle" onclick="toggleGrpPerm('${grp.name}','${appKey}',null);event.stopPropagation();">
@@ -623,6 +631,12 @@
           <span class="app-expand">▶</span>
         </div>
         <div class="app-btns">
+          <div class="perm-row">
+            <span class="perm-label" style="color:#666;">Viditelná na portálu</span>
+            <div class="toggle" onclick="toggleGrpPerm('${grp.name}','${appKey}','__visible__')">
+              <div class="toggle-track ${isVisible ? 'on' : ''}" id="gt-${appKey}-__visible__"></div>
+            </div>
+          </div>
           ${Object.entries(appDef.buttons).map(([btnKey, btnLabel]) => {
             const on = (ap.buttons || {})[btnKey] !== false;
             return `<div class="perm-row">
@@ -658,6 +672,11 @@
       grp.perms[appKey].enabled = !grp.perms[appKey].enabled;
       const t = document.getElementById(`gt-${appKey}`);
       if (t) t.classList.toggle('on', grp.perms[appKey].enabled);
+    } else if (btnKey === '__visible__') {
+      const cur = grp.perms[appKey].visible !== false;
+      grp.perms[appKey].visible = !cur;
+      const t = document.getElementById(`gt-${appKey}-__visible__`);
+      if (t) t.classList.toggle('on', !cur);
     } else {
       const cur = grp.perms[appKey].buttons[btnKey] !== false;
       grp.perms[appKey].buttons[btnKey] = !cur;
@@ -746,6 +765,16 @@
     } catch {
       tbody.innerHTML = '<tr class="empty-row"><td colspan="5">Chyba načtení.</td></tr>';
     }
+  }
+
+  async function deleteLogs(days) {
+    const msg = days > 0 ? `Smazat logy starší než ${days} dní?` : 'Smazat VŠECHNY záznamy? Tato akce je nevratná.';
+    if (!confirm(msg)) return;
+    try {
+      const url = days > 0 ? `/api/admin/logs?days=${days}` : '/api/admin/logs';
+      await fetch(url, { method: 'DELETE' });
+      await loadLogs();
+    } catch { alert('Chyba při mazání.'); }
   }
 
   // ── HESLO ──────────────────────────────────────────────────────────────────────

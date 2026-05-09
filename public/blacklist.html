@@ -381,6 +381,9 @@ td.col-edit { width: 68px; text-align: center; padding: 4px; display: flex; gap:
   transition: all .15s;
 }
 .btn-hist-del:hover { background: #c0392b; color: #fff; }
+/* Oprávnění: skryj mazání z historie */
+body.no-hist-delete .btn-hist-del { display: none !important; }
+body.no-hist-delete #btn-hist-del-sel { display: none !important; }
 .badge-action {
   display: inline-block;
   font-size: 10px;
@@ -2090,6 +2093,30 @@ async function init() {
   try {
     const me = await fetch('/api/me').then(r => r.ok ? r.json() : null);
     currentUser = me;
+  } catch(e) {}
+
+  // ── Načti oprávnění a skryj zakázaná tlačítka ──
+  try {
+    const perms = await fetch('/api/my-permissions').then(r => r.json());
+    const bl = perms?.blacklist;
+    if (bl) {
+      const btns = bl.buttons || {};
+      // Upravit úvodní text
+      if (btns.edit_intro === false) {
+        ['btn-intro', 'bl-mob-intro'].forEach(id => {
+          const el = document.getElementById(id);
+          if (el) el.style.display = 'none';
+        });
+      }
+      // Mazání z historie
+      if (btns.history_delete === false) {
+        // Skryj "Smazat vybrané" tlačítko
+        const delSelBtn = document.getElementById('btn-hist-del-sel');
+        if (delSelBtn) delSelBtn.style.display = 'none';
+        // Skryj individuální × tlačítka — použijeme CSS třídu na body
+        document.body.classList.add('no-hist-delete');
+      }
+    }
   } catch(e) {}
 
   await loadEntries();

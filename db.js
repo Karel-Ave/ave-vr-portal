@@ -110,7 +110,7 @@ async function init() {
     )
   `);
 
-  // Uživatelské preference (výchozí rozpis)
+  // Uživatelské preference (výchozí rozpis, pořadí aplikací)
   await db.query(`
     CREATE TABLE IF NOT EXISTS user_preferences (
       user_id          INTEGER PRIMARY KEY,
@@ -118,6 +118,7 @@ async function init() {
       updated_at       TIMESTAMPTZ DEFAULT NOW()
     )
   `);
+  await db.query(`ALTER TABLE user_preferences ADD COLUMN IF NOT EXISTS app_order TEXT DEFAULT NULL`);
 
   // ── Blacklist ─────────────────────────────────────────────────────────────
 

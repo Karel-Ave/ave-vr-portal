@@ -10,6 +10,7 @@
 <link rel="apple-touch-icon" href="/apple-touch-icon.png">
 <script src="/static/theme.js"></script>
 <link rel="stylesheet" href="/static/theme.css">
+<script src="https://cdn.jsdelivr.net/npm/sortablejs@1.15.2/Sortable.min.js"></script>
 <style>
   * { box-sizing: border-box; margin: 0; padding: 0; }
 
@@ -122,9 +123,11 @@
     font-size: 14px;
   }
 
-  /* ── Sekce ── */
-  .section-block {
-    margin-top: 28px;
+  /* ── Grid karet ── */
+  .grid { margin-top: 20px; }
+  /* Drag-and-drop: přetahovaná karta */
+  .card-dragging {
+    opacity: 0.4;
   }
   .section-label {
     font-size: 10px;
@@ -165,39 +168,35 @@
     pointer-events: none;
   }
   .card-icon {
-    font-size: 28px;
-    margin-bottom: 14px;
+    font-size: 36px;
+    margin-bottom: 12px;
     line-height: 1;
   }
   /* Dynamic calendar icon for Raspis card */
   .cal-icon {
     display: inline-flex; flex-direction: column; align-items: center;
-    width: 42px; height: 42px; background: #fff; border-radius: 7px;
+    width: 50px; height: 50px; background: #fff; border-radius: 8px;
     overflow: hidden; line-height: 1; box-shadow: 0 2px 5px rgba(0,0,0,.28);
     border: 1.5px solid #e0e0e0;
   }
   .cal-mon {
     background: #e53030; width: 100%; color: #fff;
-    font-size: 9px; font-weight: 700; text-align: center;
+    font-size: 10px; font-weight: 700; text-align: center;
     padding: 4px 0 3px; text-transform: uppercase; letter-spacing: .05em;
     font-family: 'Segoe UI', system-ui, sans-serif;
   }
   .cal-day {
-    color: #e53030; font-size: 19px; font-weight: 800;
+    color: #e53030; font-size: 23px; font-weight: 800;
     flex: 1; display: flex; align-items: center; justify-content: center;
     font-family: 'Segoe UI', system-ui, sans-serif;
   }
   .card-title {
-    font-size: 14px;
+    font-size: 15px;
     font-weight: 600;
     color: var(--portal-card-text);
-    margin-bottom: 5px;
+    margin-bottom: 0;
   }
-  .card-desc {
-    font-size: 12px;
-    color: var(--portal-card-desc);
-    line-height: 1.4;
-  }
+  .card-desc { display: none; }
   .badge-soon {
     display: inline-block;
     font-size: 9px;
@@ -436,9 +435,8 @@
     /* Mřížka karet: min šířka menší pro 2 sloupce na větších telefonech */
     .grid { grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); gap: 10px; }
     .card { padding: 14px 14px 12px; }
-    .card-icon { font-size: 24px; margin-bottom: 10px; }
-    .card-title { font-size: 13px; }
-    .card-desc  { font-size: 11px; }
+    .card-icon { font-size: 28px; margin-bottom: 8px; }
+    .card-title { font-size: 14px; }
 
     /* Modál změny hesla: full width přes theme.css, ale parent má padding */
     .modal h2   { font-size: 14px; }
@@ -500,24 +498,7 @@
     <div class="welcome">
       <h1>Vítej, <span id="greet-name"></span>!</h1>
     </div>
-
-    <!-- Karta skupiny: Rozpis, výplaty -->
-    <div class="section-block">
-      <div class="section-label">Rozpis, výplaty</div>
-      <div class="grid" id="grid-hlavni"></div>
-    </div>
-
-    <!-- Karta skupiny: Smlouvy, blacklist -->
-    <div class="section-block">
-      <div class="section-label">Smlouvy, blacklist</div>
-      <div class="grid" id="grid-smlouvy"></div>
-    </div>
-
-    <!-- Karta skupiny: Správa (jen admin) -->
-    <div class="section-block" id="section-admin" style="display:none">
-      <div class="section-label">Správa uživatelů</div>
-      <div class="grid" id="grid-admin"></div>
-    </div>
+    <div class="grid" id="grid-all"></div>
   </div>
 </div>
 
@@ -566,27 +547,24 @@
   }
 
   // ── Card definitions ──────────────────────────────────────────────────────
-  const CARDS_HLAVNI = [
-    { icon: calendarIcon(), title: 'Rozpis', desc: 'Prohlížení a editace publikovaných rozpisů', href: '/rozpis-view' },
-    { icon: '⭐', title: 'Odměny', desc: 'Záznamy odměn recepčních', href: null },
-    { icon: '💰', title: 'Provize', desc: 'Provize z prodeje a směnárny', href: null }
-  ];
-  const CARDS_SMLOUVY = [
-    { icon: '📄', title: 'Pracovní smlouvy', desc: 'Generování a správa smluv', href: null },
-    { icon: blacklistIcon(), title: 'Blacklist', desc: 'Správa blacklistu hostů', href: '/blacklist' }
-  ];
-  const CARDS_ADMIN = [
-    { icon: '👥', title: 'Správa uživatelů', desc: 'Přidávání a správa přístupů', href: '/admin' }
+  // ── Všechny karty aplikací (jednotný seznam) ─────────────────────────────
+  const ALL_CARDS = [
+    { id: 'raspis',   icon: calendarIcon(), title: 'Rozpis',             href: '/rozpis-view', permKey: 'raspis'   },
+    { id: 'odmeny',   icon: '⭐',           title: 'Odměny',             href: null,           permKey: 'odmeny'   },
+    { id: 'provize',  icon: '💰',           title: 'Provize',            href: null,           permKey: 'provize'  },
+    { id: 'smlouvy',  icon: '📄',           title: 'Pracovní smlouvy',   href: null,           permKey: 'smlouvy'  },
+    { id: 'blacklist',icon: blacklistIcon(), title: 'Blacklist',          href: '/blacklist',   permKey: 'blacklist'},
+    { id: 'admin',    icon: '👥',           title: 'Správa uživatelů',   href: '/admin',       permKey: 'admin', adminOnly: true }
   ];
 
   // ── Build a card element ──────────────────────────────────────────────────
   function makeCard(c) {
     const el = document.createElement('div');
     el.className = 'card' + (c.href ? '' : ' disabled');
+    el.dataset.appId = c.id;
     el.innerHTML = `
       <div class="card-icon">${c.icon}</div>
       <div class="card-title">${c.title}</div>
-      <div class="card-desc">${c.desc}</div>
       ${!c.href ? '<span class="badge-soon">Připravuje se</span>' : ''}
     `;
     if (c.href) {
@@ -651,25 +629,62 @@
     }
   });
 
-  // ── Init: fetch user, render cards ───────────────────────────────────────
-  fetch('/api/me').then(r => r.json()).then(user => {
+  // ── Init: fetch user + permissions + app order, render cards ────────────
+  (async () => {
+    const [user, perms, orderData] = await Promise.all([
+      fetch('/api/me').then(r => r.json()).catch(() => null),
+      fetch('/api/my-permissions').then(r => r.json()).catch(() => null),
+      fetch('/api/user-prefs/app-order').then(r => r.json()).catch(() => null)
+    ]);
+    if (!user) return;
+
     document.getElementById('user-label').textContent = user.username;
     document.getElementById('greet-name').textContent = user.name;
-
     const isAdmin = user.role === 'admin';
 
-    const grHlavni = document.getElementById('grid-hlavni');
-    CARDS_HLAVNI.forEach(c => grHlavni.appendChild(makeCard(c)));
-
-    const grSmlouvy = document.getElementById('grid-smlouvy');
-    CARDS_SMLOUVY.forEach(c => grSmlouvy.appendChild(makeCard(c)));
-
-    if (isAdmin) {
-      document.getElementById('section-admin').style.display = 'block';
-      const grAdmin = document.getElementById('grid-admin');
-      CARDS_ADMIN.forEach(c => grAdmin.appendChild(makeCard(c)));
+    // Určení pořadí karet (uložené nebo výchozí)
+    const savedOrder = orderData?.order || [];
+    let cards = [...ALL_CARDS];
+    if (savedOrder.length) {
+      cards.sort((a, b) => {
+        const ai = savedOrder.indexOf(a.id);
+        const bi = savedOrder.indexOf(b.id);
+        if (ai === -1 && bi === -1) return 0;
+        if (ai === -1) return 1;
+        if (bi === -1) return -1;
+        return ai - bi;
+      });
     }
-  });
+
+    // Vykreslit karty do jednotného gridu s ohledem na oprávnění
+    const grid = document.getElementById('grid-all');
+    cards.forEach(c => {
+      if (c.adminOnly && !isAdmin) return; // Admin-only → skrýt
+      // Zkontroluj viditelnost přes oprávnění
+      if (perms && c.permKey && perms[c.permKey]) {
+        if (perms[c.permKey].visible === false) return; // Skryto adminem
+      }
+      grid.appendChild(makeCard(c));
+    });
+
+    // ── Drag-and-drop (SortableJS) ──────────────────────────────────────
+    if (typeof Sortable !== 'undefined') {
+      Sortable.create(grid, {
+        animation: 150,
+        delay: 200,          // dlouhý stisk pro dotykové ovládání
+        delayOnTouchOnly: true,
+        ghostClass: 'card-dragging',
+        onEnd() {
+          const order = [...grid.querySelectorAll('.card[data-app-id]')].map(c => c.dataset.appId);
+          fetch('/api/user-prefs/app-order', {
+            method: 'PUT',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ order })
+          }).catch(() => {});
+        }
+      });
+    }
+  })();
 
   // ── Password change ───────────────────────────────────────────────────────
   function closePwModal() {
