@@ -437,8 +437,8 @@ table.staff-tbl td select:focus { background: var(--input-bg); color: var(--text
 @media (min-width: 641px) {
   .hb.hb-ov { font-size: 10px; padding: 1px 5px; }
 }
-/* Hover pro Log tlačítka */
-#portal-log-btn:hover, #portal-log-mobile-btn:hover {
+/* Hover pro Log tlačítko */
+#portal-log-btn:hover {
   background: #6699cc !important; color: #fff !important; border-color: #3366aa !important;
 }
 /* ── Plovoucí panel pro editaci buňky (mobil) ── */
@@ -449,9 +449,11 @@ table.staff-tbl td select:focus { background: var(--input-bg); color: var(--text
   z-index: 9990;
   background: var(--surface, #fff);
   border-top: 2px solid var(--accent, #2a5caa);
-  padding: 10px 16px calc(14px + env(safe-area-inset-bottom, 0px));
+  padding: 10px 16px 14px;
   box-shadow: 0 -4px 24px rgba(0,0,0,.22);
   font-family: 'DM Sans', sans-serif;
+  /* iOS Safari: don't use env(safe-area-inset-bottom) here — we reposition via JS */
+  transition: bottom 0.05s;
 }
 #cell-edit-label {
   font-size: 13px; font-weight: 600; color: var(--text, #1a1a18);
@@ -915,7 +917,6 @@ table.staff-tbl td select:focus { background: var(--input-bg); color: var(--text
   </div>
   <div style="position:absolute;left:50%;transform:translateX(-50%);display:flex;align-items:center;gap:6px;">
     <button id="portal-edit-btn" class="btn btn-sm" style="background:#f0c800;color:#333;border-color:#c8a800;font-weight:600;">Editovat</button>
-    <button id="portal-log-mobile-btn" class="btn btn-sm" style="display:none;background:#e8f0ff;border-color:#6699cc;color:#1a4a8a;" onclick="openLogModal()">Log</button>
     <span id="portal-lock-status" style="font-size:11px;color:#888;white-space:nowrap;display:none;"></span>
     <button id="portal-save-btn" class="btn btn-sm btn-primary" style="display:none;">Uložit</button>
   </div>
@@ -7005,8 +7006,7 @@ document.addEventListener('mouseup', (e) => {
       show('portal-export-btn', btns.export);
       // Log změn: admin vždy vidí, ostatní dle oprávnění (výchozí: skryto)
       const showLog = btns.log !== undefined ? btns.log : _isAdmin;
-      show('portal-log-btn',        showLog);
-      show('portal-log-mobile-btn', showLog);
+      show('portal-log-btn', showLog);
       // Edit button: set permission flag, then check lock immediately
       _hasEditPerm = btns.edit !== false;
       if (_hasEditPerm) {
@@ -7475,6 +7475,23 @@ document.addEventListener('mouseup', (e) => {
 /* ── Mobilní plovoucí panel pro editaci buňky ── */
 let _cellEditInp = null;
 
+// Repositioning overlay above iOS keyboard via visualViewport API
+function _updateCellOverlayPos() {
+  if (!_cellEditInp) return;
+  const overlay = document.getElementById('cell-edit-overlay');
+  if (!overlay || overlay.style.display === 'none') return;
+  if (window.visualViewport) {
+    // How far the bottom of the visual viewport is from the bottom of the layout viewport
+    const kbHeight = window.innerHeight - (window.visualViewport.offsetTop + window.visualViewport.height);
+    overlay.style.bottom = Math.max(0, kbHeight) + 'px';
+  }
+}
+
+if (window.visualViewport) {
+  window.visualViewport.addEventListener('resize', _updateCellOverlayPos);
+  window.visualViewport.addEventListener('scroll', _updateCellOverlayPos);
+}
+
 // Zobraz overlay při fokusu na buňku (mobil + edit mode)
 // focusin se spouští ze skutečného uživatelského gesta → focus na overlay je spolehlivý
 document.addEventListener('focusin', function(e) {
@@ -7499,10 +7516,14 @@ document.addEventListener('focusin', function(e) {
   document.getElementById('cell-edit-label').textContent = staffName + ' — ' + dateStr + ' ' + dn;
   const overlayInput = document.getElementById('cell-edit-input');
   overlayInput.value = inp.value;
-  document.getElementById('cell-edit-overlay').style.display = '';
+  const overlay = document.getElementById('cell-edit-overlay');
+  overlay.style.bottom = '0px'; // reset before showing; visualViewport event will update
+  overlay.style.display = '';
   // Přenes focus na overlay input — jsme stále v kontextu user-gesture, iOS to povolí
   overlayInput.focus();
   overlayInput.select();
+  // Immediately try to position above keyboard (in case viewport already resized)
+  _updateCellOverlayPos();
 });
 
 function confirmCellEdit() {
@@ -7535,7 +7556,9 @@ function confirmCellEdit() {
 }
 
 function hideCellEditOverlay() {
-  document.getElementById('cell-edit-overlay').style.display = 'none';
+  const overlay = document.getElementById('cell-edit-overlay');
+  overlay.style.display = 'none';
+  overlay.style.bottom = '0px';
   document.getElementById('cell-edit-input').blur();
   _cellEditInp = null;
 }
