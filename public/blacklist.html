@@ -28,7 +28,7 @@ body {
   transition: background .25s, color .25s;
 }
 
-/* â”€â”€ Topbar â”€â”€ */
+/* ── Topbar ── */
 #topbar {
   background: var(--bg-topbar);
   display: flex;
@@ -67,7 +67,7 @@ body {
 .btn-top.primary:hover { background: #1e3e1e; color: #90e090; border-color: #4caf50; }
 
 
-/* â”€â”€ Main content â”€â”€ */
+/* ── Main content ── */
 #main-content {
   flex: 1;
   overflow-y: auto;
@@ -82,7 +82,7 @@ body {
   height: max(60px, env(safe-area-inset-bottom, 60px));
 }
 
-/* â”€â”€ Email selection modal â”€â”€ */
+/* ── Email selection modal ── */
 #email-select-list {
   max-height: 320px;
   overflow-y: auto;
@@ -124,7 +124,7 @@ body {
 }
 .email-select-actions button:hover { background: #f0f0f0; }
 
-/* â”€â”€ Controls bar (sticky above scroll area) â”€â”€ */
+/* ── Controls bar (sticky above scroll area) ── */
 #controls-bar {
   flex-shrink: 0;
   background: var(--bg-controls);
@@ -152,7 +152,7 @@ body {
   gap: 5px;
   margin-top: 8px;
 }
-/* PĂísmena â€“ stejnĂˇ ĹˇĂíĹ™ka pro rovnomÄ›rnou mĹ™ĂíĹľku */
+/* Písmena – stejná šířka pro rovnoměrnou mřížku */
 .letter-btn {
   min-width: 34px;
   padding: 3px 6px !important;
@@ -191,7 +191,7 @@ body {
   white-space: nowrap;
 }
 
-/* â”€â”€ Table â”€â”€ */
+/* ── Table ── */
 #bl-table-wrap {
   overflow-x: auto;
   border-radius: 8px;
@@ -260,7 +260,7 @@ td.col-edit { width: 68px; text-align: center; padding: 4px; display: flex; gap:
   display: inline-flex; align-items: center; justify-content: center;
   transition: all .15s;
 }
-/* ObĂˇlka pro tlaÄŤĂítka â†© a Ă— v historii â€” zajistĂí mezeru na vĹˇech zaĹ™ĂízenĂích */
+/* Obálka pro tlačítka ↩ a × v historii — zajistí mezeru na všech zařízeních */
 .hist-action-btns {
   display: flex;
   gap: 8px;
@@ -294,7 +294,7 @@ td.col-edit { width: 68px; text-align: center; padding: 4px; display: flex; gap:
   font-size: 14px;
 }
 
-/* â”€â”€ Footer info â”€â”€ */
+/* ── Footer info ── */
 #footer-info {
   margin-top: 14px;
   font-size: 11px;
@@ -302,7 +302,7 @@ td.col-edit { width: 68px; text-align: center; padding: 4px; display: flex; gap:
   text-align: right;
 }
 
-/* â”€â”€ History view â”€â”€ */
+/* ── History view ── */
 #history-view {
   display: none;
 }
@@ -381,7 +381,7 @@ td.col-edit { width: 68px; text-align: center; padding: 4px; display: flex; gap:
   transition: all .15s;
 }
 .btn-hist-del:hover { background: #c0392b; color: #fff; }
-/* OprĂˇvnÄ›nĂí: skryj mazĂˇnĂí z historie */
+/* Oprávnění: skryj mazání z historie */
 body.no-hist-delete .btn-hist-del { display: none !important; }
 body.no-hist-delete #btn-hist-del-sel { display: none !important; }
 .badge-action {
@@ -397,7 +397,7 @@ body.no-hist-delete #btn-hist-del-sel { display: none !important; }
 .badge-action.REMOVE { background: #fdecea; color: #b71c1c; border: 1px solid #ef9a9a; }
 .badge-action.EDIT_INTRO { background: #e3f2fd; color: #1565c0; border: 1px solid #90caf9; }
 
-/* â”€â”€ Modals â”€â”€ */
+/* ── Modals ── */
 .overlay {
   display: none;
   position: fixed;
@@ -501,7 +501,7 @@ body.no-hist-delete #btn-hist-del-sel { display: none !important; }
 }
 .btn-del-red:hover { background: #922b21; }
 
-/* â”€â”€ Person form block â”€â”€ */
+/* ── Person form block ── */
 .person-block {
   background: var(--card-bg);
   border: 1px solid var(--card-border);
@@ -562,7 +562,7 @@ body.no-hist-delete #btn-hist-del-sel { display: none !important; }
 }
 .btn-add-more:hover { background: #f0f0f0; border-style: solid; }
 
-/* â”€â”€ Removal reasons blocks â”€â”€ */
+/* ── Removal reasons blocks ── */
 .removal-block {
   background: var(--removal-bg);
   border: 1px solid var(--removal-border);
@@ -577,7 +577,7 @@ body.no-hist-delete #btn-hist-del-sel { display: none !important; }
   margin-bottom: 8px;
 }
 
-/* â”€â”€ Rich text editor â”€â”€ */
+/* ── Rich text editor ── */
 #rte-toolbar {
   display: flex;
   gap: 4px;
@@ -615,7 +615,7 @@ body.no-hist-delete #btn-hist-del-sel { display: none !important; }
 }
 #rte-body:focus { border-color: var(--accent-primary); }
 
-/* â”€â”€ Email preview â”€â”€ */
+/* ── Email preview ── */
 #email-preview-wrap {
   border: 1px solid var(--input-border);
   border-radius: 6px;
@@ -627,7 +627,7 @@ body.no-hist-delete #btn-hist-del-sel { display: none !important; }
   margin-bottom: 12px;
 }
 
-/* â”€â”€ Toast â”€â”€ */
+/* ── Toast ── */
 #toast {
   position: fixed;
   bottom: 24px;
@@ -647,7 +647,7 @@ body.no-hist-delete #btn-hist-del-sel { display: none !important; }
 #toast.show { opacity: 1; transform: translateY(0); }
 #toast.error { background: #3a1a1a; color: #e09090; border-color: #6e2e2e; }
 
-/* â”€â”€ Spinner â”€â”€ */
+/* ── Spinner ── */
 .spinner-small {
   display: inline-block;
   width: 14px;
@@ -660,7 +660,7 @@ body.no-hist-delete #btn-hist-del-sel { display: none !important; }
 }
 @keyframes spin { to { transform: rotate(360deg); } }
 
-/* â”€â”€ Hamburger tlaÄŤĂítko blacklistu (skrytĂ© na desktopu) â”€â”€ */
+/* ── Hamburger tlačítko blacklistu (skryté na desktopu) ── */
 #bl-hamburger {
   display: none;
   padding: 4px 10px;
@@ -677,7 +677,7 @@ body.no-hist-delete #btn-hist-del-sel { display: none !important; }
 }
 #bl-hamburger:hover { background: var(--btn-top-hover-bg); color: #fff; }
 
-/* â”€â”€ MobilnĂí slide-down menu blacklistu â”€â”€ */
+/* ── Mobilní slide-down menu blacklistu ── */
 #bl-mobile-menu {
   display: none;
   flex-direction: column;
@@ -705,10 +705,10 @@ body.no-hist-delete #btn-hist-del-sel { display: none !important; }
 .bl-mob-btn:last-child { border-bottom: none; }
 .bl-mob-btn:hover { background: rgba(255,255,255,.08); }
 
-/* â”€â”€ MobilnĂí responzivita blacklistu â”€â”€ */
+/* ── Mobilní responzivita blacklistu ── */
 @media (max-width: 640px) {
 
-  /* Topbar: auto vĂ˝Ĺˇka, bez wrappovĂˇnĂí */
+  /* Topbar: auto výška, bez wrappování */
   #topbar {
     height: auto;
     min-height: 48px;
@@ -718,27 +718,27 @@ body.no-hist-delete #btn-hist-del-sel { display: none !important; }
   }
   #topbar-title { font-size: 13px; flex-shrink: 0; }
 
-  /* Schovat mĂ©nÄ› dĹŻleĹľitĂ© akce do menu */
+  /* Schovat méně důležité akce do menu */
   #btn-pdf, #btn-email, #btn-intro, #btn-history { display: none; }
   #bl-hamburger { display: flex; align-items: center; justify-content: center; }
 
-  /* PrimĂˇrnĂí tlaÄŤĂítko + pĹ™idat: prominentnĂí */
+  /* Primární tlačítko + přidat: prominentní */
   #btn-add { padding: 7px 14px; font-size: 12px; min-height: 36px; }
 
-  /* Controls bar: search pĹ™es celou ĹˇĂíĹ™ku */
+  /* Controls bar: search přes celou šířku */
   #controls-bar { padding: 10px 12px 8px; }
   #search-row { flex-direction: column; align-items: stretch; gap: 6px; }
   #search { max-width: 100%; font-size: 16px; min-height: 42px; }
   #count-badge { font-size: 11px; text-align: right; }
 
-  /* Hotel filtry: vÄ›tĹˇĂí dotyk (doplnÄ›nĂí k theme.css) */
+  /* Hotel filtry: větší dotyk (doplnění k theme.css) */
   #hotel-filter-row { gap: 4px; margin-top: 4px; }
 
-  /* Tabulka: scroll + text trochu vÄ›tĹˇĂí pro lepĹˇĂí ÄŤitelnost */
+  /* Tabulka: scroll + text trochu větší pro lepší čitelnost */
   #bl-table { font-size: 13px; }
   #bl-table td { padding: 8px 10px; }
 
-  /* TlaÄŤĂítka v Ĺ™ĂˇdcĂích tabulky: vÄ›tĹˇĂí dotykovĂ˝ cĂíl */
+  /* Tlačítka v řádcích tabulky: větší dotykový cíl */
   .btn-edit-row, .btn-del-row, .btn-restore-hist {
     width: 36px !important;
     height: 36px !important;
@@ -746,26 +746,26 @@ body.no-hist-delete #btn-hist-del-sel { display: none !important; }
   }
   .btn-hist-del { width: 32px !important; height: 32px !important; }
 
-  /* Historie: filtry â†’ sloupec */
+  /* Historie: filtry → sloupec */
   .history-filters { flex-direction: column; align-items: stretch; gap: 6px; }
   .history-filters .cdp-wrap { width: 100%; }
   .history-filters .cdp-text { font-size: 16px; }
 
-  /* PersonĂˇlnĂí bloky (add modal): padding */
+  /* Personální bloky (add modal): padding */
   .person-block { padding: 12px 12px; }
 
-  /* Date picker: zarovnat do ĹˇĂíĹ™ky */
+  /* Date picker: zarovnat do šířky */
   .cdp-popup { width: calc(100vw - 40px); max-width: 300px; }
 
   /* Footer info */
   #footer-info { font-size: 10px; text-align: center; }
 
-  /* E-mail select list: vÄ›tĹˇĂí checkboxy */
+  /* E-mail select list: větší checkboxy */
   .email-select-row { padding: 12px; }
   .email-select-row input[type=checkbox] { width: 18px; height: 18px; }
 }
 
-/* â”€â”€ Custom date picker â”€â”€ */
+/* ── Custom date picker ── */
 .cdp-wrap { position: relative; display: block; width: 100%; }
 .cdp-row { display: flex; align-items: center; width: 100%; }
 .cdp-text {
@@ -873,27 +873,27 @@ body.no-hist-delete #btn-hist-del-sel { display: none !important; }
 
 <!-- Topbar -->
 <div id="topbar">
-  <span id="topbar-title">đźš« Blacklist</span>
-  <button class="btn-top primary" id="btn-add">+ PĹ™idat</button>
+  <span id="topbar-title">🚫 Blacklist</span>
+  <button class="btn-top primary" id="btn-add">+ Přidat</button>
   <button class="btn-top" id="btn-pdf">Export PDF</button>
   <button class="btn-top" id="btn-email">Export e-mail</button>
   <button class="btn-top" id="btn-intro">Upravit text</button>
   <button class="btn-top" id="btn-history">Historie</button>
-  <button id="bl-hamburger" onclick="toggleBlMenu()" aria-label="VĂíce akcĂí" title="VĂíce akcĂí">â°</button>
+  <button id="bl-hamburger" onclick="toggleBlMenu()" aria-label="Více akcí" title="Více akcí">☰</button>
 </div>
 
-<!-- MobilnĂí menu blacklistu (skrytĂ© na desktopu) -->
+<!-- Mobilní menu blacklistu (skryté na desktopu) -->
 <div id="bl-mobile-menu">
-  <button class="bl-mob-btn" id="bl-mob-pdf">đź“„&nbsp; Export PDF</button>
-  <button class="bl-mob-btn" id="bl-mob-email">đź“§&nbsp; Export e-mail</button>
-  <button class="bl-mob-btn" id="bl-mob-intro">âśŹď¸Ź&nbsp; Upravit ĂşvodnĂí text</button>
-  <button class="bl-mob-btn" id="bl-mob-history">đź•&nbsp; Historie zmÄ›n</button>
+  <button class="bl-mob-btn" id="bl-mob-pdf">📄&nbsp; Export PDF</button>
+  <button class="bl-mob-btn" id="bl-mob-email">📧&nbsp; Export e-mail</button>
+  <button class="bl-mob-btn" id="bl-mob-intro">✏️&nbsp; Upravit úvodní text</button>
+  <button class="bl-mob-btn" id="bl-mob-history">🕐&nbsp; Historie změn</button>
 </div>
 
 <!-- Controls bar (always visible, above scroll) -->
 <div id="controls-bar">
   <div id="search-row">
-    <input id="search" placeholder="Hledat jmĂ©no, hotel, dĹŻvodâ€¦" autocomplete="off">
+    <input id="search" placeholder="Hledat jméno, hotel, důvod…" autocomplete="off">
     <span id="count-badge"></span>
   </div>
   <div id="letter-filter-row"></div>
@@ -908,17 +908,17 @@ body.no-hist-delete #btn-hist-del-sel { display: none !important; }
       <table id="bl-table">
         <thead>
           <tr>
-            <th class="sortable" data-sort="name">JmĂ©no <span class="sort-arrow" id="sa-name">â–˛</span></th>
+            <th class="sortable" data-sort="name">Jméno <span class="sort-arrow" id="sa-name">▲</span></th>
             <th class="sortable" data-sort="hotel">Hotel <span class="sort-arrow" id="sa-hotel"></span></th>
             <th class="sortable" data-sort="birth_date">Datum nar. <span class="sort-arrow" id="sa-birth_date"></span></th>
-            <th>Ĺ koda</th>
+            <th>Škoda</th>
             <th class="sortable" data-sort="stay_date">Datum odjezdu <span class="sort-arrow" id="sa-stay_date"></span></th>
-            <th>DĹŻvod</th>
+            <th>Důvod</th>
             <th id="th-edit" style="width:68px;"></th>
           </tr>
         </thead>
         <tbody id="bl-body">
-          <tr><td colspan="7" id="empty-state" style="text-align:center;padding:40px;color:#888;">NaÄŤĂítĂˇmâ€¦</td></tr>
+          <tr><td colspan="7" id="empty-state" style="text-align:center;padding:40px;color:#888;">Načítám…</td></tr>
         </tbody>
       </table>
     </div>
@@ -931,28 +931,28 @@ body.no-hist-delete #btn-hist-del-sel { display: none !important; }
     <div class="history-filters">
       <label>Akce:</label>
       <select id="hist-filter-action">
-        <option value="">VĹˇe</option>
-        <option value="ADD">PĹ™idĂˇnĂí</option>
-        <option value="REMOVE">OdebrĂˇnĂí</option>
-        <option value="EDIT">Ăšprava zĂˇznamu</option>
-        <option value="EDIT_INTRO">Ăšprava textu</option>
+        <option value="">Vše</option>
+        <option value="ADD">Přidání</option>
+        <option value="REMOVE">Odebrání</option>
+        <option value="EDIT">Úprava záznamu</option>
+        <option value="EDIT_INTRO">Úprava textu</option>
       </select>
       <label>Od:</label>
       <input type="date" id="hist-filter-from">
       <label>Do:</label>
       <input type="date" id="hist-filter-to">
-      <button id="btn-hist-restore-sel" style="display:none;padding:5px 12px;border-radius:5px;border:1px solid #1a7a1a;background:#1a7a1a;color:#fff;font-size:11px;cursor:pointer;font-family:inherit;white-space:nowrap;">Obnovit vybranĂ© (0)</button>
-      <button id="btn-hist-del-sel" style="display:none;padding:5px 12px;border-radius:5px;border:1px solid #8b1a1a;background:#8b1a1a;color:#fff;font-size:11px;cursor:pointer;font-family:inherit;white-space:nowrap;">Smazat vybranĂ© (0)</button>
-      <button id="btn-hist-back" style="padding:5px 14px;border-radius:5px;border:1px solid #4a4a4a;background:#3a3a3a;color:#e0e0e0;font-size:11px;cursor:pointer;font-family:inherit;white-space:nowrap;">â† ZpÄ›t na seznam</button>
+      <button id="btn-hist-restore-sel" style="display:none;padding:5px 12px;border-radius:5px;border:1px solid #1a7a1a;background:#1a7a1a;color:#fff;font-size:11px;cursor:pointer;font-family:inherit;white-space:nowrap;">Obnovit vybrané (0)</button>
+      <button id="btn-hist-del-sel" style="display:none;padding:5px 12px;border-radius:5px;border:1px solid #8b1a1a;background:#8b1a1a;color:#fff;font-size:11px;cursor:pointer;font-family:inherit;white-space:nowrap;">Smazat vybrané (0)</button>
+      <button id="btn-hist-back" style="padding:5px 14px;border-radius:5px;border:1px solid #4a4a4a;background:#3a3a3a;color:#e0e0e0;font-size:11px;cursor:pointer;font-family:inherit;white-space:nowrap;">← Zpět na seznam</button>
     </div>
 
     <div id="history-table-wrap">
       <table id="history-table">
         <thead>
           <tr>
-            <th style="width:30px;text-align:center;"><input type="checkbox" id="hist-sel-all" title="Vybrat / zruĹˇit vĹˇe"></th>
-            <th>Datum a ÄŤas</th>
-            <th>UĹľivatel</th>
+            <th style="width:30px;text-align:center;"><input type="checkbox" id="hist-sel-all" title="Vybrat / zrušit vše"></th>
+            <th>Datum a čas</th>
+            <th>Uživatel</th>
             <th>Akce</th>
             <th>Detaily</th>
             <th style="width:60px;"></th>
@@ -965,61 +965,61 @@ body.no-hist-delete #btn-hist-del-sel { display: none !important; }
 
 </div>
 
-<!-- Modal: PĹ™idat osobu/y -->
+<!-- Modal: Přidat osobu/y -->
 <div class="overlay" id="overlay-add">
   <div class="modal">
-    <h2>PĹ™idat osobu na blacklist</h2>
+    <h2>Přidat osobu na blacklist</h2>
     <div id="person-blocks"></div>
-    <button class="btn-add-more" id="btn-add-more">+ PĹ™idat dalĹˇĂí osobu</button>
+    <button class="btn-add-more" id="btn-add-more">+ Přidat další osobu</button>
     <div class="modal-btns">
-      <button class="btn-cancel" id="btn-add-cancel">ZruĹˇit</button>
-      <button class="btn-save" id="btn-add-submit">PĹ™idat</button>
+      <button class="btn-cancel" id="btn-add-cancel">Zrušit</button>
+      <button class="btn-save" id="btn-add-submit">Přidat</button>
     </div>
   </div>
 </div>
 
-<!-- Modal: DĹŻvody odebrĂˇnĂí -->
+<!-- Modal: Důvody odebrání -->
 <div class="overlay" id="overlay-remove">
   <div class="modal">
-    <h2>Potvrdit odebrĂˇnĂí</h2>
+    <h2>Potvrdit odebrání</h2>
     <div id="removal-blocks"></div>
     <div class="modal-btns">
-      <button class="btn-cancel" id="btn-rem-cancel">ZruĹˇit</button>
+      <button class="btn-cancel" id="btn-rem-cancel">Zrušit</button>
       <button class="btn-del-red" id="btn-rem-submit">Odebrat</button>
     </div>
   </div>
 </div>
 
-<!-- Modal: Upravit ĂşvodnĂí text -->
+<!-- Modal: Upravit úvodní text -->
 <div class="overlay" id="overlay-intro">
   <div class="modal modal-lg">
-    <h2>Upravit ĂşvodnĂí text</h2>
+    <h2>Upravit úvodní text</h2>
     <div id="rte-toolbar">
-      <button class="rte-btn" title="TuÄŤnĂ©" onclick="execCmd('bold')"><b>B</b></button>
-      <button class="rte-btn" title="KurzĂíva" onclick="execCmd('italic')"><i>I</i></button>
-      <button class="rte-btn" title="PodtrĹľenĂ©" onclick="execCmd('underline')"><u>U</u></button>
+      <button class="rte-btn" title="Tučné" onclick="execCmd('bold')"><b>B</b></button>
+      <button class="rte-btn" title="Kurzíva" onclick="execCmd('italic')"><i>I</i></button>
+      <button class="rte-btn" title="Podtržené" onclick="execCmd('underline')"><u>U</u></button>
     </div>
     <div id="rte-body" contenteditable="true"></div>
     <div class="modal-btns">
-      <button class="btn-cancel" id="btn-intro-cancel">ZruĹˇit</button>
-      <button class="btn-save" id="btn-intro-submit">UloĹľit</button>
+      <button class="btn-cancel" id="btn-intro-cancel">Zrušit</button>
+      <button class="btn-save" id="btn-intro-submit">Uložit</button>
     </div>
   </div>
 </div>
 
-<!-- Modal: VĂ˝bÄ›r zmÄ›n pro e-mail -->
+<!-- Modal: Výběr změn pro e-mail -->
 <div class="overlay" id="overlay-email-select">
   <div class="modal modal-lg">
-    <h2>VĂ˝bÄ›r zmÄ›n pro e-mail</h2>
-    <p style="font-size:12px;color:#666;margin-bottom:10px;">ZaĹˇkrtnÄ›te zmÄ›ny, kterĂ© chcete zahrnout do e-mailu:</p>
+    <h2>Výběr změn pro e-mail</h2>
+    <p style="font-size:12px;color:#666;margin-bottom:10px;">Zaškrtněte změny, které chcete zahrnout do e-mailu:</p>
     <div class="email-select-actions">
-      <button onclick="emailSelectAll(true)">Vybrat vĹˇe</button>
-      <button onclick="emailSelectAll(false)">ZruĹˇit vĂ˝bÄ›r</button>
+      <button onclick="emailSelectAll(true)">Vybrat vše</button>
+      <button onclick="emailSelectAll(false)">Zrušit výběr</button>
       <span id="email-select-count" style="font-size:11px;color:#888;margin-left:4px;"></span>
     </div>
     <div id="email-select-list"></div>
     <div class="modal-btns">
-      <button class="btn-cancel" id="btn-email-select-cancel">ZruĹˇit</button>
+      <button class="btn-cancel" id="btn-email-select-cancel">Zrušit</button>
       <button class="btn-save" id="btn-email-select-submit">Vygenerovat e-mail</button>
     </div>
   </div>
@@ -1031,45 +1031,45 @@ body.no-hist-delete #btn-hist-del-sel { display: none !important; }
     <h2 id="email-modal-title">Export e-mailu</h2>
     <div id="email-preview-wrap"></div>
     <div class="modal-btns">
-      <button class="btn-cancel" id="btn-email-close">ZavĹ™Ăít</button>
-      <button class="btn-save" id="btn-email-copy">KopĂírovat</button>
+      <button class="btn-cancel" id="btn-email-close">Zavřít</button>
+      <button class="btn-save" id="btn-email-copy">Kopírovat</button>
     </div>
   </div>
 </div>
 
-<!-- Modal: Upravit zĂˇznam -->
+<!-- Modal: Upravit záznam -->
 <div class="overlay" id="overlay-edit">
   <div class="modal">
-    <h2>Upravit zĂˇznam</h2>
+    <h2>Upravit záznam</h2>
     <div class="form-row">
       <div class="form-field">
-        <label>JmĂ©no *</label>
-        <input type="text" id="edit-name" placeholder="PĹ™ĂíjmenĂí JmĂ©no" autocomplete="off">
+        <label>Jméno *</label>
+        <input type="text" id="edit-name" placeholder="Příjmení Jméno" autocomplete="off">
       </div>
       <div class="form-field">
         <label>Hotel</label>
-        <input type="text" id="edit-hotel" placeholder="A, T, I, A+Iâ€¦" autocomplete="off">
+        <input type="text" id="edit-hotel" placeholder="A, T, I, A+I…" autocomplete="off">
       </div>
     </div>
     <div class="form-row three">
       <div class="form-field">
-        <label>Datum narozenĂí</label>
+        <label>Datum narození</label>
         <input type="date" id="edit-bdate">
       </div>
       <div class="form-field">
-        <label>Ĺ koda</label>
-        <input type="text" id="edit-damage" placeholder="1500 KÄŤ, 2275 /2 os." autocomplete="off">
+        <label>Škoda</label>
+        <input type="text" id="edit-damage" placeholder="1500 Kč, 2275 /2 os." autocomplete="off">
       </div>
       <div class="form-field">
         <label>Datum odjezdu</label>
         <input type="date" id="edit-sdate">
       </div>
     </div>
-    <label>DĹŻvod zaĹ™azenĂí *</label>
-    <textarea id="edit-reason" placeholder="StruÄŤnĂ˝ popis incidentuâ€¦"></textarea>
+    <label>Důvod zařazení *</label>
+    <textarea id="edit-reason" placeholder="Stručný popis incidentu…"></textarea>
     <div class="modal-btns">
-      <button class="btn-cancel" id="btn-edit-cancel">ZruĹˇit</button>
-      <button class="btn-save" id="btn-edit-submit">UloĹľit zmÄ›ny</button>
+      <button class="btn-cancel" id="btn-edit-cancel">Zrušit</button>
+      <button class="btn-save" id="btn-edit-submit">Uložit změny</button>
     </div>
   </div>
 </div>
@@ -1077,7 +1077,7 @@ body.no-hist-delete #btn-hist-del-sel { display: none !important; }
 <div id="toast"></div>
 
 <script>
-// â”€â”€ State â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+// ── State ────────────────────────────────────────────────────────────────────
 
 let entries  = [];
 let filtered = [];
@@ -1089,7 +1089,7 @@ let activeLetter = '';
 let editingId = null;
 let selectedHistory = new Set();
 
-// â”€â”€ Helpers â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+// ── Helpers ──────────────────────────────────────────────────────────────────
 
 function formatDate(val) {
   if (!val) return '';
@@ -1132,7 +1132,7 @@ function showToast(msg, isError) {
 function showOverlay(id) { document.getElementById(id).classList.add('show'); }
 function hideOverlay(id) { document.getElementById(id).classList.remove('show'); }
 
-// â”€â”€ Fetch helpers â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+// ── Fetch helpers ─────────────────────────────────────────────────────────────
 
 async function apiFetch(url, opts) {
   const r = await fetch(url, { headers: { 'Content-Type': 'application/json' }, ...opts });
@@ -1140,7 +1140,7 @@ async function apiFetch(url, opts) {
   return r.json();
 }
 
-// â”€â”€ Load entries â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+// ── Load entries ──────────────────────────────────────────────────────────────
 
 async function loadEntries() {
   const data = await apiFetch('/api/blacklist/entries');
@@ -1168,7 +1168,7 @@ function renderLetterFilter() {
   const row = document.getElementById('letter-filter-row');
   if (letters.length < 2) { row.innerHTML = ''; return; }
   row.innerHTML =
-    `<button class="hotel-btn letter-btn${!activeLetter ? ' active' : ''}" onclick="setLetterFilter('')">VĹˇe</button>` +
+    `<button class="hotel-btn letter-btn${!activeLetter ? ' active' : ''}" onclick="setLetterFilter('')">Vše</button>` +
     letters.map(l => `<button class="hotel-btn letter-btn${activeLetter === l ? ' active' : ''}" onclick="setLetterFilter('${l}')">${l}</button>`).join('');
 }
 
@@ -1181,7 +1181,7 @@ function setLetterFilter(l) {
 function renderTable() {
   const tbody = document.getElementById('bl-body');
   const badge = document.getElementById('count-badge');
-  badge.textContent = `${filtered.length} zĂˇznamĹŻ${entries.length !== filtered.length ? ` z ${entries.length}` : ''}`;
+  badge.textContent = `${filtered.length} záznamů${entries.length !== filtered.length ? ` z ${entries.length}` : ''}`;
 
   // Update sort arrows
   ['name','hotel','birth_date','stay_date'].forEach(k => {
@@ -1190,7 +1190,7 @@ function renderTable() {
     if (!th || !arrow) return;
     if (k === sortKey) {
       th.classList.add('sort-active');
-      arrow.textContent = sortDir === 'asc' ? 'â–˛' : 'â–Ľ';
+      arrow.textContent = sortDir === 'asc' ? '▲' : '▼';
     } else {
       th.classList.remove('sort-active');
       arrow.textContent = '';
@@ -1199,7 +1199,7 @@ function renderTable() {
 
   if (filtered.length === 0) {
     tbody.innerHTML = `<tr><td colspan="7" style="text-align:center;padding:40px;color:#888;">
-      ${entries.length === 0 ? 'Ĺ˝ĂˇdnĂ© osoby na blacklistu. PouĹľijte <em>+ PĹ™idat</em> pro prvnĂí zĂˇznam.' : 'Ĺ˝ĂˇdnĂ© vĂ˝sledky pro zadanĂ˝ filtr.'}
+      ${entries.length === 0 ? 'Žádné osoby na blacklistu. Použijte <em>+ Přidat</em> pro první záznam.' : 'Žádné výsledky pro zadaný filtr.'}
     </td></tr>`;
     return;
   }
@@ -1220,8 +1220,8 @@ function renderTable() {
       <td>${escHtml(formatDate(e.stay_date))}</td>
       <td class="col-reason">${escHtml(e.reason)}</td>
       <td class="col-edit">
-        <button class="btn-edit-row" onclick="openEditModal('${escHtml(e.id)}')" title="Upravit zĂˇznam">âśŽ</button>
-        <button class="btn-del-row" onclick="openRemoveModal('${escHtml(e.id)}')" title="Odebrat z blacklistu">Ă—</button>
+        <button class="btn-edit-row" onclick="openEditModal('${escHtml(e.id)}')" title="Upravit záznam">✎</button>
+        <button class="btn-del-row" onclick="openRemoveModal('${escHtml(e.id)}')" title="Odebrat z blacklistu">×</button>
       </td>
     </tr>`;
   }).join('');
@@ -1232,17 +1232,17 @@ function updateFooter() {
   const d = `${String(now.getDate()).padStart(2,'0')}.${String(now.getMonth()+1).padStart(2,'0')}.${now.getFullYear()}`;
   const name = currentUser?.name || '';
   document.getElementById('footer-info').textContent =
-    `${d}${name ? ' Â· ' + name : ''} Â· Celkem: ${entries.length} osob`;
+    `${d}${name ? ' · ' + name : ''} · Celkem: ${entries.length} osob`;
 }
 
-// â”€â”€ Load intro â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+// ── Load intro ────────────────────────────────────────────────────────────────
 
 async function loadIntro() {
   const data = await apiFetch('/api/blacklist/intro');
   document.getElementById('intro-box').innerHTML = data.content || '';
 }
 
-// â”€â”€ Add modal â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+// ── Add modal ─────────────────────────────────────────────────────────────────
 
 let personCount = 0;
 
@@ -1255,34 +1255,34 @@ function createPersonBlock(num) {
   div.innerHTML = `
     <div class="person-block-header">
       <span class="person-block-title">Osoba ${num}</span>
-      ${num > 1 ? `<button class="btn-remove-block" title="Odstranit" onclick="removePersonBlock(this)">Ă—</button>` : ''}
+      ${num > 1 ? `<button class="btn-remove-block" title="Odstranit" onclick="removePersonBlock(this)">×</button>` : ''}
     </div>
     <div class="form-row">
       <div class="form-field">
-        <label>JmĂ©no *</label>
-        <input type="text" class="f-name" placeholder="PĹ™ĂíjmenĂí JmĂ©no" autocomplete="off">
+        <label>Jméno *</label>
+        <input type="text" class="f-name" placeholder="Příjmení Jméno" autocomplete="off">
       </div>
       <div class="form-field">
         <label>Hotel *</label>
-        <input type="text" class="f-hotel" placeholder="A, T, I, A+Iâ€¦" autocomplete="off">
+        <input type="text" class="f-hotel" placeholder="A, T, I, A+I…" autocomplete="off">
       </div>
     </div>
     <div class="form-row three">
       <div class="form-field">
-        <label>Datum narozenĂí</label>
+        <label>Datum narození</label>
         <input type="date" class="f-bdate">
       </div>
       <div class="form-field">
-        <label>Ĺ koda</label>
-        <input type="text" class="f-damage" placeholder="1500 KÄŤ, 2275 /2 os." autocomplete="off">
+        <label>Škoda</label>
+        <input type="text" class="f-damage" placeholder="1500 Kč, 2275 /2 os." autocomplete="off">
       </div>
       <div class="form-field">
         <label>Datum odjezdu</label>
         <input type="date" class="f-sdate">
       </div>
     </div>
-    <label>DĹŻvod zaĹ™azenĂí *</label>
-    <textarea class="f-reason" placeholder="StruÄŤnĂ˝ popis incidentuâ€¦"></textarea>
+    <label>Důvod zařazení *</label>
+    <textarea class="f-reason" placeholder="Stručný popis incidentu…"></textarea>
     <div class="warning-dup"></div>
   `;
   // Duplicate check on name input
@@ -1297,7 +1297,7 @@ function createPersonBlock(num) {
       e.name.toLowerCase() === n && (!b || formatDate(e.birth_date) === formatDate(b))
     );
     if (dup) {
-      dupWarn.textContent = `UpozornÄ›nĂí: osoba "${dup.name}" je jiĹľ na blacklistu. PĹ™esto lze pĹ™idat.`;
+      dupWarn.textContent = `Upozornění: osoba "${dup.name}" je již na blacklistu. Přesto lze přidat.`;
       dupWarn.style.display = '';
     } else {
       dupWarn.style.display = 'none';
@@ -1346,23 +1346,23 @@ async function submitAdd() {
     }
     entries_to_add.push({ name, hotel, birthDate: bdate || null, damage: damage || null, stayDate: sdate || null, reason });
   });
-  if (!valid) { showToast('VyplĹte vĹˇechna povinnĂˇ pole.', true); return; }
+  if (!valid) { showToast('Vyplňte všechna povinná pole.', true); return; }
   const btn = document.getElementById('btn-add-submit');
-  btn.disabled = true; btn.textContent = 'UklĂˇdĂˇmâ€¦';
+  btn.disabled = true; btn.textContent = 'Ukládám…';
   try {
     const r = await apiFetch('/api/blacklist/entries', { method: 'POST', body: JSON.stringify({ entries: entries_to_add }) });
     if (!r.ok) throw new Error(r.msg);
     hideOverlay('overlay-add');
     await loadEntries();
-    showToast(`PĹ™idĂˇno ${entries_to_add.length} ${entries_to_add.length === 1 ? 'osoba' : entries_to_add.length < 5 ? 'osoby' : 'osob'}.`);
+    showToast(`Přidáno ${entries_to_add.length} ${entries_to_add.length === 1 ? 'osoba' : entries_to_add.length < 5 ? 'osoby' : 'osob'}.`);
   } catch(e) {
-    showToast('Chyba pĹ™i uklĂˇdĂˇnĂí: ' + e.message, true);
+    showToast('Chyba při ukládání: ' + e.message, true);
   } finally {
-    btn.disabled = false; btn.textContent = 'PĹ™idat';
+    btn.disabled = false; btn.textContent = 'Přidat';
   }
 }
 
-// â”€â”€ Remove modal â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+// ── Remove modal ──────────────────────────────────────────────────────────────
 
 function openRemoveModal(id) {
   const e = entries.find(x => x.id === id);
@@ -1374,8 +1374,8 @@ function openRemoveModal(id) {
   div.dataset.id = id;
   div.innerHTML = `
     <div class="removal-name">${escHtml(e.name)}</div>
-    <label>DĹŻvod odebrĂˇnĂí *</label>
-    <textarea class="f-rem-reason" placeholder="ProÄŤ je host odebĂírĂˇn z blacklistuâ€¦"></textarea>
+    <label>Důvod odebrání *</label>
+    <textarea class="f-rem-reason" placeholder="Proč je host odebírán z blacklistu…"></textarea>
   `;
   container.appendChild(div);
   showOverlay('overlay-remove');
@@ -1391,15 +1391,15 @@ async function submitRemove() {
     if (!reason) { b.querySelector('.f-rem-reason').style.borderColor = '#c0392b'; valid = false; return; }
     removals.push({ id: b.dataset.id, reason });
   });
-  if (!valid) { showToast('VyplĹte dĹŻvod odebrĂˇnĂí u kaĹľdĂ© osoby.', true); return; }
+  if (!valid) { showToast('Vyplňte důvod odebrání u každé osoby.', true); return; }
   const btn = document.getElementById('btn-rem-submit');
-  btn.disabled = true; btn.textContent = 'OdebĂírĂˇmâ€¦';
+  btn.disabled = true; btn.textContent = 'Odebírám…';
   try {
     const r = await apiFetch('/api/blacklist/remove', { method: 'POST', body: JSON.stringify({ removals }) });
     if (!r.ok) throw new Error(r.msg);
     hideOverlay('overlay-remove');
     await loadEntries();
-    showToast(`OdebrĂˇno ${removals.length} ${removals.length === 1 ? 'osoba' : removals.length < 5 ? 'osoby' : 'osob'}.`);
+    showToast(`Odebráno ${removals.length} ${removals.length === 1 ? 'osoba' : removals.length < 5 ? 'osoby' : 'osob'}.`);
     openHistory();
   } catch(e) {
     showToast('Chyba: ' + e.message, true);
@@ -1408,7 +1408,7 @@ async function submitRemove() {
   }
 }
 
-// â”€â”€ Intro editor â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+// ── Intro editor ──────────────────────────────────────────────────────────────
 
 function execCmd(cmd) {
   document.execCommand(cmd, false, null);
@@ -1424,23 +1424,23 @@ async function openIntroModal() {
 
 async function submitIntro() {
   const content = document.getElementById('rte-body').innerHTML.trim();
-  if (!content) { showToast('Obsah nesmĂí bĂ˝t prĂˇzdnĂ˝.', true); return; }
+  if (!content) { showToast('Obsah nesmí být prázdný.', true); return; }
   const btn = document.getElementById('btn-intro-submit');
-  btn.disabled = true; btn.textContent = 'UklĂˇdĂˇmâ€¦';
+  btn.disabled = true; btn.textContent = 'Ukládám…';
   try {
     const r = await apiFetch('/api/blacklist/intro', { method: 'PUT', body: JSON.stringify({ content }) });
     if (!r.ok) throw new Error(r.msg);
     hideOverlay('overlay-intro');
     await loadIntro();
-    showToast('ĂšvodnĂí text byl uloĹľen.');
+    showToast('Úvodní text byl uložen.');
   } catch(e) {
     showToast('Chyba: ' + e.message, true);
   } finally {
-    btn.disabled = false; btn.textContent = 'UloĹľit';
+    btn.disabled = false; btn.textContent = 'Uložit';
   }
 }
 
-// â”€â”€ History â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+// ── History ───────────────────────────────────────────────────────────────────
 
 async function openHistory() {
   selectedHistory.clear();
@@ -1465,14 +1465,14 @@ function renderHistory() {
 
   const tbody = document.getElementById('hist-body');
   if (rows.length === 0) {
-    tbody.innerHTML = `<tr><td colspan="6" style="text-align:center;padding:32px;color:#888;">Ĺ˝ĂˇdnĂ© zĂˇznamy.</td></tr>`;
+    tbody.innerHTML = `<tr><td colspan="6" style="text-align:center;padding:32px;color:#888;">Žádné záznamy.</td></tr>`;
     const selAll = document.getElementById('hist-sel-all');
     if (selAll) selAll.checked = false;
     updateHistBtns();
     return;
   }
 
-  const actionLabel = { ADD: 'PĹ™idĂˇnĂí', REMOVE: 'OdebrĂˇnĂí', EDIT: 'Ăšprava zĂˇznamu', EDIT_INTRO: 'Ăšprava textu' };
+  const actionLabel = { ADD: 'Přidání', REMOVE: 'Odebrání', EDIT: 'Úprava záznamu', EDIT_INTRO: 'Úprava textu' };
 
   tbody.innerHTML = rows.map(r => {
     const p = r.payload;
@@ -1486,17 +1486,17 @@ function renderHistory() {
       const remR = p.removalReason || p.removal_reason || '';
       const origR = e.original_reason || e.reason || '';
       detail = `<strong>${escHtml(name)}</strong><br>
-        <span style="color:#555;font-size:11px;">PĹŻvodnĂí dĹŻvod: ${escHtml(origR.substring(0, 80))}</span><br>
-        <span style="color:#b71c1c;font-size:11px;">DĹŻvod odebrĂˇnĂí: ${escHtml(remR)}</span>`;
+        <span style="color:#555;font-size:11px;">Původní důvod: ${escHtml(origR.substring(0, 80))}</span><br>
+        <span style="color:#b71c1c;font-size:11px;">Důvod odebrání: ${escHtml(remR)}</span>`;
     } else if (r.action === 'EDIT') {
       const after = p.after || {};
       const before = p.before || {};
-      detail = `<strong>${escHtml(after.name || before.name || '')}</strong><br><span style="color:#555;font-size:11px;">Upraven zĂˇznam</span>`;
+      detail = `<strong>${escHtml(after.name || before.name || '')}</strong><br><span style="color:#555;font-size:11px;">Upraven záznam</span>`;
     } else {
-      detail = `<span style="color:#555;font-size:11px;">Upraven ĂşvodnĂí text</span>`;
+      detail = `<span style="color:#555;font-size:11px;">Upraven úvodní text</span>`;
     }
     const restoreBtn = r.action === 'REMOVE'
-      ? `<button class="btn-restore-hist" onclick="restoreFromHistory('${escHtml(r.id)}')" title="PĹ™idat zpÄ›t na blacklist">â†©</button>`
+      ? `<button class="btn-restore-hist" onclick="restoreFromHistory('${escHtml(r.id)}')" title="Přidat zpět na blacklist">↩</button>`
       : '';
     const isSel = selectedHistory.has(r.id);
     return `<tr class="${isSel ? 'hist-selected' : ''}">
@@ -1505,7 +1505,7 @@ function renderHistory() {
       <td>${escHtml(r.user_name)}</td>
       <td><span class="badge-action ${r.action}">${actionLabel[r.action] || r.action}</span></td>
       <td>${detail}</td>
-      <td style="padding:4px;text-align:center;"><div class="hist-action-btns">${restoreBtn}<button class="btn-hist-del" onclick="deleteHistoryEntry('${escHtml(r.id)}')" title="Smazat zĂˇznam">Ă—</button></div></td>
+      <td style="padding:4px;text-align:center;"><div class="hist-action-btns">${restoreBtn}<button class="btn-hist-del" onclick="deleteHistoryEntry('${escHtml(r.id)}')" title="Smazat záznam">×</button></div></td>
     </tr>`;
   }).join('');
 
@@ -1534,11 +1534,11 @@ function updateHistBtns() {
   const restoreCount = [...selectedHistory].filter(id => auditLog.find(r => r.id === id)?.action === 'REMOVE').length;
   if (delBtn) {
     delBtn.style.display = n > 0 ? '' : 'none';
-    delBtn.textContent = `Smazat vybranĂ© (${n})`;
+    delBtn.textContent = `Smazat vybrané (${n})`;
   }
   if (restoreBtn) {
     restoreBtn.style.display = restoreCount > 0 ? '' : 'none';
-    restoreBtn.textContent = `Obnovit vybranĂ© (${restoreCount})`;
+    restoreBtn.textContent = `Obnovit vybrané (${restoreCount})`;
   }
 }
 
@@ -1547,7 +1547,7 @@ async function restoreSelectedHistory() {
     .map(id => auditLog.find(r => r.id === id))
     .filter(r => r?.action === 'REMOVE');
   if (toRestore.length === 0) return;
-  if (!confirm(`PĹ™idat zpÄ›t na blacklist ${toRestore.length} ${toRestore.length === 1 ? 'osobu' : toRestore.length < 5 ? 'osoby' : 'osob'}?`)) return;
+  if (!confirm(`Přidat zpět na blacklist ${toRestore.length} ${toRestore.length === 1 ? 'osobu' : toRestore.length < 5 ? 'osoby' : 'osob'}?`)) return;
   let ok = 0, fail = 0;
   for (const rec of toRestore) {
     const p = rec.payload;
@@ -1570,13 +1570,13 @@ async function restoreSelectedHistory() {
   await loadEntries();
   selectedHistory.clear();
   closeHistory();
-  showToast(fail === 0 ? `Obnoveno ${ok} osob.` : `Obnoveno ${ok}, nepodaĹ™ilo se ${fail}.`, fail > 0);
+  showToast(fail === 0 ? `Obnoveno ${ok} osob.` : `Obnoveno ${ok}, nepodařilo se ${fail}.`, fail > 0);
 }
 
 async function deleteSelectedHistory() {
   const ids = [...selectedHistory];
   if (ids.length === 0) return;
-  if (!confirm(`Trvale smazat ${ids.length} ${ids.length === 1 ? 'zĂˇznam' : ids.length < 5 ? 'zĂˇznamy' : 'zĂˇznamĹŻ'} z historie?`)) return;
+  if (!confirm(`Trvale smazat ${ids.length} ${ids.length === 1 ? 'záznam' : ids.length < 5 ? 'záznamy' : 'záznamů'} z historie?`)) return;
   try {
     const r = await apiFetch('/api/blacklist/audit/bulk', { method: 'DELETE', body: JSON.stringify({ ids }) });
     if (!r.ok) throw new Error(r.msg);
@@ -1584,20 +1584,20 @@ async function deleteSelectedHistory() {
     const deleted = r.deleted;
     selectedHistory.clear();
     renderHistory();
-    showToast(`SmazĂˇno ${deleted} zĂˇznamĹŻ.`);
+    showToast(`Smazáno ${deleted} záznamů.`);
   } catch(e) {
     showToast('Chyba: ' + e.message, true);
   }
 }
 
 async function deleteHistoryEntry(id) {
-  if (!confirm('Smazat tento zĂˇznam z historie trvale?')) return;
+  if (!confirm('Smazat tento záznam z historie trvale?')) return;
   try {
     const r = await apiFetch(`/api/blacklist/audit/${id}`, { method: 'DELETE' });
     if (!r.ok) throw new Error(r.msg);
     auditLog = auditLog.filter(x => x.id !== id);
     renderHistory();
-    showToast('ZĂˇznam smazĂˇn.');
+    showToast('Záznam smazán.');
   } catch(e) {
     showToast('Chyba: ' + e.message, true);
   }
@@ -1610,15 +1610,15 @@ function closeHistory() {
   document.getElementById('main-content').scrollTop = 0;
 }
 
-// â”€â”€ PDF export â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+// ── PDF export ────────────────────────────────────────────────────────────────
 
 async function exportPdf() {
   const btn = document.getElementById('btn-pdf');
-  btn.disabled = true; btn.textContent = 'Generujiâ€¦';
+  btn.disabled = true; btn.textContent = 'Generuji…';
   try {
     const r = await fetch('/api/blacklist/export/pdf');
     if (!r.ok) {
-      let msg = 'Chyba pĹ™i generovĂˇnĂí PDF.';
+      let msg = 'Chyba při generování PDF.';
       try { const j = await r.json(); msg = j.msg || msg; } catch(e) {}
       showToast(msg, true); return;
     }
@@ -1632,8 +1632,8 @@ async function exportPdf() {
     a.download = `${now.getFullYear()}_${pad2(now.getMonth()+1)}_${pad2(now.getDate())}_BLACKLIST.pdf`;
     a.click();
     URL.revokeObjectURL(url);
-    if (warning) showToast('âš  ' + warning, true);
-    else showToast('PDF bylo vygenerovĂˇno.');
+    if (warning) showToast('⚠ ' + warning, true);
+    else showToast('PDF bylo vygenerováno.');
   } catch(e) {
     showToast('Chyba: ' + e.message, true);
   } finally {
@@ -1641,17 +1641,17 @@ async function exportPdf() {
   }
 }
 
-// â”€â”€ Email export â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+// ── Email export ──────────────────────────────────────────────────────────────
 
 let emailPendingItems = [];
 
 async function exportEmail() {
   const btn = document.getElementById('btn-email');
-  btn.disabled = true; btn.textContent = 'NaÄŤĂítĂˇmâ€¦';
+  btn.disabled = true; btn.textContent = 'Načítám…';
   try {
     const r = await apiFetch('/api/blacklist/export/email/pending');
     if (!r.ok) throw new Error(r.msg || 'Chyba');
-    if (!r.items || r.items.length === 0) { showToast('Ĺ˝ĂˇdnĂ© novĂ© zmÄ›ny k odeslĂˇnĂí.'); return; }
+    if (!r.items || r.items.length === 0) { showToast('Žádné nové změny k odeslání.'); return; }
     openEmailSelectModal(r.items);
   } catch(e) {
     showToast('Chyba: ' + e.message, true);
@@ -1662,16 +1662,16 @@ async function exportEmail() {
 
 function openEmailSelectModal(items) {
   emailPendingItems = items;
-  const actionLabel = { ADD: 'PĹ™idĂˇnĂí', REMOVE: 'OdebrĂˇnĂí' };
+  const actionLabel = { ADD: 'Přidání', REMOVE: 'Odebrání' };
   const list = document.getElementById('email-select-list');
   list.innerHTML = items.map(item => {
     const p = item.payload || {};
     const entry = p.entry || p;
-    const name = entry.name || entry.original_name || 'â€”';
+    const name = entry.name || entry.original_name || '—';
     const remReason = p.removalReason || '';
     const origReason = entry.reason || entry.original_reason || '';
     const preview = remReason
-      ? `DĹŻvod odebrĂˇnĂí: ${remReason.substring(0, 80)}`
+      ? `Důvod odebrání: ${remReason.substring(0, 80)}`
       : origReason.substring(0, 80);
     return `<label class="email-select-row">
       <input type="checkbox" class="email-sel-cb" data-id="${escHtml(item.id)}" onchange="updateEmailSelectCount()">
@@ -1680,7 +1680,7 @@ function openEmailSelectModal(items) {
           <span class="badge-action ${item.action}">${actionLabel[item.action] || item.action}</span>
           &nbsp;${escHtml(name)}
         </div>
-        <div class="email-select-meta">${escHtml(formatDatetime(item.timestamp))} Â· ${escHtml(item.user_name)}${preview ? ' Â· ' + escHtml(preview) : ''}</div>
+        <div class="email-select-meta">${escHtml(formatDatetime(item.timestamp))} · ${escHtml(item.user_name)}${preview ? ' · ' + escHtml(preview) : ''}</div>
       </div>
     </label>`;
   }).join('');
@@ -1691,7 +1691,7 @@ function openEmailSelectModal(items) {
 function updateEmailSelectCount() {
   const checked = document.querySelectorAll('.email-sel-cb:checked').length;
   document.getElementById('email-select-count').textContent =
-    `VybrĂˇno: ${checked} z ${emailPendingItems.length}`;
+    `Vybráno: ${checked} z ${emailPendingItems.length}`;
 }
 
 function emailSelectAll(val) {
@@ -1701,17 +1701,17 @@ function emailSelectAll(val) {
 
 async function generateEmailFromSelection() {
   const checked = [...document.querySelectorAll('.email-sel-cb:checked')];
-  if (checked.length === 0) { showToast('Vyberte alespoĹ jednu zmÄ›nu.', true); return; }
+  if (checked.length === 0) { showToast('Vyberte alespoň jednu změnu.', true); return; }
   const ids = checked.map(cb => cb.dataset.id);
   const btn = document.getElementById('btn-email-select-submit');
-  btn.disabled = true; btn.textContent = 'Generujiâ€¦';
+  btn.disabled = true; btn.textContent = 'Generuji…';
   try {
     const r = await apiFetch('/api/blacklist/export/email', { method: 'POST', body: JSON.stringify({ ids }) });
     if (!r.ok) throw new Error(r.msg || 'Chyba');
     hideOverlay('overlay-email-select');
     document.getElementById('email-preview-wrap').innerHTML = r.html;
     document.getElementById('email-preview-wrap').dataset.rawHtml = r.html;
-    document.getElementById('email-modal-title').textContent = 'E-mail vygenerovĂˇn';
+    document.getElementById('email-modal-title').textContent = 'E-mail vygenerován';
     showOverlay('overlay-email');
   } catch(e) {
     showToast('Chyba: ' + e.message, true);
@@ -1726,13 +1726,13 @@ async function copyEmail() {
     await navigator.clipboard.write([
       new ClipboardItem({ 'text/html': new Blob([html], { type: 'text/html' }) })
     ]);
-    showToast('ZkopĂírovĂˇno do schrĂˇnky.');
+    showToast('Zkopírováno do schránky.');
   } catch(e) {
-    showToast('KopĂírovĂˇnĂí se nezdaĹ™ilo: ' + e.message, true);
+    showToast('Kopírování se nezdařilo: ' + e.message, true);
   }
 }
 
-// â”€â”€ Event listeners â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+// ── Event listeners ───────────────────────────────────────────────────────────
 
 document.getElementById('btn-add').addEventListener('click', openAddModal);
 document.getElementById('btn-add-more').addEventListener('click', () => {
@@ -1784,12 +1784,12 @@ document.getElementById('search').addEventListener('input', applyFilter);
   });
 });
 
-// â”€â”€ Custom date picker â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+// ── Custom date picker ────────────────────────────────────────────────────────
 
 (function() {
-  const MONTHS = ['Leden','Ăšnor','BĹ™ezen','Duben','KvÄ›ten','ÄŚerven',
-                  'ÄŚervenec','Srpen','ZĂˇĹ™Ăí','ĹĂíjen','Listopad','Prosinec'];
-  const DOW = ['Po','Ăšt','St','ÄŚt','PĂˇ','So','Ne'];
+  const MONTHS = ['Leden','Únor','Březen','Duben','Květen','Červen',
+                  'Červenec','Srpen','Září','Říjen','Listopad','Prosinec'];
+  const DOW = ['Po','Út','St','Čt','Pá','So','Ne'];
   let openPopup = null;
 
   function closeAll() {
@@ -1919,7 +1919,7 @@ document.getElementById('search').addEventListener('input', applyFilter);
       openPopup = popup;
     }
 
-    // Text field: manual typing â€” parse on blur
+    // Text field: manual typing — parse on blur
     dispInp.addEventListener('blur', function() {
       const val = this.value.trim();
       if (!val) { clearValue(); return; }
@@ -1933,7 +1933,7 @@ document.getElementById('search').addEventListener('input', applyFilter);
           return;
         }
       }
-      // Invalid â€” restore from native input
+      // Invalid — restore from native input
       if (input.value) {
         const p = input.value.split('-');
         this.value = `${p[2]}.${p[1]}.${p[0]}`;
@@ -1976,7 +1976,7 @@ document.getElementById('search').addEventListener('input', applyFilter);
   };
 })();
 
-// â”€â”€ Sort â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+// ── Sort ─────────────────────────────────────────────────────────────────────
 
 document.querySelectorAll('#bl-table th.sortable').forEach(th => {
   th.addEventListener('click', () => {
@@ -1987,7 +1987,7 @@ document.querySelectorAll('#bl-table th.sortable').forEach(th => {
   });
 });
 
-// â”€â”€ Edit entry â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+// ── Edit entry ────────────────────────────────────────────────────────────────
 
 function openEditModal(id) {
   const e = entries.find(x => x.id === id);
@@ -2013,7 +2013,7 @@ async function submitEdit() {
   if (!name)   { document.getElementById('edit-name').style.borderColor   = '#c0392b'; return; }
   if (!reason) { document.getElementById('edit-reason').style.borderColor = '#c0392b'; return; }
   const btn = document.getElementById('btn-edit-submit');
-  btn.disabled = true; btn.textContent = 'UklĂˇdĂˇmâ€¦';
+  btn.disabled = true; btn.textContent = 'Ukládám…';
   try {
     const r = await apiFetch(`/api/blacklist/entries/${editingId}`, {
       method: 'PUT',
@@ -2022,19 +2022,19 @@ async function submitEdit() {
     if (!r.ok) throw new Error(r.msg);
     hideOverlay('overlay-edit');
     await loadEntries();
-    showToast('ZĂˇznam upraven.');
+    showToast('Záznam upraven.');
   } catch(e) {
     showToast('Chyba: ' + e.message, true);
   } finally {
-    btn.disabled = false; btn.textContent = 'UloĹľit zmÄ›ny';
+    btn.disabled = false; btn.textContent = 'Uložit změny';
   }
 }
 
-// â”€â”€ Restore from history â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+// ── Restore from history ──────────────────────────────────────────────────────
 
 async function restoreFromHistory(auditId) {
   const rec = auditLog.find(r => r.id === auditId);
-  if (!rec) { showToast('ZĂˇznam nenalezen.', true); return; }
+  if (!rec) { showToast('Záznam nenalezen.', true); return; }
   const p = rec.payload;
   const e = p.entry || p;
   const name   = e.original_name      || e.name       || '';
@@ -2043,8 +2043,8 @@ async function restoreFromHistory(auditId) {
   const damage = e.original_damage    || e.damage     || '';
   const stay   = e.original_stay_date  || e.stay_date  || '';
   const reason = e.original_reason    || e.reason     || '';
-  if (!name || !reason) { showToast('Nelze obnovit â€” chybĂí povinnĂˇ data.', true); return; }
-  if (!confirm(`PĹ™idat â€ž${name}" zpÄ›t na blacklist?`)) return;
+  if (!name || !reason) { showToast('Nelze obnovit — chybí povinná data.', true); return; }
+  if (!confirm(`Přidat „${name}" zpět na blacklist?`)) return;
   try {
     const r = await apiFetch('/api/blacklist/entries', {
       method: 'POST',
@@ -2053,7 +2053,7 @@ async function restoreFromHistory(auditId) {
     if (!r.ok) throw new Error(r.msg);
     await loadEntries();
     closeHistory();
-    showToast(`${name} pĹ™idĂˇn/a zpÄ›t na blacklist.`);
+    showToast(`${name} přidán/a zpět na blacklist.`);
   } catch(e) {
     showToast('Chyba: ' + e.message, true);
   }
@@ -2061,7 +2061,7 @@ async function restoreFromHistory(auditId) {
 
 // Theme toggle handled by /static/theme.js
 
-// â”€â”€ MobilnĂí hamburger menu â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+// ── Mobilní hamburger menu ────────────────────────────────────────────────────
 function toggleBlMenu() {
   const menu = document.getElementById('bl-mobile-menu');
   if (menu.classList.contains('open')) closeBlMenu();
@@ -2071,13 +2071,13 @@ function closeBlMenu() {
   document.getElementById('bl-mobile-menu').classList.remove('open');
 }
 
-// MobilnĂí menu â€” propojit akce s existujĂícĂími handlery
+// Mobilní menu — propojit akce s existujícími handlery
 document.getElementById('bl-mob-pdf').addEventListener('click', function() { closeBlMenu(); exportPdf(); });
 document.getElementById('bl-mob-email').addEventListener('click', function() { closeBlMenu(); exportEmail(); });
 document.getElementById('bl-mob-intro').addEventListener('click', function() { closeBlMenu(); openIntroModal(); });
 document.getElementById('bl-mob-history').addEventListener('click', function() { closeBlMenu(); openHistory(); });
 
-// ZavĹ™Ăít menu kliknutĂím mimo
+// Zavřít menu kliknutím mimo
 document.addEventListener('click', function(e) {
   const menu = document.getElementById('bl-mobile-menu');
   const btn  = document.getElementById('bl-hamburger');
@@ -2087,7 +2087,7 @@ document.addEventListener('click', function(e) {
   }
 });
 
-// â”€â”€ Init â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+// ── Init ──────────────────────────────────────────────────────────────────────
 
 async function init() {
   try {
@@ -2095,25 +2095,25 @@ async function init() {
     currentUser = me;
   } catch(e) {}
 
-  // â”€â”€ NaÄŤti oprĂˇvnÄ›nĂí a skryj zakĂˇzanĂˇ tlaÄŤĂítka â”€â”€
+  // ── Načti oprávnění a skryj zakázaná tlačítka ──
   try {
     const perms = await fetch('/api/my-permissions').then(r => r.json());
     const bl = perms?.blacklist;
     if (bl) {
       const btns = bl.buttons || {};
-      // Upravit ĂşvodnĂí text
+      // Upravit úvodní text
       if (btns.edit_intro === false) {
         ['btn-intro', 'bl-mob-intro'].forEach(id => {
           const el = document.getElementById(id);
           if (el) el.style.display = 'none';
         });
       }
-      // MazĂˇnĂí z historie
+      // Mazání z historie
       if (btns.history_delete === false) {
-        // Skryj "Smazat vybranĂ©" tlaÄŤĂítko
+        // Skryj "Smazat vybrané" tlačítko
         const delSelBtn = document.getElementById('btn-hist-del-sel');
         if (delSelBtn) delSelBtn.style.display = 'none';
-        // Skryj individuĂˇlnĂí Ă— tlaÄŤĂítka â€” pouĹľijeme CSS tĹ™Ăídu na body
+        // Skryj individuální × tlačítka — použijeme CSS třídu na body
         document.body.classList.add('no-hist-delete');
       }
     }
