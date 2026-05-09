@@ -227,6 +227,29 @@ async function init() {
   const vedPerms    = JSON.stringify({ raspis: { enabled: true, buttons: { import: false, delete: false, trash: false, edit: true, export: true } } });
   await db.query(`INSERT INTO permission_groups (name, display_name, perms) VALUES ('admin','Admin',$1),('vedoucí','VR',$2) ON CONFLICT (name) DO NOTHING`, [adminPerms, vedPerms]);
 
+  // ── Zprávy pro uživatele ──────────────────────────────────────────────────
+  await db.query(`
+    CREATE TABLE IF NOT EXISTS messages (
+      id          SERIAL PRIMARY KEY,
+      author_id   INTEGER REFERENCES users(id) ON DELETE SET NULL,
+      author_name VARCHAR(100) NOT NULL,
+      content     TEXT NOT NULL,
+      target_type VARCHAR(20) NOT NULL DEFAULT 'all',
+      target_ids  TEXT NOT NULL DEFAULT '[]',
+      created_at  TIMESTAMPTZ DEFAULT NOW(),
+      expires_at  TIMESTAMPTZ DEFAULT NULL
+    )
+  `);
+  await db.query(`
+    CREATE TABLE IF NOT EXISTS message_reads (
+      message_id INTEGER NOT NULL REFERENCES messages(id) ON DELETE CASCADE,
+      user_id    INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+      read_at    TIMESTAMPTZ DEFAULT NOW(),
+      dismissed  BOOLEAN NOT NULL DEFAULT FALSE,
+      PRIMARY KEY (message_id, user_id)
+    )
+  `);
+
   // Seed: pokud nejsou žádní uživatelé, vytvoř admina
   const { rows } = await db.query('SELECT COUNT(*) AS cnt FROM users');
   if (parseInt(rows[0].cnt, 10) === 0) {

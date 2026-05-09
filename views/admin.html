@@ -340,9 +340,10 @@
       import: 'Nahrát rozpis', delete: 'Smazat', trash: 'Koš',
       edit: 'Editovat / Uložit', export: 'Export do .xlsx'
     }},
-    odmeny:  { label: 'Odměny', buttons: {} },
-    provize: { label: 'Provize', buttons: {} },
-    smlouvy: { label: 'Pracovní smlouvy', buttons: {} },
+    odmeny:   { label: 'Odměny', buttons: {} },
+    provize:  { label: 'Provize', buttons: {} },
+    smlouvy:  { label: 'Pracovní smlouvy', buttons: {} },
+    messages: { label: 'Zprávy uživatelům', buttons: { write: 'Psát zprávy' } },
     blacklist: { label: 'Blacklist', buttons: {
       view:           'Zobrazit',
       add:            'Přidat záznam',
@@ -726,9 +727,11 @@
 
   // ── ZÁZNAMY (LOGY) ─────────────────────────────────────────────────────────────
   const ACTION_LABELS = {
-    login:          'Přihlášení',
-    raspis_publish: 'Publikování rozpisu',
-    raspis_save:    'Uložení rozpisu'
+    login:            'Přihlášení',
+    raspis_publish:   'Publikování rozpisu',
+    raspis_save:      'Uložení rozpisu',
+    message_read:     'Zpráva přečtena',
+    message_dismiss:  'Zpráva odstraněna'
   };
 
   function formatDateTime(iso) {

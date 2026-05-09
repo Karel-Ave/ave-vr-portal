@@ -810,6 +810,144 @@ app.post('/api/user-prefs/default', requireLogin, async (req, res) => {
   }
 });
 
+// ── Zprávy (Messages) ────────────────────────────────────────────────────────
+
+// Helper: načti efektivní oprávnění uživatele
+async function getUserPerms(user) {
+  try {
+    const db = getPool();
+    const { rows: gr } = await db.query('SELECT perms FROM permission_groups WHERE name = $1', [user.role]);
+    const groupPerms = gr.length ? JSON.parse(gr[0].perms || '{}') : {};
+    const { rows: ur } = await db.query('SELECT perm_overrides FROM users WHERE id = $1', [user.id]);
+    const userOv = (ur.length && ur[0].perm_overrides) ? JSON.parse(ur[0].perm_overrides) : {};
+    return { groupPerms, userOv };
+  } catch { return { groupPerms: {}, userOv: {} }; }
+}
+
+function canWriteMessages(user, groupPerms, userOv) {
+  if (user.role === 'admin') return true;
+  const uo = userOv.messages || {};
+  const gp = groupPerms.messages || {};
+  const fromOv = uo.buttons?.write;
+  const fromGp = gp.buttons?.write;
+  return fromOv != null ? fromOv : (fromGp != null ? fromGp : false);
+}
+
+// GET /api/messages — zprávy viditelné pro přihlášeného uživatele
+app.get('/api/messages', requireLogin, async (req, res) => {
+  try {
+    const db = getPool();
+    const user = req.session.user;
+    const { rows } = await db.query(`
+      SELECT m.id, m.author_id, m.author_name, m.content,
+             m.target_type, m.target_ids, m.created_at, m.expires_at,
+             mr.read_at, mr.dismissed
+      FROM messages m
+      LEFT JOIN message_reads mr ON mr.message_id = m.id AND mr.user_id = $1
+      WHERE (m.expires_at IS NULL OR m.expires_at > NOW())
+        AND (mr.dismissed IS NULL OR mr.dismissed = FALSE)
+      ORDER BY m.created_at DESC
+    `, [user.id]);
+
+    const visible = rows.filter(msg => {
+      if (msg.target_type === 'all') return true;
+      const ids = JSON.parse(msg.target_ids || '[]');
+      if (msg.target_type === 'groups') return ids.includes(user.role);
+      if (msg.target_type === 'users') return ids.map(String).includes(String(user.id));
+      return false;
+    });
+
+    const { groupPerms, userOv } = await getUserPerms(user);
+    res.json({ messages: visible, canWrite: canWriteMessages(user, groupPerms, userOv) });
+  } catch (err) { console.error(err); res.json({ messages: [], canWrite: false }); }
+});
+
+// POST /api/messages — vytvoř zprávu
+app.post('/api/messages', requireLogin, async (req, res) => {
+  try {
+    const user = req.session.user;
+    const { groupPerms, userOv } = await getUserPerms(user);
+    if (!canWriteMessages(user, groupPerms, userOv))
+      return res.status(403).json({ ok: false, msg: 'Nemáš oprávnění.' });
+
+    const { content, target_type, target_ids, expires_at } = req.body;
+    if (!content?.trim()) return res.json({ ok: false, msg: 'Chybí obsah zprávy.' });
+
+    const db = getPool();
+    await db.query(`
+      INSERT INTO messages (author_id, author_name, content, target_type, target_ids, expires_at)
+      VALUES ($1, $2, $3, $4, $5, $6)
+    `, [user.id, user.name, content.trim(), target_type || 'all',
+        JSON.stringify(target_ids || []), expires_at || null]);
+
+    res.json({ ok: true });
+  } catch (err) { console.error(err); res.status(500).json({ ok: false }); }
+});
+
+// DELETE /api/messages/:id — smaž zprávu (admin nebo autor)
+app.delete('/api/messages/:id', requireLogin, async (req, res) => {
+  try {
+    const db = getPool();
+    const user = req.session.user;
+    const { rows } = await db.query('SELECT author_id FROM messages WHERE id = $1', [req.params.id]);
+    if (!rows.length) return res.status(404).json({ ok: false });
+    if (user.role !== 'admin' && rows[0].author_id !== user.id)
+      return res.status(403).json({ ok: false });
+    await db.query('DELETE FROM messages WHERE id = $1', [req.params.id]);
+    res.json({ ok: true });
+  } catch (err) { res.status(500).json({ ok: false }); }
+});
+
+// POST /api/messages/:id/read — označ jako přečtené
+app.post('/api/messages/:id/read', requireLogin, async (req, res) => {
+  try {
+    const db = getPool();
+    const user = req.session.user;
+    const msgId = parseInt(req.params.id);
+    await db.query(`
+      INSERT INTO message_reads (message_id, user_id, read_at, dismissed)
+      VALUES ($1, $2, NOW(), FALSE)
+      ON CONFLICT (message_id, user_id) DO UPDATE SET read_at = NOW()
+    `, [msgId, user.id]);
+    logEvent(user.id, user.name, 'message_read', { message_id: msgId });
+    res.json({ ok: true });
+  } catch (err) { res.status(500).json({ ok: false }); }
+});
+
+// POST /api/messages/:id/dismiss — přečteno, již nezobrazovat
+app.post('/api/messages/:id/dismiss', requireLogin, async (req, res) => {
+  try {
+    const db = getPool();
+    const user = req.session.user;
+    const msgId = parseInt(req.params.id);
+    await db.query(`
+      INSERT INTO message_reads (message_id, user_id, read_at, dismissed)
+      VALUES ($1, $2, NOW(), TRUE)
+      ON CONFLICT (message_id, user_id) DO UPDATE SET dismissed = TRUE, read_at = NOW()
+    `, [msgId, user.id]);
+    logEvent(user.id, user.name, 'message_dismiss', { message_id: msgId });
+    res.json({ ok: true });
+  } catch (err) { res.status(500).json({ ok: false }); }
+});
+
+// GET /api/groups-list — seznam skupin pro výběr příjemců
+app.get('/api/groups-list', requireLogin, async (req, res) => {
+  try {
+    const db = getPool();
+    const { rows } = await db.query('SELECT name, display_name FROM permission_groups ORDER BY display_name');
+    res.json(rows);
+  } catch { res.json([]); }
+});
+
+// GET /api/users-list — seznam uživatelů pro výběr příjemců
+app.get('/api/users-list', requireLogin, async (req, res) => {
+  try {
+    const db = getPool();
+    const { rows } = await db.query('SELECT id, name, username FROM users ORDER BY name');
+    res.json(rows);
+  } catch { res.json([]); }
+});
+
 // ── Blacklist ─────────────────────────────────────────────────────────────────
 
 app.get('/blacklist', requireLogin, (req, res) =>

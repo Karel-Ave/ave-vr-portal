@@ -211,6 +211,133 @@
     text-transform: uppercase;
   }
 
+  /* ── Zprávy ── */
+  #messages-section {
+    margin-top: 28px;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 12px;
+  }
+  .msg-card {
+    width: 100%;
+    max-width: 540px;
+    background: var(--modal-bg);
+    border: 1px solid var(--modal-border);
+    border-left: 4px solid #e8a020;
+    border-radius: 10px;
+    padding: 14px 16px 12px;
+    box-shadow: 0 2px 10px rgba(0,0,0,.1);
+    box-sizing: border-box;
+  }
+  .msg-header {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    margin-bottom: 8px;
+  }
+  .msg-author { font-size: 12px; font-weight: 700; color: var(--text); }
+  .msg-date { font-size: 11px; color: var(--text-muted); }
+  .msg-content {
+    font-size: 13px;
+    color: var(--text);
+    line-height: 1.55;
+    margin-bottom: 12px;
+    word-break: break-word;
+  }
+  .msg-content b { font-weight: 700; }
+  .msg-content i { font-style: italic; }
+  .msg-actions { display: flex; gap: 8px; flex-wrap: wrap; }
+  .msg-btn {
+    padding: 5px 12px;
+    border-radius: 6px;
+    font-size: 12px;
+    font-weight: 600;
+    cursor: pointer;
+    font-family: inherit;
+    transition: all .15s;
+  }
+  .msg-btn-read {
+    border: 1px solid #2d7a2d;
+    background: #eafbea;
+    color: #1a5c1a;
+  }
+  .msg-btn-read:hover { background: #d0f5d0; }
+  .msg-btn-dismiss {
+    border: 1px solid var(--border);
+    background: var(--surface-alt, #f5f5f5);
+    color: var(--text-muted);
+  }
+  .msg-btn-dismiss:hover { background: var(--surface-alt); border-color: var(--border-strong); }
+  .msg-btn-delete {
+    border: 1px solid #c0392b;
+    background: none;
+    color: #c0392b;
+    margin-left: auto;
+  }
+  .msg-btn-delete:hover { background: #fdd; }
+  #msg-compose-btn {
+    padding: 8px 18px;
+    border-radius: 8px;
+    border: 1px dashed var(--border-strong);
+    background: var(--modal-bg);
+    color: var(--text-muted);
+    font-size: 13px;
+    cursor: pointer;
+    font-family: inherit;
+    transition: all .15s;
+  }
+  #msg-compose-btn:hover { background: var(--surface-alt); color: var(--text); }
+  /* Compose modal */
+  #compose-overlay {
+    display: none;
+    position: fixed; inset: 0; z-index: 8000;
+    background: rgba(0,0,0,.45);
+    align-items: center; justify-content: center;
+  }
+  #compose-overlay.show { display: flex; }
+  #compose-modal {
+    background: var(--modal-bg);
+    border-radius: 14px;
+    padding: 28px 28px 22px;
+    width: min(500px, calc(100vw - 32px));
+    box-shadow: 0 8px 32px rgba(0,0,0,.25);
+    max-height: 90vh;
+    overflow-y: auto;
+  }
+  #compose-modal h3 { font-size: 16px; margin-bottom: 16px; color: var(--text); }
+  .compose-label { font-size: 11px; font-weight: 700; color: var(--text-muted); text-transform: uppercase; letter-spacing: .06em; margin: 14px 0 5px; display: block; }
+  .compose-rte-toolbar { display: flex; gap: 5px; margin-bottom: 6px; }
+  .compose-rte-btn { padding: 3px 8px; border: 1px solid var(--border); border-radius: 4px; background: var(--modal-bg); color: var(--text); font-size: 13px; cursor: pointer; font-family: inherit; }
+  .compose-rte-btn:hover { background: var(--surface-alt); }
+  #compose-content {
+    min-height: 80px;
+    border: 1px solid var(--input-border);
+    border-radius: 7px;
+    padding: 9px 12px;
+    font-size: 13px;
+    color: var(--text);
+    background: var(--input-bg);
+    outline: none;
+    line-height: 1.5;
+    word-break: break-word;
+  }
+  #compose-content:focus { border-color: var(--border-strong); }
+  .compose-select {
+    width: 100%;
+    padding: 8px 10px;
+    border: 1px solid var(--input-border);
+    border-radius: 7px;
+    font-size: 13px;
+    color: var(--text);
+    background: var(--input-bg);
+    font-family: inherit;
+    outline: none;
+  }
+  #compose-targets { margin-top: 8px; display: flex; flex-wrap: wrap; gap: 6px; }
+  .compose-target-cb { display: flex; align-items: center; gap: 5px; font-size: 12px; color: var(--text); cursor: pointer; }
+  .compose-actions { display: flex; gap: 10px; justify-content: flex-end; margin-top: 20px; }
+
   /* ── iframe ── */
   #app-frame {
     display: none;
@@ -499,6 +626,42 @@
       <h1>Vítej, <span id="greet-name"></span>!</h1>
     </div>
     <div class="grid" id="grid-all"></div>
+    <!-- Zprávy pro uživatele -->
+    <div id="messages-section" style="display:none;">
+      <div id="messages-list"></div>
+      <button id="msg-compose-btn" style="display:none;" onclick="openComposeModal()">✉ Napsat zprávu</button>
+    </div>
+  </div>
+</div>
+
+<!-- Modal: Napsat zprávu -->
+<div id="compose-overlay">
+  <div id="compose-modal">
+    <h3>✉ Napsat zprávu uživatelům</h3>
+
+    <span class="compose-label">Zpráva</span>
+    <div class="compose-rte-toolbar">
+      <button class="compose-rte-btn" onclick="composeCmd('bold')" title="Tučné"><b>B</b></button>
+      <button class="compose-rte-btn" onclick="composeCmd('italic')" title="Kurzíva"><i>I</i></button>
+      <button class="compose-rte-btn" onclick="composeCmd('insertUnorderedList')" title="Seznam">☰</button>
+    </div>
+    <div id="compose-content" contenteditable="true" placeholder="Text zprávy…"></div>
+
+    <span class="compose-label">Příjemci</span>
+    <select class="compose-select" id="compose-target-type" onchange="updateTargetPicker()">
+      <option value="all">Všichni uživatelé</option>
+      <option value="groups">Vybrané skupiny</option>
+      <option value="users">Vybraní uživatelé</option>
+    </select>
+    <div id="compose-targets"></div>
+
+    <span class="compose-label">Platnost (volitelné)</span>
+    <input type="date" id="compose-expires" class="compose-select">
+
+    <div class="compose-actions">
+      <button class="msg-btn msg-btn-dismiss" onclick="closeComposeModal()">Zrušit</button>
+      <button class="msg-btn" style="background:#e8a020;border:none;color:#fff;" onclick="sendMessage()">Odeslat zprávu</button>
+    </div>
   </div>
 </div>
 
@@ -804,6 +967,168 @@
     // Start the timer
     resetIdle();
   })();
+
+  // ── ZPRÁVY PRO UŽIVATELE ──────────────────────────────────────────────────
+  let _currentUserId = null;
+  let _currentUserRole = null;
+  let _groupsList = [];
+  let _usersList = [];
+
+  function formatMsgDate(iso) {
+    if (!iso) return '';
+    const d = new Date(iso);
+    return d.toLocaleDateString('cs-CZ', { day: '2-digit', month: '2-digit', year: 'numeric' }) +
+           ' ' + d.toLocaleTimeString('cs-CZ', { hour: '2-digit', minute: '2-digit' });
+  }
+
+  function renderMessage(msg, isAuthorOrAdmin) {
+    const readBtn = msg.read_at
+      ? ''
+      : `<button class="msg-btn msg-btn-read" onclick="markRead(${msg.id}, this)">✓ Přečteno</button>`;
+    const deleteBtn = isAuthorOrAdmin
+      ? `<button class="msg-btn msg-btn-delete" onclick="deleteMsg(${msg.id})">🗑</button>`
+      : '';
+    return `<div class="msg-card" id="msgcard-${msg.id}">
+      <div class="msg-header">
+        <span class="msg-author">${esc(msg.author_name)}</span>
+        <span class="msg-date">${formatMsgDate(msg.created_at)}</span>
+      </div>
+      <div class="msg-content">${msg.content}</div>
+      <div class="msg-actions">
+        ${readBtn}
+        <button class="msg-btn msg-btn-dismiss" onclick="dismissMsg(${msg.id})">✗ Přečteno (již nezobrazovat)</button>
+        ${deleteBtn}
+      </div>
+    </div>`;
+  }
+
+  function esc(s) { const d = document.createElement('div'); d.textContent = s || ''; return d.innerHTML; }
+
+  async function loadMessages() {
+    try {
+      const data = await fetch('/api/messages').then(r => r.json());
+      const section = document.getElementById('messages-section');
+      const list = document.getElementById('messages-list');
+      const composeBtn = document.getElementById('msg-compose-btn');
+
+      if (data.canWrite) composeBtn.style.display = '';
+
+      if (!data.messages || data.messages.length === 0) {
+        list.innerHTML = '';
+        // Show section only if user can write (so they see compose button)
+        section.style.display = data.canWrite ? '' : 'none';
+        return;
+      }
+
+      section.style.display = '';
+      list.innerHTML = data.messages.map(msg => {
+        const isAuthorOrAdmin = _currentUserRole === 'admin' || msg.author_id === _currentUserId;
+        return renderMessage(msg, isAuthorOrAdmin);
+      }).join('');
+    } catch(e) {}
+  }
+
+  async function markRead(msgId, btn) {
+    await fetch(`/api/messages/${msgId}/read`, { method: 'POST' });
+    if (btn) btn.remove();
+  }
+
+  async function dismissMsg(msgId) {
+    await fetch(`/api/messages/${msgId}/dismiss`, { method: 'POST' });
+    const card = document.getElementById(`msgcard-${msgId}`);
+    if (card) card.remove();
+    // Hide section if no more messages and can't write
+    const list = document.getElementById('messages-list');
+    const composeBtn = document.getElementById('msg-compose-btn');
+    if (!list.children.length && composeBtn.style.display === 'none') {
+      document.getElementById('messages-section').style.display = 'none';
+    }
+  }
+
+  async function deleteMsg(msgId) {
+    if (!confirm('Smazat tuto zprávu pro všechny uživatele?')) return;
+    await fetch(`/api/messages/${msgId}`, { method: 'DELETE' });
+    await loadMessages();
+  }
+
+  // ── Compose modal ──────────────────────────────────────────────────────────
+  function composeCmd(cmd) {
+    document.getElementById('compose-content').focus();
+    document.execCommand(cmd, false, null);
+  }
+
+  async function openComposeModal() {
+    document.getElementById('compose-overlay').classList.add('show');
+    document.getElementById('compose-content').innerHTML = '';
+    document.getElementById('compose-target-type').value = 'all';
+    document.getElementById('compose-targets').innerHTML = '';
+    document.getElementById('compose-expires').value = '';
+
+    // Load groups and users for picker
+    if (!_groupsList.length) {
+      _groupsList = await fetch('/api/groups-list').then(r => r.json()).catch(() => []);
+    }
+    if (!_usersList.length) {
+      _usersList = await fetch('/api/users-list').then(r => r.json()).catch(() => []);
+    }
+  }
+
+  function closeComposeModal() {
+    document.getElementById('compose-overlay').classList.remove('show');
+  }
+
+  function updateTargetPicker() {
+    const type = document.getElementById('compose-target-type').value;
+    const container = document.getElementById('compose-targets');
+    container.innerHTML = '';
+    if (type === 'groups') {
+      _groupsList.forEach(g => {
+        container.innerHTML += `<label class="compose-target-cb">
+          <input type="checkbox" value="${esc(g.name)}"> ${esc(g.display_name)}
+        </label>`;
+      });
+    } else if (type === 'users') {
+      _usersList.forEach(u => {
+        container.innerHTML += `<label class="compose-target-cb">
+          <input type="checkbox" value="${u.id}"> ${esc(u.name)} (${esc(u.username)})
+        </label>`;
+      });
+    }
+  }
+
+  async function sendMessage() {
+    const content = document.getElementById('compose-content').innerHTML.trim();
+    if (!content) { alert('Zadej text zprávy.'); return; }
+
+    const targetType = document.getElementById('compose-target-type').value;
+    const targetIds = [...document.querySelectorAll('#compose-targets input:checked')].map(cb => cb.value);
+    const expires = document.getElementById('compose-expires').value || null;
+
+    const r = await fetch('/api/messages', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ content, target_type: targetType, target_ids: targetIds, expires_at: expires })
+    });
+    const data = await r.json();
+    if (data.ok) {
+      closeComposeModal();
+      await loadMessages();
+    } else {
+      alert(data.msg || 'Chyba při odesílání.');
+    }
+  }
+
+  // Close compose overlay on backdrop click
+  document.getElementById('compose-overlay').addEventListener('click', function(e) {
+    if (e.target === this) closeComposeModal();
+  });
+
+  // Načti zprávy po načtení stránky
+  fetch('/api/me').then(r => r.json()).then(user => {
+    _currentUserId = user.id;
+    _currentUserRole = user.role;
+    loadMessages();
+  }).catch(() => {});
 </script>
 </body>
 </html>
