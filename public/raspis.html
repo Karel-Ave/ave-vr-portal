@@ -7529,6 +7529,28 @@ document.addEventListener('focusin', function(e) {
   document.getElementById('cell-edit-label').textContent = staffName + ' — ' + dateStr + ' ' + dn;
   const overlayInput = document.getElementById('cell-edit-input');
   overlayInput.value = inp.value;
+
+  // ── Scroll row to position 8 if it's below row 11 (0-indexed) ──
+  const rowEl = inp.closest('tr');
+  if (rowEl) {
+    const allVisRows = Array.from(document.querySelectorAll('#sch-tbody tr.sch-row'))
+      .filter(tr => tr.style.display !== 'none');
+    const rowIdx = allVisRows.indexOf(rowEl);
+    if (rowIdx >= 11) {
+      // Target: scroll so row at (rowIdx-7) is at top → edited row appears at position 8
+      const targetRow = allVisRows[Math.max(0, rowIdx - 7)];
+      const schedWrap = document.getElementById('schedule-wrap');
+      const thead = document.querySelector('#scheduleTable thead');
+      if (schedWrap && targetRow) {
+        const wrapRect = schedWrap.getBoundingClientRect();
+        const targetRect = targetRow.getBoundingClientRect();
+        const theadH = thead ? thead.getBoundingClientRect().height : 0;
+        // New scrollTop: bring targetRow to top of visible scroll area (below header)
+        schedWrap.scrollTop += targetRect.top - wrapRect.top - theadH;
+      }
+    }
+  }
+
   const overlay = document.getElementById('cell-edit-overlay');
   overlay.style.transform = 'translateY(0)'; // reset; visualViewport resize will update
   overlay.style.display = '';

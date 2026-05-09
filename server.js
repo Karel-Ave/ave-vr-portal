@@ -1025,9 +1025,10 @@ app.get('/api/users-list', requireLogin, async (req, res) => {
 
 // ── Blacklist ─────────────────────────────────────────────────────────────────
 
-app.get('/blacklist', requireLogin, (req, res) =>
-  res.sendFile(path.join(__dirname, 'public', 'blacklist.html'))
-);
+app.get('/blacklist', requireLogin, (req, res) => {
+  res.setHeader('Content-Type', 'text/html; charset=utf-8');
+  res.sendFile(path.join(__dirname, 'public', 'blacklist.html'));
+});
 
 function blFormatDate(val) {
   if (!val) return '';

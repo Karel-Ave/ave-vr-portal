@@ -203,6 +203,10 @@
   }
   .card-icon {
     font-size: 52px;
+    height: 68px;           /* fixed height — aligns all icon types */
+    display: flex;
+    align-items: center;
+    justify-content: center;
     margin-bottom: 14px;
     line-height: 1;
   }
@@ -249,13 +253,19 @@
   #messages-section {
     margin-bottom: 24px;
   }
+  /* Mobile: each card its own height (align-items: start prevents stretching in same row) */
   #messages-list {
     display: grid;
     grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
     gap: 12px;
+    align-items: start;
   }
+  /* Desktop: all cards in a row match the tallest one */
   @media (min-width: 960px) {
-    #messages-list { grid-template-columns: repeat(3, 1fr); }
+    #messages-list {
+      grid-template-columns: repeat(3, 1fr);
+      align-items: stretch;
+    }
   }
   .msg-card {
     background: var(--modal-bg);
@@ -265,12 +275,16 @@
     padding: 14px 16px 12px;
     box-shadow: 0 2px 10px rgba(0,0,0,.1);
     box-sizing: border-box;
+    /* Flex column so actions always sit at bottom */
+    display: flex;
+    flex-direction: column;
   }
   .msg-header {
     display: flex;
     align-items: center;
     gap: 10px;
     margin-bottom: 8px;
+    flex-shrink: 0;
   }
   .msg-author { font-size: 12px; font-weight: 700; color: var(--text); }
   .msg-date { font-size: 11px; color: var(--text-muted); }
@@ -280,10 +294,11 @@
     line-height: 1.55;
     margin-bottom: 12px;
     word-break: break-word;
+    flex: 1;  /* grows to push actions to bottom */
   }
   .msg-content b { font-weight: 700; }
   .msg-content i { font-style: italic; }
-  .msg-actions { display: flex; gap: 8px; flex-wrap: wrap; }
+  .msg-actions { display: flex; gap: 8px; flex-wrap: wrap; flex-shrink: 0; }
   .msg-btn {
     padding: 5px 12px;
     border-radius: 6px;
@@ -724,7 +739,7 @@
 <script>
   // ── Blacklist icon: black document + red diagonal ────────────────────────
   function blacklistIcon() {
-    return `<svg width="38" height="38" viewBox="0 0 42 42" xmlns="http://www.w3.org/2000/svg" style="display:block">
+    return `<svg width="56" height="56" viewBox="0 0 42 42" xmlns="http://www.w3.org/2000/svg" style="display:block">
       <path d="M7 3 H27 L35 11 V39 H7 Z" fill="#1a1a1a"/>
       <path d="M27 3 L27 11 H35 Z" fill="#3a3a3a"/>
       <line x1="10" y1="8" x2="32" y2="34" stroke="#e53030" stroke-width="3.5" stroke-linecap="round"/>
