@@ -1,9 +1,9 @@
-<!DOCTYPE html>
+﻿<!DOCTYPE html>
 <html lang="cs">
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>AVE VR</title>
+<title>VR AVE</title>
 <link rel="icon" type="image/png" href="/static/logo.png">
 <script src="/static/theme.js"></script>
 <link rel="stylesheet" href="/static/theme.css">
@@ -36,10 +36,10 @@
   .logo img {
     height: 96px;
     object-fit: contain;
-    filter: brightness(0);          /* light mode: logo černé */
+    filter: brightness(0);          /* light mode: logo ÄŤernĂ© */
   }
   [data-theme="dark"] .logo img {
-    filter: brightness(0) invert(1); /* dark mode: logo bílé */
+    filter: brightness(0) invert(1); /* dark mode: logo bĂ­lĂ© */
   }
   .logo-sub {
     font-size: 11px;
@@ -98,7 +98,7 @@
     display: none;
   }
   .error.show { display: block; }
-  /* Theme toggle – pod kartou, na mobilu na středu; landscape: vedle karty */
+  /* Theme toggle â€“ pod kartou, na mobilu na stĹ™edu; landscape: vedle karty */
   #btn-theme {
     padding: 8px 14px;
     border: 1px solid var(--border);
@@ -114,12 +114,12 @@
   }
   #btn-theme:hover { background: var(--surface-alt); }
 
-  /* Landscape mobile: karta vlevo, toggle vpravo uprostřed */
+  /* Landscape mobile: karta vlevo, toggle vpravo uprostĹ™ed */
   @media (orientation: landscape) and (max-height: 600px) {
     body { flex-direction: row; align-items: center; justify-content: center; gap: 32px; }
   }
 
-  /* ── Mobilní úpravy ── */
+  /* â”€â”€ MobilnĂ­ Ăşpravy â”€â”€ */
   @media (max-width: 480px) {
     body { padding: 16px 16px 32px; }
     .card { padding: 32px 20px 28px; border-radius: 12px; }
@@ -133,18 +133,18 @@
 <div class="card">
   <div class="logo">
     <img src="/static/logo.png" alt="AVE Hotels" id="login-logo">
-    <div class="logo-sub">Interní portál VR</div>
+    <div class="logo-sub">InternĂ­ portĂˇl VR</div>
   </div>
-  <div class="error" id="err">Nesprávné přihlašovací údaje.</div>
+  <div class="error" id="err">NesprĂˇvnĂ© pĹ™ihlaĹˇovacĂ­ Ăşdaje.</div>
   <form method="POST" action="/login">
-    <label>Uživatelské jméno</label>
+    <label>UĹľivatelskĂ© jmĂ©no</label>
     <input type="text" name="username" autocomplete="username" autofocus required>
     <label>Heslo</label>
     <input type="password" name="password" autocomplete="current-password" required>
-    <button class="btn" type="submit">Přihlásit se</button>
+    <button class="btn" type="submit">PĹ™ihlĂˇsit se</button>
   </form>
 </div>
-<button id="btn-theme" title="Přepnout světlé / tmavé téma">🌙</button>
+<button id="btn-theme" title="PĹ™epnout svÄ›tlĂ© / tmavĂ© tĂ©ma">đźŚ™</button>
 <script>
   if (location.search.includes('error=1')) {
     document.getElementById('err').classList.add('show');

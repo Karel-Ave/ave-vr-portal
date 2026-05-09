@@ -5,7 +5,8 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
-<title>AVE VR</title>
+<title>VR AVE</title>
+<meta name="apple-mobile-web-app-title" content="VR AVE">
 <link rel="icon" type="image/png" href="/static/logo.png">
 <link rel="apple-touch-icon" href="/apple-touch-icon.png">
 <script src="/static/theme.js"></script>
@@ -1040,7 +1041,7 @@
       const list = document.getElementById('messages-list');
       const composeBtn = document.getElementById('btn-compose-topbar');
 
-      if (data.canWrite) composeBtn.style.display = '';
+      if (data.canWrite) composeBtn.style.display = 'inline-flex';
 
       if (!data.messages || data.messages.length === 0) {
         list.innerHTML = '';

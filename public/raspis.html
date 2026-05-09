@@ -4,7 +4,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, viewport-fit=cover">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
-<title>AVE VR</title>
+<title>VR AVE</title>
 <link rel="icon" type="image/png" href="/static/logo.png">
 <link rel="apple-touch-icon" href="/apple-touch-icon.png">
 <link rel="stylesheet" href="/static/theme.css">
@@ -436,6 +436,10 @@ table.staff-tbl td select:focus { background: var(--input-bg); color: var(--text
 /* Menší tlačítka pro OV panel na desktopu */
 @media (min-width: 641px) {
   .hb.hb-ov { font-size: 10px; padding: 1px 5px; }
+}
+/* Hover pro Log tlačítka */
+#portal-log-btn:hover, #portal-log-mobile-btn:hover {
+  background: #6699cc !important; color: #fff !important; border-color: #3366aa !important;
 }
 /* ── Plovoucí panel pro editaci buňky (mobil) ── */
 #cell-edit-overlay {
@@ -911,6 +915,7 @@ table.staff-tbl td select:focus { background: var(--input-bg); color: var(--text
   </div>
   <div style="position:absolute;left:50%;transform:translateX(-50%);display:flex;align-items:center;gap:6px;">
     <button id="portal-edit-btn" class="btn btn-sm" style="background:#f0c800;color:#333;border-color:#c8a800;font-weight:600;">Editovat</button>
+    <button id="portal-log-mobile-btn" class="btn btn-sm" style="display:none;background:#e8f0ff;border-color:#6699cc;color:#1a4a8a;" onclick="openLogModal()">Log</button>
     <span id="portal-lock-status" style="font-size:11px;color:#888;white-space:nowrap;display:none;"></span>
     <button id="portal-save-btn" class="btn btn-sm btn-primary" style="display:none;">Uložit</button>
   </div>
@@ -4781,7 +4786,7 @@ function buildSchedule() {
       inp.addEventListener('focus', () => { inp._logOld = inp.value; inp.select(); });
       inp.addEventListener('blur', () => {
         // Loguj změnu na desktopu (mobil loguje přes confirmCellEdit)
-        if (window.innerWidth > 900 && inp._logOld !== undefined && inp._logOld !== inp.value && _currentKey) {
+        if (window.innerWidth > 900 && inp._logOld !== undefined && inp._logOld !== inp.value && window.__raspisGetCurrentKey?.()) {
           scheduleLogChange({
             change_type: 'cell',
             staff_name: state.staff[si]?.name || '',
@@ -4824,7 +4829,7 @@ function buildSchedule() {
           recalcSums(si);
         });
         inp.addEventListener('blur', () => {
-          if (inp._logOld !== undefined && inp._logOld !== inp.value && _currentKey) {
+          if (inp._logOld !== undefined && inp._logOld !== inp.value && window.__raspisGetCurrentKey?.()) {
             // Loguj hodiny (spolu s poznámkou pokud je vyplněná)
             const noteVal = state.extras[si]?.note || '';
             scheduleLogChange({
@@ -4851,7 +4856,7 @@ function buildSchedule() {
           state.extras[si].note = inp.value;
         });
         inp.addEventListener('blur', () => {
-          if (inp._logOld !== undefined && inp._logOld !== inp.value && _currentKey) {
+          if (inp._logOld !== undefined && inp._logOld !== inp.value && window.__raspisGetCurrentKey?.()) {
             scheduleLogChange({
               change_type: 'note',
               staff_name: state.staff[si]?.name || '',
@@ -6949,6 +6954,10 @@ document.addEventListener('mouseup', (e) => {
   let _editMode = false;
   let _myUserId = null;
   let _hasEditPerm = false;
+
+  // Zpřístupni stav pro skripty mimo IIFE
+  window.__raspisGetCurrentKey = () => _currentKey;
+  window.__raspisIsEditMode    = () => _editMode;
   let _lockPollTimer = null;
   let _autosaveTimer = null;
   const LOCK_APP = 'raspis-view';
@@ -6995,7 +7004,9 @@ document.addEventListener('mouseup', (e) => {
       show('portal-trash-btn',  btns.trash);
       show('portal-export-btn', btns.export);
       // Log změn: admin vždy vidí, ostatní dle oprávnění (výchozí: skryto)
-      show('portal-log-btn', btns.log !== undefined ? btns.log : _isAdmin);
+      const showLog = btns.log !== undefined ? btns.log : _isAdmin;
+      show('portal-log-btn',        showLog);
+      show('portal-log-mobile-btn', showLog);
       // Edit button: set permission flag, then check lock immediately
       _hasEditPerm = btns.edit !== false;
       if (_hasEditPerm) {
@@ -7464,12 +7475,13 @@ document.addEventListener('mouseup', (e) => {
 /* ── Mobilní plovoucí panel pro editaci buňky ── */
 let _cellEditInp = null;
 
-// Intercept dotyku na buňku rozpisu — zabraň fokusu reálného inputu, zobraz overlay
-document.addEventListener('touchstart', function(e) {
+// Zobraz overlay při fokusu na buňku (mobil + edit mode)
+// focusin se spouští ze skutečného uživatelského gesta → focus na overlay je spolehlivý
+document.addEventListener('focusin', function(e) {
   const inp = e.target;
   if (!inp.matches('#scheduleTable td input')) return;
   if (window.innerWidth > 900) return; // jen mobil
-  e.preventDefault(); // zabraň automatickému fokusu
+  if (!window.__raspisIsEditMode?.()) return; // jen v editačním režimu
 
   const si = parseInt(inp.dataset.si);
   const ci = parseInt(inp.dataset.ci);
@@ -7485,10 +7497,13 @@ document.addEventListener('touchstart', function(e) {
 
   _cellEditInp = inp;
   document.getElementById('cell-edit-label').textContent = staffName + ' — ' + dateStr + ' ' + dn;
-  document.getElementById('cell-edit-input').value = inp.value;
+  const overlayInput = document.getElementById('cell-edit-input');
+  overlayInput.value = inp.value;
   document.getElementById('cell-edit-overlay').style.display = '';
-  setTimeout(function() { document.getElementById('cell-edit-input').focus(); }, 60);
-}, { passive: false });
+  // Přenes focus na overlay input — jsme stále v kontextu user-gesture, iOS to povolí
+  overlayInput.focus();
+  overlayInput.select();
+});
 
 function confirmCellEdit() {
   const overlayInput = document.getElementById('cell-edit-input');
@@ -7532,9 +7547,10 @@ document.getElementById('cell-edit-input').addEventListener('keydown', function(
 
 /* ── Log změn ── */
 async function scheduleLogChange(entry) {
-  if (!_currentKey) return;
+  const key = window.__raspisGetCurrentKey?.();
+  if (!key) return;
   try {
-    await fetch('/api/schedule-log/' + encodeURIComponent(_currentKey), {
+    await fetch('/api/schedule-log/' + encodeURIComponent(key), {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(entry)
@@ -7545,9 +7561,10 @@ async function scheduleLogChange(entry) {
 let _logSavedOnly = false;
 
 async function openLogModal() {
-  if (!_currentKey) { alert('Není načten žádný rozpis.'); return; }
+  const key = window.__raspisGetCurrentKey?.();
+  if (!key) { alert('Není načten žádný rozpis.'); return; }
   document.getElementById('portal-log-overlay').style.display = 'flex';
-  document.getElementById('portal-log-title').textContent = _currentKey;
+  document.getElementById('portal-log-title').textContent = key;
   document.getElementById('log-saved-only').checked = _logSavedOnly;
   await loadLogEntries();
 }
@@ -7557,10 +7574,11 @@ function closeLogModal() {
 }
 
 async function loadLogEntries() {
+  const key = window.__raspisGetCurrentKey?.();
   const list = document.getElementById('portal-log-list');
   list.innerHTML = '<div style="text-align:center;color:#aaa;padding:20px;">Načítám…</div>';
   try {
-    const url = '/api/schedule-log/' + encodeURIComponent(_currentKey) + (_logSavedOnly ? '?saved=true' : '');
+    const url = '/api/schedule-log/' + encodeURIComponent(key) + (_logSavedOnly ? '?saved=true' : '');
     const data = await fetch(url).then(r => r.json());
     if (!data.entries || data.entries.length === 0) {
       list.innerHTML = '<div style="text-align:center;color:#aaa;padding:30px;font-size:13px;">Žádné záznamy.</div>';
