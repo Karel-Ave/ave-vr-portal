@@ -1010,6 +1010,9 @@
     const readBtn = msg.read_at
       ? ''
       : `<button class="msg-btn msg-btn-read" onclick="markRead(${msg.id}, this)">✓ Přečteno</button>`;
+    const editBtn = isAuthorOrAdmin
+      ? `<button class="msg-btn" style="border:1px solid #5b8de8;background:#eef2ff;color:#1a3a9a;" onclick="openEditMsg(${msg.id})">✏ Upravit</button>`
+      : '';
     const deleteBtn = isAuthorOrAdmin
       ? `<button class="msg-btn msg-btn-delete" onclick="deleteMsg(${msg.id})">🗑</button>`
       : '';
@@ -1022,6 +1025,7 @@
       <div class="msg-actions">
         ${readBtn}
         <button class="msg-btn msg-btn-dismiss" onclick="dismissMsg(${msg.id})">✗ Přečteno (již nezobrazovat)</button>
+        ${editBtn}
         ${deleteBtn}
       </div>
     </div>`;
@@ -1080,14 +1084,43 @@
     document.execCommand(cmd, false, null);
   }
 
+  let _editingMsgId = null; // null = nová zpráva, number = editace existující
+
   async function openComposeModal() {
-    document.getElementById('compose-overlay').classList.add('show');
+    _editingMsgId = null;
+    document.querySelector('#compose-modal h3').textContent = '✉ Napsat zprávu uživatelům';
     document.getElementById('compose-content').innerHTML = '';
     document.getElementById('compose-target-type').value = 'all';
     document.getElementById('compose-targets').innerHTML = '';
     document.getElementById('compose-expires').value = '';
+    document.getElementById('compose-overlay').classList.add('show');
+    await _loadComposePickers();
+  }
 
-    // Load groups and users for picker
+  async function openEditMsg(msgId) {
+    // Fetch message data
+    const data = await fetch('/api/messages').then(r => r.json()).catch(() => null);
+    const msg = data?.messages?.find(m => m.id === msgId);
+    if (!msg) { alert('Zpráva nenalezena.'); return; }
+
+    _editingMsgId = msgId;
+    document.querySelector('#compose-modal h3').textContent = '✏ Upravit zprávu';
+    document.getElementById('compose-content').innerHTML = msg.content;
+    document.getElementById('compose-expires').value = msg.expires_at ? msg.expires_at.substring(0, 10) : '';
+    document.getElementById('compose-overlay').classList.add('show');
+    await _loadComposePickers();
+
+    // Nastav typ příjemců a checkboxy
+    const tt = document.getElementById('compose-target-type');
+    tt.value = msg.target_type || 'all';
+    updateTargetPicker();
+    const ids = JSON.parse(msg.target_ids || '[]').map(String);
+    document.querySelectorAll('#compose-targets input[type=checkbox]').forEach(cb => {
+      cb.checked = ids.includes(String(cb.value));
+    });
+  }
+
+  async function _loadComposePickers() {
     if (!_groupsList.length) {
       _groupsList = await fetch('/api/groups-list').then(r => r.json()).catch(() => []);
     }
@@ -1098,6 +1131,7 @@
 
   function closeComposeModal() {
     document.getElementById('compose-overlay').classList.remove('show');
+    _editingMsgId = null;
   }
 
   function updateTargetPicker() {
@@ -1126,11 +1160,16 @@
     const targetType = document.getElementById('compose-target-type').value;
     const targetIds = [...document.querySelectorAll('#compose-targets input:checked')].map(cb => cb.value);
     const expires = document.getElementById('compose-expires').value || null;
+    const payload = { content, target_type: targetType, target_ids: targetIds, expires_at: expires };
 
-    const r = await fetch('/api/messages', {
-      method: 'POST',
+    const isEdit = _editingMsgId != null;
+    const url = isEdit ? `/api/messages/${_editingMsgId}` : '/api/messages';
+    const method = isEdit ? 'PUT' : 'POST';
+
+    const r = await fetch(url, {
+      method,
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ content, target_type: targetType, target_ids: targetIds, expires_at: expires })
+      body: JSON.stringify(payload)
     });
     const data = await r.json();
     if (data.ok) {

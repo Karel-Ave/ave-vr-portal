@@ -930,6 +930,72 @@ app.post('/api/messages/:id/dismiss', requireLogin, async (req, res) => {
   } catch (err) { res.status(500).json({ ok: false }); }
 });
 
+// PUT /api/messages/:id — uprav zprávu (autor nebo admin)
+app.put('/api/messages/:id', requireLogin, async (req, res) => {
+  try {
+    const db = getPool();
+    const user = req.session.user;
+    const { rows } = await db.query('SELECT author_id FROM messages WHERE id = $1', [req.params.id]);
+    if (!rows.length) return res.status(404).json({ ok: false, msg: 'Zpráva nenalezena.' });
+    if (user.role !== 'admin' && rows[0].author_id !== user.id)
+      return res.status(403).json({ ok: false, msg: 'Nemáš oprávnění.' });
+
+    const { content, target_type, target_ids, expires_at } = req.body;
+    if (!content?.trim()) return res.json({ ok: false, msg: 'Chybí obsah zprávy.' });
+
+    await db.query(`
+      UPDATE messages SET content=$1, target_type=$2, target_ids=$3, expires_at=$4
+      WHERE id=$5
+    `, [content.trim(), target_type || 'all', JSON.stringify(target_ids || []),
+        expires_at || null, req.params.id]);
+
+    res.json({ ok: true });
+  } catch (err) { console.error(err); res.status(500).json({ ok: false }); }
+});
+
+// ── Schedule change log ────────────────────────────────────────────────────
+
+// GET /api/schedule-log/:key — log pro daný rozpis
+app.get('/api/schedule-log/:key', requireLogin, async (req, res) => {
+  try {
+    const db = getPool();
+    const key = req.params.key;
+    const savedOnly = req.query.saved === 'true';
+    const q = savedOnly
+      ? `SELECT * FROM schedule_change_log WHERE raspis_key=$1 AND is_saved=TRUE ORDER BY timestamp DESC LIMIT 500`
+      : `SELECT * FROM schedule_change_log WHERE raspis_key=$1 ORDER BY timestamp DESC LIMIT 500`;
+    const { rows } = await db.query(q, [key]);
+    res.json({ ok: true, entries: rows });
+  } catch (err) { console.error(err); res.status(500).json({ ok: false, entries: [] }); }
+});
+
+// POST /api/schedule-log/:key — přidej záznam změny
+app.post('/api/schedule-log/:key', requireLogin, async (req, res) => {
+  try {
+    const db = getPool();
+    const user = req.session.user;
+    const key = req.params.key;
+    const { change_type, staff_name, day, dn, old_value, new_value } = req.body;
+    if (!staff_name || !change_type) return res.json({ ok: false });
+    await db.query(`
+      INSERT INTO schedule_change_log (raspis_key, user_id, user_name, is_saved, change_type, staff_name, day, dn, old_value, new_value)
+      VALUES ($1, $2, $3, FALSE, $4, $5, $6, $7, $8, $9)
+    `, [key, user.id, user.name, change_type, staff_name,
+        day || null, dn || null, old_value ?? '', new_value ?? '']);
+    res.json({ ok: true });
+  } catch (err) { console.error(err); res.status(500).json({ ok: false }); }
+});
+
+// POST /api/schedule-log/:key/mark-saved — označ čekající záznamy jako uložené
+app.post('/api/schedule-log/:key/mark-saved', requireLogin, async (req, res) => {
+  try {
+    const db = getPool();
+    const key = req.params.key;
+    await db.query(`UPDATE schedule_change_log SET is_saved=TRUE WHERE raspis_key=$1 AND is_saved=FALSE`, [key]);
+    res.json({ ok: true });
+  } catch (err) { res.status(500).json({ ok: false }); }
+});
+
 // GET /api/groups-list — seznam skupin pro výběr příjemců
 app.get('/api/groups-list', requireLogin, async (req, res) => {
   try {

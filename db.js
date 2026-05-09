@@ -250,6 +250,25 @@ async function init() {
     )
   `);
 
+  // ── Log změn rozpisu ──────────────────────────────────────────────────────
+  await db.query(`
+    CREATE TABLE IF NOT EXISTS schedule_change_log (
+      id          BIGSERIAL PRIMARY KEY,
+      raspis_key  VARCHAR(20) NOT NULL,
+      timestamp   TIMESTAMPTZ DEFAULT NOW(),
+      user_id     INTEGER REFERENCES users(id) ON DELETE SET NULL,
+      user_name   VARCHAR(100) NOT NULL,
+      is_saved    BOOLEAN NOT NULL DEFAULT FALSE,
+      change_type VARCHAR(10) NOT NULL DEFAULT 'cell',
+      staff_name  VARCHAR(100) NOT NULL,
+      day         INTEGER,
+      dn          VARCHAR(1),
+      old_value   TEXT,
+      new_value   TEXT
+    )
+  `);
+  await db.query(`CREATE INDEX IF NOT EXISTS idx_scl_key ON schedule_change_log (raspis_key, timestamp DESC)`);
+
   // Seed: pokud nejsou žádní uživatelé, vytvoř admina
   const { rows } = await db.query('SELECT COUNT(*) AS cnt FROM users');
   if (parseInt(rows[0].cnt, 10) === 0) {
