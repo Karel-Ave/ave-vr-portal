@@ -9,12 +9,20 @@
 <link rel="stylesheet" href="/static/theme.css">
 <style>
   * { box-sizing: border-box; margin: 0; padding: 0; }
-  body { min-height: 100vh; background: var(--bg); font-family: 'Segoe UI', system-ui, sans-serif; color: var(--text); transition: background .25s, color .25s; }
+  body {
+    min-height: 100vh;
+    background: var(--bg);
+    font-family: 'Segoe UI', system-ui, sans-serif;
+    color: var(--text);
+    transition: background .25s, color .25s;
+    overflow-y: auto;
+    -webkit-overflow-scrolling: touch;
+  }
 
   #topbar { background: var(--bg-topbar); height: 44px; display: flex; align-items: center; padding: 0 16px; border-bottom: 1px solid rgba(0,0,0,.3); gap: 10px; }
   #topbar-title { font-size: 13px; font-weight: 600; color: var(--text-topbar); }
 
-  .main { max-width: 920px; margin: 28px auto; padding: 0 28px; }
+  .main { max-width: 920px; margin: 28px auto; padding: 0 28px; padding-bottom: calc(32px + env(safe-area-inset-bottom, 0px)); }
 
   /* Tabs */
   .tabs { display: flex; gap: 2px; border-bottom: 2px solid var(--border); margin-bottom: 24px; }

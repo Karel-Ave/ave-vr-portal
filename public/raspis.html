@@ -433,6 +433,10 @@ table.staff-tbl td select:focus { background: var(--input-bg); color: var(--text
 .hb.selected { background: var(--accent); color: #fff; border-color: var(--accent); }
 .hb.hb-danger { border-color: #e55; color: #c00; background: #fff5f5; }
 .hb.hb-danger:hover { background: #fdd; }
+/* Menší tlačítka pro OV panel na desktopu */
+@media (min-width: 641px) {
+  .hb.hb-ov { font-size: 10px; padding: 1px 5px; }
+}
 .hotel-btn {
   padding: 2px 7px;
   border-radius: 3px;
@@ -3277,8 +3281,8 @@ table.staff-tbl td select:focus { background: var(--input-bg); color: var(--text
             <button class="hb" id="btn-avail-filter" data-short="JD" onclick="toggleAvailFilter()" style="background:#c8f0c8;border-color:#4caf50;color:#1a5c1a;">Jen dostupní</button>
             <button class="hb" id="btn-today-col-m" data-short="AD" onclick="toggleTodayCol()" style="background:#ffcdd2;border-color:#ef9a9a;color:#c62828;display:none;">AD</button>
             <button class="hb" id="btn-show-hidden" onclick="showAllHidden()" style="display:none">Zobraz skryté</button>
-            <button class="hb hb-danger" id="btn-cancel-select" onclick="cancelSelectMode()" style="display:none">Zruš výběr</button>
-            <button class="hb" id="btn-show-selected" onclick="toggleShowSelected()" style="display:none;background:#FFA500;border-color:#cc7000;color:#fff;">Zobraz vybrané</button>
+            <button class="hb hb-ov" id="btn-show-selected" onclick="toggleShowSelected()" style="display:none;background:#FFA500;border-color:#cc7000;color:#fff;">Zobraz vybrané</button>
+            <button class="hb hb-danger hb-ov" id="btn-cancel-select" onclick="cancelSelectMode()" style="display:none">Zruš výběr</button>
           </div>
           <!-- Střed: 2×2 grid (Hover|AD / Zpět|Vpřed) — desktop only, hidden on mobile -->
           <div class="sc-mid">
@@ -7365,21 +7369,29 @@ document.addEventListener('focusin', function(e) {
   if (!e.target.matches('#scheduleTable input')) return;
   if (window.innerWidth > 900) return;
   const inp = e.target;
-  // Počkej až klávesnice doběhne animaci (~350 ms na iOS)
-  setTimeout(function() {
+
+  function doScroll() {
+    // Pokud input ztratil focus (přešli jsme jinam), nerušit
+    if (document.activeElement !== inp) return;
     const wrap = document.getElementById('schedule-wrap');
     if (!wrap) return;
     if ('visualViewport' in window) {
       const vvp = window.visualViewport;
       const inpRect = inp.getBoundingClientRect();
-      const vvpBottom = vvp.offsetTop + vvp.height;
-      if (inpRect.bottom > vvpBottom - 20) {
-        wrap.scrollTop += (inpRect.bottom - vvpBottom + 80);
+      // getBoundingClientRect() je relativní k VISUAL viewport =>
+      // spodní hrana visual viewport (= horní hrana klávesnice) je vvp.height
+      const keyboardTop = vvp.height;
+      if (inpRect.bottom > keyboardTop - 30) {
+        wrap.scrollTop += (inpRect.bottom - keyboardTop + 80);
       }
     } else {
       inp.scrollIntoView({ block: 'center', behavior: 'smooth' });
     }
-  }, 380);
+  }
+
+  // Dvě pokusy: po 350 ms a po 700 ms (různé iOS zařízení mají různé timing)
+  setTimeout(doScroll, 350);
+  setTimeout(doScroll, 700);
 });
 </script>
 

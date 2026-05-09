@@ -95,6 +95,23 @@
   }
   #btn-home.visible {
     display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 22px;
+    font-weight: 700;
+    padding: 4px 14px;
+    border-radius: 8px;
+    border: 2px solid var(--btn-top-border);
+    background: var(--portal-card-bg, rgba(255,255,255,0.08));
+    color: var(--btn-top-color);
+    line-height: 1;
+    min-width: 44px;
+    min-height: 34px;
+  }
+  #btn-home.visible:hover {
+    background: var(--accent);
+    border-color: var(--accent);
+    color: #fff;
   }
 
   /* ── Obsah ── */
@@ -108,9 +125,6 @@
     width: 100%;
     margin: 0 auto;
     padding: 32px 28px;
-  }
-  .welcome {
-    margin-bottom: 28px;
   }
   .welcome h1 {
     font-size: 24px;
@@ -138,29 +152,39 @@
     margin-bottom: 14px;
   }
 
+  /* ── Uvítací oddělovač ── */
+  .welcome {
+    border-bottom: 1px solid var(--border);
+    padding-bottom: 24px;
+    margin-bottom: 28px;
+  }
+
   /* ── Mřížka karet ── */
   .grid {
     display: grid;
-    grid-template-columns: repeat(auto-fill, minmax(210px, 1fr));
-    gap: 14px;
+    grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+    gap: 18px;
   }
 
   /* ── Karta ── */
   .card {
     background: var(--portal-card-bg);
     border: 1px solid var(--portal-card-border);
-    border-radius: 12px;
-    padding: 18px 18px 16px;
+    border-radius: 14px;
+    padding: 32px 24px 28px;
     cursor: pointer;
     transition: background .18s, border-color .18s, transform .18s;
     text-decoration: none;
     color: inherit;
-    display: block;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    text-align: center;
   }
   .card:hover {
     background: var(--portal-card-hover-bg);
     border-color: var(--border-strong);
-    transform: translateY(-2px);
+    transform: translateY(-3px);
   }
   .card.disabled {
     opacity: 0.38;
@@ -168,25 +192,25 @@
     pointer-events: none;
   }
   .card-icon {
-    font-size: 36px;
-    margin-bottom: 12px;
+    font-size: 52px;
+    margin-bottom: 14px;
     line-height: 1;
   }
   /* Dynamic calendar icon for Raspis card */
   .cal-icon {
     display: inline-flex; flex-direction: column; align-items: center;
-    width: 50px; height: 50px; background: #fff; border-radius: 8px;
+    width: 64px; height: 64px; background: #fff; border-radius: 10px;
     overflow: hidden; line-height: 1; box-shadow: 0 2px 5px rgba(0,0,0,.28);
     border: 1.5px solid #e0e0e0;
   }
   .cal-mon {
     background: #e53030; width: 100%; color: #fff;
-    font-size: 10px; font-weight: 700; text-align: center;
-    padding: 4px 0 3px; text-transform: uppercase; letter-spacing: .05em;
+    font-size: 12px; font-weight: 700; text-align: center;
+    padding: 5px 0 4px; text-transform: uppercase; letter-spacing: .05em;
     font-family: 'Segoe UI', system-ui, sans-serif;
   }
   .cal-day {
-    color: #e53030; font-size: 23px; font-weight: 800;
+    color: #e53030; font-size: 30px; font-weight: 800;
     flex: 1; display: flex; align-items: center; justify-content: center;
     font-family: 'Segoe UI', system-ui, sans-serif;
   }
@@ -549,11 +573,9 @@
     #btn-logout    { display: none; }
     #btn-hamburger { display: inline-flex; align-items: center; justify-content: center; }
 
-    /* Home button: jen šipka */
-    .home-label { display: none; }
-
     /* Karty: menší padding */
     .main { padding: 20px 14px; }
+    .welcome { padding-bottom: 16px; margin-bottom: 20px; }
     .welcome h1 { font-size: 20px; }
     .welcome p  { font-size: 13px; }
     .section-label { font-size: 9px; }
@@ -561,8 +583,10 @@
 
     /* Mřížka karet: min šířka menší pro 2 sloupce na větších telefonech */
     .grid { grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); gap: 10px; }
-    .card { padding: 14px 14px 12px; }
-    .card-icon { font-size: 28px; margin-bottom: 8px; }
+    /* Karta: zachovat stávající velikost, obsah uprostřed */
+    .card { padding: 18px 12px 16px; align-items: center; text-align: center; }
+    .card-icon { font-size: 36px; margin-bottom: 10px; }
+    .card-title { font-size: 14px; }
     .card-title { font-size: 14px; }
 
     /* Modál změny hesla: full width přes theme.css, ale parent má padding */
@@ -593,7 +617,7 @@
 <div id="topbar">
   <!-- Left: Home button (visible only when app is loaded) -->
   <div class="topbar-left">
-    <button id="btn-home" class="btn-top" onclick="goHome()">&#8592;<span class="home-label">&nbsp;Zpět na přehled</span></button>
+    <button id="btn-home" class="btn-top" onclick="goHome()" title="Zpět na přehled">&#8592;</button>
   </div>
 
   <!-- Center: Logo (always visible) -->
