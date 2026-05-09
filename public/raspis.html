@@ -5588,7 +5588,7 @@ function toggleShowSelected() {
   if (showOnlySelected) {
     btn.textContent = 'Zobraz vše';
     document.querySelectorAll('#sch-tbody tr.sch-row').forEach(tr => {
-      const si = parseInt(tr.dataset.si);
+      const si = parseInt(tr.dataset.staffIdx); // rows use dataset.staffIdx (not dataset.si)
       tr.style.display = selectedStaff.has(si) ? '' : 'none';
     });
   } else {
@@ -5611,7 +5611,7 @@ function cancelSelectMode() {
   showOnlySelected = false;
   selectedStaff.clear();
   document.getElementById('btn-select-mode').classList.remove('selected');
-  document.getElementById('btn-select-mode').textContent = 'Vyber recepční';
+  document.getElementById('btn-select-mode').textContent = 'Označ vybrané';
   document.getElementById('btn-cancel-select').style.display = 'none';
   const showBtn = document.getElementById('btn-show-selected');
   if (showBtn) { showBtn.style.display = 'none'; showBtn.textContent = 'Zobraz vybrané'; }
@@ -7361,21 +7361,26 @@ document.addEventListener('mouseup', (e) => {
 
 <script>
 /* ── iOS: scroll focused schedule cell above keyboard ── */
-if ('visualViewport' in window) {
-  window.visualViewport.addEventListener('resize', function() {
-    if (window.innerWidth > 900) return; // desktop only needs no help
-    const focused = document.querySelector('#scheduleTable input:focus');
-    if (!focused) return;
+document.addEventListener('focusin', function(e) {
+  if (!e.target.matches('#scheduleTable input')) return;
+  if (window.innerWidth > 900) return;
+  const inp = e.target;
+  // Počkej až klávesnice doběhne animaci (~350 ms na iOS)
+  setTimeout(function() {
     const wrap = document.getElementById('schedule-wrap');
     if (!wrap) return;
-    const vvp = window.visualViewport;
-    const inpRect = focused.getBoundingClientRect();
-    const vvpBottom = vvp.offsetTop + vvp.height;
-    if (inpRect.bottom > vvpBottom - 16) {
-      wrap.scrollTop += (inpRect.bottom - vvpBottom + 72);
+    if ('visualViewport' in window) {
+      const vvp = window.visualViewport;
+      const inpRect = inp.getBoundingClientRect();
+      const vvpBottom = vvp.offsetTop + vvp.height;
+      if (inpRect.bottom > vvpBottom - 20) {
+        wrap.scrollTop += (inpRect.bottom - vvpBottom + 80);
+      }
+    } else {
+      inp.scrollIntoView({ block: 'center', behavior: 'smooth' });
     }
-  });
-}
+  }, 380);
+});
 </script>
 
 </body></html>
