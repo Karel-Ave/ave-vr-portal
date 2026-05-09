@@ -452,8 +452,9 @@ table.staff-tbl td select:focus { background: var(--input-bg); color: var(--text
   padding: 10px 16px 14px;
   box-shadow: 0 -4px 24px rgba(0,0,0,.22);
   font-family: 'DM Sans', sans-serif;
-  /* iOS Safari: don't use env(safe-area-inset-bottom) here — we reposition via JS */
-  transition: bottom 0.05s;
+  /* Use transform for iOS keyboard repositioning (avoids fixed-positioning bugs) */
+  transform: translateY(0);
+  will-change: transform;
 }
 #cell-edit-label {
   font-size: 13px; font-weight: 600; color: var(--text, #1a1a18);
@@ -3325,7 +3326,6 @@ table.staff-tbl td select:focus { background: var(--input-bg); color: var(--text
             <button class="hb" id="btn-today-col-m" data-short="AD" onclick="toggleTodayCol()" style="background:#ffcdd2;border-color:#ef9a9a;color:#c62828;display:none;">AD</button>
             <button class="hb" id="btn-show-hidden" onclick="showAllHidden()" style="display:none">Zobraz skryté</button>
             <button class="hb hb-ov" id="btn-show-selected" onclick="toggleShowSelected()" style="display:none;background:#FFA500;border-color:#cc7000;color:#fff;">Zobraz vybrané</button>
-            <button class="hb hb-danger hb-ov" id="btn-cancel-select" onclick="cancelSelectMode()" style="display:none">Zruš výběr</button>
           </div>
           <!-- Střed: 2×2 grid (Hover|AD / Zpět|Vpřed) — desktop only, hidden on mobile -->
           <div class="sc-mid">
@@ -5657,13 +5657,11 @@ const selectedStaff = new Set(); // set of si (staff indices)
 function toggleSelectMode() {
   selectModeActive = !selectModeActive;
   const btn = document.getElementById('btn-select-mode');
-  const cancelBtn = document.getElementById('btn-cancel-select');
   const showBtn = document.getElementById('btn-show-selected');
   const wrap = document.getElementById('schedule-wrap');
   if (selectModeActive) {
     btn.classList.add('selected');
     btn.textContent = 'Výběr aktivní';
-    cancelBtn.style.display = '';
     showBtn.style.display = '';
     wrap.classList.add('select-mode-active');
   } else {
@@ -5675,13 +5673,21 @@ function toggleShowSelected() {
   showOnlySelected = !showOnlySelected;
   const btn = document.getElementById('btn-show-selected');
   if (showOnlySelected) {
-    btn.textContent = 'Zobraz vše';
+    // Showing only selected → button becomes "Zruš výběr" (red)
+    btn.textContent = 'Zruš výběr';
+    btn.style.background = '#e53030';
+    btn.style.borderColor = '#a01010';
+    btn.style.color = '#fff';
     document.querySelectorAll('#sch-tbody tr.sch-row').forEach(tr => {
-      const si = parseInt(tr.dataset.staffIdx); // rows use dataset.staffIdx (not dataset.si)
+      const si = parseInt(tr.dataset.staffIdx);
       tr.style.display = selectedStaff.has(si) ? '' : 'none';
     });
   } else {
+    // Back to default → button becomes "Zobraz vybrané" (orange)
     btn.textContent = 'Zobraz vybrané';
+    btn.style.background = '#FFA500';
+    btn.style.borderColor = '#cc7000';
+    btn.style.color = '#fff';
     document.querySelectorAll('#sch-tbody tr.sch-row').forEach(tr => { tr.style.display = ''; });
     applyHotelFilter();
   }
@@ -5701,9 +5707,14 @@ function cancelSelectMode() {
   selectedStaff.clear();
   document.getElementById('btn-select-mode').classList.remove('selected');
   document.getElementById('btn-select-mode').textContent = 'Označ vybrané';
-  document.getElementById('btn-cancel-select').style.display = 'none';
   const showBtn = document.getElementById('btn-show-selected');
-  if (showBtn) { showBtn.style.display = 'none'; showBtn.textContent = 'Zobraz vybrané'; }
+  if (showBtn) {
+    showBtn.style.display = 'none';
+    showBtn.textContent = 'Zobraz vybrané';
+    showBtn.style.background = '#FFA500';
+    showBtn.style.borderColor = '#cc7000';
+    showBtn.style.color = '#fff';
+  }
   document.getElementById('schedule-wrap').classList.remove('select-mode-active');
   // Remove selection highlight and restore all row visibility
   document.querySelectorAll('#sch-tbody tr.sch-row').forEach(tr => {
@@ -7476,14 +7487,16 @@ document.addEventListener('mouseup', (e) => {
 let _cellEditInp = null;
 
 // Repositioning overlay above iOS keyboard via visualViewport API
+// Uses transform (not bottom) to avoid iOS Safari fixed-positioning quirks
 function _updateCellOverlayPos() {
   if (!_cellEditInp) return;
   const overlay = document.getElementById('cell-edit-overlay');
   if (!overlay || overlay.style.display === 'none') return;
   if (window.visualViewport) {
-    // How far the bottom of the visual viewport is from the bottom of the layout viewport
-    const kbHeight = window.innerHeight - (window.visualViewport.offsetTop + window.visualViewport.height);
-    overlay.style.bottom = Math.max(0, kbHeight) + 'px';
+    const vv = window.visualViewport;
+    // Keyboard height = distance from bottom of visual viewport to bottom of layout viewport
+    const kbHeight = window.innerHeight - (vv.offsetTop + vv.height);
+    overlay.style.transform = `translateY(${-Math.max(0, kbHeight)}px)`;
   }
 }
 
@@ -7517,7 +7530,7 @@ document.addEventListener('focusin', function(e) {
   const overlayInput = document.getElementById('cell-edit-input');
   overlayInput.value = inp.value;
   const overlay = document.getElementById('cell-edit-overlay');
-  overlay.style.bottom = '0px'; // reset before showing; visualViewport event will update
+  overlay.style.transform = 'translateY(0)'; // reset; visualViewport resize will update
   overlay.style.display = '';
   // Přenes focus na overlay input — jsme stále v kontextu user-gesture, iOS to povolí
   overlayInput.focus();
@@ -7558,7 +7571,7 @@ function confirmCellEdit() {
 function hideCellEditOverlay() {
   const overlay = document.getElementById('cell-edit-overlay');
   overlay.style.display = 'none';
-  overlay.style.bottom = '0px';
+  overlay.style.transform = 'translateY(0)';
   document.getElementById('cell-edit-input').blur();
   _cellEditInp = null;
 }

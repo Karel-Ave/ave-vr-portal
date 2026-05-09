@@ -943,11 +943,20 @@ app.put('/api/messages/:id', requireLogin, async (req, res) => {
     const { content, target_type, target_ids, expires_at } = req.body;
     if (!content?.trim()) return res.json({ ok: false, msg: 'Chybí obsah zprávy.' });
 
+    // Check if content actually changed (to decide whether to reset dismissed status)
+    const { rows: oldRows } = await db.query('SELECT content FROM messages WHERE id = $1', [req.params.id]);
+    const contentChanged = oldRows[0]?.content !== content.trim();
+
     await db.query(`
       UPDATE messages SET content=$1, target_type=$2, target_ids=$3, expires_at=$4
       WHERE id=$5
     `, [content.trim(), target_type || 'all', JSON.stringify(target_ids || []),
         expires_at || null, req.params.id]);
+
+    // If the message text changed, reset dismissed status so users see it again
+    if (contentChanged) {
+      await db.query(`DELETE FROM message_reads WHERE message_id = $1 AND dismissed = TRUE`, [req.params.id]);
+    }
 
     res.json({ ok: true });
   } catch (err) { console.error(err); res.status(500).json({ ok: false }); }

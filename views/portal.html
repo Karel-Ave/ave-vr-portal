@@ -181,6 +181,10 @@
     flex-direction: column;
     align-items: center;
     text-align: center;
+    /* Prevent text/icon selection on long-press (mobile drag) */
+    user-select: none;
+    -webkit-user-select: none;
+    -webkit-touch-callout: none;
   }
   .card:hover {
     background: var(--portal-card-hover-bg);
@@ -190,7 +194,12 @@
   .card.disabled {
     opacity: 0.38;
     cursor: not-allowed;
-    pointer-events: none;
+    /* pointer-events: none removed — SortableJS needs events to drag disabled cards */
+  }
+  .card.disabled:hover {
+    background: var(--portal-card-bg);
+    border-color: var(--portal-card-border);
+    transform: none;
   }
   .card-icon {
     font-size: 52px;
@@ -284,18 +293,12 @@
     font-family: inherit;
     transition: all .15s;
   }
-  .msg-btn-read {
-    border: 1px solid #2d7a2d;
-    background: #eafbea;
-    color: #1a5c1a;
-  }
-  .msg-btn-read:hover { background: #d0f5d0; }
-  .msg-btn-dismiss {
+  .msg-btn-hide {
     border: 1px solid var(--border);
     background: var(--surface-alt, #f5f5f5);
     color: var(--text-muted);
   }
-  .msg-btn-dismiss:hover { background: var(--surface-alt); border-color: var(--border-strong); }
+  .msg-btn-hide:hover { background: #fdecea; border-color: #c0392b; color: #c0392b; }
   .msg-btn-delete {
     border: 1px solid #c0392b;
     background: none;
@@ -758,6 +761,9 @@
     `;
     if (c.href) {
       el.addEventListener('click', () => loadApp(c.href));
+    } else {
+      // Disabled cards: block click but allow drag (pointer-events kept on for SortableJS)
+      el.addEventListener('click', e => e.preventDefault());
     }
     return el;
   }
@@ -1008,9 +1014,6 @@
   }
 
   function renderMessage(msg, isAuthorOrAdmin) {
-    const readBtn = msg.read_at
-      ? ''
-      : `<button class="msg-btn msg-btn-read" onclick="markRead(${msg.id}, this)">✓ Přečteno</button>`;
     const editBtn = isAuthorOrAdmin
       ? `<button class="msg-btn" style="border:1px solid #5b8de8;background:#eef2ff;color:#1a3a9a;" onclick="openEditMsg(${msg.id})">✏ Upravit</button>`
       : '';
@@ -1024,8 +1027,7 @@
       </div>
       <div class="msg-content">${msg.content}</div>
       <div class="msg-actions">
-        ${readBtn}
-        <button class="msg-btn msg-btn-dismiss" onclick="dismissMsg(${msg.id})">✗ Přečteno (již nezobrazovat)</button>
+        <button class="msg-btn msg-btn-hide" onclick="dismissMsg(${msg.id})">Skrýt</button>
         ${editBtn}
         ${deleteBtn}
       </div>
