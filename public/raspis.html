@@ -449,7 +449,7 @@ table.staff-tbl td select:focus { background: var(--input-bg); color: var(--text
   z-index: 9990;
   background: var(--surface, #fff);
   border-top: 2px solid var(--accent, #2a5caa);
-  padding: 6px 10px 8px;
+  padding: 6px 10px 44px; /* 44px: iPhone safe area + zaoblené rohy (iframe nezdědí env()) */
   box-shadow: 0 -4px 24px rgba(0,0,0,.22);
   font-family: 'DM Sans', sans-serif;
 }
@@ -915,6 +915,8 @@ table.staff-tbl td select:focus { background: var(--input-bg); color: var(--text
   .sch-sum { font-size: 8px; }
   #scheduleTable .sch-sum input,
   #scheduleTable .sch-note-input { font-size: 8px !important; }
+  /* iOS zoom prevention: ±hod input musí mít font-size ≥ 16px, jinak iOS zoomuje při focusu */
+  td[data-sum-id="extra"] input.sch-note-input { font-size: 16px !important; }
   .th-sum { font-size: 7px; }
   .th-daynum { font-size: 8px; }
   .th-dn { font-size: 7px; }
