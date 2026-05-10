@@ -449,47 +449,39 @@ table.staff-tbl td select:focus { background: var(--input-bg); color: var(--text
   z-index: 9990;
   background: var(--surface, #fff);
   border-top: 2px solid var(--accent, #2a5caa);
-  padding: 8px 12px 10px;
+  padding: 6px 10px 8px;
   box-shadow: 0 -4px 24px rgba(0,0,0,.22);
   font-family: 'DM Sans', sans-serif;
 }
 /* Header */
 #cel-head {
   display: flex; align-items: center; justify-content: space-between;
-  margin-bottom: 6px;
+  margin-bottom: 4px;
 }
 #cell-edit-label {
   font-size: 12px; font-weight: 600; color: var(--text, #1a1a18);
+  flex: 1; text-align: center;
 }
 #cell-edit-cancel {
-  padding: 4px 10px; background: none; border: 1px solid var(--border, #d0d0c8);
+  padding: 3px 9px; background: none; border: 1px solid var(--border, #d0d0c8);
   border-radius: 6px; font-size: 15px; cursor: pointer;
   color: var(--text-muted, #666); font-family: inherit; line-height: 1;
+  flex-shrink: 0;
 }
-/* Hotel picker */
+/* Hotel picker — 8 sloupců, vše v jednom gridu */
 #cel-hotel-grid {
   display: grid;
-  grid-template-columns: repeat(6, 1fr);
-  gap: 5px;
-  margin-bottom: 5px;
+  grid-template-columns: repeat(8, 1fr);
+  gap: 4px;
 }
-#cel-special-row {
-  display: grid;
-  grid-template-columns: repeat(6, 1fr);
-  gap: 5px;
-  margin-top: 5px;
-}
-#cel-special-row .cel-clear-btn {
-  grid-column: 1 / -1;
-  margin-top: 2px;
-}
+#cel-special-row { display: none; } /* sloučeno do cel-hotel-grid */
 .cel-hbtn {
-  padding: 10px 4px;
-  border-radius: 7px;
+  padding: 7px 2px;
+  border-radius: 6px;
   border: 1.5px solid var(--border, #d0d0c8);
   background: var(--surface, #fff);
   font-family: 'DM Mono', monospace;
-  font-size: 15px; font-weight: 700;
+  font-size: 14px; font-weight: 700;
   cursor: pointer; text-align: center;
   color: var(--text, #1a1a18);
   transition: background .1s;
@@ -501,38 +493,28 @@ table.staff-tbl td select:focus { background: var(--input-bg); color: var(--text
 .cel-hbtn.cel-pq { background: #fff3d0; border-color: #c8a800; color: #7a5a00; }
 .cel-hbtn.cel-pq:active { background: #ffe88a; }
 .cel-hbtn.cel-current { border-color: var(--accent, #2a5caa); background: var(--accent-light, #e8eef8); }
-.cel-clear-btn {
-  padding: 10px 4px;
-  border-radius: 7px;
-  border: 1.5px solid #e0524a;
-  background: #fff5f5;
-  font-size: 13px; font-weight: 600;
-  cursor: pointer; text-align: center;
-  color: #c0392b;
-  transition: background .1s;
-  -webkit-tap-highlight-color: transparent;
-}
-.cel-clear-btn:active { background: #fdd; }
+.cel-hbtn.cel-del-btn { background: #fff0f0; border-color: #e09090; color: #c03030; font-size: 10px; font-weight: 700; }
+.cel-hbtn.cel-del-btn:active { background: #fdd; }
 /* Numpad (+-hodiny) */
 #cel-numpad-display {
-  font-size: 24px; font-weight: 700; text-align: center;
-  padding: 6px 10px; border: 2px solid var(--accent, #2a5caa);
-  border-radius: 8px; background: var(--input-bg, #fff);
-  color: var(--text, #1a1a18); margin-bottom: 6px;
-  min-height: 44px; line-height: 1.3;
+  font-size: 18px; font-weight: 700; text-align: center;
+  padding: 4px 10px; border: 2px solid var(--accent, #2a5caa);
+  border-radius: 7px; background: var(--input-bg, #fff);
+  color: var(--text, #1a1a18); margin-bottom: 4px;
+  min-height: 34px; line-height: 1.3;
   letter-spacing: 0.08em;
 }
 #cel-numpad-grid {
   display: grid;
   grid-template-columns: repeat(4, 1fr);
-  gap: 5px;
+  gap: 4px;
 }
 .cel-npad {
-  padding: 12px 4px;
-  border-radius: 7px;
+  padding: 8px 4px;
+  border-radius: 6px;
   border: 1.5px solid var(--border, #d0d0c8);
   background: var(--surface, #fff);
-  font-size: 18px; font-weight: 700;
+  font-size: 16px; font-weight: 700;
   cursor: pointer; text-align: center;
   color: var(--text, #1a1a18);
   transition: background .1s;
@@ -541,6 +523,7 @@ table.staff-tbl td select:focus { background: var(--input-bg); color: var(--text
 .cel-npad:active { background: var(--accent-light, #e8eef8); }
 .cel-npad.cel-npad-minus { background: #f5f0ff; border-color: #9966cc; color: #5a2daa; }
 .cel-npad.cel-npad-del   { background: #fff5f0; border-color: #e09060; color: #c05010; }
+.cel-npad.cel-npad-clr   { background: #fff0f0; border-color: #e09090; color: #c03030; font-size: 11px; }
 .cel-npad.cel-npad-ok    { background: var(--accent, #2a5caa); border-color: var(--accent, #2a5caa); color: #fff; }
 .hotel-btn {
   padding: 2px 7px;
@@ -7575,7 +7558,7 @@ document.addEventListener('mouseup', (e) => {
       <button class="cel-npad" onclick="celNumKey('2')">2</button>
       <button class="cel-npad" onclick="celNumKey('3')">3</button>
       <button class="cel-npad cel-npad-ok" onclick="celNumKey('✓')" style="grid-row:span 2;">✓</button>
-      <button class="cel-npad" onclick="celNumKey('C')" style="font-size:13px;">C</button>
+      <button class="cel-npad cel-npad-clr" onclick="celNumKey('C')">del</button>
       <button class="cel-npad" onclick="celNumKey('0')">0</button>
       <button class="cel-npad" onclick="celNumKey('.')">.</button>
     </div>
@@ -7586,6 +7569,15 @@ document.addEventListener('mouseup', (e) => {
 /* ── Mobilní picker pro editaci buňky (bez klávesnice) ── */
 let _cellEditInp  = null;
 let _numpadValue  = '';  // aktuálně zadaná hodnota v číselníku
+
+// Přidá padding-bottom na tabulku = výška panelu, aby bylo možné scrollovat ke spodním řádkům
+function _applyOverlayPadding() {
+  requestAnimationFrame(() => {
+    const overlay = document.getElementById('cell-edit-overlay');
+    const wrap    = document.getElementById('schedule-wrap');
+    if (wrap && overlay) wrap.style.paddingBottom = overlay.offsetHeight + 'px';
+  });
+}
 
 // ── Pomocná: label pro overlay ──────────────────────────────────────────────
 function _celLabel(inp, isHours) {
@@ -7606,32 +7598,29 @@ function showHotelOverlay(inp) {
   _cellEditInp = inp;
   document.getElementById('cell-edit-label').textContent = _celLabel(inp, false);
 
-  // Sestav hotelová tlačítka
+  // Sestav hotelová tlačítka — 8 sloupců, vše v jednom gridu (3 řádky)
+  const HCOLS = 8;
   const hotels  = typeof getDisplayHotels === 'function' ? getDisplayHotels() : ['A','B','C','D','E','G','H','I','J','L','M','N','S','T','U','P'];
-  const mainHot = hotels.filter(h => h !== 'P');  // hotely bez P
-  const current = inp.value.toUpperCase();
+  const mainHot = hotels.filter(h => h !== 'P');
+  const current = inp.value;
+  const curUp   = current.toUpperCase();
 
   const grid = document.getElementById('cel-hotel-grid');
   grid.innerHTML = '';
+
+  // Řádky 1-2: hlavní hotely
   mainHot.forEach(h => {
     const btn = document.createElement('button');
-    btn.className = 'cel-hbtn' + (h === current ? ' cel-current' : '');
+    btn.className = 'cel-hbtn' + (h === curUp ? ' cel-current' : '');
     btn.textContent = h;
     btn.addEventListener('click', () => celHotelPick(h));
     grid.appendChild(btn);
   });
-  // Vyplň zbývající místa v gridu (6 sloupců) prázdnými placehouldery
-  const remainder = mainHot.length % 6;
-  if (remainder > 0) {
-    for (let i = 0; i < 6 - remainder; i++) {
-      const ph = document.createElement('div');
-      grid.appendChild(ph);
-    }
-  }
+  // Doplň do plného řádku
+  const mainRem = mainHot.length % HCOLS;
+  if (mainRem > 0) for (let i = 0; i < HCOLS - mainRem; i++) grid.appendChild(document.createElement('div'));
 
-  // Speciální řádek: P Q | x y z ž + Smazat
-  const specRow = document.getElementById('cel-special-row');
-  specRow.innerHTML = '';
+  // Řádek 3: P Q x y z ž [prázdné] DEL
   const specBtns = [
     { label: 'P', cls: 'cel-pq' },
     { label: 'Q', cls: 'cel-pq' },
@@ -7642,22 +7631,26 @@ function showHotelOverlay(inp) {
   ];
   specBtns.forEach(({ label, cls }) => {
     const btn = document.createElement('button');
-    btn.className = `cel-hbtn ${cls}` + (label.toUpperCase() === current || label === current ? ' cel-current' : '');
+    const isCur = label === current || label.toUpperCase() === curUp;
+    btn.className = `cel-hbtn ${cls}` + (isCur ? ' cel-current' : '');
     btn.textContent = label;
     btn.addEventListener('click', () => celHotelPick(label));
-    specRow.appendChild(btn);
+    grid.appendChild(btn);
   });
-  // Tlačítko Smazat přes celou šířku pod gridem
-  const clearBtn = document.createElement('button');
-  clearBtn.className = 'cel-clear-btn';
-  clearBtn.textContent = '✕ Smazat';
-  clearBtn.style.gridColumn = '1 / -1';
-  clearBtn.addEventListener('click', () => celHotelPick(''));
-  specRow.appendChild(clearBtn);
+  // Prázdné sloty před DEL (6 spec + empties + DEL = HCOLS)
+  const specRem = specBtns.length % HCOLS; // 6 % 8 = 6
+  for (let i = 0; i < HCOLS - specRem - 1; i++) grid.appendChild(document.createElement('div'));
+  // DEL tlačítko — stejná velikost jako ostatní, světle červené
+  const delBtn = document.createElement('button');
+  delBtn.className = 'cel-hbtn cel-del-btn';
+  delBtn.textContent = 'DEL';
+  delBtn.addEventListener('click', () => celHotelPick(''));
+  grid.appendChild(delBtn);
 
   document.getElementById('cel-hotels').style.display = '';
   document.getElementById('cel-numpad').style.display = 'none';
   document.getElementById('cell-edit-overlay').style.display = 'block';
+  _applyOverlayPadding();
 }
 
 function showNumpadOverlay(inp) {
@@ -7669,6 +7662,7 @@ function showNumpadOverlay(inp) {
   document.getElementById('cel-hotels').style.display = 'none';
   document.getElementById('cel-numpad').style.display = '';
   document.getElementById('cell-edit-overlay').style.display = 'block';
+  _applyOverlayPadding();
 }
 
 // ── Výběr hotelu ────────────────────────────────────────────────────────────
@@ -7741,6 +7735,8 @@ function celNumConfirm() {
 function hideCellEditOverlay() {
   document.getElementById('cell-edit-overlay').style.display = 'none';
   _cellEditInp = null;
+  const wrap = document.getElementById('schedule-wrap');
+  if (wrap) wrap.style.paddingBottom = '';
 }
 
 // (Mobil touch handlery jsou přidány přímo na každý input při buildu tabulky)
