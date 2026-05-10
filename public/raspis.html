@@ -449,7 +449,7 @@ table.staff-tbl td select:focus { background: var(--input-bg); color: var(--text
   z-index: 9990;
   background: var(--surface, #fff);
   border-top: 2px solid var(--accent, #2a5caa);
-  padding: 6px 10px 44px; /* 44px: iPhone safe area + zaoblené rohy (iframe nezdědí env()) */
+  padding: 6px 10px 80px; /* 80px: iPhone safe area + zaoblené rohy + home indicator (iframe nezdědí env()) */
   box-shadow: 0 -4px 24px rgba(0,0,0,.22);
   font-family: 'DM Sans', sans-serif;
 }
@@ -915,8 +915,9 @@ table.staff-tbl td select:focus { background: var(--input-bg); color: var(--text
   .sch-sum { font-size: 8px; }
   #scheduleTable .sch-sum input,
   #scheduleTable .sch-note-input { font-size: 8px !important; }
-  /* iOS zoom prevention: ±hod input musí mít font-size ≥ 16px, jinak iOS zoomuje při focusu */
-  td[data-sum-id="extra"] input.sch-note-input { font-size: 16px !important; }
+  /* iOS zoom prevention: inputy musí mít font-size ≥ 16px, jinak iOS zoomuje při focusu */
+  td[data-sum-id="extra"] input.sch-note-input,
+  td[data-sum-id="note"]  input.sch-note-input { font-size: 16px !important; }
   .th-sum { font-size: 7px; }
   .th-daynum { font-size: 8px; }
   .th-dn { font-size: 7px; }
@@ -3433,7 +3434,7 @@ table.staff-tbl td select:focus { background: var(--input-bg); color: var(--text
 // DATA
 // ═══════════════════════════════════════════════════════
 const HOTELS_BUILTIN = ['A','B','C','D','E','F','G','H','I','J','L','M','N','P','Q','S','T','U','W'];
-const DISPLAY_HOTELS_BUILTIN = ['A','B','C','D','E','G','H','I','J','L','M','N','S','T','U','P'];
+const DISPLAY_HOTELS_BUILTIN = ['A','B','C','D','E','G','H','I','J','L','M','N','S','T','U','W','P'];
 const HOTEL_HOURS_BUILTIN = {F:10, J:10, S:10, P:0, Q:0};
 const DEFAULT_HOURS = 12;
 const DAY_ONLY_HOTELS_BUILTIN = ['F','J','L','N','S','U'];
