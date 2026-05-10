@@ -626,7 +626,7 @@ table.staff-tbl td select:focus { background: var(--input-bg); color: var(--text
   left: 0;
   z-index: 15 !important;
   text-align: left;
-  padding: 0 4px 0 12px; /* mírně vpravo od okraje — vizuálně zarovnáno se jmény pod tím */
+  padding: 0 4px 0 16px; /* vizuálně zarovnáno se začátkem textu jmen recepčních pod tím */
   font-size: 10px;
   font-weight: 600;
   border: 1px solid #888;
@@ -4595,7 +4595,7 @@ function buildSchedule() {
     td.style.top = '34px';
     td.style.zIndex = '15';
     td.style.fontWeight = '700';
-    td.style.paddingLeft = '12px'; // mírně vpravo od okraje — vizuálně zarovnáno se jmény pod tím
+    td.style.paddingLeft = '16px'; // vizuálně zarovnáno se začátkem textu jmen recepčních pod tím
     td.textContent = 'Pokrytí';
     rowCover.appendChild(td);
   }
