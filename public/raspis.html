@@ -93,6 +93,42 @@ html { -webkit-text-size-adjust: 100%; text-size-adjust: 100%; }
 [data-theme="dark"] .day-holiday-hdr { color: #fff; }
 [data-theme="dark"] .day-cancelled { color: #aaa; }
 
+/* ── Dark mode: mobilní overlay (hotel picker + numpad) ── */
+[data-theme="dark"] #cell-edit-overlay {
+  border-top-color: var(--accent, #4A7FD4);
+}
+[data-theme="dark"] #cell-edit-label {
+  color: var(--text, #E8E6DC);
+}
+[data-theme="dark"] .cel-hbtn {
+  background: var(--surface, #1E2228);
+  border-color: var(--border, #2E333A);
+  color: var(--text, #E8E6DC);
+}
+[data-theme="dark"] .cel-hbtn:active { background: var(--accent-light, #1A2535); }
+[data-theme="dark"] .cel-hbtn.cel-special { background: #252830; border-color: #3a3e48; color: #9090a0; }
+[data-theme="dark"] .cel-hbtn.cel-pq      { background: #2a2500; border-color: #5a4a00; color: #c8a000; }
+[data-theme="dark"] .cel-hbtn.cel-current  { border-color: var(--accent, #4A7FD4); background: var(--accent-light, #1A2535); }
+[data-theme="dark"] .cel-hbtn.cel-del-btn  { background: #2d1515; border-color: #7a2a2a; color: #e07070; }
+[data-theme="dark"] #cel-numpad-display {
+  background: var(--surface, #1E2228);
+  border-color: var(--accent, #4A7FD4);
+  color: var(--text, #E8E6DC);
+}
+[data-theme="dark"] .cel-npad {
+  background: var(--surface, #1E2228);
+  border-color: var(--border, #2E333A);
+  color: var(--text, #E8E6DC);
+}
+[data-theme="dark"] .cel-npad:active { background: var(--accent-light, #1A2535); }
+[data-theme="dark"] .cel-npad.cel-npad-minus { background: #1e1830; border-color: #5a3a8a; color: #b080e8; }
+[data-theme="dark"] .cel-npad.cel-npad-del   { background: #2a1e10; border-color: #7a5020; color: #d09050; }
+[data-theme="dark"] .cel-npad.cel-npad-clr   { background: #2d1515; border-color: #7a2a2a; color: #e07070; }
+[data-theme="dark"] #cell-edit-cancel {
+  border-color: var(--border, #2E333A);
+  color: var(--text-muted, #8A8A82);
+}
+
 * { box-sizing: border-box; margin: 0; padding: 0; }
 
 body {
@@ -629,7 +665,7 @@ table.staff-tbl td select:focus { background: var(--input-bg); color: var(--text
   left: 0;
   z-index: 15 !important;
   text-align: left;
-  padding: 0 4px;
+  padding: 0 4px 0 8px; /* shodné s .sch-name — zarovnání textu se jmény pod tím */
   font-size: 10px;
   font-weight: 600;
   border: 1px solid #888;
