@@ -34,6 +34,10 @@
         localStorage.setItem(KEY, newDark ? 'dark' : 'light');
         applyTheme(newDark);
         saveToServer(newDark);
+        // Notify iframes (storage event unreliable in iOS Safari iframes)
+        document.querySelectorAll('iframe').forEach(function(f) {
+          try { f.contentWindow.postMessage({ type: 'ave-theme', dark: newDark }, '*'); } catch(e) {}
+        });
       });
     }
 
@@ -67,6 +71,17 @@
   // toggling while blacklist is open in the iframe)
   window.addEventListener('storage', function (e) {
     if (e.key === KEY) applyTheme(e.newValue === 'dark');
+  });
+
+  // postMessage fallback for iOS Safari where storage events don't fire in iframes
+  window.addEventListener('message', function (e) {
+    if (e.data && e.data.type === 'ave-theme') {
+      applyTheme(e.data.dark);
+      // Propagate further into nested iframes
+      document.querySelectorAll('iframe').forEach(function(f) {
+        try { f.contentWindow.postMessage(e.data, '*'); } catch(err) {}
+      });
+    }
   });
 
   if (document.readyState === 'loading') {
