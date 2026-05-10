@@ -8,6 +8,7 @@
 <link rel="icon" type="image/png" href="/static/logo.png">
 <link rel="apple-touch-icon" href="/apple-touch-icon.png">
 <link rel="stylesheet" href="/static/theme.css">
+<script src="/static/theme.js"></script>
 <link href="https://fonts.googleapis.com/css2?family=DM+Mono:wght@300;400;500&amp;family=DM+Sans:wght@300;400;500;600&amp;display=swap" rel="stylesheet">
 <style>
 html { -webkit-text-size-adjust: 100%; text-size-adjust: 100%; }
@@ -665,7 +666,7 @@ table.staff-tbl td select:focus { background: var(--input-bg); color: var(--text
   left: 0;
   z-index: 15 !important;
   text-align: left;
-  padding: 0 4px 0 8px; /* shodné s .sch-name — zarovnání textu se jmény pod tím */
+  padding: 0 4px 0 24px; /* 8px buňka + 14px fond-dot + 2px margin = 24px — shodné se začátkem textu jmen */
   font-size: 10px;
   font-weight: 600;
   border: 1px solid #888;
@@ -4634,7 +4635,7 @@ function buildSchedule() {
     td.style.top = '34px';
     td.style.zIndex = '15';
     td.style.fontWeight = '700';
-    td.style.paddingLeft = '8px'; // zarovnat se jmény recepčních
+    td.style.paddingLeft = '24px'; // 8px + 14px fond-dot + 2px margin = zarovnání s textem jmen
     td.textContent = 'Pokrytí';
     rowCover.appendChild(td);
   }
