@@ -4817,16 +4817,7 @@ function buildSchedule() {
       inp.dataset.si = si;
       inp.dataset.ci = ci;
       inp.style.color = _dark ? '#E8E6DC' : '#000';
-      inp.setAttribute('inputmode', 'none'); // zabrání klávesnici na mobilu i při focus
-
-      // Mobil: přímý touchstart listener (spolehlivější než bubbling přes document)
-      inp.addEventListener('touchstart', function(e) {
-        if (window.innerWidth > 900) return;
-        if (!window.__raspisIsEditMode?.()) return;
-        e.preventDefault();
-        e.stopPropagation();
-        showHotelOverlay(inp);
-      }, { passive: false });
+      inp.setAttribute('inputmode', 'none'); // zabrání klávesnici na mobilu při focus
 
       inp.addEventListener('keydown', (e) => {
         if (e.key === 'Delete' || e.key === 'Backspace') {
@@ -4856,7 +4847,14 @@ function buildSchedule() {
         recalcHotelStatus();
         updateDeletedCells(si);
       });
-      inp.addEventListener('focus', () => { inp._logOld = inp.value; inp.select(); });
+      inp.addEventListener('focus', () => {
+        inp._logOld = inp.value;
+        inp.select();
+        // Mobil: focus → zobraz hotel picker (inputmode=none zabrání klávesnici)
+        if (window.innerWidth <= 900 && window.__raspisIsEditMode?.()) {
+          showHotelOverlay(inp);
+        }
+      });
       inp.addEventListener('blur', () => {
         // Loguj změnu na desktopu (mobil loguje přes confirmCellEdit)
         if (window.innerWidth > 900 && inp._logOld !== undefined && inp._logOld !== inp.value && window.__raspisGetCurrentKey?.()) {
@@ -4896,15 +4894,13 @@ function buildSchedule() {
         inp.placeholder = "";
         inp.setAttribute('inputmode', 'none');
         inp.value = (state.extras[si]?.hours) || '';
-        // Mobil: přímý touchstart listener pro numpad overlay
-        inp.addEventListener('touchstart', function(e) {
-          if (window.innerWidth > 900) return;
-          if (!window.__raspisIsEditMode?.()) return;
-          e.preventDefault();
-          e.stopPropagation();
-          showNumpadOverlay(inp);
-        }, { passive: false });
-        inp.addEventListener('focus', () => { inp._logOld = inp.value; });
+        inp.addEventListener('focus', () => {
+          inp._logOld = inp.value;
+          // Mobil: focus → zobraz numpad (inputmode=none zabrání klávesnici)
+          if (window.innerWidth <= 900 && window.__raspisIsEditMode?.()) {
+            showNumpadOverlay(inp);
+          }
+        });
         inp.addEventListener('change', () => {
           if (!state.extras[si]) state.extras[si] = {};
           state.extras[si].hours = inp.value;
