@@ -269,6 +269,30 @@ async function init() {
   `);
   await db.query(`CREATE INDEX IF NOT EXISTS idx_scl_key ON schedule_change_log (raspis_key, timestamp DESC)`);
 
+  // ── Pracovní smlouvy: seznam recepčních ──────────────────────────────────────
+  await db.query(`
+    CREATE TABLE IF NOT EXISTS receptionist (
+      id         SERIAL PRIMARY KEY,
+      jmeno      VARCHAR(200) NOT NULL,
+      login      VARCHAR(100) UNIQUE NOT NULL,
+      telefon    VARCHAR(50),
+      aktivni    BOOLEAN NOT NULL DEFAULT TRUE,
+      created_at TIMESTAMPTZ DEFAULT NOW()
+    )
+  `);
+
+  // ── Pracovní smlouvy: rozpracované (drafts) ──────────────────────────────────
+  await db.query(`
+    CREATE TABLE IF NOT EXISTS smlouvy_drafts (
+      id         SERIAL PRIMARY KEY,
+      user_id    INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+      jmeno      VARCHAR(200),
+      login      VARCHAR(100),
+      data       JSONB NOT NULL,
+      saved_at   TIMESTAMPTZ DEFAULT NOW()
+    )
+  `);
+
   // Seed: pokud nejsou žádní uživatelé, vytvoř admina
   const { rows } = await db.query('SELECT COUNT(*) AS cnt FROM users');
   if (parseInt(rows[0].cnt, 10) === 0) {

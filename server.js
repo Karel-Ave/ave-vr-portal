@@ -1542,6 +1542,330 @@ app.get('/api/blacklist/export/pdf', requireLogin, async (req, res) => {
   }
 });
 
+// ══════════════════════════════════════════════════════════════════════════════
+//  PRACOVNÍ SMLOUVY
+// ══════════════════════════════════════════════════════════════════════════════
+
+const fs            = require('fs');
+const archiver      = require('archiver');
+const PizZip        = require('pizzip');
+const Docxtemplater = require('docxtemplater');
+const XLSX          = require('xlsx');
+const TEMPLATES_DIR = path.join(__dirname, 'templates', 'smlouvy');
+
+// ── Stránka ───────────────────────────────────────────────────────────────────
+app.get('/smlouvy', requireLogin, (req, res) =>
+  res.sendFile(path.join(__dirname, 'views', 'smlouvy.html'))
+);
+
+// ── Pomocné funkce ────────────────────────────────────────────────────────────
+
+/** HTML date (yyyy-mm-dd) → Czech d.m.yyyy */
+function htmlDateToCS(d) {
+  if (!d) return '';
+  const [y, m, day] = d.split('-');
+  return `${parseInt(day)}.${parseInt(m)}.${y}`;
+}
+
+/** HTML date (yyyy-mm-dd) → Czech dd.mm.yyyy */
+function htmlDateToCS2(d) {
+  if (!d) return '';
+  const [y, m, day] = d.split('-');
+  return `${day}.${m}.${y}`;
+}
+
+/** Číslo → "jedno sto osmdesát korun českých" */
+function numberToWordsCZK(n) {
+  n = parseInt(n);
+  if (isNaN(n) || n < 1) return '';
+  const ONES = ['','jeden','dva','tři','čtyři','pět','šest','sedm','osm','devět',
+    'deset','jedenáct','dvanáct','třináct','čtrnáct','patnáct',
+    'šestnáct','sedmnáct','osmnáct','devatenáct'];
+  const TENS = ['','','dvacet','třicet','čtyřicet','padesát','šedesát',
+    'sedmdesát','osmdesát','devadesát'];
+  const HUNDREDS = ['','sto','dvě stě','tři sta','čtyři sta','pět set',
+    'šest set','sedm set','osm set','devět set'];
+  const parts = [];
+  const h = Math.floor(n / 100);
+  const mod100 = n % 100;
+  const t = Math.floor(mod100 / 10);
+  const o = mod100 % 10;
+  if (h > 0) parts.push(h === 1 && mod100 > 0 ? 'jedno sto' : HUNDREDS[h]);
+  if (mod100 >= 11 && mod100 <= 19) parts.push(ONES[mod100]);
+  else { if (t >= 2) parts.push(TENS[t]); if (o > 0) parts.push(ONES[o]); }
+  return parts.join(' ') + ' korun českých';
+}
+
+/** Sestaví data pro docxtemplater ze surových dat formuláře. */
+function buildTemplateData(d, tvurce) {
+  const krestni  = (d.krestni  || '').trim();
+  const prijmeni = (d.prijmeni || '').trim();
+  const jmeno    = `${krestni} ${prijmeni}`;
+  const jmeno_rev = `${prijmeni} ${krestni}`;
+  const login    = (d.login || '').trim();
+
+  const trvale   = (d.trvale   || '').trim();
+  const prechodneRaw = (d.prechodne || '').trim();
+  const prechodneBlok = prechodneRaw
+    ? `přechodné bydliště:\t${prechodneRaw}` : '';
+  const adresaPP = prechodneRaw || trvale;   // pro Informace PP
+
+  const datumNastupu  = htmlDateToCS(d.datumNastupu);
+  const datumNastupu2 = htmlDateToCS2(d.datumNastupu);
+  const datumPodpisu  = htmlDateToCS(d.datumPodpisu);
+  const datumNar      = htmlDateToCS(d.datumNar);
+  const datumNar2     = htmlDateToCS2(d.datumNar);
+  const zdKonec       = htmlDateToCS(d.zdKonec);
+  const smlouvaDo     = htmlDateToCS(d.smlouvaDo);
+  const dppDo         = htmlDateToCS(d.dppDo);
+
+  const mzdaNum  = parseInt(d.mzdaNum) || 0;
+  const mzda     = `${mzdaNum},- Kč`;
+  const mzdaCislo = `${mzdaNum},-`;
+  const mzdaSlovy = numberToWordsCZK(mzdaNum);
+
+  // Smlouva doba (jen pro HPP/ZPP)
+  let smlouvaDoba = '';
+  if (d.smlouvaTrvani === 'urcita' && smlouvaDo) {
+    smlouvaDoba = `určitou, od ${datumNastupu} do ${smlouvaDo}`;
+  } else {
+    smlouvaDoba = 'neurčitou';
+  }
+
+  // Zkušební doba
+  const zkusebnaDoba = d.zkusebni === 'se'
+    ? 'se zkušební dobou 3 měsíce' : 'bez zkušební doby';
+
+  return {
+    jmeno, jmeno_rev, prijmeni, krestni, login,
+    datumNar, datumNar2,
+    mistoNar:   (d.mistoNar   || '').trim(),
+    statPrisl:  (d.statPrisl  || '').trim(),
+    trvale,
+    prechodne:  adresaPP,   // Informace PP: přechodné, nebo trvalé
+    prechodneBlok,          // smlouvy DOC: prázdné nebo "přechodné bydliště:\t..."
+    email:      (d.email     || '').trim(),
+    telefon:    (d.telefon   || '').trim(),
+    pojistovna: (d.pojistovna|| '').trim(),
+    ucet:       (d.ucet      || '').trim(),
+    banka:      (d.banka     || '').trim(),
+    datumPodpisu, datumNastupu, datumNastupu2,
+    zdKonec, smlouvaDo, dppDo,
+    mzda, mzdaCislo, mzdaSlovy,
+    smlouvaDoba, zkusebnaDoba,
+    tvurce,
+  };
+}
+
+/** Vyrenderuje .docx šablonu přes docxtemplater, vrátí Buffer. */
+function renderDocx(tmplName, data) {
+  const content = fs.readFileSync(path.join(TEMPLATES_DIR, tmplName));
+  const zip     = new PizZip(content);
+  const doc     = new Docxtemplater(zip, {
+    paragraphLoop: true,
+    linebreaks:    true,
+    nullGetter:    () => '',
+  });
+  doc.render(data);
+  return doc.getZip().generate({ type: 'nodebuffer', compression: 'DEFLATE' });
+}
+
+// ── Výběr šablon dle formuláře ────────────────────────────────────────────────
+function chooseTemplates(d) {
+  const typ = d.typ_smlouvy; // HPP | ZPP | DPC | DPP
+  const sml = { HPP: 'sml_HPP.docx', ZPP: 'sml_ZPP.docx',
+                DPC: 'sml_DPC.docx', DPP: 'sml_DPP.docx' }[typ] || 'sml_HPP.docx';
+
+  let info;
+  if (typ === 'DPC') info = 'Info_PP_DPC.docx';
+  else if (typ === 'DPP') info = 'Info_PP_DPP.docx';
+  else if (d.uvazek === '24') info = 'Info_PP_24h.docx';
+  else if (d.zkusebni === 'se') info = 'Info_PP_375_se_ZD.docx';
+  else info = 'Info_PP_375_bez_ZD.docx';
+
+  return { sml, info };
+}
+
+// ── POST /api/smlouvy/generate — vrátí ZIP se 7 soubory ─────────────────────
+app.post('/api/smlouvy/generate', requireLogin, async (req, res) => {
+  try {
+    const d      = req.body;
+    const login  = (d.login || 'ZAM').trim().replace(/[^A-Za-z0-9_\-]/g, '_');
+    const tvurce = req.session.user.name;
+    const tdata  = buildTemplateData(d, tvurce);
+    const { sml, info } = chooseTemplates(d);
+
+    res.setHeader('Content-Type', 'application/zip');
+    res.setHeader('Content-Disposition',
+      `attachment; filename*=UTF-8''${encodeURIComponent(login + '_smlouvy.zip')}`);
+
+    const archive = archiver('zip', { zlib: { level: 6 } });
+    archive.on('error', err => { throw err; });
+    archive.pipe(res);
+
+    // 1. Pracovní smlouva
+    archive.append(renderDocx(sml, tdata),
+      { name: `${login}_smlouva.docx` });
+    // 2. BOZP
+    archive.append(renderDocx('BOZP.docx', tdata),
+      { name: `${login}_BOZP.docx` });
+    // 3. Dohoda o hmotné odpovědnosti
+    archive.append(renderDocx('Dohoda_hmotna_odp.docx', tdata),
+      { name: `${login}_Dohoda_hmotna_odp.docx` });
+    // 4. Dotazník mzdové účtárny
+    archive.append(renderDocx('Dotaznik_mzdova_uctarna.docx', tdata),
+      { name: `${login}_Dotaznik_mzdova_uctarna.docx` });
+    // 5. Informace o obsahu PP
+    archive.append(renderDocx(info, tdata),
+      { name: `${login}_Informace_o_obsahu_PP.docx` });
+    // 6. Vstupní prohlídka (login = login zaměstnance)
+    archive.append(renderDocx('Vstupni_prohlidka.docx', tdata),
+      { name: `${login}_Vstupni_prohlidka.docx` });
+    // 7. Daňové prohlášení (PDF — prostá kopie)
+    archive.append(
+      fs.createReadStream(path.join(TEMPLATES_DIR, 'Danove_prohlaseni.pdf')),
+      { name: `${login}_Danove_prohlaseni.pdf` });
+
+    await archive.finalize();
+
+    await logEvent(req.session.user.id, req.session.user.username,
+      'smlouvy_generate', { login, typ: d.typ_smlouvy });
+  } catch (err) {
+    console.error('Smlouvy generate error:', err);
+    if (!res.headersSent) res.status(500).json({ ok: false, msg: err.message });
+  }
+});
+
+// ── Drafts ────────────────────────────────────────────────────────────────────
+app.get('/api/smlouvy/drafts', requireLogin, async (req, res) => {
+  const db = getPool();
+  const { rows } = await db.query(
+    `SELECT id, jmeno, login, saved_at FROM smlouvy_drafts
+     WHERE user_id = $1 ORDER BY saved_at DESC`,
+    [req.session.user.id]
+  );
+  res.json(rows);
+});
+
+app.get('/api/smlouvy/drafts/:id', requireLogin, async (req, res) => {
+  const db = getPool();
+  const { rows } = await db.query(
+    `SELECT * FROM smlouvy_drafts WHERE id = $1 AND user_id = $2`,
+    [req.params.id, req.session.user.id]
+  );
+  if (!rows.length) return res.status(404).json({ ok: false });
+  res.json(rows[0]);
+});
+
+app.post('/api/smlouvy/drafts', requireLogin, async (req, res) => {
+  const { id, data } = req.body;
+  const db   = getPool();
+  const jmeno = ((data.krestni || '') + ' ' + (data.prijmeni || '')).trim();
+  const login  = (data.login || '').trim();
+  try {
+    if (id) {
+      await db.query(
+        `UPDATE smlouvy_drafts SET jmeno=$1, login=$2, data=$3, saved_at=NOW()
+         WHERE id=$4 AND user_id=$5`,
+        [jmeno, login, JSON.stringify(data), id, req.session.user.id]
+      );
+    } else {
+      const r = await db.query(
+        `INSERT INTO smlouvy_drafts (user_id, jmeno, login, data)
+         VALUES ($1,$2,$3,$4) RETURNING id`,
+        [req.session.user.id, jmeno, login, JSON.stringify(data)]
+      );
+      return res.json({ ok: true, id: r.rows[0].id });
+    }
+    res.json({ ok: true, id });
+  } catch (err) {
+    res.status(500).json({ ok: false, msg: err.message });
+  }
+});
+
+app.delete('/api/smlouvy/drafts/:id', requireLogin, async (req, res) => {
+  const db = getPool();
+  await db.query(
+    `DELETE FROM smlouvy_drafts WHERE id=$1 AND user_id=$2`,
+    [req.params.id, req.session.user.id]
+  );
+  res.json({ ok: true });
+});
+
+// ── Recepční (zaměstnanci) ───────────────────────────────────────────────────
+app.get('/api/smlouvy/recepni', requireLogin, async (req, res) => {
+  const db = getPool();
+  const { rows } = await db.query(
+    `SELECT * FROM receptionist ORDER BY jmeno`
+  );
+  res.json(rows);
+});
+
+app.post('/api/smlouvy/recepni', requireLogin, async (req, res) => {
+  const { jmeno, login, telefon } = req.body;
+  const db = getPool();
+  try {
+    const r = await db.query(
+      `INSERT INTO receptionist (jmeno, login, telefon) VALUES ($1,$2,$3) RETURNING *`,
+      [jmeno, login, telefon || null]
+    );
+    res.json({ ok: true, row: r.rows[0] });
+  } catch (err) {
+    res.status(400).json({ ok: false, msg: err.message });
+  }
+});
+
+app.patch('/api/smlouvy/recepni/:id', requireLogin, async (req, res) => {
+  const { jmeno, login, telefon, aktivni } = req.body;
+  const db = getPool();
+  try {
+    await db.query(
+      `UPDATE receptionist SET jmeno=COALESCE($1,jmeno), login=COALESCE($2,login),
+       telefon=COALESCE($3,telefon), aktivni=COALESCE($4,aktivni)
+       WHERE id=$5`,
+      [jmeno||null, login||null, telefon!==undefined?telefon:null,
+       aktivni!==undefined?aktivni:null, req.params.id]
+    );
+    res.json({ ok: true });
+  } catch (err) {
+    res.status(400).json({ ok: false, msg: err.message });
+  }
+});
+
+app.delete('/api/smlouvy/recepni/:id', requireLogin, async (req, res) => {
+  const db = getPool();
+  await db.query(`DELETE FROM receptionist WHERE id=$1`, [req.params.id]);
+  res.json({ ok: true });
+});
+
+/** Export: XLS seznam recepčních */
+app.get('/api/smlouvy/recepni/export.xls', requireLogin, async (req, res) => {
+  const db = getPool();
+  const { rows } = await db.query(
+    `SELECT jmeno, login, telefon, aktivni FROM receptionist ORDER BY jmeno`
+  );
+  const now   = new Date();
+  const mm    = String(now.getMonth() + 1).padStart(2, '0');
+  const yyyy  = now.getFullYear();
+  const title = `Seznam recepčních - ${mm}/${yyyy}`;
+
+  const wsData = [
+    [title],
+    ['Č.', 'Jméno', 'Login', 'Telefon'],
+    ...rows.map((r, i) => [i + 1, r.jmeno, r.login, r.telefon || ''])
+  ];
+  const ws  = XLSX.utils.aoa_to_sheet(wsData);
+  const wb  = XLSX.utils.book_new();
+  XLSX.utils.book_append_sheet(wb, ws, 'recepční');
+  const buf = XLSX.write(wb, { type: 'buffer', bookType: 'xls' });
+
+  const fname = `Seznam_recepčních_${yyyy}_${mm}.xls`;
+  res.setHeader('Content-Type', 'application/vnd.ms-excel');
+  res.setHeader('Content-Disposition',
+    `attachment; filename*=UTF-8''${encodeURIComponent(fname)}`);
+  res.send(buf);
+});
+
 // ── Start ─────────────────────────────────────────────────────────────────────
 
 init()

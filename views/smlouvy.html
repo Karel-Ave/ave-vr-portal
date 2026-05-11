@@ -1,0 +1,781 @@
+<!DOCTYPE html>
+<html lang="cs">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, viewport-fit=cover">
+<title>Pracovní smlouvy – VR AVE</title>
+<link rel="icon" type="image/png" href="/static/logo.png">
+<script src="/static/theme.js"></script>
+<link rel="stylesheet" href="/static/theme.css">
+<style>
+* { box-sizing: border-box; margin: 0; padding: 0; }
+body {
+  min-height: 100vh;
+  background: var(--bg);
+  font-family: 'Segoe UI', system-ui, sans-serif;
+  color: var(--text);
+  padding-top: 58px;
+}
+
+/* ── Topbar ── */
+#topbar {
+  position: fixed; top: 0; left: 0; right: 0; z-index: 900;
+  height: 58px;
+  background: var(--bg-topbar);
+  border-bottom: 1px solid var(--border);
+  display: flex; align-items: center; gap: 12px;
+  padding: 0 16px;
+}
+#topbar a { color: var(--text); text-decoration: none; font-size: 20px; line-height: 1; padding: 4px 8px; border-radius: 6px; }
+#topbar a:hover { background: var(--surface-alt); }
+#topbar h1 { font-size: 16px; font-weight: 700; flex: 1; }
+#btn-theme { background: none; border: none; cursor: pointer; font-size: 18px; padding: 6px 8px; border-radius: 6px; color: var(--text); }
+#btn-theme:hover { background: var(--surface-alt); }
+
+/* ── Záložky ── */
+#tabs {
+  display: flex; gap: 4px;
+  padding: 12px 16px 0;
+  border-bottom: 1px solid var(--border);
+  background: var(--bg);
+  position: sticky; top: 58px; z-index: 100;
+}
+.tab-btn {
+  padding: 9px 18px;
+  border: none; border-radius: 8px 8px 0 0;
+  background: none; color: var(--text-muted);
+  cursor: pointer; font-size: 14px; font-weight: 600;
+  font-family: inherit;
+  border-bottom: 3px solid transparent;
+  transition: color .15s, border-color .15s, background .15s;
+}
+.tab-btn:hover { color: var(--text); background: var(--surface-alt); }
+.tab-btn.active { color: var(--accent); border-bottom-color: var(--accent); background: none; }
+
+/* ── Obsah záložek ── */
+.tab-panel { display: none; }
+.tab-panel.active { display: block; }
+
+/* ── Formulář ── */
+.form-wrap {
+  max-width: 860px;
+  margin: 0 auto;
+  padding: 24px 16px 60px;
+}
+.section-card {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  padding: 20px;
+  margin-bottom: 16px;
+}
+.section-card h3 {
+  font-size: 13px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: .06em;
+  color: var(--text-muted);
+  margin-bottom: 16px;
+}
+.fields-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 12px 16px;
+}
+@media (max-width: 600px) { .fields-grid { grid-template-columns: 1fr; } }
+.field-full { grid-column: 1 / -1; }
+
+.field label {
+  display: block;
+  font-size: 11px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: .05em;
+  color: var(--text-muted);
+  margin-bottom: 5px;
+}
+.field input, .field select, .field textarea {
+  width: 100%;
+  padding: 8px 11px;
+  border: 1px solid var(--border);
+  border-radius: 7px;
+  background: var(--input-bg, var(--bg));
+  color: var(--text);
+  font-size: 14px;
+  font-family: inherit;
+  transition: border-color .15s;
+}
+.field input:focus, .field select:focus, .field textarea:focus {
+  outline: none;
+  border-color: var(--accent);
+}
+.field textarea { resize: vertical; min-height: 60px; }
+.field .hint { font-size: 11px; color: var(--text-muted); margin-top: 4px; }
+
+/* ── Podmíněné sekce ── */
+.cond { display: none; }
+.cond.show { display: contents; }
+
+/* ── Mzda preview ── */
+#mzda-preview {
+  font-size: 13px;
+  color: var(--text-muted);
+  margin-top: 6px;
+  font-style: italic;
+}
+
+/* ── Spodní lišta tlačítek ── */
+.bottom-bar {
+  display: flex; gap: 10px; align-items: center;
+  flex-wrap: wrap;
+  padding: 16px;
+  border-top: 1px solid var(--border);
+  background: var(--bg);
+  position: fixed; bottom: 0; left: 0; right: 0;
+  z-index: 200;
+}
+.btn {
+  padding: 10px 20px;
+  border: none; border-radius: 8px;
+  font-size: 14px; font-weight: 600;
+  font-family: inherit; cursor: pointer;
+  transition: opacity .15s, transform .1s;
+}
+.btn:active { transform: scale(.97); }
+.btn-primary { background: var(--accent); color: #fff; }
+.btn-primary:hover { opacity: .88; }
+.btn-secondary { background: var(--surface-alt); color: var(--text); border: 1px solid var(--border); }
+.btn-secondary:hover { opacity: .85; }
+.btn-danger { background: #e74c3c; color: #fff; }
+.btn-danger:hover { opacity: .88; }
+
+#gen-status { font-size: 13px; color: var(--text-muted); }
+
+/* ── Drafts list ── */
+.list-wrap {
+  max-width: 860px;
+  margin: 0 auto;
+  padding: 24px 16px;
+}
+.list-item {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  padding: 14px 16px;
+  margin-bottom: 10px;
+  display: flex; align-items: center; gap: 12px;
+}
+.list-item-info { flex: 1; }
+.list-item-info strong { font-size: 15px; }
+.list-item-info span { font-size: 12px; color: var(--text-muted); display: block; margin-top: 2px; }
+.list-item-actions { display: flex; gap: 8px; }
+.icon-btn {
+  padding: 6px 10px;
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  background: none;
+  color: var(--text);
+  cursor: pointer; font-size: 13px;
+  font-family: inherit;
+  transition: background .15s;
+}
+.icon-btn:hover { background: var(--surface-alt); }
+.icon-btn.danger { color: #e74c3c; border-color: #e74c3c33; }
+.icon-btn.danger:hover { background: #e74c3c18; }
+.empty-state {
+  text-align: center; color: var(--text-muted);
+  padding: 40px 16px; font-size: 14px;
+}
+
+/* ── Recepční tabulka ── */
+.recepni-top {
+  display: flex; align-items: center; gap: 10px;
+  margin-bottom: 16px; flex-wrap: wrap;
+}
+.recepni-top h2 { font-size: 16px; font-weight: 700; flex: 1; }
+table.rlist {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 14px;
+}
+.rlist th {
+  text-align: left; padding: 8px 12px;
+  font-size: 11px; font-weight: 700; text-transform: uppercase;
+  letter-spacing: .05em; color: var(--text-muted);
+  border-bottom: 2px solid var(--border);
+}
+.rlist td {
+  padding: 10px 12px;
+  border-bottom: 1px solid var(--border);
+  vertical-align: middle;
+}
+.rlist tr:hover td { background: var(--surface-alt); }
+.badge {
+  display: inline-block;
+  padding: 2px 8px;
+  border-radius: 20px;
+  font-size: 11px; font-weight: 700;
+}
+.badge-active { background: #27ae6022; color: #27ae60; }
+.badge-inactive { background: #e74c3c22; color: #e74c3c; }
+
+/* ── Add-employee form ── */
+#add-emp-form {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  padding: 16px;
+  margin-bottom: 16px;
+  display: none;
+}
+#add-emp-form.show { display: block; }
+#add-emp-form h4 { font-size: 13px; font-weight: 700; color: var(--text-muted); text-transform: uppercase; margin-bottom: 12px; }
+.emp-fields { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 10px; }
+@media (max-width: 600px) { .emp-fields { grid-template-columns: 1fr; } }
+</style>
+</head>
+<body>
+
+<!-- Topbar -->
+<div id="topbar">
+  <a href="/portal" title="Zpět na portál">←</a>
+  <h1>📄 Pracovní smlouvy</h1>
+  <button id="btn-theme" title="Přepnout motiv"></button>
+</div>
+
+<!-- Záložky -->
+<div id="tabs">
+  <button class="tab-btn active" data-tab="nova">✏️ Nová smlouva</button>
+  <button class="tab-btn" data-tab="drafts">🗂 Rozpracované</button>
+  <button class="tab-btn" data-tab="recepni">👥 Seznam recepčních</button>
+</div>
+
+<!-- ═══════════════════════════════════════════════════════════════
+     TAB 1 — FORMULÁŘ
+════════════════════════════════════════════════════════════════ -->
+<div class="tab-panel active" id="tab-nova">
+<div class="form-wrap">
+  <form id="sml-form" autocomplete="off">
+
+    <!-- Osobní údaje -->
+    <div class="section-card">
+      <h3>Osobní údaje zaměstnance</h3>
+      <div class="fields-grid">
+        <div class="field">
+          <label>Křestní jméno *</label>
+          <input type="text" name="krestni" required placeholder="např. Tomáš">
+        </div>
+        <div class="field">
+          <label>Příjmení *</label>
+          <input type="text" name="prijmeni" required placeholder="např. Petříček">
+        </div>
+        <div class="field">
+          <label>Login *</label>
+          <input type="text" name="login" required placeholder="např. PETR_3"
+            pattern="[A-Za-z0-9_\-]+" title="Pouze písmena, číslice, _ nebo -">
+        </div>
+        <div class="field">
+          <label>Datum narození *</label>
+          <input type="date" name="datumNar" required>
+        </div>
+        <div class="field">
+          <label>Místo narození</label>
+          <input type="text" name="mistoNar" placeholder="např. Praha">
+        </div>
+        <div class="field">
+          <label>Státní příslušnost</label>
+          <input type="text" name="statPrisl" value="ČR" placeholder="např. ČR">
+        </div>
+        <div class="field">
+          <label>Rodné číslo</label>
+          <input type="text" name="rc" placeholder="Nepovinné — pro cizince nevyplňovat">
+        </div>
+      </div>
+    </div>
+
+    <!-- Adresa -->
+    <div class="section-card">
+      <h3>Adresa</h3>
+      <div class="fields-grid">
+        <div class="field field-full">
+          <label>Trvalé bydliště *</label>
+          <textarea name="trvale" required placeholder="Ulice č., Město, PSČ, Stát"></textarea>
+        </div>
+        <div class="field field-full">
+          <label>Přechodné bydliště <span style="font-weight:400;text-transform:none">(nepovinné)</span></label>
+          <textarea name="prechodne" placeholder="Ulice č., Město, PSČ — vyplnit pouze pokud má zaměstnanec přechodné bydliště"></textarea>
+        </div>
+      </div>
+    </div>
+
+    <!-- Kontakt -->
+    <div class="section-card">
+      <h3>Kontaktní a bankovní údaje</h3>
+      <div class="fields-grid">
+        <div class="field">
+          <label>Email</label>
+          <input type="email" name="email" placeholder="jmeno@email.cz">
+        </div>
+        <div class="field">
+          <label>Telefon</label>
+          <input type="text" name="telefon" placeholder="+420 600 000 000">
+        </div>
+        <div class="field">
+          <label>Zdravotní pojišťovna</label>
+          <input type="text" name="pojistovna" placeholder="např. VZP - 111">
+        </div>
+        <div class="field">
+          <label>Číslo bankovního účtu</label>
+          <input type="text" name="ucet" placeholder="1234567890/0800">
+        </div>
+        <div class="field">
+          <label>Název banky</label>
+          <input type="text" name="banka" placeholder="např. Česká spořitelna">
+        </div>
+      </div>
+    </div>
+
+    <!-- Smluvní údaje -->
+    <div class="section-card">
+      <h3>Smluvní údaje</h3>
+      <div class="fields-grid">
+        <div class="field">
+          <label>Typ smlouvy *</label>
+          <select name="typ_smlouvy" id="sel-typ" required>
+            <option value="">— vyberte —</option>
+            <option value="HPP">HPP – pracovní smlouva</option>
+            <option value="ZPP">ZPP – pracovní smlouva (cizinec)</option>
+            <option value="DPC">DPČ – dohoda o pracovní činnosti</option>
+            <option value="DPP">DPP – dohoda o provedení práce</option>
+          </select>
+        </div>
+
+        <!-- Úvazek — jen pro HPP/ZPP -->
+        <div class="field cond" id="cond-uvazek">
+          <label>Úvazek</label>
+          <select name="uvazek">
+            <option value="375">37,5 hodin/týdně</option>
+            <option value="24">24 hodin/týdně</option>
+          </select>
+        </div>
+
+        <div class="field">
+          <label>Datum podpisu *</label>
+          <input type="date" name="datumPodpisu" required>
+        </div>
+        <div class="field">
+          <label>Datum nástupu *</label>
+          <input type="date" name="datumNastupu" required>
+        </div>
+
+        <!-- Zkušební doba — jen pro HPP/ZPP 37,5h -->
+        <div class="field cond" id="cond-zkusebni">
+          <label>Zkušební doba</label>
+          <select name="zkusebni" id="sel-zkusebni">
+            <option value="se">Se zkušební dobou (3 měsíce)</option>
+            <option value="bez">Bez zkušební doby</option>
+          </select>
+        </div>
+
+        <!-- Konec ZD — jen pokud je zkušební doba -->
+        <div class="field cond" id="cond-zdkonec">
+          <label>Konec zkušební doby</label>
+          <input type="date" name="zdKonec">
+        </div>
+
+        <!-- Doba trvání — HPP/ZPP/ZPP -->
+        <div class="field cond" id="cond-trvani">
+          <label>Délka trvání smlouvy</label>
+          <select name="smlouvaTrvani" id="sel-trvani">
+            <option value="neurcita">Na dobu neurčitou</option>
+            <option value="urcita">Na dobu určitou</option>
+          </select>
+        </div>
+
+        <!-- Smlouva do — jen pro určitou -->
+        <div class="field cond" id="cond-smlouvado">
+          <label>Smlouva platná do</label>
+          <input type="date" name="smlouvaDo">
+        </div>
+
+        <!-- DPP platná do -->
+        <div class="field cond" id="cond-dppdo">
+          <label>DPP platná do *</label>
+          <input type="date" name="dppDo">
+        </div>
+
+        <!-- Mzda -->
+        <div class="field cond" id="cond-mzda">
+          <label>Hodinová mzda (Kč) *</label>
+          <input type="number" name="mzdaNum" id="inp-mzda" min="1" max="9999" placeholder="180">
+          <div id="mzda-preview"></div>
+        </div>
+
+      </div>
+    </div>
+
+  </form>
+</div>
+
+<!-- Spodní lišta -->
+<div class="bottom-bar">
+  <button class="btn btn-primary" id="btn-generate">⬇️ Stáhnout ZIP</button>
+  <button class="btn btn-secondary" id="btn-save-draft">💾 Uložit jako rozpracované</button>
+  <span id="gen-status"></span>
+</div>
+</div><!-- /tab-nova -->
+
+
+<!-- ═══════════════════════════════════════════════════════════════
+     TAB 2 — ROZPRACOVANÉ
+════════════════════════════════════════════════════════════════ -->
+<div class="tab-panel" id="tab-drafts">
+<div class="list-wrap">
+  <div style="display:flex;align-items:center;margin-bottom:16px">
+    <h2 style="flex:1;font-size:16px;font-weight:700">Rozpracované</h2>
+  </div>
+  <div id="drafts-list"><p class="empty-state">Načítám…</p></div>
+</div>
+</div>
+
+
+<!-- ═══════════════════════════════════════════════════════════════
+     TAB 3 — RECEPČNÍ
+════════════════════════════════════════════════════════════════ -->
+<div class="tab-panel" id="tab-recepni">
+<div class="list-wrap">
+  <div class="recepni-top">
+    <h2>Seznam recepčních</h2>
+    <button class="btn btn-secondary" id="btn-add-emp">➕ Přidat</button>
+    <a class="btn btn-secondary" id="btn-export-xls" href="/api/smlouvy/recepni/export.xls">⬇️ XLS</a>
+  </div>
+
+  <!-- Formulář pro přidání -->
+  <div id="add-emp-form">
+    <h4>Nový zaměstnanec</h4>
+    <div class="emp-fields">
+      <div class="field">
+        <label>Jméno a příjmení</label>
+        <input type="text" id="emp-jmeno" placeholder="Tomáš Petříček">
+      </div>
+      <div class="field">
+        <label>Login</label>
+        <input type="text" id="emp-login" placeholder="PETR_3">
+      </div>
+      <div class="field">
+        <label>Telefon</label>
+        <input type="text" id="emp-telefon" placeholder="+420 600 000 000">
+      </div>
+    </div>
+    <div style="margin-top:12px;display:flex;gap:8px">
+      <button class="btn btn-primary" id="btn-emp-save">Uložit</button>
+      <button class="btn btn-secondary" id="btn-emp-cancel">Zrušit</button>
+    </div>
+    <div id="emp-err" style="color:#e74c3c;font-size:13px;margin-top:8px"></div>
+  </div>
+
+  <div style="overflow-x:auto">
+    <table class="rlist" id="rlist-table">
+      <thead>
+        <tr>
+          <th>Č.</th><th>Jméno</th><th>Login</th><th>Telefon</th><th>Stav</th><th></th>
+        </tr>
+      </thead>
+      <tbody id="rlist-body"><tr><td colspan="6" style="padding:20px;text-align:center;color:var(--text-muted)">Načítám…</td></tr></tbody>
+    </table>
+  </div>
+</div>
+</div>
+
+
+<script>
+// ═══════════════════════════════════════════════════════════════
+//  Záložky
+// ═══════════════════════════════════════════════════════════════
+const tabs = document.querySelectorAll('.tab-btn');
+const panels = document.querySelectorAll('.tab-panel');
+
+tabs.forEach(btn => btn.addEventListener('click', () => {
+  tabs.forEach(b => b.classList.remove('active'));
+  panels.forEach(p => p.classList.remove('active'));
+  btn.classList.add('active');
+  const panel = document.getElementById('tab-' + btn.dataset.tab);
+  panel.classList.add('active');
+  if (btn.dataset.tab === 'drafts') loadDrafts();
+  if (btn.dataset.tab === 'recepni') loadRecepni();
+}));
+
+// ═══════════════════════════════════════════════════════════════
+//  Podmíněné sekce formuláře
+// ═══════════════════════════════════════════════════════════════
+const selTyp     = document.getElementById('sel-typ');
+const selTrvani  = document.getElementById('sel-trvani');
+const selZkus    = document.getElementById('sel-zkusebni');
+
+function updateConds() {
+  const typ   = selTyp.value;
+  const hppZpp = typ === 'HPP' || typ === 'ZPP';
+  const dpc   = typ === 'DPC';
+  const dpp   = typ === 'DPP';
+  const trvani = selTrvani?.value;
+  const zkus   = selZkus?.value;
+
+  show('cond-uvazek',   hppZpp);
+  show('cond-zkusebni', hppZpp);
+  show('cond-zdkonec',  hppZpp && zkus === 'se');
+  show('cond-trvani',   hppZpp || dpc);
+  show('cond-smlouvado',hppZpp && trvani === 'urcita');
+  show('cond-dppdo',    dpp);
+  show('cond-mzda',     !!typ);
+}
+
+function show(id, visible) {
+  document.getElementById(id)?.classList.toggle('show', !!visible);
+}
+
+selTyp?.addEventListener('change', updateConds);
+selTrvani?.addEventListener('change', updateConds);
+selZkus?.addEventListener('change', updateConds);
+updateConds();
+
+// ═══════════════════════════════════════════════════════════════
+//  Mzda preview
+// ═══════════════════════════════════════════════════════════════
+const inpMzda    = document.getElementById('inp-mzda');
+const mzdaPreview = document.getElementById('mzda-preview');
+
+function numberToWordsCZK(n) {
+  n = parseInt(n);
+  if (isNaN(n) || n < 1) return '';
+  const ONES = ['','jeden','dva','tři','čtyři','pět','šest','sedm','osm','devět',
+    'deset','jedenáct','dvanáct','třináct','čtrnáct','patnáct',
+    'šestnáct','sedmnáct','osmnáct','devatenáct'];
+  const TENS = ['','','dvacet','třicet','čtyřicet','padesát','šedesát',
+    'sedmdesát','osmdesát','devadesát'];
+  const HUNDREDS = ['','sto','dvě stě','tři sta','čtyři sta','pět set',
+    'šest set','sedm set','osm set','devět set'];
+  const parts = [];
+  const h = Math.floor(n / 100), mod100 = n % 100;
+  const t = Math.floor(mod100 / 10), o = mod100 % 10;
+  if (h > 0) parts.push(h === 1 && mod100 > 0 ? 'jedno sto' : HUNDREDS[h]);
+  if (mod100 >= 11 && mod100 <= 19) parts.push(ONES[mod100]);
+  else { if (t >= 2) parts.push(TENS[t]); if (o > 0) parts.push(ONES[o]); }
+  return parts.join(' ') + ' korun českých';
+}
+
+inpMzda?.addEventListener('input', () => {
+  const v = parseInt(inpMzda.value);
+  mzdaPreview.textContent = v ? numberToWordsCZK(v) : '';
+});
+
+// ═══════════════════════════════════════════════════════════════
+//  Generování ZIP
+// ═══════════════════════════════════════════════════════════════
+let currentDraftId = null;
+
+document.getElementById('btn-generate')?.addEventListener('click', async () => {
+  const form = document.getElementById('sml-form');
+  if (!form.checkValidity()) { form.reportValidity(); return; }
+
+  const status = document.getElementById('gen-status');
+  status.textContent = '⏳ Generuji…';
+
+  const data = Object.fromEntries(new FormData(form));
+
+  try {
+    const resp = await fetch('/api/smlouvy/generate', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(data)
+    });
+    if (!resp.ok) { const j = await resp.json(); throw new Error(j.msg || resp.statusText); }
+
+    const blob = await resp.blob();
+    const url  = URL.createObjectURL(blob);
+    const a    = document.createElement('a');
+    a.href = url;
+    a.download = (data.login || 'smlouvy') + '_smlouvy.zip';
+    a.click();
+    URL.revokeObjectURL(url);
+    status.textContent = '✅ Hotovo!';
+    setTimeout(() => { status.textContent = ''; }, 4000);
+  } catch (e) {
+    status.textContent = '❌ ' + e.message;
+  }
+});
+
+// ═══════════════════════════════════════════════════════════════
+//  Uložení draftu
+// ═══════════════════════════════════════════════════════════════
+document.getElementById('btn-save-draft')?.addEventListener('click', async () => {
+  const form = document.getElementById('sml-form');
+  const data = Object.fromEntries(new FormData(form));
+  const status = document.getElementById('gen-status');
+
+  try {
+    const resp = await fetch('/api/smlouvy/drafts', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ id: currentDraftId, data })
+    });
+    const j = await resp.json();
+    if (!j.ok) throw new Error(j.msg);
+    if (j.id) currentDraftId = j.id;
+    status.textContent = '💾 Uloženo!';
+    setTimeout(() => { status.textContent = ''; }, 3000);
+  } catch (e) {
+    status.textContent = '❌ ' + e.message;
+  }
+});
+
+// ═══════════════════════════════════════════════════════════════
+//  Drafts záložka
+// ═══════════════════════════════════════════════════════════════
+async function loadDrafts() {
+  const el = document.getElementById('drafts-list');
+  el.innerHTML = '<p class="empty-state">Načítám…</p>';
+  try {
+    const resp = await fetch('/api/smlouvy/drafts');
+    const list = await resp.json();
+    if (!list.length) { el.innerHTML = '<p class="empty-state">Žádné rozpracované záznamy.</p>'; return; }
+    el.innerHTML = list.map(d => `
+      <div class="list-item">
+        <div class="list-item-info">
+          <strong>${esc(d.jmeno || '—')}</strong>
+          <span>Login: ${esc(d.login || '—')} &nbsp;·&nbsp; Uloženo: ${fmtDate(d.saved_at)}</span>
+        </div>
+        <div class="list-item-actions">
+          <button class="icon-btn" onclick="loadDraft(${d.id})">✏️ Otevřít</button>
+          <button class="icon-btn danger" onclick="deleteDraft(${d.id})">🗑</button>
+        </div>
+      </div>
+    `).join('');
+  } catch (e) {
+    el.innerHTML = `<p class="empty-state">Chyba: ${e.message}</p>`;
+  }
+}
+
+async function loadDraft(id) {
+  const resp = await fetch(`/api/smlouvy/drafts/${id}`);
+  const row  = await resp.json();
+  if (!row.data) return;
+  const data = row.data;
+  const form = document.getElementById('sml-form');
+  // Fill fields
+  Object.entries(data).forEach(([k, v]) => {
+    const el = form.elements[k];
+    if (el) el.value = v;
+  });
+  currentDraftId = id;
+  updateConds();
+  // Switch to form tab
+  document.querySelector('[data-tab="nova"]').click();
+  document.getElementById('gen-status').textContent = '📂 Draft načten';
+  setTimeout(() => { document.getElementById('gen-status').textContent = ''; }, 3000);
+}
+
+async function deleteDraft(id) {
+  if (!confirm('Smazat tento draft?')) return;
+  await fetch(`/api/smlouvy/drafts/${id}`, { method: 'DELETE' });
+  loadDrafts();
+}
+
+// ═══════════════════════════════════════════════════════════════
+//  Recepční záložka
+// ═══════════════════════════════════════════════════════════════
+async function loadRecepni() {
+  const tbody = document.getElementById('rlist-body');
+  tbody.innerHTML = '<tr><td colspan="6" style="padding:20px;text-align:center;color:var(--text-muted)">Načítám…</td></tr>';
+  try {
+    const resp = await fetch('/api/smlouvy/recepni');
+    const list = await resp.json();
+    if (!list.length) {
+      tbody.innerHTML = '<tr><td colspan="6" style="padding:20px;text-align:center;color:var(--text-muted)">Žádní zaměstnanci.</td></tr>';
+      return;
+    }
+    tbody.innerHTML = list.map((r, i) => `
+      <tr>
+        <td>${i + 1}</td>
+        <td><strong>${esc(r.jmeno)}</strong></td>
+        <td><code style="font-size:13px">${esc(r.login)}</code></td>
+        <td>${esc(r.telefon || '—')}</td>
+        <td>
+          <span class="badge ${r.aktivni ? 'badge-active' : 'badge-inactive'}">
+            ${r.aktivni ? 'aktivní' : 'neaktivní'}
+          </span>
+        </td>
+        <td style="white-space:nowrap">
+          <button class="icon-btn" onclick="toggleAktivni(${r.id}, ${!r.aktivni})" title="${r.aktivni ? 'Deaktivovat' : 'Aktivovat'}">
+            ${r.aktivni ? '⏸' : '▶️'}
+          </button>
+          <button class="icon-btn danger" onclick="deleteEmp(${r.id})" title="Smazat">🗑</button>
+        </td>
+      </tr>
+    `).join('');
+  } catch(e) {
+    tbody.innerHTML = `<tr><td colspan="6" style="padding:20px;text-align:center;color:#e74c3c">${e.message}</td></tr>`;
+  }
+}
+
+document.getElementById('btn-add-emp')?.addEventListener('click', () => {
+  document.getElementById('add-emp-form').classList.toggle('show');
+});
+document.getElementById('btn-emp-cancel')?.addEventListener('click', () => {
+  document.getElementById('add-emp-form').classList.remove('show');
+  document.getElementById('emp-err').textContent = '';
+});
+document.getElementById('btn-emp-save')?.addEventListener('click', async () => {
+  const jmeno  = document.getElementById('emp-jmeno').value.trim();
+  const login  = document.getElementById('emp-login').value.trim();
+  const telefon = document.getElementById('emp-telefon').value.trim();
+  const errEl  = document.getElementById('emp-err');
+  errEl.textContent = '';
+  if (!jmeno || !login) { errEl.textContent = 'Vyplňte jméno a login.'; return; }
+  try {
+    const resp = await fetch('/api/smlouvy/recepni', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ jmeno, login, telefon })
+    });
+    const j = await resp.json();
+    if (!j.ok) throw new Error(j.msg);
+    document.getElementById('emp-jmeno').value = '';
+    document.getElementById('emp-login').value = '';
+    document.getElementById('emp-telefon').value = '';
+    document.getElementById('add-emp-form').classList.remove('show');
+    loadRecepni();
+  } catch (e) {
+    errEl.textContent = e.message;
+  }
+});
+
+async function toggleAktivni(id, aktivni) {
+  await fetch(`/api/smlouvy/recepni/${id}`, {
+    method: 'PATCH',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ aktivni })
+  });
+  loadRecepni();
+}
+
+async function deleteEmp(id) {
+  if (!confirm('Opravdu smazat zaměstnance?')) return;
+  await fetch(`/api/smlouvy/recepni/${id}`, { method: 'DELETE' });
+  loadRecepni();
+}
+
+// ═══════════════════════════════════════════════════════════════
+//  Utility
+// ═══════════════════════════════════════════════════════════════
+function esc(s) {
+  return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+}
+function fmtDate(iso) {
+  if (!iso) return '—';
+  const d = new Date(iso);
+  return d.toLocaleDateString('cs-CZ', { day:'numeric', month:'numeric', year:'numeric' })
+       + ' ' + d.toLocaleTimeString('cs-CZ', { hour:'2-digit', minute:'2-digit' });
+}
+</script>
+</body>
+</html>
