@@ -50,6 +50,10 @@ body { min-height: 100vh; background: var(--bg); font-family: 'Segoe UI', system
   max-width: 1020px;
   margin: 0 auto;
   padding: 16px 16px 80px;
+  /* Výška nastavená JS, overflow-y umožní sticky thead uvnitř */
+  overflow-y: auto;
+  overflow-x: auto;
+  box-sizing: border-box;
 }
 
 /* Wrap for settings */
@@ -108,9 +112,9 @@ label.btn { display: inline-flex; align-items: center; cursor: pointer; }
 #fill-status { font-size: 11px; color: var(--text-muted); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 80px; }
 
 /* Summary table */
-.stbl-wrap { overflow-x: auto; }
+.stbl-wrap { }
 table.stbl { width: 100%; border-collapse: separate; border-spacing: 0; font-size: 14px; }
-.stbl th { padding: 8px 10px; font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: .05em; color: var(--text-muted); border-bottom: 2px solid var(--border); text-align: right; background: var(--bg); position: sticky; top: 160px; z-index: 5; }
+.stbl th { padding: 8px 10px; font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: .05em; color: var(--text-muted); border-bottom: 2px solid var(--border); text-align: right; background: var(--bg); position: sticky; top: 0; z-index: 5; }
 .stbl th:first-child { text-align: left; }
 .stbl td { padding: 9px 10px; border-bottom: 1px solid var(--border); text-align: right; }
 .stbl td:first-child { text-align: left; }
@@ -559,6 +563,7 @@ document.getElementById('btn-next').addEventListener('click', () => {
 // ═══ Inicializace ════════════════════════════════════════════════════════════
 async function init() {
   updateMonthLabel();
+  updateStickyTableHeader(); // nastav výšku hned při startu
   await loadRecepniDropdown();
   await loadDuvodyDropdowns();
   loadPrehled();
@@ -774,16 +779,11 @@ function renderPrehled(data) {
 }
 
 function updateStickyTableHeader() {
-  const stickyWrap = document.getElementById('prehled-sticky-wrap');
-  if (!stickyWrap) return;
-  const top = stickyWrap.getBoundingClientRect().bottom + window.scrollY - window.scrollY
-            + stickyWrap.getBoundingClientRect().top - document.documentElement.getBoundingClientRect().top
-            + stickyWrap.offsetHeight;
-  // Jednodušší: spočítat fixní výšky
-  const tabsH   = document.getElementById('tabs')?.offsetHeight || 43;
-  const stickyH = stickyWrap.offsetHeight;
-  const totalTop = 58 + tabsH + stickyH;
-  document.querySelectorAll('.stbl thead th').forEach(th => { th.style.top = totalTop + 'px'; });
+  const scroll = document.getElementById('stbl-scroll');
+  if (!scroll) return;
+  // Výška kontejneru = zbytek viewportu od jeho horního okraje
+  const top = scroll.getBoundingClientRect().top;
+  scroll.style.height = (window.innerHeight - top) + 'px';
 }
 window.addEventListener('resize', updateStickyTableHeader);
 
