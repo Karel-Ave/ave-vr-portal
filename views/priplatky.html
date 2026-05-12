@@ -254,6 +254,22 @@ table.dtbl { width: 100%; border-collapse: collapse; font-size: 13px; }
 
   <!-- Sub-panel: Recepční -->
   <div class="subtab-panel active" id="subtab-recepni">
+
+    <!-- Jednorázové smazání starých dat (dočasné) -->
+    <div class="settings-section" id="sec-clear-data" style="border-color:#e74c3c44;background:#e74c3c08">
+      <h3 style="color:#e74c3c">🗑 Smazat historická data (leden–květen 2026)</h3>
+      <p style="font-size:12px;color:var(--text-muted);margin-bottom:12px">
+        Smaže všechny záznamy za leden–květen 2026 naimportované automaticky. Tuto akci nelze vrátit.
+      </p>
+      <div style="display:flex;align-items:center;gap:12px;flex-wrap:wrap">
+        <button class="btn" id="btn-clear-historicka"
+          style="background:#e74c3c;color:#fff;border:none;padding:9px 18px;border-radius:8px;cursor:pointer;font-weight:600;font-family:inherit;font-size:14px">
+          🗑 Smazat historická data
+        </button>
+        <span id="clear-status" style="font-size:13px;color:var(--text-muted)"></span>
+      </div>
+    </div>
+
     <div class="settings-section">
       <h3>Recepční — seznam loginů</h3>
       <!-- Add row ABOVE list -->
@@ -1117,6 +1133,32 @@ async function deleteRecepni(login) {
   await fetch(`/api/priplatky/recepni/${encodeURIComponent(login)}`, { method:'DELETE' });
   loadRecepniList(); loadRecepniDropdown();
 }
+
+// Jednorázové smazání historických dat
+document.getElementById('btn-clear-historicka').addEventListener('click', async () => {
+  const statusEl = document.getElementById('clear-status');
+  if (!confirm('Opravdu smazat VŠECHNA historická data za leden–květen 2026?\nTuto akci nelze vrátit.')) return;
+  statusEl.textContent = 'Mažu…';
+  try {
+    const r = await fetch('/api/priplatky/clear-historicka', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ token: 'clear2026xyz' })
+    });
+    const j = await r.json();
+    if (j.ok) {
+      statusEl.style.color = '#27ae60';
+      statusEl.textContent = `✅ Smazáno ${j.deleted} záznamů.`;
+      document.getElementById('sec-clear-data').style.display = 'none';
+    } else {
+      statusEl.style.color = '#e74c3c';
+      statusEl.textContent = '❌ ' + j.msg;
+    }
+  } catch(e) {
+    statusEl.style.color = '#e74c3c';
+    statusEl.textContent = '❌ Chyba: ' + e.message;
+  }
+});
 
 // ═══ Overlay helpers ══════════════════════════════════════════════════════════
 function openOverlay(id)  { document.getElementById(id).classList.add('show'); }
