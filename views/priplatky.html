@@ -27,10 +27,10 @@ body { min-height: 100vh; background: var(--bg); font-family: 'Segoe UI', system
 .tab-panel.active { display:block; }
 
 /* Wrap */
-.wrap { max-width:1000px; margin:0 auto; padding:20px 16px 80px; }
+.wrap { max-width:1020px; margin:0 auto; padding:20px 16px 80px; }
 
 /* Month nav */
-.month-nav { display:flex; align-items:center; gap:12px; margin-bottom:20px; flex-wrap:wrap; }
+.month-nav { display:flex; align-items:center; gap:12px; margin-bottom:16px; flex-wrap:wrap; }
 .month-nav h2 { font-size:18px; font-weight:700; flex:1; min-width:160px; }
 .nav-btn { padding:7px 14px; border:1px solid var(--border); border-radius:7px; background:none; color:var(--text); cursor:pointer; font-size:16px; }
 .nav-btn:hover { background:var(--surface-alt); }
@@ -42,6 +42,13 @@ body { min-height: 100vh; background: var(--bg); font-family: 'Segoe UI', system
 .btn-secondary { background:var(--surface-alt); color:var(--text); border:1px solid var(--border); }
 .btn-danger { background:#e74c3c; color:#fff; }
 .btn-sm { padding:5px 10px; font-size:12px; }
+
+/* Template fill box */
+.template-box { background:var(--surface); border:1px solid var(--border); border-radius:10px; padding:14px 16px; margin-bottom:18px; }
+.template-box h3 { font-size:13px; font-weight:700; text-transform:uppercase; letter-spacing:.05em; color:var(--text-muted); margin-bottom:10px; }
+.template-row { display:flex; align-items:center; gap:10px; flex-wrap:wrap; }
+.template-row input[type=file] { flex:1; min-width:180px; font-size:13px; font-family:inherit; color:var(--text); }
+#fill-status { font-size:12px; color:var(--text-muted); }
 
 /* Summary table */
 .stbl-wrap { overflow-x:auto; }
@@ -86,6 +93,18 @@ table.stbl { width:100%; border-collapse:collapse; font-size:14px; }
 
 /* Date fields */
 .date-fields { display:grid; grid-template-columns:1fr 2fr 2fr; gap:8px; }
+
+/* Autocomplete */
+.ac-wrap { position:relative; display:flex; gap:6px; }
+.ac-wrap > input[type=text] { flex:1; }
+.ac-list { position:absolute; top:calc(100% + 2px); left:0; right:38px; background:var(--surface); border:1px solid var(--border); border-radius:7px; box-shadow:0 4px 14px rgba(0,0,0,.18); z-index:600; max-height:220px; overflow-y:auto; }
+.ac-item { padding:8px 11px; cursor:pointer; font-size:13px; border-bottom:1px solid var(--border); }
+.ac-item:last-child { border-bottom:none; }
+.ac-item:hover, .ac-item.active { background:var(--surface-alt); }
+.ac-item strong { color:var(--accent); }
+.ac-manual-btn { flex-shrink:0; width:34px; height:34px; border:1px solid var(--border); border-radius:7px; background:none; cursor:pointer; font-size:14px; display:flex; align-items:center; justify-content:center; }
+.ac-manual-btn:hover { background:var(--surface-alt); }
+.ac-manual-input { margin-top:5px; }
 
 /* Detail table (in modal) */
 table.dtbl { width:100%; border-collapse:collapse; font-size:13px; }
@@ -137,6 +156,16 @@ table.dtbl { width:100%; border-collapse:collapse; font-size:13px; }
     <a class="btn btn-secondary" id="link-export" href="#">⬇️ Export XLSX</a>
   </div>
 
+  <!-- Doplnit do šablony -->
+  <div class="template-box">
+    <h3>📥 Doplnit do šablony (Pokuty_odmeny.xls)</h3>
+    <div class="template-row">
+      <input type="file" id="inp-template-file" accept=".xls,.xlsx">
+      <button class="btn btn-primary" id="btn-fill-template">Doplnit a stáhnout</button>
+      <span id="fill-status"></span>
+    </div>
+  </div>
+
   <div class="stbl-wrap" id="stbl-wrap">
     <p class="empty">Načítám…</p>
   </div>
@@ -147,6 +176,20 @@ table.dtbl { width:100%; border-collapse:collapse; font-size:13px; }
 <!-- ═══ TAB: NASTAVENÍ ════════════════════════════════════════════════════ -->
 <div class="tab-panel" id="tab-nastaveni">
 <div class="wrap">
+
+  <!-- Import ze souboru -->
+  <div class="settings-section">
+    <h3>📤 Import ze starého souboru</h3>
+    <p style="font-size:13px;color:var(--text-muted);margin-bottom:12px">
+      Importuje záznamy za <strong>Duben a Květen 2026</strong> ze souboru
+      <em>Příplatky a Pokuty 2026.xlsx</em> — vloží je do DB bez loginu/času.
+    </p>
+    <div style="display:flex;gap:10px;align-items:center;flex-wrap:wrap">
+      <input type="file" id="inp-import-file1" accept=".xlsx">
+      <button class="btn btn-primary" id="btn-import-file1">Importovat</button>
+    </div>
+    <div id="import-status" style="margin-top:8px;font-size:13px"></div>
+  </div>
 
   <!-- Předdefinované poznámky -->
   <div class="settings-section">
@@ -196,24 +239,42 @@ table.dtbl { width:100%; border-collapse:collapse; font-size:13px; }
         </select>
       </div>
 
+      <!-- Recepční — autocomplete -->
       <div class="fields-2">
-        <div class="field">
-          <label>Login recepčního *</label>
-          <select name="login" id="sel-login">
-            <option value="">— vyberte —</option>
-            <option value="__manual__">✏️ Zadat ručně…</option>
-          </select>
+        <div class="field field-full" id="field-login-ac">
+          <label>Recepční *</label>
+          <div class="ac-wrap">
+            <input type="text" id="inp-ac" autocomplete="off"
+                   placeholder="Zadejte login nebo jméno…"
+                   oninput="acFilter(this.value)"
+                   onfocus="acFilter(this.value)"
+                   onblur="setTimeout(acClose, 200)">
+            <div id="ac-list" class="ac-list hidden"></div>
+            <button type="button" class="ac-manual-btn" title="Zadat ručně"
+                    onclick="acToggleManual()">✏️</button>
+          </div>
+          <div id="ac-manual-wrap" class="hidden ac-manual-input">
+            <input type="text" id="inp-ac-manual" placeholder="Login (ruční zadání)"
+                   oninput="document.getElementById('inp-login-hidden').value=this.value.trim()">
+          </div>
+          <input type="hidden" name="login" id="inp-login-hidden">
         </div>
-        <div class="field hidden" id="field-login-manual">
-          <label>Login (ruční zadání)</label>
-          <input type="text" name="loginManual" id="inp-login-manual" placeholder="neznámý login">
-        </div>
+
+        <!-- Hotel -->
         <div class="field">
           <label>Hotel</label>
-          <input type="text" name="hotel" maxlength="10" placeholder="VR / HK / …">
+          <select name="hotel">
+            <option value="">— (volitelné) —</option>
+            <option>A</option><option>B</option><option>C</option>
+            <option>D</option><option>E</option><option>G</option>
+            <option>H</option><option>I</option><option>L</option>
+            <option>M</option><option>N</option><option>T</option>
+            <option>U</option>
+          </select>
         </div>
       </div>
 
+      <!-- Datum -->
       <div class="field">
         <label>Datum *</label>
         <div class="date-fields">
@@ -231,7 +292,7 @@ table.dtbl { width:100%; border-collapse:collapse; font-size:13px; }
       </div>
 
       <!-- Částka: recenze = dropdown, ostatní = volné -->
-      <div class="field" id="field-castka-select">
+      <div class="field hidden" id="field-castka-select">
         <label>Částka *</label>
         <select name="castkaSel" id="sel-castka">
           <option value="400">400 Kč</option>
@@ -247,7 +308,7 @@ table.dtbl { width:100%; border-collapse:collapse; font-size:13px; }
       </div>
 
       <!-- Recenze: partner + klient -->
-      <div class="fields-2" id="fields-recenze">
+      <div class="fields-2 hidden" id="fields-recenze">
         <div class="field">
           <label>Partner</label>
           <select name="partner">
@@ -269,8 +330,22 @@ table.dtbl { width:100%; border-collapse:collapse; font-size:13px; }
         <input type="text" name="koho_skolil" placeholder="Login nebo jméno školené osoby">
       </div>
 
-      <!-- Poznámka s předdefinovanými -->
-      <div class="field">
+      <!-- Poznámka — Braní směn (speciální dropdown) -->
+      <div class="field hidden" id="field-pozn-brani">
+        <label>Důvod</label>
+        <select id="sel-brani-duvod" onchange="toggleBraniJine()">
+          <option value="Směna navíc">Směna navíc</option>
+          <option value="Pohotovost">Pohotovost</option>
+          <option value="Jiné">Jiné…</option>
+        </select>
+      </div>
+      <div class="field hidden" id="field-pozn-brani-jine">
+        <label>Vlastní důvod</label>
+        <input type="text" id="inp-brani-jine" placeholder="Napište důvod…">
+      </div>
+
+      <!-- Poznámka — standardní (ostatní sekce) -->
+      <div class="field" id="field-poznamka">
         <label>Poznámka</label>
         <div style="display:flex;gap:6px;margin-bottom:5px">
           <select id="sel-poznamka-preset" style="flex:1;padding:6px 8px;border:1px solid var(--border);border-radius:6px;background:var(--bg);color:var(--text);font-family:inherit;font-size:13px">
@@ -309,13 +384,13 @@ const now = new Date();
 rok   = now.getFullYear();
 mesic = now.getMonth() + 1;
 
-let recepniMap  = {};  // login → full_name
-let cachedData  = [];
+let recepniAll   = [];  // [{login, full_name, active}] — vše pro AC
+let recepniMap   = {};  // login → full_name (aktivní)
+let cachedData   = [];
 let poznamkyList = [];
 
 const MESICE = ['','Leden','Únor','Březen','Duben','Květen','Červen',
                 'Červenec','Srpen','Září','Říjen','Listopad','Prosinec'];
-const SEKCE_SLOUPCE = ['braní směn','ostatní','recenze','školení','pokuta'];
 
 // ═══ Záložky ════════════════════════════════════════════════════════════════
 document.querySelectorAll('.tab-btn').forEach(btn => btn.addEventListener('click', () => {
@@ -351,24 +426,82 @@ async function init() {
   initFormConds();
 }
 
-// ═══ Recepční dropdown (formulář) ════════════════════════════════════════════
+// ═══ Recepční (pro formulář + AC) ════════════════════════════════════════════
 async function loadRecepniDropdown() {
   const resp = await fetch('/api/priplatky/recepni');
-  const list = await resp.json();
+  recepniAll = await resp.json();
   recepniMap = {};
-  list.forEach(r => { if (r.active) recepniMap[r.login] = r.full_name; });
-  const sel = document.getElementById('sel-login');
-  // Reset to first two options
-  while (sel.options.length > 2) sel.remove(2);
-  const frag = document.createDocumentFragment();
-  list.filter(r => r.active).sort((a,b) => a.login.localeCompare(b.login))
-    .forEach(r => {
-      const o = document.createElement('option');
-      o.value = r.login;
-      o.textContent = `${r.login} – ${r.full_name}`;
-      frag.appendChild(o);
-    });
-  sel.appendChild(frag);
+  recepniAll.filter(r => r.active).forEach(r => { recepniMap[r.login] = r.full_name; });
+}
+
+// ═══ Autocomplete ════════════════════════════════════════════════════════════
+let acManualMode = false;
+
+function acFilter(val) {
+  const listEl = document.getElementById('ac-list');
+  const v = val.trim().toLowerCase();
+  if (!v) { listEl.innerHTML = ''; listEl.classList.add('hidden'); return; }
+
+  const active = recepniAll.filter(r => r.active);
+  const filtered = active.filter(r =>
+    r.login.toLowerCase().startsWith(v) ||
+    r.full_name.toLowerCase().startsWith(v) ||
+    r.full_name.toLowerCase().split(' ').some(part => part.startsWith(v))
+  ).slice(0, 12);
+
+  if (!filtered.length) { listEl.innerHTML = ''; listEl.classList.add('hidden'); return; }
+
+  listEl.innerHTML = filtered.map(r =>
+    `<div class="ac-item"
+         onmousedown="acSelect('${esc(r.login)}','${esc(r.full_name).replace(/'/g,"&#39;")}')"
+     ><strong>${esc(r.login)}</strong> – ${esc(r.full_name)}</div>`
+  ).join('');
+  listEl.classList.remove('hidden');
+}
+
+function acSelect(login, name) {
+  document.getElementById('inp-ac').value       = `${login} – ${name}`;
+  document.getElementById('inp-login-hidden').value = login;
+  document.getElementById('ac-list').classList.add('hidden');
+}
+
+function acClose() {
+  document.getElementById('ac-list').classList.add('hidden');
+}
+
+function acToggleManual() {
+  acManualMode = !acManualMode;
+  const wrap = document.getElementById('ac-manual-wrap');
+  const inp  = document.getElementById('inp-ac');
+  wrap.classList.toggle('hidden', !acManualMode);
+  inp.disabled = acManualMode;
+  if (acManualMode) {
+    inp.value = '';
+    document.getElementById('inp-login-hidden').value = '';
+    document.getElementById('inp-ac-manual').focus();
+  } else {
+    document.getElementById('inp-ac-manual').value = '';
+    document.getElementById('inp-login-hidden').value = '';
+    inp.disabled = false;
+  }
+}
+
+function acReset() {
+  acManualMode = false;
+  document.getElementById('inp-ac').value            = '';
+  document.getElementById('inp-ac').disabled         = false;
+  document.getElementById('inp-login-hidden').value  = '';
+  document.getElementById('inp-ac-manual').value     = '';
+  document.getElementById('ac-manual-wrap').classList.add('hidden');
+  document.getElementById('ac-list').classList.add('hidden');
+}
+
+function acSetValue(login, name) {
+  acManualMode = false;
+  document.getElementById('ac-manual-wrap').classList.add('hidden');
+  document.getElementById('inp-ac').disabled = false;
+  document.getElementById('inp-ac').value    = name ? `${login} – ${name}` : login;
+  document.getElementById('inp-login-hidden').value = login;
 }
 
 // ═══ Poznámky dropdown ════════════════════════════════════════════════════════
@@ -379,14 +512,13 @@ async function loadPoznamkyDropdown() {
   sel.innerHTML = '<option value="">— předdefinované —</option>';
   poznamkyList.forEach(n => {
     const o = document.createElement('option');
-    o.value = n.text;
-    o.textContent = n.text;
+    o.value = n.text; o.textContent = n.text;
     sel.appendChild(o);
   });
 }
 
 document.getElementById('btn-insert-poznamka').addEventListener('click', () => {
-  const v = document.getElementById('sel-poznamka-preset').value;
+  const v  = document.getElementById('sel-poznamka-preset').value;
   if (!v) return;
   const ta = document.querySelector('#zaznam-form textarea[name=poznamka]');
   ta.value = ta.value ? ta.value + '; ' + v : v;
@@ -409,14 +541,13 @@ function renderPrehled(data) {
   const wrap = document.getElementById('stbl-wrap');
   if (!data.length) { wrap.innerHTML = '<p class="empty">Žádné záznamy v tomto měsíci.</p>'; return; }
 
-  // Agregace
   const known = {}, unknown = {};
   data.forEach(z => {
     const isKnown = z.login in recepniMap || z.full_name;
     const bucket  = isKnown ? known : unknown;
     if (!bucket[z.login]) bucket[z.login] = { name: z.full_name || z.login, bs:0, os:0, re:0, sk:0, po:0 };
     const b = bucket[z.login];
-    if (z.sekce === 'braní směn') b.bs += z.castka;
+    if      (z.sekce === 'braní směn') b.bs += z.castka;
     else if (z.sekce === 'ostatní')    b.os += z.castka;
     else if (z.sekce === 'recenze')    b.re += z.castka;
     else if (z.sekce === 'školení')    b.sk += z.castka;
@@ -437,7 +568,6 @@ function renderPrehled(data) {
     }).join('');
   }
 
-  // Součty
   const allBuckets = {...known, ...unknown};
   const totals = { bs:0,os:0,re:0,sk:0,po:0 };
   Object.values(allBuckets).forEach(b => { totals.bs+=b.bs; totals.os+=b.os; totals.re+=b.re; totals.sk+=b.sk; totals.po+=b.po; });
@@ -471,7 +601,6 @@ function renderPrehled(data) {
       </table>
     </div>`;
   }
-
   wrap.innerHTML = html;
 }
 
@@ -486,7 +615,7 @@ function openDetail(login) {
   </tr></thead><tbody>`;
 
   rows.forEach(z => {
-    const dat = z.datum ? z.datum.slice(0,10) : '';
+    const dat   = z.datum ? z.datum.slice(0,10) : '';
     const extra = z.partner ? ` | ${z.partner}${z.klient ? ' / '+z.klient:''}` :
                   z.koho_skolil ? ` | Školil: ${z.koho_skolil}` : '';
     html += `<tr>
@@ -511,71 +640,76 @@ function openDetail(login) {
   openOverlay('modal-detail');
 }
 
-// ═══ Formulář — podmíněná pole ═══════════════════════════════════════════════
+// ═══ Formulář — podmíněná pole ════════════════════════════════════════════════
 function initFormConds() {
-  const selSekce = document.getElementById('sel-sekce');
-  const selLogin = document.getElementById('sel-login');
-  const selCastka = document.getElementById('sel-castka');
-
-  selSekce.addEventListener('change', updateFormConds);
-  selLogin.addEventListener('change', () => {
-    const manual = selLogin.value === '__manual__';
-    document.getElementById('field-login-manual').classList.toggle('hidden', !manual);
-  });
-  selCastka.addEventListener('change', () => {
-    document.getElementById('field-castka-input').classList.toggle('hidden', selCastka.value !== '0');
+  document.getElementById('sel-sekce').addEventListener('change', updateFormConds);
+  document.getElementById('sel-castka').addEventListener('change', () => {
+    document.getElementById('field-castka-input').classList.toggle('hidden',
+      document.getElementById('sel-castka').value !== '0');
   });
 }
 
 function updateFormConds() {
   const s = document.getElementById('sel-sekce').value;
   const isRecenze = s === 'recenze';
+  const isBrani   = s === 'braní směn';
   const isSkoleni = s === 'školení';
+
   document.getElementById('field-castka-select').classList.toggle('hidden', !isRecenze);
-  document.getElementById('field-castka-input').classList.toggle('hidden', isRecenze || !s);
+  document.getElementById('field-castka-input').classList.toggle('hidden',
+    isRecenze || !s || (isRecenze && document.getElementById('sel-castka').value !== '0'));
+  if (s && !isRecenze) document.getElementById('field-castka-input').classList.remove('hidden');
+
   document.getElementById('fields-recenze').classList.toggle('hidden', !isRecenze);
   document.getElementById('field-skoleni').classList.toggle('hidden', !isSkoleni);
-  if (s && !isRecenze) {
-    document.getElementById('field-castka-input').classList.remove('hidden');
-  }
+  document.getElementById('field-pozn-brani').classList.toggle('hidden', !isBrani);
+  document.getElementById('field-pozn-brani-jine').classList.toggle('hidden',
+    !(isBrani && document.getElementById('sel-brani-duvod').value === 'Jiné'));
+  document.getElementById('field-poznamka').classList.toggle('hidden', isBrani);
+}
+
+function toggleBraniJine() {
+  const isJine = document.getElementById('sel-brani-duvod').value === 'Jiné';
+  document.getElementById('field-pozn-brani-jine').classList.toggle('hidden', !isJine);
+  if (isJine) document.getElementById('inp-brani-jine').focus();
 }
 
 // ═══ Přidat záznam ════════════════════════════════════════════════════════════
 document.getElementById('btn-add').addEventListener('click', () => {
   resetForm();
-  // Předvyplnit aktuální měsíc/rok a dnešní den
   const t = new Date();
-  document.getElementById('inp-den').value = t.getDate();
+  document.getElementById('inp-den').value      = t.getDate();
   document.getElementById('sel-mesic-form').value = mesic;
-  document.getElementById('inp-rok-form').value = rok;
+  document.getElementById('inp-rok-form').value  = rok;
   document.getElementById('modal-form-title').textContent = 'Přidat záznam';
   openOverlay('modal-form');
 });
 
 function resetForm() {
-  const form = document.getElementById('zaznam-form');
-  form.reset();
-  form.elements.editId.value = '';
-  document.getElementById('field-login-manual').classList.add('hidden');
+  document.getElementById('zaznam-form').reset();
+  document.querySelector('#zaznam-form [name=editId]').value = '';
+  acReset();
   document.getElementById('field-castka-input').classList.add('hidden');
   document.getElementById('field-castka-select').classList.add('hidden');
   document.getElementById('fields-recenze').classList.add('hidden');
   document.getElementById('field-skoleni').classList.add('hidden');
+  document.getElementById('field-pozn-brani').classList.add('hidden');
+  document.getElementById('field-pozn-brani-jine').classList.add('hidden');
+  document.getElementById('field-poznamka').classList.remove('hidden');
 }
 
 document.getElementById('btn-zaznam-save').addEventListener('click', async () => {
-  const form  = document.getElementById('zaznam-form');
-  const fd    = new FormData(form);
-  const d     = Object.fromEntries(fd);
+  const form = document.getElementById('zaznam-form');
+  const fd   = new FormData(form);
+  const d    = Object.fromEntries(fd);
 
-  // Rozlišit login dropdown vs ruční
-  const loginFinal = d.login === '__manual__'
-    ? (d.loginManual || '').trim()
-    : d.login;
-  if (!loginFinal) { alert('Vyplňte login.'); return; }
+  const loginFinal = d.login ? d.login.trim() : '';
+  if (!loginFinal) { alert('Vyplňte recepčního.'); return; }
+
+  const sekce = d.sekce;
+  if (!sekce) { alert('Vyberte sekci.'); return; }
 
   // Částka
-  const sekce = d.sekce;
   let castka;
   if (sekce === 'recenze') {
     castka = d.castkaSel === '0' ? parseInt(d.castkaInput)||0 : parseInt(d.castkaSel);
@@ -583,12 +717,24 @@ document.getElementById('btn-zaznam-save').addEventListener('click', async () =>
     castka = parseInt(d.castkaInput) || 0;
   }
 
+  // Poznámka
+  let poznamka = null;
+  if (sekce === 'braní směn') {
+    const duvod = document.getElementById('sel-brani-duvod').value;
+    poznamka = duvod === 'Jiné'
+      ? (document.getElementById('inp-brani-jine').value.trim() || 'Jiné')
+      : duvod;
+  } else {
+    poznamka = d.poznamka || null;
+  }
+
   const payload = {
-    sekce, login: loginFinal, hotel: d.hotel,
+    sekce, login: loginFinal,
+    hotel: d.hotel || null,
     den: d.den, mesic: d.mesicForm, rok: d.rokForm,
-    castka, poznamka: d.poznamka,
-    partner: d.partner || null,
-    klient: d.klient || null,
+    castka, poznamka,
+    partner:     d.partner     || null,
+    klient:      d.klient      || null,
     koho_skolil: d.koho_skolil || null,
   };
 
@@ -598,8 +744,7 @@ document.getElementById('btn-zaznam-save').addEventListener('click', async () =>
 
   try {
     const resp = await fetch(url, {
-      method,
-      headers: {'Content-Type': 'application/json'},
+      method, headers:{'Content-Type':'application/json'},
       body: JSON.stringify(payload)
     });
     const j = await resp.json();
@@ -616,25 +761,20 @@ function editZaznam(id) {
   resetForm();
   const form = document.getElementById('zaznam-form');
   form.elements.editId.value = id;
-  form.elements.sekce.value = z.sekce;
+  form.elements.sekce.value  = z.sekce;
   updateFormConds();
 
-  // Login
-  const selLogin = document.getElementById('sel-login');
-  if (selLogin.querySelector(`option[value="${z.login}"]`)) {
-    selLogin.value = z.login;
-  } else {
-    selLogin.value = '__manual__';
-    document.getElementById('field-login-manual').classList.remove('hidden');
-    document.getElementById('inp-login-manual').value = z.login;
-  }
+  // Login → AC
+  const name = recepniMap[z.login];
+  acSetValue(z.login, name || null);
 
   form.elements.hotel.value = z.hotel || '';
+
   if (z.datum) {
     const parts = z.datum.slice(0,10).split('-');
-    document.getElementById('inp-den').value = parseInt(parts[2]);
-    document.getElementById('sel-mesic-form').value = parseInt(parts[1]);
-    document.getElementById('inp-rok-form').value = parseInt(parts[0]);
+    document.getElementById('inp-den').value         = parseInt(parts[2]);
+    document.getElementById('sel-mesic-form').value  = parseInt(parts[1]);
+    document.getElementById('inp-rok-form').value    = parseInt(parts[0]);
   }
 
   // Částka
@@ -649,9 +789,22 @@ function editZaznam(id) {
     form.elements.castkaInput.value = z.castka;
   }
 
-  form.elements.poznamka.value = z.poznamka || '';
-  if (z.partner) form.elements.partner.value = z.partner;
-  if (z.klient)  form.elements.klient.value = z.klient;
+  // Poznámka
+  if (z.sekce === 'braní směn') {
+    const known = ['Směna navíc','Pohotovost'];
+    if (known.includes(z.poznamka || '')) {
+      document.getElementById('sel-brani-duvod').value = z.poznamka;
+    } else {
+      document.getElementById('sel-brani-duvod').value = 'Jiné';
+      document.getElementById('field-pozn-brani-jine').classList.remove('hidden');
+      document.getElementById('inp-brani-jine').value = z.poznamka || '';
+    }
+  } else {
+    form.elements.poznamka.value = z.poznamka || '';
+  }
+
+  if (z.partner)     form.elements.partner.value     = z.partner;
+  if (z.klient)      form.elements.klient.value      = z.klient;
   if (z.koho_skolil) form.elements.koho_skolil.value = z.koho_skolil;
 
   document.getElementById('modal-form-title').textContent = 'Upravit záznam';
@@ -666,11 +819,47 @@ async function deleteZaznam(id) {
   loadPrehled();
 }
 
+// ═══ Doplnit do šablony ══════════════════════════════════════════════════════
+document.getElementById('btn-fill-template').addEventListener('click', async () => {
+  const file = document.getElementById('inp-template-file').files[0];
+  if (!file) { alert('Vyberte soubor.'); return; }
+
+  const status = document.getElementById('fill-status');
+  status.textContent = '⏳ Zpracovávám…';
+
+  const reader = new FileReader();
+  reader.onload = async (e) => {
+    const base64 = e.target.result.split(',')[1];
+    try {
+      const resp = await fetch('/api/priplatky/import-template', {
+        method: 'POST',
+        headers: {'Content-Type':'application/json'},
+        body: JSON.stringify({ rok, mesic, fileData: base64, fileName: file.name }),
+      });
+      if (!resp.ok) {
+        const j = await resp.json().catch(() => ({}));
+        throw new Error(j.msg || resp.statusText);
+      }
+      const blob = await resp.blob();
+      const url  = URL.createObjectURL(blob);
+      const a    = document.createElement('a');
+      a.href     = url;
+      a.download = file.name;
+      a.click();
+      URL.revokeObjectURL(url);
+      status.textContent = '✅ Hotovo';
+    } catch(err) {
+      status.textContent = '❌ ' + err.message;
+    }
+  };
+  reader.readAsDataURL(file);
+});
+
 // ═══ Nastavení: poznámky ══════════════════════════════════════════════════════
 async function loadNotes() {
   const resp = await fetch('/api/priplatky/poznamky');
   const list = await resp.json();
-  const el = document.getElementById('notes-list');
+  const el   = document.getElementById('notes-list');
   if (!list.length) { el.innerHTML = '<p class="empty">Žádné předdefinované poznámky.</p>'; return; }
   el.innerHTML = list.map(n => `
     <div class="note-item">
@@ -680,16 +869,15 @@ async function loadNotes() {
 }
 
 document.getElementById('btn-add-note').addEventListener('click', async () => {
-  const inp = document.getElementById('inp-note');
+  const inp  = document.getElementById('inp-note');
   const text = inp.value.trim();
   if (!text) return;
   await fetch('/api/priplatky/poznamky', {
     method:'POST', headers:{'Content-Type':'application/json'},
-    body: JSON.stringify({ text, poradi: 0 })
+    body: JSON.stringify({ text, poradi:0 })
   });
   inp.value = '';
-  loadNotes();
-  loadPoznamkyDropdown();
+  loadNotes(); loadPoznamkyDropdown();
 });
 
 async function deleteNote(id) {
@@ -702,7 +890,7 @@ async function deleteNote(id) {
 async function loadRecepniList() {
   const resp = await fetch('/api/priplatky/recepni');
   const list = await resp.json();
-  const el = document.getElementById('recepni-list');
+  const el   = document.getElementById('recepni-list');
   if (!list.length) { el.innerHTML = '<p class="empty">Žádní recepční.</p>'; return; }
   el.innerHTML = list.map(r => `
     <div class="recepni-row">
@@ -730,9 +918,8 @@ document.getElementById('btn-add-rl').addEventListener('click', async () => {
   const j = await resp.json();
   if (!j.ok) { errEl.textContent = j.msg; return; }
   document.getElementById('inp-rl-login').value = '';
-  document.getElementById('inp-rl-name').value = '';
-  loadRecepniList();
-  loadRecepniDropdown();
+  document.getElementById('inp-rl-name').value  = '';
+  loadRecepniList(); loadRecepniDropdown();
 });
 
 async function toggleRecepni(login, active) {
@@ -740,9 +927,40 @@ async function toggleRecepni(login, active) {
     method:'PATCH', headers:{'Content-Type':'application/json'},
     body: JSON.stringify({ active })
   });
-  loadRecepniList();
-  loadRecepniDropdown();
+  loadRecepniList(); loadRecepniDropdown();
 }
+
+// ═══ Import historických dat (File 1) ════════════════════════════════════════
+document.getElementById('btn-import-file1').addEventListener('click', async () => {
+  const file = document.getElementById('inp-import-file1').files[0];
+  if (!file) { alert('Vyberte soubor.'); return; }
+  if (!confirm('Importuje záznamy za DUBEN a KVĚTEN 2026. Pokračovat?')) return;
+
+  const statusEl = document.getElementById('import-status');
+  statusEl.textContent = '⏳ Zpracovávám…';
+
+  const reader = new FileReader();
+  reader.onload = async (e) => {
+    const base64 = e.target.result.split(',')[1];
+    try {
+      const resp = await fetch('/api/priplatky/import-file1', {
+        method:'POST', headers:{'Content-Type':'application/json'},
+        body: JSON.stringify({ fileData: base64 }),
+      });
+      const j = await resp.json();
+      let msg = j.ok
+        ? `✅ Importováno ${j.imported} záznamů.`
+        : `❌ ${j.msg}`;
+      if (j.errors && j.errors.length)
+        msg += ` | Chyby: ${j.errors.join('; ')}`;
+      statusEl.textContent = msg;
+      loadPrehled();
+    } catch(err) {
+      statusEl.textContent = '❌ ' + err.message;
+    }
+  };
+  reader.readAsDataURL(file);
+});
 
 // ═══ Overlay helpers ══════════════════════════════════════════════════════════
 function openOverlay(id)  { document.getElementById(id).classList.add('show'); }
@@ -755,7 +973,7 @@ document.querySelectorAll('.overlay').forEach(ov => {
   ov.addEventListener('click', e => { if (e.target === ov) closeOverlay(ov.id); });
 });
 
-// ═══ Utility ═════════════════════════════════════════════════════════════════
+// ═══ Utility ══════════════════════════════════════════════════════════════════
 function esc(s) { return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;'); }
 function fmtTs(iso) {
   if (!iso) return '';

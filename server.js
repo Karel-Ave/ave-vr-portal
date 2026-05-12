@@ -1546,6 +1546,26 @@ app.get('/api/blacklist/export/pdf', requireLogin, async (req, res) => {
 //  PŘÍPLATKY A POKUTY
 // ══════════════════════════════════════════════════════════════════════════════
 
+// ── České státní svátky (včetně Velikonočního pondělí) ────────────────────────
+function getCzechHolidays(year) {
+  const pad = n => String(n).padStart(2, '0');
+  const h = new Set([
+    `${year}-01-01`,`${year}-05-01`,`${year}-05-08`,
+    `${year}-07-05`,`${year}-07-06`,`${year}-09-28`,
+    `${year}-10-28`,`${year}-11-17`,`${year}-12-24`,
+    `${year}-12-25`,`${year}-12-26`,
+  ]);
+  // Butcher/Anonymous Gregorian – Easter Monday
+  const a=year%19,b=Math.floor(year/100),c=year%100,d=Math.floor(b/4),e=b%4;
+  const f=Math.floor((b+8)/25),g=Math.floor((b-f+1)/3);
+  const hh=(19*a+b-d-g+15)%30,i=Math.floor(c/4),k=c%4;
+  const l=(32+2*e+2*i-hh-k)%7,m=Math.floor((a+11*hh+22*l)/451);
+  const month=Math.floor((hh+l-7*m+114)/31),day=((hh+l-7*m+114)%31)+1;
+  const em=new Date(year,month-1,day+1); // Easter Monday
+  h.add(`${em.getFullYear()}-${pad(em.getMonth()+1)}-${pad(em.getDate())}`);
+  return h;
+}
+
 app.get('/priplatky', requireLogin, (req, res) =>
   res.sendFile(path.join(__dirname, 'views', 'priplatky.html'))
 );
@@ -1763,12 +1783,252 @@ app.get('/api/priplatky/export/xlsx', requireLogin, async (req, res) => {
   res.send(buf);
 });
 
-// Import šablony — placeholder (bude upřesněno po dodání šablony)
+// Doplnit do šablony (File 2 – 2026_Pokuty_odmeny.xls)
 app.post('/api/priplatky/import-template', requireLogin, async (req, res) => {
-  res.status(501).json({
-    ok: false,
-    msg: 'Funkce "Doplnit do šablony" bude implementována po dodání vzorového Excel souboru.'
-  });
+  const { rok, mesic, fileData, fileName } = req.body;
+  if (!fileData) return res.status(400).json({ ok: false, msg: 'Chybí soubor.' });
+
+  const XLSX = require('xlsx');
+  const db   = getPool();
+
+  // Read uploaded workbook
+  const buf = Buffer.from(fileData, 'base64');
+  const wb  = XLSX.read(buf, { type: 'buffer', cellDates: true });
+
+  // Find target sheet by name
+  const MESIC_NAZVY = ['','leden','únor','březen','duben','květen','červen',
+                        'červenec','srpen','září','říjen','listopad','prosinec'];
+  const target = MESIC_NAZVY[parseInt(mesic)] || '';
+  let sheetName = wb.SheetNames.find(n => {
+    const nl = n.trim().toLowerCase();
+    return nl === target || nl.startsWith(target.substring(0,4));
+  }) || wb.SheetNames[parseInt(mesic)-1];
+  if (!sheetName) return res.status(400).json({ ok:false, msg:`List pro měsíc ${mesic}/${rok} nenalezen.` });
+
+  const ws = wb.Sheets[sheetName];
+  if (!ws)  return res.status(400).json({ ok:false, msg:'List je prázdný.' });
+
+  // DB totals
+  const { rows: souhrn } = await db.query(
+    `SELECT z.login, rl.full_name,
+       SUM(CASE WHEN z.sekce='braní směn' THEN z.castka ELSE 0 END) AS brani_smen,
+       SUM(CASE WHEN z.sekce='ostatní'    THEN z.castka ELSE 0 END) AS ostatni,
+       SUM(CASE WHEN z.sekce='recenze'    THEN z.castka ELSE 0 END) AS recenze,
+       SUM(CASE WHEN z.sekce='školení'    THEN z.castka ELSE 0 END) AS skoleni,
+       SUM(CASE WHEN z.sekce='pokuta'     THEN z.castka ELSE 0 END) AS pokuty
+     FROM priplatky_zaznamy z
+     LEFT JOIN receptionist_logins rl ON rl.login = z.login
+     WHERE z.rok=$1 AND z.mesic=$2
+     GROUP BY z.login, rl.full_name`,
+    [rok, mesic]
+  );
+
+  // CAD / JUN bonus z Raspisu (600 Kč za Sob/Ne/svátek na hotelu N)
+  const raspisKey = `${rok}-${String(mesic).padStart(2,'0')}`;
+  const { rows: raspisRows } = await db.query('SELECT data FROM rozpisy WHERE key=$1', [raspisKey]);
+  const raspisBonuses = {};   // full_name.toLowerCase() → Kč
+
+  if (raspisRows.length > 0) {
+    try {
+      const rd  = JSON.parse(raspisRows[0].data);
+      const staff    = rd.staff    || [];
+      const schedule = rd.schedule || {};
+      const holidays = getCzechHolidays(parseInt(rok));
+      const daysInMonth = new Date(parseInt(rok), parseInt(mesic), 0).getDate();
+
+      for (const targetName of ['Čada Štěpán','Štochlová Gabriela']) {
+        const si = staff.findIndex(s => s.name && s.name.trim().toLowerCase() === targetName.toLowerCase());
+        if (si < 0) continue;
+        let bonus = 0;
+        for (let day = 1; day <= daysInMonth; day++) {
+          const vD = (schedule[`${si}_${(day-1)*2}`]   || '').toUpperCase();
+          const vN = (schedule[`${si}_${(day-1)*2+1}`] || '').toUpperCase();
+          if (vD !== 'N' && vN !== 'N') continue;
+          const dow = new Date(parseInt(rok), parseInt(mesic)-1, day).getDay();
+          const ds  = `${rok}-${String(mesic).padStart(2,'0')}-${String(day).padStart(2,'0')}`;
+          if (dow === 0 || dow === 6 || holidays.has(ds)) bonus += 600;
+        }
+        raspisBonuses[targetName.toLowerCase()] = bonus;
+      }
+    } catch(e) { console.error('Raspis parse err:', e.message); }
+  }
+
+  // Build name → sums map
+  const nameToSums = {};
+  for (const r of souhrn) {
+    const k = (r.full_name || r.login).toLowerCase();
+    nameToSums[k] = {
+      brani_smen: +(r.brani_smen)||0, ostatni: +(r.ostatni)||0,
+      recenze:    +(r.recenze)   ||0, skoleni: +(r.skoleni)||0,
+      pokuty:     +(r.pokuty)    ||0,
+    };
+    nameToSums[k].ostatni += raspisBonuses[k] || 0;
+  }
+  // Add Raspis-only bonuses (person not in DB this month)
+  for (const [k, bonus] of Object.entries(raspisBonuses)) {
+    if (bonus > 0 && !nameToSums[k])
+      nameToSums[k] = { brani_smen:0, ostatni:bonus, recenze:0, skoleni:0, pokuty:0 };
+  }
+
+  // Strip contract-type suffix ("37,5" / "DPP" / "DPČ" etc.)
+  function stripSuffix(n) {
+    return n.trim().replace(/\s+([\d]+[,.]?[\d]*|DPP|DPČ|DPC)\s*$/i,'').trim();
+  }
+  function findSums(rawName) {
+    const clean = stripSuffix(rawName).toLowerCase();
+    if (nameToSums[clean]) return nameToSums[clean];
+    for (const [k,v] of Object.entries(nameToSums))
+      if (k.startsWith(clean) || clean.startsWith(k)) return v;
+    return null;
+  }
+
+  // Fill worksheet cells
+  const range = XLSX.utils.decode_range(ws['!ref'] || 'A1:L80');
+  for (let r = range.s.r; r <= range.e.r; r++) {
+    const cellA = ws[XLSX.utils.encode_cell({r, c:0})];
+    if (!cellA || !cellA.v) continue;
+    const rawName = String(cellA.v).trim();
+    if (!rawName || /^(celkem|jméno|jmeno)$/i.test(rawName)) continue;
+    const sums = findSums(rawName);
+    if (!sums) continue;
+
+    const setCell = (col, val) => {
+      if (!val) return;
+      const addr = XLSX.utils.encode_cell({r, c:col});
+      ws[addr] = { v:val, t:'n' };
+    };
+    setCell(4,  sums.brani_smen);  // E – Braní směn
+    setCell(5,  sums.skoleni);     // F – Školení / Účast
+    setCell(6,  sums.ostatni);     // G – Ostatní příplatky
+    setCell(7,  sums.recenze);     // H – Review jmenovitě
+    setCell(11, sums.pokuty);      // L – Pokuty celkem
+  }
+
+  const ext  = (fileName||'').toLowerCase().endsWith('.xlsx') ? 'xlsx' : 'xls';
+  const out  = XLSX.write(wb, { type:'buffer', bookType: ext });
+  const ct   = ext === 'xlsx'
+    ? 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'
+    : 'application/vnd.ms-excel';
+  res.setHeader('Content-Type', ct);
+  res.setHeader('Content-Disposition',
+    `attachment; filename*=UTF-8''${encodeURIComponent(fileName || `export_${rok}_${mesic}.${ext}`)}`);
+  res.send(out);
+});
+
+// Import historických dat z Příplatky a Pokuty 2026.xlsx (Duben + Květen)
+app.post('/api/priplatky/import-file1', requireLogin, async (req, res) => {
+  const { fileData } = req.body;
+  if (!fileData) return res.status(400).json({ ok:false, msg:'Chybí soubor.' });
+
+  const XLSX = require('xlsx');
+  const db   = getPool();
+  const wb   = XLSX.read(Buffer.from(fileData,'base64'), { type:'buffer', cellDates:true });
+
+  const TARGETS = [
+    { mesic:4, rok:2026, prefixes:['duben','apr'] },
+    { mesic:5, rok:2026, prefixes:['květ','máj','may','kveten'] },
+  ];
+  const vlozil = 'import-historický';
+  let imported = 0;
+  const errors = [];
+
+  for (const { mesic, rok, prefixes } of TARGETS) {
+    const sheetName = wb.SheetNames.find(n => {
+      const nl = n.trim().toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g,'');
+      return prefixes.some(p => nl === p || nl.startsWith(p.substring(0,4)));
+    });
+    if (!sheetName) { errors.push(`List pro měsíc ${mesic} nenalezen.`); continue; }
+
+    const ws  = wb.Sheets[sheetName];
+    const rng = XLSX.utils.decode_range(ws['!ref'] || 'A1');
+
+    // Read all rows into a flat array
+    const rows = [];
+    for (let ri = rng.s.r; ri <= rng.e.r; ri++) {
+      const row = [];
+      for (let ci = 0; ci <= Math.max(rng.e.c, 11); ci++) {
+        const cell = ws[XLSX.utils.encode_cell({r:ri,c:ci})];
+        row.push(cell ? cell.v : null);
+      }
+      rows.push(row);
+    }
+
+    // Detect section header rows (normalize diacritics for safe matching)
+    const norm = s => String(s||'').toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g,'');
+    let braniRow=-1,recenzeRow=-1,skoleniRow=-1,ostatniRow=-1,pokutaRow=-1;
+    for (let i=0;i<rows.length;i++) {
+      const a=norm(rows[i][0]||''), h=norm(rows[i][7]||'');
+      if (braniRow<0 && a.includes('brani') && a.includes('sm')) braniRow=i;
+      else if (recenzeRow<0 && (a.includes('jmenovit') || (a.includes('recenz') && braniRow>=0))) recenzeRow=i;
+      else if (skoleniRow<0 && (a.includes('skolen'))) skoleniRow=i;
+      if (ostatniRow<0 && h.includes('ostatn')) ostatniRow=i;
+      else if (pokutaRow<0 && h.includes('pokut')) pokutaRow=i;
+    }
+
+    function parseEntry(row, colBase, sekce) {
+      const loginRaw = row[colBase];
+      if (!loginRaw || typeof loginRaw !== 'string') return null;
+      const login = loginRaw.trim();
+      if (!login || /^(recep[cč]n|datum|hotel|jm[eé]no|login|pokuta|p[rř][ií]platek)$/i.test(norm(login))) return null;
+      const castkaRaw = row[colBase+3];
+      const castka = typeof castkaRaw === 'number' ? Math.abs(Math.round(castkaRaw)) : 0;
+      if (!castka) return null;
+
+      // Parse datum
+      let den=1, mEntry=mesic, rEntry=rok;
+      const dv = row[colBase+1];
+      if (dv instanceof Date) {
+        den=dv.getDate(); mEntry=dv.getMonth()+1; rEntry=dv.getFullYear();
+      } else if (dv) {
+        const s=String(dv).trim();
+        const m1=s.match(/^(\d{1,2})\.(\d{1,2})/);
+        if (m1) { den=parseInt(m1[1]); mEntry=parseInt(m1[2]); }
+        else { const m2=s.match(/^(\d{1,2})\./); if(m2) den=parseInt(m2[1]); }
+      }
+
+      const hotel = row[colBase+2] ? String(row[colBase+2]).trim() : null;
+      let poznamka=null, klient=null, partner=null, koho_skolil=null;
+      if (sekce==='recenze') {
+        klient  = row[colBase+4] ? String(row[colBase+4]).trim() : null;
+        partner = row[colBase+5] ? String(row[colBase+5]).trim() : null;
+      } else if (sekce==='školení') {
+        koho_skolil = row[colBase+4] ? String(row[colBase+4]).trim() : null;
+      } else {
+        poznamka = row[colBase+4] ? String(row[colBase+4]).trim() : null;
+      }
+      return { login, den, mesic:mEntry, rok:rEntry, hotel:hotel||null,
+               castka, poznamka, klient, partner, koho_skolil, sekce };
+    }
+
+    const sections = [
+      braniRow >=0 ? {start:braniRow+2,  end:recenzeRow>=0?recenzeRow:(skoleniRow>=0?skoleniRow:rows.length), sekce:'braní směn', col:0} : null,
+      recenzeRow>=0 ? {start:recenzeRow+2, end:skoleniRow>=0?skoleniRow:rows.length, sekce:'recenze',    col:0} : null,
+      skoleniRow>=0 ? {start:skoleniRow+2, end:rows.length,                          sekce:'školení',    col:0} : null,
+      ostatniRow>=0 ? {start:ostatniRow+2, end:pokutaRow>=0?pokutaRow:rows.length,   sekce:'ostatní',   col:7} : null,
+      pokutaRow >=0 ? {start:pokutaRow+2,  end:rows.length,                          sekce:'pokuta',    col:7} : null,
+    ].filter(Boolean);
+
+    for (const { start, end, sekce, col } of sections) {
+      for (let i=start; i<Math.min(end,rows.length); i++) {
+        const e = parseEntry(rows[i], col, sekce);
+        if (!e) continue;
+        const entryRok = e.rok > 2020 ? e.rok : rok;
+        const datum = `${entryRok}-${String(e.mesic).padStart(2,'0')}-${String(e.den).padStart(2,'0')}`;
+        if (isNaN(new Date(datum).getTime())) continue;
+        try {
+          await db.query(
+            `INSERT INTO priplatky_zaznamy
+               (rok,mesic,sekce,login,datum,hotel,castka,poznamka,partner,klient,koho_skolil,vlozil)
+             VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12)`,
+            [entryRok,e.mesic,e.sekce,e.login,datum,
+             e.hotel,e.castka,e.poznamka,e.partner,e.klient,e.koho_skolil,vlozil]
+          );
+          imported++;
+        } catch(err) { errors.push(`${e.login} ${datum}: ${err.message}`); }
+      }
+    }
+  }
+  res.json({ ok:true, imported, errors:errors.slice(0,20) });
 });
 
 // ══════════════════════════════════════════════════════════════════════════════
