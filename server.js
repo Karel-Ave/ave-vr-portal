@@ -2380,6 +2380,86 @@ app.get('/api/smlouvy/recepni/export.xls', requireLogin, async (req, res) => {
   res.send(buf);
 });
 
+// ── TEMP: jednorázový import (token-protected, bez session) ───────────────────
+app.post('/api/priplatky/import-once', async (req, res) => {
+  if (req.body.token !== 'import2026abc') return res.status(403).json({ ok:false, msg:'Forbidden' });
+  const { fileData, months } = req.body;
+  if (!fileData) return res.status(400).json({ ok:false, msg:'Chybí soubor.' });
+  const XLSX2 = require('xlsx');
+  const db2   = getPool();
+  const wb2   = XLSX2.read(Buffer.from(fileData,'base64'), { type:'buffer', cellDates:true });
+  const ALL2 = [
+    {mesic:1,rok:2026,prefixes:['leden','jan']},
+    {mesic:2,rok:2026,prefixes:['unor','feb']},
+    {mesic:3,rok:2026,prefixes:['brezen','mar']},
+    {mesic:4,rok:2026,prefixes:['duben','apr']},
+    {mesic:5,rok:2026,prefixes:['kvet','kveten','maj','may']},
+  ];
+  const TARGETS2 = Array.isArray(months) && months.length
+    ? ALL2.filter(t => months.map(Number).includes(t.mesic)) : ALL2;
+  const vlozil2 = 'import-historický';
+  let imported2 = 0; const errors2 = [];
+  const norm2 = s => String(s||'').toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g,'');
+  for (const {mesic:mes,rok,prefixes} of TARGETS2) {
+    const sn = wb2.SheetNames.find(n => {
+      const nl = n.trim().toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g,'');
+      return prefixes.some(p => {
+        const pn = p.normalize('NFD').replace(/[̀-ͯ]/g,'');
+        return nl === pn || nl.startsWith(pn.substring(0,Math.min(pn.length,5)));
+      });
+    });
+    if (!sn) { errors2.push(`List pro měsíc ${mes} nenalezen.`); continue; }
+    const ws2 = wb2.Sheets[sn];
+    const rng2 = XLSX2.utils.decode_range(ws2['!ref']||'A1');
+    const rows2 = [];
+    for (let ri=rng2.s.r;ri<=rng2.e.r;ri++) {
+      const row=[]; for(let ci=0;ci<=Math.max(rng2.e.c,11);ci++) { const c=ws2[XLSX2.utils.encode_cell({r:ri,c:ci})]; row.push(c?c.v:null); }
+      rows2.push(row);
+    }
+    let brR=-1,reR=-1,skR=-1,osR=-1,poR=-1;
+    for(let i=0;i<rows2.length;i++){
+      const a=norm2(rows2[i][0]||''),h=norm2(rows2[i][7]||'');
+      if(brR<0&&a.includes('brani')&&a.includes('sm'))brR=i;
+      else if(reR<0&&(a.includes('jmenovit')||(a.includes('recenz')&&brR>=0)))reR=i;
+      else if(skR<0&&a.includes('skolen'))skR=i;
+      if(osR<0&&h.includes('ostatn'))osR=i;
+      else if(poR<0&&h.includes('pokut'))poR=i;
+    }
+    const parseE=(row,cb,sekce)=>{
+      const lr=row[cb]; if(!lr||typeof lr!=='string')return null;
+      const login=lr.trim(); if(!login||/^(recep[cč]n|datum|hotel|jm[eé]no|login|pokuta|p[rř][ií]platek)$/i.test(norm2(login)))return null;
+      const cr=row[cb+3]; const castka=typeof cr==='number'?Math.abs(Math.round(cr)):0; if(!castka)return null;
+      let den=1,mE=mes,rE=rok; const dv=row[cb+1];
+      if(dv instanceof Date){den=dv.getDate();mE=dv.getMonth()+1;rE=dv.getFullYear();}
+      else if(dv){const s=String(dv).trim();const m1=s.match(/^(\d{1,2})\.(\d{1,2})/);if(m1){den=parseInt(m1[1]);mE=parseInt(m1[2]);}else{const m2=s.match(/^(\d{1,2})\./);if(m2)den=parseInt(m2[1]);}}
+      const hotel=row[cb+2]?String(row[cb+2]).trim():null;
+      let poz=null,kl=null,pa=null,ks=null;
+      if(sekce==='recenze'){kl=row[cb+4]?String(row[cb+4]).trim():null;pa=row[cb+5]?String(row[cb+5]).trim():null;}
+      else if(sekce==='školení'){ks=row[cb+4]?String(row[cb+4]).trim():null;}
+      else{poz=row[cb+4]?String(row[cb+4]).trim():null;}
+      return{login,den,mesic:mE,rok:rE,hotel:hotel||null,castka,poznamka:poz,klient:kl,partner:pa,koho_skolil:ks,sekce};
+    };
+    const secs=[
+      brR>=0?{start:brR+2,end:reR>=0?reR:(skR>=0?skR:rows2.length),sekce:'braní směn',col:0}:null,
+      reR>=0?{start:reR+2,end:skR>=0?skR:rows2.length,sekce:'recenze',col:0}:null,
+      skR>=0?{start:skR+2,end:rows2.length,sekce:'školení',col:0}:null,
+      osR>=0?{start:osR+2,end:poR>=0?poR:rows2.length,sekce:'ostatní',col:7}:null,
+      poR>=0?{start:poR+2,end:rows2.length,sekce:'pokuta',col:7}:null,
+    ].filter(Boolean);
+    for(const{start,end,sekce,col}of secs){
+      for(let i=start;i<Math.min(end,rows2.length);i++){
+        const e=parseE(rows2[i],col,sekce); if(!e)continue;
+        const er=e.rok>2020?e.rok:rok;
+        const datum=`${er}-${String(e.mesic).padStart(2,'0')}-${String(e.den).padStart(2,'0')}`;
+        if(isNaN(new Date(datum).getTime()))continue;
+        try{ await db2.query(`INSERT INTO priplatky_zaznamy(rok,mesic,sekce,login,datum,hotel,castka,poznamka,partner,klient,koho_skolil,vlozil)VALUES($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12)`,[er,e.mesic,e.sekce,e.login,datum,e.hotel,e.castka,e.poznamka,e.partner,e.klient,e.koho_skolil,vlozil2]);imported2++; }
+        catch(err2){errors2.push(`${e.login} ${datum}: ${err2.message}`);}
+      }
+    }
+  }
+  res.json({ok:true,imported:imported2,errors:errors2.slice(0,20)});
+});
+
 // ── Start ─────────────────────────────────────────────────────────────────────
 
 init()
