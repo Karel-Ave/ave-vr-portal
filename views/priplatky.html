@@ -190,6 +190,13 @@ table.dtbl { width: 100%; border-collapse: collapse; font-size: 13px; }
 .recepni-row:last-child { border-bottom: none; }
 .empty { text-align: center; color: var(--text-muted); padding: 30px; font-size: 14px; }
 .add-row { display: flex; gap: 8px; margin-bottom: 14px; flex-wrap: wrap; }
+/* Sub-tabs v Nastavení */
+.subtab-bar { display: flex; gap: 6px; margin-bottom: 18px; border-bottom: 2px solid var(--border); padding-bottom: 0; }
+.subtab-btn { padding: 8px 18px; border: none; border-radius: 8px 8px 0 0; background: none; color: var(--text-muted); cursor: pointer; font-size: 13px; font-weight: 600; font-family: inherit; border-bottom: 3px solid transparent; margin-bottom: -2px; transition: color .15s; }
+.subtab-btn:hover { color: var(--text); background: var(--surface-alt); }
+.subtab-btn.active { color: var(--accent); border-bottom-color: var(--accent); background: none; }
+.subtab-panel { display: none; }
+.subtab-panel.active { display: block; }
 </style>
 </head>
 <body>
@@ -239,66 +246,61 @@ table.dtbl { width: 100%; border-collapse: collapse; font-size: 13px; }
 <div class="tab-panel" id="tab-nastaveni">
 <div class="wrap">
 
-  <!-- Přednastavené důvody – Braní směn -->
-  <div class="settings-section">
-    <h3>Přednastavené důvody – Braní směn</h3>
-    <p style="font-size:12px;color:var(--text-muted);margin-bottom:12px">
-      Zobrazí se v rozbalovacím menu „Důvod" u záznamu Braní směn (spolu s pevnými: Směna navíc, Pohotovost).
-    </p>
-    <div id="duvody-brani-list"><p class="empty">Načítám…</p></div>
-    <div style="display:flex;gap:8px;margin-top:12px">
-      <input type="text" id="inp-duvod-brani" placeholder="Nový důvod…"
-        style="flex:1;padding:7px 10px;border:1px solid var(--border);border-radius:7px;background:var(--bg);color:var(--text);font-family:inherit;font-size:13px">
-      <button class="btn btn-primary" id="btn-add-duvod-brani">Přidat</button>
-    </div>
+  <!-- Sub-tab lišta -->
+  <div class="subtab-bar">
+    <button class="subtab-btn active" data-subtab="recepni">👤 Recepční</button>
+    <button class="subtab-btn" data-subtab="texty">📝 Přednastavené texty</button>
   </div>
 
-  <!-- Přednastavené poznámky – Ostatní sekce -->
-  <div class="settings-section">
-    <h3>Přednastavené poznámky</h3>
-    <p style="font-size:12px;color:var(--text-muted);margin-bottom:12px">
-      Zobrazí se jako rychlé vložení do pole „Poznámka" u záznamu (Recenze, Školení, Ostatní, Pokuta).
-    </p>
-    <div id="duvody-obecne-list"><p class="empty">Načítám…</p></div>
-    <div style="display:flex;gap:8px;margin-top:12px">
-      <input type="text" id="inp-duvod-obecne" placeholder="Nová poznámka…"
-        style="flex:1;padding:7px 10px;border:1px solid var(--border);border-radius:7px;background:var(--bg);color:var(--text);font-family:inherit;font-size:13px">
-      <button class="btn btn-primary" id="btn-add-duvod-obecne">Přidat</button>
-    </div>
-  </div>
-
-  <!-- Recepční (login ↔ jméno) -->
-  <div class="settings-section">
-    <h3>Recepční — seznam loginů</h3>
-    <!-- Add row ABOVE list -->
-    <div class="add-row">
-      <input type="text" id="inp-rl-login" placeholder="Login (KONO)"
-        style="width:100px;padding:7px 10px;border:1px solid var(--border);border-radius:7px;background:var(--bg);color:var(--text);font-family:inherit;font-size:13px">
-      <input type="text" id="inp-rl-name" placeholder="Příjmení Jméno"
-        style="flex:1;min-width:140px;padding:7px 10px;border:1px solid var(--border);border-radius:7px;background:var(--bg);color:var(--text);font-family:inherit;font-size:13px">
-      <button class="btn btn-primary" id="btn-add-rl">Přidat</button>
-    </div>
-    <div id="rl-err" style="color:#e74c3c;font-size:12px;margin-bottom:8px"></div>
-    <div id="recepni-list"><p class="empty">Načítám…</p></div>
-  </div>
-
-  <!-- Přenačtení historických dat -->
-  <div class="settings-section">
-    <h3>Přenačtení historických dat (leden–květen 2026)</h3>
-    <p style="font-size:12px;color:var(--text-muted);margin-bottom:12px">
-      Smaže a znovu naimportuje historická data z Excel souboru. Vyžaduje token.
-    </p>
-    <div style="display:flex;flex-direction:column;gap:10px">
-      <div style="display:flex;gap:8px;flex-wrap:wrap">
-        <input type="password" id="inp-reimport-token" placeholder="Token"
-          style="width:160px;padding:7px 10px;border:1px solid var(--border);border-radius:7px;background:var(--bg);color:var(--text);font-family:inherit;font-size:13px">
-        <label class="btn btn-secondary" for="inp-reimport-file" style="cursor:pointer">📂 Vybrat soubor (xlsx)</label>
-        <input type="file" id="inp-reimport-file" accept=".xlsx,.xls" style="display:none">
-        <button class="btn btn-primary" id="btn-reimport">⬆️ Přenačíst data</button>
+  <!-- Sub-panel: Recepční -->
+  <div class="subtab-panel active" id="subtab-recepni">
+    <div class="settings-section">
+      <h3>Recepční — seznam loginů</h3>
+      <!-- Add row ABOVE list -->
+      <div class="add-row">
+        <input type="text" id="inp-rl-login" placeholder="Login (KONO)"
+          style="width:100px;padding:7px 10px;border:1px solid var(--border);border-radius:7px;background:var(--bg);color:var(--text);font-family:inherit;font-size:13px">
+        <input type="text" id="inp-rl-name" placeholder="Příjmení Jméno"
+          style="flex:1;min-width:140px;padding:7px 10px;border:1px solid var(--border);border-radius:7px;background:var(--bg);color:var(--text);font-family:inherit;font-size:13px">
+        <button class="btn btn-primary" id="btn-add-rl">Přidat</button>
       </div>
-      <div id="reimport-status" style="font-size:12px;color:var(--text-muted)"></div>
+      <div id="rl-err" style="color:#e74c3c;font-size:12px;margin-bottom:8px"></div>
+      <div id="recepni-list"><p class="empty">Načítám…</p></div>
     </div>
   </div>
+
+  <!-- Sub-panel: Přednastavené texty -->
+  <div class="subtab-panel" id="subtab-texty">
+
+    <!-- Přednastavené důvody – Braní směn -->
+    <div class="settings-section">
+      <h3>Přednastavené důvody – Braní směn</h3>
+      <p style="font-size:12px;color:var(--text-muted);margin-bottom:12px">
+        Zobrazí se v rozbalovacím menu „Důvod" u záznamu Braní směn (spolu s pevnými: Směna navíc, Pohotovost).
+      </p>
+      <div id="duvody-brani-list"><p class="empty">Načítám…</p></div>
+      <div style="display:flex;gap:8px;margin-top:12px">
+        <input type="text" id="inp-duvod-brani" placeholder="Nový důvod…"
+          style="flex:1;padding:7px 10px;border:1px solid var(--border);border-radius:7px;background:var(--bg);color:var(--text);font-family:inherit;font-size:13px">
+        <button class="btn btn-primary" id="btn-add-duvod-brani">Přidat</button>
+      </div>
+    </div>
+
+    <!-- Přednastavené poznámky – Ostatní sekce -->
+    <div class="settings-section">
+      <h3>Přednastavené poznámky</h3>
+      <p style="font-size:12px;color:var(--text-muted);margin-bottom:12px">
+        Zobrazí se jako rychlé vložení do pole „Poznámka" u záznamu (Recenze, Školení, Ostatní, Pokuta).
+      </p>
+      <div id="duvody-obecne-list"><p class="empty">Načítám…</p></div>
+      <div style="display:flex;gap:8px;margin-top:12px">
+        <input type="text" id="inp-duvod-obecne" placeholder="Nová poznámka…"
+          style="flex:1;padding:7px 10px;border:1px solid var(--border);border-radius:7px;background:var(--bg);color:var(--text);font-family:inherit;font-size:13px">
+        <button class="btn btn-primary" id="btn-add-duvod-obecne">Přidat</button>
+      </div>
+    </div>
+
+  </div><!-- /subtab-texty -->
 
 </div>
 </div>
@@ -467,6 +469,8 @@ let rok, mesic;
 const now = new Date();
 rok   = now.getFullYear();
 mesic = now.getMonth() + 1;
+// Nejdříve povolený měsíc je květen 2026
+if (rok < 2026 || (rok === 2026 && mesic < 5)) { rok = 2026; mesic = 5; }
 
 let recepniAll   = [];   // [{login, full_name, active}]
 let recepniMap   = {};   // login (lowercase) → full_name
@@ -487,13 +491,30 @@ document.querySelectorAll('.tab-btn').forEach(btn => btn.addEventListener('click
   if (btn.dataset.tab === 'nastaveni') { loadDuvodyBraniList(); loadDuvodyObecneList(); loadRecepniList(); }
 }));
 
+// Sub-záložky v Nastavení
+document.querySelectorAll('.subtab-btn').forEach(btn => btn.addEventListener('click', () => {
+  document.querySelectorAll('.subtab-btn').forEach(b => b.classList.remove('active'));
+  document.querySelectorAll('.subtab-panel').forEach(p => p.classList.remove('active'));
+  btn.classList.add('active');
+  document.getElementById('subtab-' + btn.dataset.subtab).classList.add('active');
+}));
+
 // ═══ Měsíc navigace ═════════════════════════════════════════════════════════
+const MIN_ROK = 2026, MIN_MESIC = 5; // Nejstarší povolený měsíc: květen 2026
+
+function isAtMin() { return rok === MIN_ROK && mesic === MIN_MESIC; }
+function updatePrevBtn() {
+  document.getElementById('btn-prev').disabled = isAtMin();
+}
 function updateMonthLabel() {
   document.getElementById('month-label').textContent = `${MESICE[mesic]} ${rok}`;
   document.getElementById('link-export').href = `/api/priplatky/export/xlsx?rok=${rok}&mesic=${mesic}`;
+  updatePrevBtn();
 }
 document.getElementById('btn-prev').addEventListener('click', () => {
+  if (isAtMin()) return;
   mesic--; if (mesic < 1) { mesic = 12; rok--; }
+  if (rok < MIN_ROK || (rok === MIN_ROK && mesic < MIN_MESIC)) { rok = MIN_ROK; mesic = MIN_MESIC; }
   updateMonthLabel(); loadPrehled();
 });
 document.getElementById('btn-next').addEventListener('click', () => {
@@ -1049,41 +1070,6 @@ async function deleteRecepni(login) {
   await fetch(`/api/priplatky/recepni/${encodeURIComponent(login)}`, { method:'DELETE' });
   loadRecepniList(); loadRecepniDropdown();
 }
-
-// ═══ Nastavení: Přenačtení historických dat ═══════════════════════════════════
-document.getElementById('btn-reimport').addEventListener('click', async () => {
-  const statusEl = document.getElementById('reimport-status');
-  const token    = document.getElementById('inp-reimport-token').value.trim();
-  const fileInp  = document.getElementById('inp-reimport-file');
-  if (!token)            { statusEl.style.color='#e74c3c'; statusEl.textContent='Zadejte token.'; return; }
-  if (!fileInp.files[0]) { statusEl.style.color='#e74c3c'; statusEl.textContent='Vyberte soubor.'; return; }
-  if (!confirm('Smazat všechna historická data (import-historický) a znovu naimportovat ze souboru?')) return;
-  statusEl.style.color='var(--text-muted)'; statusEl.textContent='Načítám soubor…';
-  const reader = new FileReader();
-  reader.onload = async e => {
-    const b64 = e.target.result.split(',')[1];
-    statusEl.textContent = 'Odesílám na server…';
-    try {
-      const r = await fetch('/api/priplatky/reimport-historicky', {
-        method:'POST',
-        headers:{'Content-Type':'application/json'},
-        body: JSON.stringify({ token, fileData: b64 })
-      });
-      const j = await r.json();
-      if (j.ok) {
-        statusEl.style.color='#27ae60';
-        statusEl.textContent = `✅ Smazáno ${j.deleted} starých záznamů, naimportováno ${j.imported}.`
-          + (j.errors?.length ? ` Chyby: ${j.errors.join('; ')}` : '');
-      } else {
-        statusEl.style.color='#e74c3c';
-        statusEl.textContent = '❌ ' + j.msg;
-      }
-    } catch(err) {
-      statusEl.style.color='#e74c3c'; statusEl.textContent = '❌ Chyba: ' + err.message;
-    }
-  };
-  reader.readAsDataURL(fileInp.files[0]);
-});
 
 // ═══ Overlay helpers ══════════════════════════════════════════════════════════
 function openOverlay(id)  { document.getElementById(id).classList.add('show'); }

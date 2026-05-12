@@ -2389,10 +2389,18 @@ app.get('/api/smlouvy/recepni/export.xls', requireLogin, async (req, res) => {
   res.send(buf);
 });
 
-// ── Přenačtení historických dat 2026 (leden–květen) ─────────────────────────
-// Smaže předchozí import (vlozil='import-historický') a znovu naimportuje.
-// Vyžaduje přihlášení + token 'reimport2026xyz' v těle požadavku.
-app.post('/api/priplatky/reimport-historicky', requireLogin, async (req, res) => {
+// ── Smazání historických dat 2026 (leden–květen) ─────────────────────────────
+// Jednorázové smazání — vyžaduje přihlášení + token.
+app.post('/api/priplatky/clear-historicka', requireLogin, async (req, res) => {
+  if (req.body.token !== 'clear2026xyz')
+    return res.status(403).json({ ok:false, msg:'Nesprávný token.' });
+  const db = getPool();
+  const r  = await db.query(`DELETE FROM priplatky_zaznamy WHERE rok=2026 AND mesic<=5`);
+  res.json({ ok:true, deleted: r.rowCount });
+});
+
+// (reimport-historicky disabled — replaced by clear-historicka + manual entry)
+async function _disabledReimportHistoricky(req, res) {
   if (req.body.token !== 'reimport2026xyz')
     return res.status(403).json({ ok:false, msg:'Nesprávný token.' });
 
@@ -2550,7 +2558,7 @@ app.post('/api/priplatky/reimport-historicky', requireLogin, async (req, res) =>
   }
 
   res.json({ ok:true, deleted: del.rowCount, imported, errors: errors.slice(0,30) });
-});
+} // end _disabledReimportHistoricky
 
 // (temp import-once removed after successful import of 243 records — 2026-05-12)
 async function _disabledImportOnce(req, res) {
