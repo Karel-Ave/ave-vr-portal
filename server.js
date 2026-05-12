@@ -1684,21 +1684,23 @@ app.delete('/api/priplatky/zaznamy/:id', requireLogin, async (req, res) => {
   res.json({ ok: true });
 });
 
-// Předdefinované poznámky
+// Předdefinované poznámky / důvody (typ: 'brani' | 'obecne')
 app.get('/api/priplatky/poznamky', requireLogin, async (req, res) => {
-  const db = getPool();
+  const db  = getPool();
+  const typ = ['brani','obecne'].includes(req.query.typ) ? req.query.typ : 'brani';
   const { rows } = await db.query(
-    `SELECT * FROM priplatky_poznamky ORDER BY poradi, id`
+    `SELECT * FROM priplatky_poznamky WHERE typ=$1 ORDER BY poradi, id`, [typ]
   );
   res.json(rows);
 });
 
 app.post('/api/priplatky/poznamky', requireLogin, async (req, res) => {
-  const { text, poradi } = req.body;
+  const { text, poradi, typ } = req.body;
+  const typVal = ['brani','obecne'].includes(typ) ? typ : 'brani';
   const db = getPool();
   const r = await db.query(
-    `INSERT INTO priplatky_poznamky (text, poradi) VALUES ($1,$2) RETURNING *`,
-    [text, poradi || 0]
+    `INSERT INTO priplatky_poznamky (text, poradi, typ) VALUES ($1,$2,$3) RETURNING *`,
+    [text, poradi || 0, typVal]
   );
   res.json({ ok: true, row: r.rows[0] });
 });
@@ -1919,8 +1921,8 @@ app.post('/api/priplatky/import-template', requireLogin, async (req, res) => {
   res.send(out);
 });
 
-// Import historických dat z Příplatky a Pokuty 2026.xlsx (vybrané měsíce)
-app.post('/api/priplatky/import-file1', requireLogin, async (req, res) => {
+// (import-file1 removed — historical data imported 2026-05-12, 243 records)
+async function _disabledImportFile1(req, res) {
   const { fileData, months } = req.body;
   if (!fileData) return res.status(400).json({ ok:false, msg:'Chybí soubor.' });
 
@@ -2054,7 +2056,7 @@ app.post('/api/priplatky/import-file1', requireLogin, async (req, res) => {
     }
   }
   res.json({ ok:true, imported, errors:errors.slice(0,20) });
-});
+} // end _disabledImportFile1
 
 // ══════════════════════════════════════════════════════════════════════════════
 //  PRACOVNÍ SMLOUVY
@@ -2380,8 +2382,8 @@ app.get('/api/smlouvy/recepni/export.xls', requireLogin, async (req, res) => {
   res.send(buf);
 });
 
-// ── TEMP: jednorázový import (token-protected, bez session) ───────────────────
-app.post('/api/priplatky/import-once', async (req, res) => {
+// (temp import-once removed after successful import of 243 records — 2026-05-12)
+async function _disabledImportOnce(req, res) {
   if (req.body.token !== 'import2026abc') return res.status(403).json({ ok:false, msg:'Forbidden' });
   const { fileData, months } = req.body;
   if (!fileData) return res.status(400).json({ ok:false, msg:'Chybí soubor.' });
@@ -2458,10 +2460,9 @@ app.post('/api/priplatky/import-once', async (req, res) => {
     }
   }
   res.json({ok:true,imported:imported2,errors:errors2.slice(0,20)});
-});
+} // end _disabledImportOnce
 
 // ── Start ─────────────────────────────────────────────────────────────────────
-
 init()
   .then(() => {
     app.listen(PORT, () => console.log(`AVE Portál běží na portu ${PORT}`));

@@ -16,7 +16,6 @@ body { min-height: 100vh; background: var(--bg); font-family: 'Segoe UI', system
 #topbar a { color:var(--text); text-decoration:none; font-size:20px; padding:4px 8px; border-radius:6px; }
 #topbar a:hover { background:var(--surface-alt); }
 #topbar h1 { font-size:16px; font-weight:700; flex:1; }
-#btn-theme { background:none; border:none; cursor:pointer; font-size:18px; padding:6px 8px; border-radius:6px; color:var(--text); }
 
 /* Tabs */
 #tabs { display:flex; gap:4px; padding:12px 16px 0; border-bottom:1px solid var(--border); background:var(--bg); position:sticky; top:58px; z-index:100; }
@@ -26,126 +25,171 @@ body { min-height: 100vh; background: var(--bg); font-family: 'Segoe UI', system
 .tab-panel { display:none; }
 .tab-panel.active { display:block; }
 
-/* Wrap */
-.wrap { max-width:1020px; margin:0 auto; padding:20px 16px 80px; }
+/* Přehled: sticky top area + scrollable table */
+#prehled-top {
+  position: sticky;
+  top: calc(58px + 43px); /* topbar + tabs */
+  z-index: 90;
+  background: var(--bg);
+  padding: 14px 16px 10px;
+  border-bottom: 1px solid var(--border);
+  max-width: 1020px;
+  margin: 0 auto;
+  width: 100%;
+}
+/* We need to cover full width for the sticky bg */
+#prehled-sticky-wrap {
+  position: sticky;
+  top: calc(58px + 43px);
+  z-index: 90;
+  background: var(--bg);
+  border-bottom: 1px solid var(--border);
+}
+
+#stbl-scroll {
+  max-width: 1020px;
+  margin: 0 auto;
+  padding: 16px 16px 80px;
+}
+
+/* Wrap for settings */
+.wrap { max-width: 1020px; margin: 0 auto; padding: 20px 16px 80px; }
 
 /* ── Controls bar (month nav + utility buttons) ── */
 .controls-bar {
-  display:flex; align-items:center; gap:8px; margin-bottom:14px; flex-wrap:wrap;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: nowrap;
 }
-.month-label { font-size:17px; font-weight:700; min-width:130px; text-align:center; }
-.nav-btn { padding:6px 12px; border:1px solid var(--border); border-radius:7px; background:none; color:var(--text); cursor:pointer; font-size:15px; line-height:1; }
-.nav-btn:hover { background:var(--surface-alt); }
-.controls-sep { flex:1; }
+.month-label { font-size: 15px; font-weight: 700; min-width: 120px; text-align: center; white-space: nowrap; }
+.nav-btn { padding: 6px 11px; border: 1px solid var(--border); border-radius: 7px; background: none; color: var(--text); cursor: pointer; font-size: 14px; line-height: 1; flex-shrink: 0; }
+.nav-btn:hover { background: var(--surface-alt); }
+.controls-sep { flex: 1; min-width: 4px; }
+
+@media (max-width: 480px) {
+  .month-label { min-width: 90px; font-size: 13px; }
+  .controls-bar .btn-sm { padding: 4px 7px; font-size: 11px; }
+  .nav-btn { padding: 5px 9px; font-size: 13px; }
+}
 
 /* File-trigger label acts as button */
-label.btn { display:inline-flex; align-items:center; cursor:pointer; }
+label.btn { display: inline-flex; align-items: center; cursor: pointer; }
 
 /* ── Big "Přidat" button ── */
 .btn-add-big {
-  display:block; width:100%; max-width:420px; margin:0 auto 20px;
-  padding:14px 20px; border:none; border-radius:10px;
-  background:var(--accent); color:#fff;
-  font-size:16px; font-weight:700; font-family:inherit;
-  cursor:pointer; transition:opacity .15s;
-  text-align:center;
+  display: block;
+  width: calc(100% - 32px);
+  max-width: 420px;
+  margin: 10px auto 0;
+  padding: 13px 20px;
+  border: none;
+  border-radius: 10px;
+  background: var(--accent);
+  color: #fff;
+  font-size: 15px;
+  font-weight: 700;
+  font-family: inherit;
+  cursor: pointer;
+  transition: opacity .15s;
+  text-align: center;
 }
-.btn-add-big:hover { opacity:.88; }
+.btn-add-big:hover { opacity: .88; }
 
 /* Buttons */
-.btn { padding:7px 14px; border:none; border-radius:8px; font-size:13px; font-weight:600; font-family:inherit; cursor:pointer; transition:opacity .15s; }
-.btn:hover { opacity:.85; }
-.btn-primary { background:var(--accent); color:#fff; }
-.btn-secondary { background:var(--surface-alt); color:var(--text); border:1px solid var(--border); }
-.btn-danger { background:#e74c3c; color:#fff; }
-.btn-sm { padding:5px 10px; font-size:12px; }
+.btn { padding: 7px 14px; border: none; border-radius: 8px; font-size: 13px; font-weight: 600; font-family: inherit; cursor: pointer; transition: opacity .15s; }
+.btn:hover { opacity: .85; }
+.btn-primary { background: var(--accent); color: #fff; }
+.btn-secondary { background: var(--surface-alt); color: var(--text); border: 1px solid var(--border); }
+.btn-danger { background: #e74c3c; color: #fff; }
+.btn-sm { padding: 5px 10px; font-size: 12px; }
 
 /* Fill status */
-#fill-status { font-size:12px; color:var(--text-muted); }
+#fill-status { font-size: 11px; color: var(--text-muted); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 80px; }
 
 /* Summary table */
-.stbl-wrap { overflow-x:auto; }
-table.stbl { width:100%; border-collapse:collapse; font-size:14px; }
-.stbl th { padding:8px 10px; font-size:11px; font-weight:700; text-transform:uppercase; letter-spacing:.05em; color:var(--text-muted); border-bottom:2px solid var(--border); text-align:right; }
-.stbl th:first-child { text-align:left; }
-.stbl td { padding:9px 10px; border-bottom:1px solid var(--border); text-align:right; }
-.stbl td:first-child { text-align:left; }
-.stbl tr:hover td { background:var(--surface-alt); }
-.stbl .login-link { color:var(--accent); cursor:pointer; font-weight:700; text-decoration:underline; }
-.stbl .unknown-login { color:#e67e22; font-weight:700; cursor:pointer; text-decoration:underline; }
-.stbl tfoot td { font-weight:700; border-top:2px solid var(--border); border-bottom:none; }
-.stbl .soucet { font-weight:700; }
-.stbl .neg { color:#e74c3c; }
-.stbl .pos { color:#27ae60; }
+.stbl-wrap { overflow-x: auto; }
+table.stbl { width: 100%; border-collapse: collapse; font-size: 14px; }
+.stbl th { padding: 8px 10px; font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: .05em; color: var(--text-muted); border-bottom: 2px solid var(--border); text-align: right; }
+.stbl th:first-child { text-align: left; }
+.stbl td { padding: 9px 10px; border-bottom: 1px solid var(--border); text-align: right; }
+.stbl td:first-child { text-align: left; }
+.stbl tr:hover td { background: var(--surface-alt); }
+.stbl .login-link { color: var(--accent); cursor: pointer; font-weight: 700; text-decoration: underline; }
+.stbl .unknown-login { color: #e67e22; font-weight: 700; cursor: pointer; text-decoration: underline; }
+.stbl tfoot td { font-weight: 700; border-top: 2px solid var(--border); border-bottom: none; }
+.stbl .soucet { font-weight: 700; }
+.stbl .neg { color: #e74c3c; }
+.stbl .pos { color: #27ae60; }
 
-.section-unknown { margin-top:24px; padding:14px 16px; background:#e67e2212; border:1px solid #e67e2244; border-radius:10px; }
-.section-unknown h3 { font-size:13px; font-weight:700; color:#e67e22; margin-bottom:10px; }
+.section-unknown { margin-top: 24px; padding: 14px 16px; background: #e67e2212; border: 1px solid #e67e2244; border-radius: 10px; }
+.section-unknown h3 { font-size: 13px; font-weight: 700; color: #e67e22; margin-bottom: 10px; }
 
 /* Modal */
-.overlay { display:none; position:fixed; inset:0; background:rgba(0,0,0,.5); z-index:2000; align-items:center; justify-content:center; padding:16px; }
-.overlay.show { display:flex; }
-.modal { background:var(--modal-bg,var(--surface)); border:1px solid var(--modal-border,var(--border)); border-radius:14px; width:min(560px,100%); max-height:90vh; overflow-y:auto; box-shadow:0 8px 32px rgba(0,0,0,.2); }
-.modal-header { display:flex; align-items:center; padding:18px 20px 12px; border-bottom:1px solid var(--border); }
-.modal-header h3 { font-size:16px; font-weight:700; flex:1; }
-.modal-close { background:none; border:none; font-size:22px; cursor:pointer; color:var(--text-muted); padding:0 4px; }
-.modal-body { padding:20px; }
-.modal-footer { padding:12px 20px 18px; display:flex; gap:8px; justify-content:flex-end; border-top:1px solid var(--border); }
+.overlay { display: none; position: fixed; inset: 0; background: rgba(0,0,0,.5); z-index: 2000; align-items: center; justify-content: center; padding: 16px; }
+.overlay.show { display: flex; }
+.modal { background: var(--modal-bg,var(--surface)); border: 1px solid var(--modal-border,var(--border)); border-radius: 14px; width: min(560px,100%); max-height: 90vh; overflow-y: auto; box-shadow: 0 8px 32px rgba(0,0,0,.2); }
+.modal-header { display: flex; align-items: center; padding: 18px 20px 12px; border-bottom: 1px solid var(--border); }
+.modal-header h3 { font-size: 16px; font-weight: 700; flex: 1; }
+.modal-close { background: none; border: none; font-size: 22px; cursor: pointer; color: var(--text-muted); padding: 0 4px; }
+.modal-body { padding: 20px; }
+.modal-footer { padding: 12px 20px 18px; display: flex; gap: 8px; justify-content: flex-end; border-top: 1px solid var(--border); }
 
 /* Form fields */
-.field { margin-bottom:12px; }
-.field label { display:block; font-size:11px; font-weight:700; text-transform:uppercase; letter-spacing:.05em; color:var(--text-muted); margin-bottom:5px; }
+.field { margin-bottom: 12px; }
+.field label { display: block; font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: .05em; color: var(--text-muted); margin-bottom: 5px; }
 .field input, .field select, .field textarea {
-  width:100%; padding:8px 11px; border:1px solid var(--border); border-radius:7px;
-  background:var(--input-bg,var(--bg)); color:var(--text); font-size:14px; font-family:inherit; }
-.field input:focus, .field select:focus, .field textarea:focus { outline:none; border-color:var(--accent); }
-.field textarea { resize:vertical; min-height:55px; }
-.fields-2 { display:grid; grid-template-columns:1fr 1fr; gap:10px 14px; }
+  width: 100%; padding: 8px 11px; border: 1px solid var(--border); border-radius: 7px;
+  background: var(--input-bg,var(--bg)); color: var(--text); font-size: 14px; font-family: inherit; }
+.field input:focus, .field select:focus, .field textarea:focus { outline: none; border-color: var(--accent); }
+.field textarea { resize: vertical; min-height: 55px; }
+.fields-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 10px 14px; }
 @media(max-width:500px){ .fields-2{ grid-template-columns:1fr; } }
-.field-full { grid-column:1/-1; }
-.hidden { display:none !important; }
+.field-full { grid-column: 1/-1; }
+.hidden { display: none !important; }
 
 /* Date fields */
-.date-fields { display:grid; grid-template-columns:1fr 2fr 2fr; gap:8px; }
+.date-fields { display: grid; grid-template-columns: 1fr 2fr 2fr; gap: 8px; }
 
 /* Autocomplete */
-.ac-wrap { position:relative; display:flex; gap:6px; }
-.ac-wrap > input[type=text] { flex:1; }
-.ac-list { position:absolute; top:calc(100% + 2px); left:0; right:38px; background:var(--surface); border:1px solid var(--border); border-radius:7px; box-shadow:0 4px 14px rgba(0,0,0,.18); z-index:600; max-height:220px; overflow-y:auto; }
-.ac-item { padding:8px 11px; cursor:pointer; font-size:13px; border-bottom:1px solid var(--border); }
-.ac-item:last-child { border-bottom:none; }
-.ac-item:hover, .ac-item.active { background:var(--surface-alt); }
-.ac-item strong { color:var(--accent); }
-.ac-manual-btn { flex-shrink:0; width:34px; height:34px; border:1px solid var(--border); border-radius:7px; background:none; cursor:pointer; font-size:14px; display:flex; align-items:center; justify-content:center; }
-.ac-manual-btn:hover { background:var(--surface-alt); }
-.ac-manual-input { margin-top:5px; }
+.ac-wrap { position: relative; display: flex; gap: 6px; }
+.ac-wrap > input[type=text] { flex: 1; }
+.ac-list { position: absolute; top: calc(100% + 2px); left: 0; right: 38px; background: var(--surface); border: 1px solid var(--border); border-radius: 7px; box-shadow: 0 4px 14px rgba(0,0,0,.18); z-index: 600; max-height: 220px; overflow-y: auto; }
+.ac-item { padding: 8px 11px; cursor: pointer; font-size: 13px; border-bottom: 1px solid var(--border); }
+.ac-item:last-child { border-bottom: none; }
+.ac-item:hover, .ac-item.active { background: var(--surface-alt); }
+.ac-item strong { color: var(--accent); }
+.ac-manual-btn { flex-shrink: 0; width: 34px; height: 34px; border: 1px solid var(--border); border-radius: 7px; background: none; cursor: pointer; font-size: 14px; display: flex; align-items: center; justify-content: center; }
+.ac-manual-btn:hover { background: var(--surface-alt); }
+.ac-manual-input { margin-top: 5px; }
+
+/* Poznámka preset row */
+.preset-row { display: flex; gap: 6px; margin-bottom: 5px; }
+.preset-row select { flex: 1; padding: 6px 8px; border: 1px solid var(--border); border-radius: 6px; background: var(--bg); color: var(--text); font-family: inherit; font-size: 13px; }
+.preset-row .btn { flex-shrink: 0; }
 
 /* Detail table (in modal) */
-table.dtbl { width:100%; border-collapse:collapse; font-size:13px; }
-.dtbl th { padding:6px 8px; font-size:11px; font-weight:700; text-transform:uppercase; color:var(--text-muted); border-bottom:1px solid var(--border); }
-.dtbl td { padding:8px; border-bottom:1px solid var(--border); vertical-align:top; }
-.dtbl tr:last-child td { border-bottom:none; }
-.dtbl .sekce-header td { background:var(--surface-alt); font-weight:700; font-size:12px; text-transform:uppercase; color:var(--text-muted); letter-spacing:.05em; padding:5px 8px; }
-.audit-info { font-size:11px; color:var(--text-muted); margin-top:2px; }
+table.dtbl { width: 100%; border-collapse: collapse; font-size: 13px; }
+.dtbl th { padding: 6px 8px; font-size: 11px; font-weight: 700; text-transform: uppercase; color: var(--text-muted); border-bottom: 1px solid var(--border); }
+.dtbl td { padding: 8px; border-bottom: 1px solid var(--border); vertical-align: top; }
+.dtbl tr:last-child td { border-bottom: none; }
+.dtbl .sekce-header td { background: var(--surface-alt); font-weight: 700; font-size: 12px; text-transform: uppercase; color: var(--text-muted); letter-spacing: .05em; padding: 5px 8px; }
+.audit-info { font-size: 11px; color: var(--text-muted); margin-top: 2px; }
 
 /* Settings */
-.settings-section { background:var(--surface); border:1px solid var(--border); border-radius:12px; padding:18px; margin-bottom:16px; }
-.settings-section h3 { font-size:13px; font-weight:700; text-transform:uppercase; letter-spacing:.05em; color:var(--text-muted); margin-bottom:14px; }
-.note-item { display:flex; align-items:center; gap:8px; padding:7px 0; border-bottom:1px solid var(--border); }
-.note-item:last-child { border-bottom:none; }
-.note-item span { flex:1; font-size:14px; }
-.icon-btn { padding:5px 9px; border:1px solid var(--border); border-radius:6px; background:none; color:var(--text); cursor:pointer; font-size:12px; font-family:inherit; }
-.icon-btn:hover { background:var(--surface-alt); }
-.icon-btn.danger { color:#e74c3c; border-color:#e74c3c44; }
-.icon-btn.danger:hover { background:#e74c3c18; }
-.recepni-row { display:grid; grid-template-columns:1fr 2fr auto; gap:8px; align-items:center; padding:6px 0; border-bottom:1px solid var(--border); font-size:13px; }
-.recepni-row:last-child { border-bottom:none; }
-.empty { text-align:center; color:var(--text-muted); padding:30px; font-size:14px; }
-
-/* Month checkboxes for import */
-.months-grid { display:grid; grid-template-columns:repeat(4,1fr); gap:6px; margin-bottom:12px; }
-.months-grid label { display:flex; align-items:center; gap:6px; font-size:13px; cursor:pointer; padding:5px 8px; border:1px solid var(--border); border-radius:6px; background:var(--bg); }
-.months-grid label:hover { background:var(--surface-alt); }
-.months-grid input[type=checkbox] { cursor:pointer; }
+.settings-section { background: var(--surface); border: 1px solid var(--border); border-radius: 12px; padding: 18px; margin-bottom: 16px; }
+.settings-section h3 { font-size: 13px; font-weight: 700; text-transform: uppercase; letter-spacing: .05em; color: var(--text-muted); margin-bottom: 14px; }
+.note-item { display: flex; align-items: center; gap: 8px; padding: 7px 0; border-bottom: 1px solid var(--border); }
+.note-item:last-child { border-bottom: none; }
+.note-item span { flex: 1; font-size: 14px; }
+.icon-btn { padding: 5px 9px; border: 1px solid var(--border); border-radius: 6px; background: none; color: var(--text); cursor: pointer; font-size: 12px; font-family: inherit; }
+.icon-btn:hover { background: var(--surface-alt); }
+.icon-btn.danger { color: #e74c3c; border-color: #e74c3c44; }
+.icon-btn.danger:hover { background: #e74c3c18; }
+.recepni-row { display: grid; grid-template-columns: 80px 1fr auto; gap: 8px; align-items: center; padding: 6px 0; border-bottom: 1px solid var(--border); font-size: 13px; }
+.recepni-row:last-child { border-bottom: none; }
+.empty { text-align: center; color: var(--text-muted); padding: 30px; font-size: 14px; }
+.add-row { display: flex; gap: 8px; margin-bottom: 14px; flex-wrap: wrap; }
 </style>
 </head>
 <body>
@@ -153,7 +197,6 @@ table.dtbl { width:100%; border-collapse:collapse; font-size:13px; }
 <div id="topbar">
   <a href="/portal">←</a>
   <h1>💰 Příplatky a pokuty</h1>
-  <button id="btn-theme"></button>
 </div>
 
 <div id="tabs">
@@ -163,92 +206,80 @@ table.dtbl { width:100%; border-collapse:collapse; font-size:13px; }
 
 <!-- ═══ TAB: PŘEHLED ═══════════════════════════════════════════════════════ -->
 <div class="tab-panel active" id="tab-prehled">
-<div class="wrap">
 
-  <!-- Controls bar: month nav + small utility buttons -->
-  <div class="controls-bar">
-    <button class="nav-btn" id="btn-prev">◀</button>
-    <span class="month-label" id="month-label">—</span>
-    <button class="nav-btn" id="btn-next">▶</button>
-    <div class="controls-sep"></div>
-    <!-- Template fill: hidden file input, label triggers it -->
-    <label class="btn btn-secondary btn-sm" for="inp-template-file" title="Doplnit data do šablony Pokuty_odmeny.xls">
-      📥 Šablona
-    </label>
-    <input type="file" id="inp-template-file" accept=".xls,.xlsx" style="display:none">
-    <a class="btn btn-secondary btn-sm" id="link-export" href="#" title="Stáhnout Excel s přehledem">⬇️ Export</a>
-    <span id="fill-status" style="font-size:12px;color:var(--text-muted)"></span>
+  <!-- Sticky top: controls + add button -->
+  <div id="prehled-sticky-wrap">
+    <div style="max-width:1020px;margin:0 auto;padding:12px 16px 10px">
+      <!-- Controls bar: month nav + utility buttons — never wraps -->
+      <div class="controls-bar">
+        <button class="nav-btn" id="btn-prev">◀</button>
+        <span class="month-label" id="month-label">—</span>
+        <button class="nav-btn" id="btn-next">▶</button>
+        <div class="controls-sep"></div>
+        <label class="btn btn-secondary btn-sm" for="inp-template-file" title="Doplnit data do šablony Pokuty_odmeny.xls">📥 Šablona</label>
+        <input type="file" id="inp-template-file" accept=".xls,.xlsx" style="display:none">
+        <a class="btn btn-secondary btn-sm" id="link-export" href="#" title="Stáhnout Excel s přehledem">⬇️ Export</a>
+        <span id="fill-status"></span>
+      </div>
+      <!-- Big Přidat button -->
+      <button class="btn-add-big" id="btn-add">➕ Přidat záznam</button>
+    </div>
   </div>
 
-  <!-- Big centered "Přidat" button -->
-  <button class="btn-add-big" id="btn-add">➕ Přidat záznam</button>
-
-  <div class="stbl-wrap" id="stbl-wrap">
-    <p class="empty">Načítám…</p>
+  <!-- Scrollable table area -->
+  <div id="stbl-scroll">
+    <div class="stbl-wrap" id="stbl-wrap">
+      <p class="empty">Načítám…</p>
+    </div>
   </div>
 
-</div>
 </div>
 
 <!-- ═══ TAB: NASTAVENÍ ════════════════════════════════════════════════════ -->
 <div class="tab-panel" id="tab-nastaveni">
 <div class="wrap">
 
-  <!-- Import ze souboru -->
-  <div class="settings-section">
-    <h3>📤 Import ze starého souboru</h3>
-    <p style="font-size:13px;color:var(--text-muted);margin-bottom:12px">
-      Importuje záznamy ze souboru <em>Příplatky a Pokuty 2026.xlsx</em> za vybrané měsíce
-      — vloží je do DB bez loginu/času.
-    </p>
-    <p style="font-size:12px;font-weight:600;color:var(--text-muted);margin-bottom:8px">Měsíce k importu:</p>
-    <div class="months-grid">
-      <label><input type="checkbox" name="imp-month" value="1"> Leden</label>
-      <label><input type="checkbox" name="imp-month" value="2"> Únor</label>
-      <label><input type="checkbox" name="imp-month" value="3"> Březen</label>
-      <label><input type="checkbox" name="imp-month" value="4"> Duben</label>
-      <label><input type="checkbox" name="imp-month" value="5" checked> Květen</label>
-      <label><input type="checkbox" name="imp-month" value="6"> Červen</label>
-      <label><input type="checkbox" name="imp-month" value="7"> Červenec</label>
-      <label><input type="checkbox" name="imp-month" value="8"> Srpen</label>
-      <label><input type="checkbox" name="imp-month" value="9"> Září</label>
-      <label><input type="checkbox" name="imp-month" value="10"> Říjen</label>
-      <label><input type="checkbox" name="imp-month" value="11"> Listopad</label>
-      <label><input type="checkbox" name="imp-month" value="12"> Prosinec</label>
-    </div>
-    <div style="display:flex;gap:10px;align-items:center;flex-wrap:wrap">
-      <input type="file" id="inp-import-file1" accept=".xlsx">
-      <button class="btn btn-primary" id="btn-import-file1">Importovat</button>
-    </div>
-    <div id="import-status" style="margin-top:8px;font-size:13px"></div>
-  </div>
-
   <!-- Přednastavené důvody – Braní směn -->
   <div class="settings-section">
     <h3>Přednastavené důvody – Braní směn</h3>
     <p style="font-size:12px;color:var(--text-muted);margin-bottom:12px">
-      Tyto důvody se zobrazí v rozbalovacím menu při přidávání záznamu "Braní směn" (spolu s pevnými: Směna navíc, Pohotovost).
+      Zobrazí se v rozbalovacím menu „Důvod" u záznamu Braní směn (spolu s pevnými: Směna navíc, Pohotovost).
     </p>
-    <div id="duvody-list"><p class="empty">Načítám…</p></div>
+    <div id="duvody-brani-list"><p class="empty">Načítám…</p></div>
     <div style="display:flex;gap:8px;margin-top:12px">
-      <input type="text" id="inp-duvod" placeholder="Nový důvod…"
+      <input type="text" id="inp-duvod-brani" placeholder="Nový důvod…"
         style="flex:1;padding:7px 10px;border:1px solid var(--border);border-radius:7px;background:var(--bg);color:var(--text);font-family:inherit;font-size:13px">
-      <button class="btn btn-primary" id="btn-add-duvod">Přidat</button>
+      <button class="btn btn-primary" id="btn-add-duvod-brani">Přidat</button>
+    </div>
+  </div>
+
+  <!-- Přednastavené poznámky – Ostatní sekce -->
+  <div class="settings-section">
+    <h3>Přednastavené poznámky</h3>
+    <p style="font-size:12px;color:var(--text-muted);margin-bottom:12px">
+      Zobrazí se jako rychlé vložení do pole „Poznámka" u záznamu (Recenze, Školení, Ostatní, Pokuta).
+    </p>
+    <div id="duvody-obecne-list"><p class="empty">Načítám…</p></div>
+    <div style="display:flex;gap:8px;margin-top:12px">
+      <input type="text" id="inp-duvod-obecne" placeholder="Nová poznámka…"
+        style="flex:1;padding:7px 10px;border:1px solid var(--border);border-radius:7px;background:var(--bg);color:var(--text);font-family:inherit;font-size:13px">
+      <button class="btn btn-primary" id="btn-add-duvod-obecne">Přidat</button>
     </div>
   </div>
 
   <!-- Recepční (login ↔ jméno) -->
   <div class="settings-section">
     <h3>Recepční — seznam loginů</h3>
-    <div id="recepni-list"><p class="empty">Načítám…</p></div>
-    <div style="display:flex;gap:8px;margin-top:14px;flex-wrap:wrap">
+    <!-- Add row ABOVE list -->
+    <div class="add-row">
       <input type="text" id="inp-rl-login" placeholder="Login (KONO)"
         style="width:100px;padding:7px 10px;border:1px solid var(--border);border-radius:7px;background:var(--bg);color:var(--text);font-family:inherit;font-size:13px">
       <input type="text" id="inp-rl-name" placeholder="Příjmení Jméno"
         style="flex:1;min-width:140px;padding:7px 10px;border:1px solid var(--border);border-radius:7px;background:var(--bg);color:var(--text);font-family:inherit;font-size:13px">
-      <button class="btn btn-primary" id="btn-add-rl">Přidat / Aktualizovat</button>
+      <button class="btn btn-primary" id="btn-add-rl">Přidat</button>
     </div>
-    <div id="rl-err" style="color:#e74c3c;font-size:12px;margin-top:6px"></div>
+    <div id="rl-err" style="color:#e74c3c;font-size:12px;margin-bottom:8px"></div>
+    <div id="recepni-list"><p class="empty">Načítám…</p></div>
   </div>
 
 </div>
@@ -288,8 +319,7 @@ table.dtbl { width:100%; border-collapse:collapse; font-size:13px; }
                    onfocus="acFilter(this.value)"
                    onblur="setTimeout(acClose, 200)">
             <div id="ac-list" class="ac-list hidden"></div>
-            <button type="button" class="ac-manual-btn" title="Zadat ručně"
-                    onclick="acToggleManual()">✏️</button>
+            <button type="button" class="ac-manual-btn" title="Zadat ručně" onclick="acToggleManual()">✏️</button>
           </div>
           <div id="ac-manual-wrap" class="hidden ac-manual-input">
             <input type="text" id="inp-ac-manual" placeholder="Login (ruční zadání)"
@@ -372,7 +402,7 @@ table.dtbl { width:100%; border-collapse:collapse; font-size:13px; }
       <div class="field hidden" id="field-pozn-brani">
         <label>Důvod</label>
         <select id="sel-brani-duvod" onchange="toggleBraniJine()">
-          <!-- populated by loadDuvodyDropdown() -->
+          <!-- populated by rebuildBraniDuvodSel() -->
         </select>
       </div>
       <div class="field hidden" id="field-pozn-brani-jine">
@@ -380,9 +410,15 @@ table.dtbl { width:100%; border-collapse:collapse; font-size:13px; }
         <input type="text" id="inp-brani-jine" placeholder="Napište důvod…">
       </div>
 
-      <!-- Poznámka — standardní (ostatní sekce) — plain textarea only -->
+      <!-- Poznámka — standardní (ostatní sekce) s přednastaveným výběrem -->
       <div class="field" id="field-poznamka">
         <label>Poznámka</label>
+        <div class="preset-row" id="preset-row-poznamka">
+          <select id="sel-poznamka-preset">
+            <option value="">— rychlé vložení —</option>
+          </select>
+          <button type="button" class="btn btn-secondary btn-sm" id="btn-insert-poznamka">Vložit</button>
+        </div>
         <textarea name="poznamka" rows="2" placeholder="Volný text…"></textarea>
       </div>
 
@@ -414,15 +450,15 @@ const now = new Date();
 rok   = now.getFullYear();
 mesic = now.getMonth() + 1;
 
-let recepniAll   = [];  // [{login, full_name, active}]
-let recepniMap   = {};  // login → full_name
+let recepniAll   = [];   // [{login, full_name, active}]
+let recepniMap   = {};   // login (lowercase) → full_name
 let cachedData   = [];
-let duvodyList   = [];  // DB entries for braní směn reasons
+let duvodyBrani  = [];   // DB entries typ='brani'
+let duvodyObecne = [];   // DB entries typ='obecne'
 
 const MESICE = ['','Leden','Únor','Březen','Duben','Květen','Červen',
                 'Červenec','Srpen','Září','Říjen','Listopad','Prosinec'];
-
-const SEKCE_ORDER = {'braní směn':1, 'recenze':2, 'školení':3, 'ostatní':4, 'pokuta':5};
+const SEKCE_ORDER = {'braní směn':1,'recenze':2,'školení':3,'ostatní':4,'pokuta':5};
 
 // ═══ Záložky ════════════════════════════════════════════════════════════════
 document.querySelectorAll('.tab-btn').forEach(btn => btn.addEventListener('click', () => {
@@ -430,16 +466,14 @@ document.querySelectorAll('.tab-btn').forEach(btn => btn.addEventListener('click
   document.querySelectorAll('.tab-panel').forEach(p => p.classList.remove('active'));
   btn.classList.add('active');
   document.getElementById('tab-' + btn.dataset.tab).classList.add('active');
-  if (btn.dataset.tab === 'nastaveni') { loadDuvodyList(); loadRecepniList(); }
+  if (btn.dataset.tab === 'nastaveni') { loadDuvodyBraniList(); loadDuvodyObecneList(); loadRecepniList(); }
 }));
 
 // ═══ Měsíc navigace ═════════════════════════════════════════════════════════
 function updateMonthLabel() {
   document.getElementById('month-label').textContent = `${MESICE[mesic]} ${rok}`;
-  document.getElementById('link-export').href =
-    `/api/priplatky/export/xlsx?rok=${rok}&mesic=${mesic}`;
+  document.getElementById('link-export').href = `/api/priplatky/export/xlsx?rok=${rok}&mesic=${mesic}`;
 }
-
 document.getElementById('btn-prev').addEventListener('click', () => {
   mesic--; if (mesic < 1) { mesic = 12; rok--; }
   updateMonthLabel(); loadPrehled();
@@ -453,7 +487,7 @@ document.getElementById('btn-next').addEventListener('click', () => {
 async function init() {
   updateMonthLabel();
   await loadRecepniDropdown();
-  await loadDuvodyDropdown();
+  await loadDuvodyDropdowns();
   loadPrehled();
   initFormConds();
 }
@@ -463,7 +497,15 @@ async function loadRecepniDropdown() {
   const resp = await fetch('/api/priplatky/recepni');
   recepniAll = await resp.json();
   recepniMap = {};
-  recepniAll.filter(r => r.active).forEach(r => { recepniMap[r.login] = r.full_name; });
+  // Case-insensitive map: lowercase login → full_name
+  recepniAll.filter(r => r.active).forEach(r => {
+    recepniMap[r.login.toLowerCase()] = r.full_name;
+  });
+}
+
+// Case-insensitive recepniMap lookup
+function recepniName(login) {
+  return recepniMap[login?.toLowerCase()] || null;
 }
 
 // ═══ Autocomplete ════════════════════════════════════════════════════════════
@@ -476,16 +518,16 @@ function acFilter(val) {
 
   const active = recepniAll.filter(r => r.active);
   const filtered = active.filter(r => {
-    // Match login prefix OR příjmení (= first word of full_name) prefix only
+    // Match login prefix OR příjmení (first word of full_name) prefix — case insensitive
+    const loginL   = r.login.toLowerCase();
     const prijmeni = r.full_name.toLowerCase().split(' ')[0];
-    return r.login.toLowerCase().startsWith(v) || prijmeni.startsWith(v);
+    return loginL.startsWith(v) || prijmeni.startsWith(v);
   }).slice(0, 12);
 
   if (!filtered.length) { listEl.innerHTML = ''; listEl.classList.add('hidden'); return; }
 
   listEl.innerHTML = filtered.map(r =>
-    `<div class="ac-item"
-         onmousedown="acSelect('${esc(r.login)}','${esc(r.full_name).replace(/'/g,"&#39;")}')"
+    `<div class="ac-item" onmousedown="acSelect('${esc(r.login)}','${esc(r.full_name).replace(/'/g,"&#39;")}')"
      ><strong>${esc(r.login)}</strong> – ${esc(r.full_name)}</div>`
   ).join('');
   listEl.classList.remove('hidden');
@@ -496,38 +538,30 @@ function acSelect(login, name) {
   document.getElementById('inp-login-hidden').value = login;
   document.getElementById('ac-list').classList.add('hidden');
 }
-
-function acClose() {
-  document.getElementById('ac-list').classList.add('hidden');
-}
-
+function acClose() { document.getElementById('ac-list').classList.add('hidden'); }
 function acToggleManual() {
   acManualMode = !acManualMode;
-  const wrap = document.getElementById('ac-manual-wrap');
-  const inp  = document.getElementById('inp-ac');
-  wrap.classList.toggle('hidden', !acManualMode);
-  inp.disabled = acManualMode;
+  document.getElementById('ac-manual-wrap').classList.toggle('hidden', !acManualMode);
+  document.getElementById('inp-ac').disabled = acManualMode;
   if (acManualMode) {
-    inp.value = '';
+    document.getElementById('inp-ac').value = '';
     document.getElementById('inp-login-hidden').value = '';
     document.getElementById('inp-ac-manual').focus();
   } else {
     document.getElementById('inp-ac-manual').value = '';
     document.getElementById('inp-login-hidden').value = '';
-    inp.disabled = false;
+    document.getElementById('inp-ac').disabled = false;
   }
 }
-
 function acReset() {
   acManualMode = false;
-  document.getElementById('inp-ac').value            = '';
-  document.getElementById('inp-ac').disabled         = false;
-  document.getElementById('inp-login-hidden').value  = '';
-  document.getElementById('inp-ac-manual').value     = '';
+  document.getElementById('inp-ac').value           = '';
+  document.getElementById('inp-ac').disabled        = false;
+  document.getElementById('inp-login-hidden').value = '';
+  document.getElementById('inp-ac-manual').value    = '';
   document.getElementById('ac-manual-wrap').classList.add('hidden');
   document.getElementById('ac-list').classList.add('hidden');
 }
-
 function acSetValue(login, name) {
   acManualMode = false;
   document.getElementById('ac-manual-wrap').classList.add('hidden');
@@ -536,32 +570,48 @@ function acSetValue(login, name) {
   document.getElementById('inp-login-hidden').value = login;
 }
 
-// ═══ Důvody Braní směn dropdown ══════════════════════════════════════════════
-async function loadDuvodyDropdown() {
-  const resp = await fetch('/api/priplatky/poznamky');
-  duvodyList = await resp.json();
+// ═══ Důvody / Poznámky dropdowns ══════════════════════════════════════════════
+async function loadDuvodyDropdowns() {
+  const [rb, ro] = await Promise.all([
+    fetch('/api/priplatky/poznamky?typ=brani').then(r => r.json()),
+    fetch('/api/priplatky/poznamky?typ=obecne').then(r => r.json()),
+  ]);
+  duvodyBrani  = rb;
+  duvodyObecne = ro;
   rebuildBraniDuvodSel();
+  rebuildPoznamkaPreset();
 }
 
 function rebuildBraniDuvodSel(selectedVal) {
   const sel = document.getElementById('sel-brani-duvod');
   sel.innerHTML = '';
-  // Fixed options first
-  ['Směna navíc', 'Pohotovost'].forEach(v => {
-    const o = document.createElement('option');
-    o.value = v; o.textContent = v; sel.appendChild(o);
+  ['Směna navíc','Pohotovost'].forEach(v => {
+    const o = document.createElement('option'); o.value = v; o.textContent = v; sel.appendChild(o);
   });
-  // DB entries
-  duvodyList.forEach(n => {
-    const o = document.createElement('option');
-    o.value = n.text; o.textContent = n.text; sel.appendChild(o);
+  duvodyBrani.forEach(n => {
+    const o = document.createElement('option'); o.value = n.text; o.textContent = n.text; sel.appendChild(o);
   });
-  // Jiné always last
-  const jiné = document.createElement('option');
-  jiné.value = 'Jiné'; jiné.textContent = 'Jiné…'; sel.appendChild(jiné);
-
+  const jiné = document.createElement('option'); jiné.value = 'Jiné'; jiné.textContent = 'Jiné…'; sel.appendChild(jiné);
   if (selectedVal !== undefined) sel.value = selectedVal;
 }
+
+function rebuildPoznamkaPreset() {
+  const sel = document.getElementById('sel-poznamka-preset');
+  sel.innerHTML = '<option value="">— rychlé vložení —</option>';
+  duvodyObecne.forEach(n => {
+    const o = document.createElement('option'); o.value = n.text; o.textContent = n.text; sel.appendChild(o);
+  });
+  // Hide preset row if no items
+  document.getElementById('preset-row-poznamka').style.display =
+    duvodyObecne.length ? 'flex' : 'none';
+}
+
+document.getElementById('btn-insert-poznamka').addEventListener('click', () => {
+  const v  = document.getElementById('sel-poznamka-preset').value;
+  if (!v) return;
+  const ta = document.querySelector('#zaznam-form textarea[name=poznamka]');
+  ta.value = ta.value ? ta.value + '; ' + v : v;
+});
 
 // ═══ Přehled ═════════════════════════════════════════════════════════════════
 async function loadPrehled() {
@@ -582,9 +632,9 @@ function renderPrehled(data) {
 
   const known = {}, unknown = {};
   data.forEach(z => {
-    const isKnown = z.login in recepniMap || z.full_name;
+    const isKnown = z.login.toLowerCase() in recepniMap || z.full_name;
     const bucket  = isKnown ? known : unknown;
-    if (!bucket[z.login]) bucket[z.login] = { name: z.full_name || z.login, bs:0, re:0, sk:0, os:0, po:0 };
+    if (!bucket[z.login]) bucket[z.login] = { name: z.full_name || recepniName(z.login) || z.login, bs:0, re:0, sk:0, os:0, po:0 };
     const b = bucket[z.login];
     if      (z.sekce === 'braní směn') b.bs += z.castka;
     else if (z.sekce === 'recenze')    b.re += z.castka;
@@ -593,52 +643,57 @@ function renderPrehled(data) {
     else if (z.sekce === 'pokuta')     b.po += z.castka;
   });
 
+  // Sort by příjmení (first word of name) A→Z
+  function sortedEntries(bucket) {
+    return Object.entries(bucket).sort(([,a],[,b]) => {
+      const pa = (a.name||'').split(' ')[0].toLowerCase();
+      const pb = (b.name||'').split(' ')[0].toLowerCase();
+      return pa.localeCompare(pb, 'cs');
+    });
+  }
+
   function tableRows(bucket, cssClass='') {
-    return Object.entries(bucket).map(([login, b]) => {
+    return sortedEntries(bucket).map(([login, b]) => {
       const soucet = b.bs + b.re + b.sk + b.os - b.po;
       const sClass = soucet < 0 ? 'neg' : (soucet > 0 ? 'pos' : '');
       return `<tr>
         <td><span class="${cssClass || 'login-link'}" onclick="openDetail('${esc(login)}')">${esc(login)}</span>
             <br><small style="color:var(--text-muted)">${esc(b.name)}</small></td>
-        <td>${b.bs || ''}</td><td>${b.re || ''}</td><td>${b.sk || ''}</td>
-        <td>${b.os || ''}</td><td>${b.po || ''}</td>
+        <td>${b.bs||''}</td><td>${b.re||''}</td><td>${b.sk||''}</td>
+        <td>${b.os||''}</td><td>${b.po||''}</td>
         <td class="soucet ${sClass}">${soucet}</td>
       </tr>`;
     }).join('');
   }
 
   const allBuckets = {...known, ...unknown};
-  const totals = { bs:0, re:0, sk:0, os:0, po:0 };
+  const totals = {bs:0,re:0,sk:0,os:0,po:0};
   Object.values(allBuckets).forEach(b => { totals.bs+=b.bs; totals.re+=b.re; totals.sk+=b.sk; totals.os+=b.os; totals.po+=b.po; });
   const totSoucet = totals.bs + totals.re + totals.sk + totals.os - totals.po;
 
-  let html = `
-    <table class="stbl">
-      <thead><tr>
-        <th>Login / Jméno</th>
-        <th>Braní směn</th><th>Recenze</th><th>Školení</th>
-        <th>Ostatní</th><th>Pokuty</th><th>Součet</th>
-      </tr></thead>
-      <tbody>${tableRows(known)}</tbody>
-      <tfoot><tr>
-        <td>Celkem</td>
-        <td>${totals.bs||''}</td><td>${totals.re||''}</td><td>${totals.sk||''}</td>
-        <td>${totals.os||''}</td><td>${totals.po||''}</td>
-        <td class="soucet ${totSoucet<0?'neg':'pos'}">${totSoucet}</td>
-      </tr></tfoot>
-    </table>`;
+  let html = `<table class="stbl">
+    <thead><tr>
+      <th>Login / Jméno</th>
+      <th>Braní směn</th><th>Recenze</th><th>Školení</th><th>Ostatní</th><th>Pokuty</th><th>Součet</th>
+    </tr></thead>
+    <tbody>${tableRows(known)}</tbody>
+    <tfoot><tr>
+      <td>Celkem</td>
+      <td>${totals.bs||''}</td><td>${totals.re||''}</td><td>${totals.sk||''}</td>
+      <td>${totals.os||''}</td><td>${totals.po||''}</td>
+      <td class="soucet ${totSoucet<0?'neg':'pos'}">${totSoucet}</td>
+    </tr></tfoot>
+  </table>`;
 
   if (Object.keys(unknown).length) {
     html += `<div class="section-unknown">
       <h3>⚠️ Neznámé loginy</h3>
       <table class="stbl">
         <thead><tr>
-          <th>Login</th><th>Braní směn</th><th>Recenze</th><th>Školení</th>
-          <th>Ostatní</th><th>Pokuty</th><th>Součet</th>
+          <th>Login</th><th>Braní směn</th><th>Recenze</th><th>Školení</th><th>Ostatní</th><th>Pokuty</th><th>Součet</th>
         </tr></thead>
-        <tbody>${tableRows(unknown, 'unknown-login')}</tbody>
-      </table>
-    </div>`;
+        <tbody>${tableRows(unknown,'unknown-login')}</tbody>
+      </table></div>`;
   }
   wrap.innerHTML = html;
 }
@@ -646,14 +701,12 @@ function renderPrehled(data) {
 // ═══ Detail (záznamy jednoho loginu) ═════════════════════════════════════════
 function openDetail(login) {
   const rows = cachedData.filter(z => z.login === login);
-  const name = recepniMap[login] || (rows[0]?.full_name) || login;
+  const name = recepniName(login) || (rows[0]?.full_name) || login;
   document.getElementById('detail-title').textContent = `${login} – ${name}`;
 
-  // Sort: sekce order ASC, then datum ASC
   const sorted = [...rows].sort((a, b) => {
-    const so = (SEKCE_ORDER[a.sekce] || 9) - (SEKCE_ORDER[b.sekce] || 9);
-    if (so !== 0) return so;
-    return (a.datum || '').localeCompare(b.datum || '');
+    const so = (SEKCE_ORDER[a.sekce]||9) - (SEKCE_ORDER[b.sekce]||9);
+    return so !== 0 ? so : (a.datum||'').localeCompare(b.datum||'');
   });
 
   let html = `<table class="dtbl"><thead><tr>
@@ -668,7 +721,7 @@ function openDetail(login) {
       lastSekce = z.sekce;
     }
     const dat   = z.datum ? z.datum.slice(0,10) : '';
-    const extra = z.partner ? ` | ${z.partner}${z.klient ? ' / '+z.klient:''}` :
+    const extra = z.partner ? ` | ${z.partner}${z.klient?' / '+z.klient:''}` :
                   z.koho_skolil ? ` | Školil: ${z.koho_skolil}` : '';
     html += `<tr>
       <td>${dat}</td>
@@ -699,9 +752,8 @@ function initFormConds() {
       document.getElementById('sel-castka').value !== '0');
   });
 }
-
 function updateFormConds() {
-  const s = document.getElementById('sel-sekce').value;
+  const s         = document.getElementById('sel-sekce').value;
   const isRecenze = s === 'recenze';
   const isBrani   = s === 'braní směn';
   const isSkoleni = s === 'školení';
@@ -713,7 +765,6 @@ function updateFormConds() {
   } else {
     document.getElementById('field-castka-input').classList.toggle('hidden', !s);
   }
-
   document.getElementById('fields-recenze').classList.toggle('hidden', !isRecenze);
   document.getElementById('field-skoleni').classList.toggle('hidden', !isSkoleni);
   document.getElementById('field-pozn-brani').classList.toggle('hidden', !isBrani);
@@ -721,7 +772,6 @@ function updateFormConds() {
     !(isBrani && document.getElementById('sel-brani-duvod').value === 'Jiné'));
   document.getElementById('field-poznamka').classList.toggle('hidden', isBrani);
 }
-
 function toggleBraniJine() {
   const isJine = document.getElementById('sel-brani-duvod').value === 'Jiné';
   document.getElementById('field-pozn-brani-jine').classList.toggle('hidden', !isJine);
@@ -738,12 +788,12 @@ document.getElementById('btn-add').addEventListener('click', () => {
   document.getElementById('modal-form-title').textContent = 'Přidat záznam';
   openOverlay('modal-form');
 });
-
 function resetForm() {
   document.getElementById('zaznam-form').reset();
   document.querySelector('#zaznam-form [name=editId]').value = '';
   acReset();
   rebuildBraniDuvodSel();
+  rebuildPoznamkaPreset();
   document.getElementById('field-castka-input').classList.add('hidden');
   document.getElementById('field-castka-select').classList.add('hidden');
   document.getElementById('fields-recenze').classList.add('hidden');
@@ -758,14 +808,11 @@ document.getElementById('btn-zaznam-save').addEventListener('click', async () =>
   const form = document.getElementById('zaznam-form');
   const fd   = new FormData(form);
   const d    = Object.fromEntries(fd);
-
   const loginFinal = d.login ? d.login.trim() : '';
   if (!loginFinal) { alert('Vyplňte recepčního.'); return; }
-
   const sekce = d.sekce;
   if (!sekce) { alert('Vyberte sekci.'); return; }
 
-  // Částka
   let castka;
   if (sekce === 'recenze') {
     castka = d.castkaSel === '0' ? parseInt(d.castkaInput)||0 : parseInt(d.castkaSel);
@@ -773,7 +820,6 @@ document.getElementById('btn-zaznam-save').addEventListener('click', async () =>
     castka = parseInt(d.castkaInput) || 0;
   }
 
-  // Poznámka
   let poznamka = null;
   if (sekce === 'braní směn') {
     const duvod = document.getElementById('sel-brani-duvod').value;
@@ -797,12 +843,8 @@ document.getElementById('btn-zaznam-save').addEventListener('click', async () =>
   const editId = d.editId;
   const url    = editId ? `/api/priplatky/zaznamy/${editId}` : '/api/priplatky/zaznamy';
   const method = editId ? 'PATCH' : 'POST';
-
   try {
-    const resp = await fetch(url, {
-      method, headers:{'Content-Type':'application/json'},
-      body: JSON.stringify(payload)
-    });
+    const resp = await fetch(url, { method, headers:{'Content-Type':'application/json'}, body: JSON.stringify(payload) });
     const j = await resp.json();
     if (!j.ok) throw new Error(j.msg);
     closeOverlay('modal-form');
@@ -820,9 +862,7 @@ function editZaznam(id) {
   form.elements.sekce.value  = z.sekce;
   updateFormConds();
 
-  // Login → AC
-  acSetValue(z.login, recepniMap[z.login] || null);
-
+  acSetValue(z.login, recepniName(z.login));
   form.elements.hotel.value = z.hotel || '';
 
   if (z.datum) {
@@ -832,7 +872,6 @@ function editZaznam(id) {
     document.getElementById('inp-rok-form').value   = parseInt(parts[0]);
   }
 
-  // Částka
   if (z.sekce === 'recenze') {
     const opts = ['400','200','100','50'];
     document.getElementById('sel-castka').value = opts.includes(String(z.castka)) ? String(z.castka) : '0';
@@ -844,9 +883,8 @@ function editZaznam(id) {
     form.elements.castkaInput.value = z.castka;
   }
 
-  // Poznámka – braní směn: check against known fixed + DB values
   if (z.sekce === 'braní směn') {
-    const knownVals = ['Směna navíc', 'Pohotovost', ...duvodyList.map(n => n.text)];
+    const knownVals = ['Směna navíc','Pohotovost', ...duvodyBrani.map(n => n.text)];
     rebuildBraniDuvodSel(knownVals.includes(z.poznamka||'') ? z.poznamka : 'Jiné');
     if (!knownVals.includes(z.poznamka||'')) {
       document.getElementById('field-pozn-brani-jine').classList.remove('hidden');
@@ -872,78 +910,94 @@ async function deleteZaznam(id) {
   loadPrehled();
 }
 
-// ═══ Doplnit do šablony ══════════════════════════════════════════════════════
-// File input change → auto process
+// ═══ Doplnit do šablony (auto na výběr souboru) ═══════════════════════════════
 document.getElementById('inp-template-file').addEventListener('change', function() {
   const file = this.files[0];
   if (!file) return;
   const status = document.getElementById('fill-status');
-  status.textContent = '⏳ Zpracovávám…';
+  status.textContent = '⏳…';
 
   const reader = new FileReader();
   reader.onload = async (e) => {
     const base64 = e.target.result.split(',')[1];
     try {
       const resp = await fetch('/api/priplatky/import-template', {
-        method: 'POST',
-        headers: {'Content-Type':'application/json'},
+        method: 'POST', headers: {'Content-Type':'application/json'},
         body: JSON.stringify({ rok, mesic, fileData: base64, fileName: file.name }),
       });
-      if (!resp.ok) {
-        const j = await resp.json().catch(() => ({}));
-        throw new Error(j.msg || resp.statusText);
-      }
+      if (!resp.ok) { const j = await resp.json().catch(()=>({})); throw new Error(j.msg || resp.statusText); }
       const blob = await resp.blob();
       const url  = URL.createObjectURL(blob);
       const a    = document.createElement('a');
       a.href = url; a.download = file.name; a.click();
       URL.revokeObjectURL(url);
-      status.textContent = `✅ Hotovo (${MESICE[mesic]} ${rok})`;
-      // Reset so the same file can be picked again
+      status.textContent = `✅ ${MESICE[mesic]}`;
       this.value = '';
     } catch(err) {
-      status.textContent = '❌ ' + err.message;
+      status.textContent = '❌';
+      alert('Chyba šablony: ' + err.message);
     }
   };
   reader.readAsDataURL(file);
 });
 
-// ═══ Nastavení: důvody braní směn ════════════════════════════════════════════
-async function loadDuvodyList() {
-  const resp = await fetch('/api/priplatky/poznamky');
-  duvodyList = await resp.json();
-  const el   = document.getElementById('duvody-list');
-  if (!duvodyList.length) {
-    el.innerHTML = '<p class="empty">Žádné přidané důvody.</p>'; return;
-  }
-  el.innerHTML = duvodyList.map(n => `
+// ═══ Nastavení: Důvody braní směn ════════════════════════════════════════════
+async function loadDuvodyBraniList() {
+  const list = await fetch('/api/priplatky/poznamky?typ=brani').then(r => r.json());
+  duvodyBrani = list;
+  const el = document.getElementById('duvody-brani-list');
+  if (!list.length) { el.innerHTML = '<p class="empty">Žádné přidané důvody.</p>'; return; }
+  el.innerHTML = list.map(n => `
     <div class="note-item">
       <span>${esc(n.text)}</span>
-      <button class="icon-btn danger" onclick="deleteDuvod(${n.id})">🗑</button>
+      <button class="icon-btn danger" onclick="deleteDuvod(${n.id},'brani')">🗑</button>
     </div>`).join('');
 }
-
-document.getElementById('btn-add-duvod').addEventListener('click', async () => {
-  const inp  = document.getElementById('inp-duvod');
-  const text = inp.value.trim();
-  if (!text) return;
+document.getElementById('btn-add-duvod-brani').addEventListener('click', async () => {
+  const inp = document.getElementById('inp-duvod-brani');
+  const text = inp.value.trim(); if (!text) return;
   await fetch('/api/priplatky/poznamky', {
     method:'POST', headers:{'Content-Type':'application/json'},
-    body: JSON.stringify({ text, poradi:0 })
+    body: JSON.stringify({ text, poradi:0, typ:'brani' })
   });
   inp.value = '';
-  loadDuvodyList();
-  loadDuvodyDropdown(); // refresh dropdown
+  loadDuvodyBraniList();
+  loadDuvodyDropdowns();
 });
 
-async function deleteDuvod(id) {
-  if (!confirm('Smazat důvod?')) return;
+// ═══ Nastavení: Obecné poznámky ══════════════════════════════════════════════
+async function loadDuvodyObecneList() {
+  const list = await fetch('/api/priplatky/poznamky?typ=obecne').then(r => r.json());
+  duvodyObecne = list;
+  const el = document.getElementById('duvody-obecne-list');
+  if (!list.length) { el.innerHTML = '<p class="empty">Žádné přidané poznámky.</p>'; return; }
+  el.innerHTML = list.map(n => `
+    <div class="note-item">
+      <span>${esc(n.text)}</span>
+      <button class="icon-btn danger" onclick="deleteDuvod(${n.id},'obecne')">🗑</button>
+    </div>`).join('');
+}
+document.getElementById('btn-add-duvod-obecne').addEventListener('click', async () => {
+  const inp = document.getElementById('inp-duvod-obecne');
+  const text = inp.value.trim(); if (!text) return;
+  await fetch('/api/priplatky/poznamky', {
+    method:'POST', headers:{'Content-Type':'application/json'},
+    body: JSON.stringify({ text, poradi:0, typ:'obecne' })
+  });
+  inp.value = '';
+  loadDuvodyObecneList();
+  loadDuvodyDropdowns();
+});
+
+async function deleteDuvod(id, typ) {
+  if (!confirm('Smazat?')) return;
   await fetch(`/api/priplatky/poznamky/${id}`, { method:'DELETE' });
-  loadDuvodyList();
-  loadDuvodyDropdown();
+  if (typ === 'brani') { loadDuvodyBraniList(); }
+  else { loadDuvodyObecneList(); }
+  loadDuvodyDropdowns();
 }
 
-// ═══ Nastavení: recepční ══════════════════════════════════════════════════════
+// ═══ Nastavení: Recepční ══════════════════════════════════════════════════════
 async function loadRecepniList() {
   const resp = await fetch('/api/priplatky/recepni');
   const list = await resp.json();
@@ -956,7 +1010,6 @@ async function loadRecepniList() {
       <button class="icon-btn danger" onclick="deleteRecepni('${esc(r.login)}')">🗑 Smazat</button>
     </div>`).join('');
 }
-
 document.getElementById('btn-add-rl').addEventListener('click', async () => {
   const login     = document.getElementById('inp-rl-login').value.trim();
   const full_name = document.getElementById('inp-rl-name').value.trim();
@@ -973,56 +1026,15 @@ document.getElementById('btn-add-rl').addEventListener('click', async () => {
   document.getElementById('inp-rl-name').value  = '';
   loadRecepniList(); loadRecepniDropdown();
 });
-
 async function deleteRecepni(login) {
-  if (!confirm(`Smazat recepčního "${login}"?\nHistorické záznamy v DB zůstanou zachovány.`)) return;
+  if (!confirm(`Smazat recepčního "${login}"?\nHistorické záznamy zůstanou zachovány.`)) return;
   await fetch(`/api/priplatky/recepni/${encodeURIComponent(login)}`, { method:'DELETE' });
   loadRecepniList(); loadRecepniDropdown();
 }
 
-// ═══ Import historických dat (File 1) ════════════════════════════════════════
-document.getElementById('btn-import-file1').addEventListener('click', async () => {
-  const file = document.getElementById('inp-import-file1').files[0];
-  if (!file) { alert('Vyberte soubor.'); return; }
-
-  const months = Array.from(
-    document.querySelectorAll('input[name="imp-month"]:checked')
-  ).map(cb => parseInt(cb.value));
-  if (!months.length) { alert('Vyberte alespoň jeden měsíc.'); return; }
-
-  const mesNames = months.map(m => MESICE[m]).join(', ');
-  if (!confirm(`Importovat záznamy za: ${mesNames} 2026?\nPozor: záznamy se přidají i pokud již existují.`)) return;
-
-  const statusEl = document.getElementById('import-status');
-  statusEl.textContent = '⏳ Zpracovávám…';
-
-  const reader = new FileReader();
-  reader.onload = async (e) => {
-    const base64 = e.target.result.split(',')[1];
-    try {
-      const resp = await fetch('/api/priplatky/import-file1', {
-        method:'POST', headers:{'Content-Type':'application/json'},
-        body: JSON.stringify({ fileData: base64, months }),
-      });
-      const j = await resp.json();
-      let msg = j.ok
-        ? `✅ Importováno ${j.imported} záznamů za ${mesNames}.`
-        : `❌ ${j.msg}`;
-      if (j.errors && j.errors.length)
-        msg += `<br><small style="color:#e74c3c">Chyby: ${j.errors.join('; ')}</small>`;
-      statusEl.innerHTML = msg;
-      loadPrehled();
-    } catch(err) {
-      statusEl.textContent = '❌ ' + err.message;
-    }
-  };
-  reader.readAsDataURL(file);
-});
-
 // ═══ Overlay helpers ══════════════════════════════════════════════════════════
 function openOverlay(id)  { document.getElementById(id).classList.add('show'); }
 function closeOverlay(id) { document.getElementById(id).classList.remove('show'); }
-
 document.querySelectorAll('[data-close]').forEach(btn => {
   btn.addEventListener('click', () => closeOverlay(btn.dataset.close));
 });

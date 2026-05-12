@@ -308,9 +308,12 @@ async function init() {
     CREATE TABLE IF NOT EXISTS priplatky_poznamky (
       id     SERIAL PRIMARY KEY,
       text   VARCHAR(500) NOT NULL,
-      poradi INTEGER NOT NULL DEFAULT 0
+      poradi INTEGER NOT NULL DEFAULT 0,
+      typ    VARCHAR(20) NOT NULL DEFAULT 'brani'
     )
   `);
+  // Migration: add typ column if it doesn't exist yet
+  await db.query(`ALTER TABLE priplatky_poznamky ADD COLUMN IF NOT EXISTS typ VARCHAR(20) NOT NULL DEFAULT 'brani'`);
 
   // Seed: receptionist_logins (65 recepčních) — jen pokud je tabulka prázdná
   {
