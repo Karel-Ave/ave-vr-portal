@@ -282,6 +282,24 @@ table.dtbl { width: 100%; border-collapse: collapse; font-size: 13px; }
     <div id="recepni-list"><p class="empty">Načítám…</p></div>
   </div>
 
+  <!-- Přenačtení historických dat -->
+  <div class="settings-section">
+    <h3>Přenačtení historických dat (leden–květen 2026)</h3>
+    <p style="font-size:12px;color:var(--text-muted);margin-bottom:12px">
+      Smaže a znovu naimportuje historická data z Excel souboru. Vyžaduje token.
+    </p>
+    <div style="display:flex;flex-direction:column;gap:10px">
+      <div style="display:flex;gap:8px;flex-wrap:wrap">
+        <input type="password" id="inp-reimport-token" placeholder="Token"
+          style="width:160px;padding:7px 10px;border:1px solid var(--border);border-radius:7px;background:var(--bg);color:var(--text);font-family:inherit;font-size:13px">
+        <label class="btn btn-secondary" for="inp-reimport-file" style="cursor:pointer">📂 Vybrat soubor (xlsx)</label>
+        <input type="file" id="inp-reimport-file" accept=".xlsx,.xls" style="display:none">
+        <button class="btn btn-primary" id="btn-reimport">⬆️ Přenačíst data</button>
+      </div>
+      <div id="reimport-status" style="font-size:12px;color:var(--text-muted)"></div>
+    </div>
+  </div>
+
 </div>
 </div>
 
@@ -1031,6 +1049,41 @@ async function deleteRecepni(login) {
   await fetch(`/api/priplatky/recepni/${encodeURIComponent(login)}`, { method:'DELETE' });
   loadRecepniList(); loadRecepniDropdown();
 }
+
+// ═══ Nastavení: Přenačtení historických dat ═══════════════════════════════════
+document.getElementById('btn-reimport').addEventListener('click', async () => {
+  const statusEl = document.getElementById('reimport-status');
+  const token    = document.getElementById('inp-reimport-token').value.trim();
+  const fileInp  = document.getElementById('inp-reimport-file');
+  if (!token)            { statusEl.style.color='#e74c3c'; statusEl.textContent='Zadejte token.'; return; }
+  if (!fileInp.files[0]) { statusEl.style.color='#e74c3c'; statusEl.textContent='Vyberte soubor.'; return; }
+  if (!confirm('Smazat všechna historická data (import-historický) a znovu naimportovat ze souboru?')) return;
+  statusEl.style.color='var(--text-muted)'; statusEl.textContent='Načítám soubor…';
+  const reader = new FileReader();
+  reader.onload = async e => {
+    const b64 = e.target.result.split(',')[1];
+    statusEl.textContent = 'Odesílám na server…';
+    try {
+      const r = await fetch('/api/priplatky/reimport-historicky', {
+        method:'POST',
+        headers:{'Content-Type':'application/json'},
+        body: JSON.stringify({ token, fileData: b64 })
+      });
+      const j = await r.json();
+      if (j.ok) {
+        statusEl.style.color='#27ae60';
+        statusEl.textContent = `✅ Smazáno ${j.deleted} starých záznamů, naimportováno ${j.imported}.`
+          + (j.errors?.length ? ` Chyby: ${j.errors.join('; ')}` : '');
+      } else {
+        statusEl.style.color='#e74c3c';
+        statusEl.textContent = '❌ ' + j.msg;
+      }
+    } catch(err) {
+      statusEl.style.color='#e74c3c'; statusEl.textContent = '❌ Chyba: ' + err.message;
+    }
+  };
+  reader.readAsDataURL(fileInp.files[0]);
+});
 
 // ═══ Overlay helpers ══════════════════════════════════════════════════════════
 function openOverlay(id)  { document.getElementById(id).classList.add('show'); }
