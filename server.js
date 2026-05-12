@@ -1607,6 +1607,12 @@ app.patch('/api/priplatky/recepni/:login', requireLogin, async (req, res) => {
   res.json({ ok: true });
 });
 
+app.delete('/api/priplatky/recepni/:login', requireLogin, async (req, res) => {
+  const db = getPool();
+  await db.query('DELETE FROM receptionist_logins WHERE login=$1', [req.params.login]);
+  res.json({ ok: true });
+});
+
 // Záznamy
 app.get('/api/priplatky/zaznamy', requireLogin, async (req, res) => {
   const { rok, mesic } = req.query;
@@ -1708,22 +1714,29 @@ app.get('/api/priplatky/export/xlsx', requireLogin, async (req, res) => {
   const { rok, mesic } = req.query;
   const db = getPool();
 
-  // Záznamy měsíce
+  const SEKCE_ORDER = {'braní směn':1,'recenze':2,'školení':3,'ostatní':4,'pokuta':5};
+
   const { rows: zaznamy } = await db.query(
     `SELECT z.*, rl.full_name
      FROM priplatky_zaznamy z
      LEFT JOIN receptionist_logins rl ON rl.login = z.login
-     WHERE z.rok=$1 AND z.mesic=$2 ORDER BY z.login, z.datum`,
+     WHERE z.rok=$1 AND z.mesic=$2`,
     [rok, mesic]
   );
+  zaznamy.sort((a,b) => {
+    const lc = (a.login||'').localeCompare(b.login||'','cs');
+    if (lc) return lc;
+    const sc = (SEKCE_ORDER[a.sekce]||9) - (SEKCE_ORDER[b.sekce]||9);
+    if (sc) return sc;
+    return (a.datum||'').toString().localeCompare((b.datum||'').toString());
+  });
 
-  // Souhrn per login
   const { rows: souhrn } = await db.query(
     `SELECT z.login, rl.full_name,
        SUM(CASE WHEN z.sekce='braní směn' THEN z.castka ELSE 0 END) AS brani_smen,
-       SUM(CASE WHEN z.sekce='ostatní'    THEN z.castka ELSE 0 END) AS ostatni,
        SUM(CASE WHEN z.sekce='recenze'    THEN z.castka ELSE 0 END) AS recenze,
        SUM(CASE WHEN z.sekce='školení'    THEN z.castka ELSE 0 END) AS skoleni,
+       SUM(CASE WHEN z.sekce='ostatní'    THEN z.castka ELSE 0 END) AS ostatni,
        SUM(CASE WHEN z.sekce='pokuta'     THEN z.castka ELSE 0 END) AS pokuty
      FROM priplatky_zaznamy z
      LEFT JOIN receptionist_logins rl ON rl.login = z.login
@@ -1734,47 +1747,38 @@ app.get('/api/priplatky/export/xlsx', requireLogin, async (req, res) => {
 
   const XLSX = require('xlsx');
   const wb   = XLSX.utils.book_new();
-  const mesicNazvy = ['','Leden','Únor','Březen','Duben','Květen','Červen',
-                       'Červenec','Srpen','Září','Říjen','Listopad','Prosinec'];
-  const label = `${mesicNazvy[mesic]} ${rok}`;
+  const MN   = ['','Leden','Únor','Březen','Duben','Květen','Červen',
+                 'Červenec','Srpen','Září','Říjen','Listopad','Prosinec'];
+  const label = `${MN[mesic]} ${rok}`;
 
   // Sheet 1: Souhrn
-  const sData = [
+  XLSX.utils.book_append_sheet(wb, XLSX.utils.aoa_to_sheet([
     [`Příplatky a pokuty — ${label}`],
-    ['Login','Jméno','Braní směn','Ostatní','Recenze','Školení','Pokuty','Součet'],
+    ['Login','Jméno','Braní směn','Recenze','Školení','Ostatní','Pokuty','Součet'],
     ...souhrn.map(r => {
-      const soucet = (+r.brani_smen)+(+r.ostatni)+(+r.recenze)+(+r.skoleni)-(+r.pokuty);
-      return [r.login, r.full_name||'', +r.brani_smen, +r.ostatni,
-              +r.recenze, +r.skoleni, +r.pokuty, soucet];
+      const s = (+r.brani_smen)+(+r.recenze)+(+r.skoleni)+(+r.ostatni)-(+r.pokuty);
+      return [r.login, r.full_name||'', +r.brani_smen, +r.recenze, +r.skoleni,
+              +r.ostatni, +r.pokuty, s];
     }),
-  ];
-  XLSX.utils.book_append_sheet(wb, XLSX.utils.aoa_to_sheet(sData), 'Souhrn');
+  ]), 'Souhrn');
 
-  // Sheets 2–6: jednotlivé sekce
-  const SEKCE = ['braní směn','ostatní','recenze','školení','pokuta'];
-  const SEKCE_NAZVY = ['Braní směn','Ostatní','Recenze','Školení','Pokuty'];
-  SEKCE.forEach((s, i) => {
-    const rows = zaznamy.filter(z => z.sekce === s);
-    const headers = ['Datum','Login','Jméno','Hotel','Částka','Poznámka'];
-    if (s === 'recenze')   headers.push('Partner','Klient');
-    if (s === 'školení')   headers.push('Koho školil');
-    const data = [
-      [`${SEKCE_NAZVY[i]} — ${label}`],
-      headers,
-      ...rows.map(r => {
-        const base = [
-          r.datum ? r.datum.toISOString().slice(0,10) : '',
-          r.login, r.full_name||'', r.hotel||'', r.castka, r.poznamka||''
-        ];
-        if (s === 'recenze') base.push(r.partner||'', r.klient||'');
-        if (s === 'školení') base.push(r.koho_skolil||'');
-        return base;
-      }),
-    ];
-    XLSX.utils.book_append_sheet(wb, XLSX.utils.aoa_to_sheet(data), SEKCE_NAZVY[i]);
-  });
+  // Sheet 2: Všechny záznamy (seřazené dle recepčního → sekce → datum)
+  XLSX.utils.book_append_sheet(wb, XLSX.utils.aoa_to_sheet([
+    [`Záznamy — ${label}`],
+    ['Login','Jméno','Sekce','Datum','Hotel','Částka Kč','Poznámka','Partner','Klient','Koho školil','Vložil','Vloženo kdy','Upravil','Upraveno kdy'],
+    ...zaznamy.map(r => [
+      r.login, r.full_name||'', r.sekce,
+      r.datum ? r.datum.toISOString().slice(0,10) : '',
+      r.hotel||'', r.castka, r.poznamka||'',
+      r.partner||'', r.klient||'', r.koho_skolil||'',
+      r.vlozil||'',
+      r.vlozeno_kdy ? new Date(r.vlozeno_kdy).toLocaleString('cs-CZ') : '',
+      r.upravil||'',
+      r.upraveno_kdy ? new Date(r.upraveno_kdy).toLocaleString('cs-CZ') : '',
+    ]),
+  ]), 'Záznamy');
 
-  const buf = XLSX.write(wb, { type: 'buffer', bookType: 'xlsx' });
+  const buf  = XLSX.write(wb, { type:'buffer', bookType:'xlsx' });
   const fname = `Priplatky_${rok}_${String(mesic).padStart(2,'0')}.xlsx`;
   res.setHeader('Content-Type',
     'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
@@ -1915,19 +1919,35 @@ app.post('/api/priplatky/import-template', requireLogin, async (req, res) => {
   res.send(out);
 });
 
-// Import historických dat z Příplatky a Pokuty 2026.xlsx (Duben + Květen)
+// Import historických dat z Příplatky a Pokuty 2026.xlsx (vybrané měsíce)
 app.post('/api/priplatky/import-file1', requireLogin, async (req, res) => {
-  const { fileData } = req.body;
+  const { fileData, months } = req.body;
   if (!fileData) return res.status(400).json({ ok:false, msg:'Chybí soubor.' });
 
   const XLSX = require('xlsx');
   const db   = getPool();
   const wb   = XLSX.read(Buffer.from(fileData,'base64'), { type:'buffer', cellDates:true });
 
-  const TARGETS = [
-    { mesic:4, rok:2026, prefixes:['duben','apr'] },
-    { mesic:5, rok:2026, prefixes:['květ','máj','may','kveten'] },
+  const ALL_MONTHS = [
+    { mesic:1,  rok:2026, prefixes:['leden','jan'] },
+    { mesic:2,  rok:2026, prefixes:['unor','feb','únor'] },
+    { mesic:3,  rok:2026, prefixes:['brezen','mar','březen'] },
+    { mesic:4,  rok:2026, prefixes:['duben','apr'] },
+    { mesic:5,  rok:2026, prefixes:['kvet','kveten','maj','may'] },
+    { mesic:6,  rok:2026, prefixes:['cerven','jun'] },
+    { mesic:7,  rok:2026, prefixes:['cervenec','jul','červenec'] },
+    { mesic:8,  rok:2026, prefixes:['srpen','aug'] },
+    { mesic:9,  rok:2026, prefixes:['zari','sep','září'] },
+    { mesic:10, rok:2026, prefixes:['rijen','oct','říjen'] },
+    { mesic:11, rok:2026, prefixes:['listopad','nov'] },
+    { mesic:12, rok:2026, prefixes:['prosinec','dec'] },
   ];
+
+  // Filter to requested months (default: 1-5 if not specified)
+  const requested = Array.isArray(months) && months.length
+    ? months.map(Number).filter(m => m >= 1 && m <= 12)
+    : [1, 2, 3, 4, 5];
+  const TARGETS = ALL_MONTHS.filter(t => requested.includes(t.mesic));
   const vlozil = 'import-historický';
   let imported = 0;
   const errors = [];
@@ -1935,7 +1955,12 @@ app.post('/api/priplatky/import-file1', requireLogin, async (req, res) => {
   for (const { mesic, rok, prefixes } of TARGETS) {
     const sheetName = wb.SheetNames.find(n => {
       const nl = n.trim().toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g,'');
-      return prefixes.some(p => nl === p || nl.startsWith(p.substring(0,4)));
+      return prefixes.some(p => {
+        const pn = p.trim().normalize('NFD').replace(/[̀-ͯ]/g,'');
+        // month 6 (cerven): match only if NOT followed by 'ec' (which would be cervenec = July)
+        if (mesic === 6) return nl.startsWith('cerven') && !nl.startsWith('cervenec');
+        return nl === pn || nl.startsWith(pn.substring(0, Math.min(pn.length, 5)));
+      });
     });
     if (!sheetName) { errors.push(`List pro měsíc ${mesic} nenalezen.`); continue; }
 

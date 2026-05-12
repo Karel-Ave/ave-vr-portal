@@ -29,25 +29,38 @@ body { min-height: 100vh; background: var(--bg); font-family: 'Segoe UI', system
 /* Wrap */
 .wrap { max-width:1020px; margin:0 auto; padding:20px 16px 80px; }
 
-/* Month nav */
-.month-nav { display:flex; align-items:center; gap:12px; margin-bottom:16px; flex-wrap:wrap; }
-.month-nav h2 { font-size:18px; font-weight:700; flex:1; min-width:160px; }
-.nav-btn { padding:7px 14px; border:1px solid var(--border); border-radius:7px; background:none; color:var(--text); cursor:pointer; font-size:16px; }
+/* ── Controls bar (month nav + utility buttons) ── */
+.controls-bar {
+  display:flex; align-items:center; gap:8px; margin-bottom:14px; flex-wrap:wrap;
+}
+.month-label { font-size:17px; font-weight:700; min-width:130px; text-align:center; }
+.nav-btn { padding:6px 12px; border:1px solid var(--border); border-radius:7px; background:none; color:var(--text); cursor:pointer; font-size:15px; line-height:1; }
 .nav-btn:hover { background:var(--surface-alt); }
+.controls-sep { flex:1; }
+
+/* File-trigger label acts as button */
+label.btn { display:inline-flex; align-items:center; cursor:pointer; }
+
+/* ── Big "Přidat" button ── */
+.btn-add-big {
+  display:block; width:100%; max-width:420px; margin:0 auto 20px;
+  padding:14px 20px; border:none; border-radius:10px;
+  background:var(--accent); color:#fff;
+  font-size:16px; font-weight:700; font-family:inherit;
+  cursor:pointer; transition:opacity .15s;
+  text-align:center;
+}
+.btn-add-big:hover { opacity:.88; }
 
 /* Buttons */
-.btn { padding:9px 18px; border:none; border-radius:8px; font-size:13px; font-weight:600; font-family:inherit; cursor:pointer; transition:opacity .15s; }
+.btn { padding:7px 14px; border:none; border-radius:8px; font-size:13px; font-weight:600; font-family:inherit; cursor:pointer; transition:opacity .15s; }
 .btn:hover { opacity:.85; }
 .btn-primary { background:var(--accent); color:#fff; }
 .btn-secondary { background:var(--surface-alt); color:var(--text); border:1px solid var(--border); }
 .btn-danger { background:#e74c3c; color:#fff; }
 .btn-sm { padding:5px 10px; font-size:12px; }
 
-/* Template fill box */
-.template-box { background:var(--surface); border:1px solid var(--border); border-radius:10px; padding:14px 16px; margin-bottom:18px; }
-.template-box h3 { font-size:13px; font-weight:700; text-transform:uppercase; letter-spacing:.05em; color:var(--text-muted); margin-bottom:10px; }
-.template-row { display:flex; align-items:center; gap:10px; flex-wrap:wrap; }
-.template-row input[type=file] { flex:1; min-width:180px; font-size:13px; font-family:inherit; color:var(--text); }
+/* Fill status */
 #fill-status { font-size:12px; color:var(--text-muted); }
 
 /* Summary table */
@@ -111,6 +124,7 @@ table.dtbl { width:100%; border-collapse:collapse; font-size:13px; }
 .dtbl th { padding:6px 8px; font-size:11px; font-weight:700; text-transform:uppercase; color:var(--text-muted); border-bottom:1px solid var(--border); }
 .dtbl td { padding:8px; border-bottom:1px solid var(--border); vertical-align:top; }
 .dtbl tr:last-child td { border-bottom:none; }
+.dtbl .sekce-header td { background:var(--surface-alt); font-weight:700; font-size:12px; text-transform:uppercase; color:var(--text-muted); letter-spacing:.05em; padding:5px 8px; }
 .audit-info { font-size:11px; color:var(--text-muted); margin-top:2px; }
 
 /* Settings */
@@ -125,10 +139,13 @@ table.dtbl { width:100%; border-collapse:collapse; font-size:13px; }
 .icon-btn.danger:hover { background:#e74c3c18; }
 .recepni-row { display:grid; grid-template-columns:1fr 2fr auto; gap:8px; align-items:center; padding:6px 0; border-bottom:1px solid var(--border); font-size:13px; }
 .recepni-row:last-child { border-bottom:none; }
-.badge { display:inline-block; padding:2px 7px; border-radius:20px; font-size:11px; font-weight:700; }
-.badge-on { background:#27ae6022; color:#27ae60; }
-.badge-off { background:#e74c3c22; color:#e74c3c; }
 .empty { text-align:center; color:var(--text-muted); padding:30px; font-size:14px; }
+
+/* Month checkboxes for import */
+.months-grid { display:grid; grid-template-columns:repeat(4,1fr); gap:6px; margin-bottom:12px; }
+.months-grid label { display:flex; align-items:center; gap:6px; font-size:13px; cursor:pointer; padding:5px 8px; border:1px solid var(--border); border-radius:6px; background:var(--bg); }
+.months-grid label:hover { background:var(--surface-alt); }
+.months-grid input[type=checkbox] { cursor:pointer; }
 </style>
 </head>
 <body>
@@ -148,23 +165,23 @@ table.dtbl { width:100%; border-collapse:collapse; font-size:13px; }
 <div class="tab-panel active" id="tab-prehled">
 <div class="wrap">
 
-  <div class="month-nav">
+  <!-- Controls bar: month nav + small utility buttons -->
+  <div class="controls-bar">
     <button class="nav-btn" id="btn-prev">◀</button>
-    <h2 id="month-label">—</h2>
+    <span class="month-label" id="month-label">—</span>
     <button class="nav-btn" id="btn-next">▶</button>
-    <button class="btn btn-primary" id="btn-add">➕ Přidat záznam</button>
-    <a class="btn btn-secondary" id="link-export" href="#">⬇️ Export XLSX</a>
+    <div class="controls-sep"></div>
+    <!-- Template fill: hidden file input, label triggers it -->
+    <label class="btn btn-secondary btn-sm" for="inp-template-file" title="Doplnit data do šablony Pokuty_odmeny.xls">
+      📥 Šablona
+    </label>
+    <input type="file" id="inp-template-file" accept=".xls,.xlsx" style="display:none">
+    <a class="btn btn-secondary btn-sm" id="link-export" href="#" title="Stáhnout Excel s přehledem">⬇️ Export</a>
+    <span id="fill-status" style="font-size:12px;color:var(--text-muted)"></span>
   </div>
 
-  <!-- Doplnit do šablony -->
-  <div class="template-box">
-    <h3>📥 Doplnit do šablony (Pokuty_odmeny.xls)</h3>
-    <div class="template-row">
-      <input type="file" id="inp-template-file" accept=".xls,.xlsx">
-      <button class="btn btn-primary" id="btn-fill-template">Doplnit a stáhnout</button>
-      <span id="fill-status"></span>
-    </div>
-  </div>
+  <!-- Big centered "Přidat" button -->
+  <button class="btn-add-big" id="btn-add">➕ Přidat záznam</button>
 
   <div class="stbl-wrap" id="stbl-wrap">
     <p class="empty">Načítám…</p>
@@ -181,9 +198,24 @@ table.dtbl { width:100%; border-collapse:collapse; font-size:13px; }
   <div class="settings-section">
     <h3>📤 Import ze starého souboru</h3>
     <p style="font-size:13px;color:var(--text-muted);margin-bottom:12px">
-      Importuje záznamy za <strong>Duben a Květen 2026</strong> ze souboru
-      <em>Příplatky a Pokuty 2026.xlsx</em> — vloží je do DB bez loginu/času.
+      Importuje záznamy ze souboru <em>Příplatky a Pokuty 2026.xlsx</em> za vybrané měsíce
+      — vloží je do DB bez loginu/času.
     </p>
+    <p style="font-size:12px;font-weight:600;color:var(--text-muted);margin-bottom:8px">Měsíce k importu:</p>
+    <div class="months-grid">
+      <label><input type="checkbox" name="imp-month" value="1"> Leden</label>
+      <label><input type="checkbox" name="imp-month" value="2"> Únor</label>
+      <label><input type="checkbox" name="imp-month" value="3"> Březen</label>
+      <label><input type="checkbox" name="imp-month" value="4"> Duben</label>
+      <label><input type="checkbox" name="imp-month" value="5" checked> Květen</label>
+      <label><input type="checkbox" name="imp-month" value="6"> Červen</label>
+      <label><input type="checkbox" name="imp-month" value="7"> Červenec</label>
+      <label><input type="checkbox" name="imp-month" value="8"> Srpen</label>
+      <label><input type="checkbox" name="imp-month" value="9"> Září</label>
+      <label><input type="checkbox" name="imp-month" value="10"> Říjen</label>
+      <label><input type="checkbox" name="imp-month" value="11"> Listopad</label>
+      <label><input type="checkbox" name="imp-month" value="12"> Prosinec</label>
+    </div>
     <div style="display:flex;gap:10px;align-items:center;flex-wrap:wrap">
       <input type="file" id="inp-import-file1" accept=".xlsx">
       <button class="btn btn-primary" id="btn-import-file1">Importovat</button>
@@ -191,13 +223,17 @@ table.dtbl { width:100%; border-collapse:collapse; font-size:13px; }
     <div id="import-status" style="margin-top:8px;font-size:13px"></div>
   </div>
 
-  <!-- Předdefinované poznámky -->
+  <!-- Přednastavené důvody – Braní směn -->
   <div class="settings-section">
-    <h3>Předdefinované poznámky</h3>
-    <div id="notes-list"><p class="empty">Načítám…</p></div>
+    <h3>Přednastavené důvody – Braní směn</h3>
+    <p style="font-size:12px;color:var(--text-muted);margin-bottom:12px">
+      Tyto důvody se zobrazí v rozbalovacím menu při přidávání záznamu "Braní směn" (spolu s pevnými: Směna navíc, Pohotovost).
+    </p>
+    <div id="duvody-list"><p class="empty">Načítám…</p></div>
     <div style="display:flex;gap:8px;margin-top:12px">
-      <input type="text" id="inp-note" placeholder="Nová poznámka…" style="flex:1;padding:7px 10px;border:1px solid var(--border);border-radius:7px;background:var(--bg);color:var(--text);font-family:inherit;font-size:13px">
-      <button class="btn btn-primary" id="btn-add-note">Přidat</button>
+      <input type="text" id="inp-duvod" placeholder="Nový důvod…"
+        style="flex:1;padding:7px 10px;border:1px solid var(--border);border-radius:7px;background:var(--bg);color:var(--text);font-family:inherit;font-size:13px">
+      <button class="btn btn-primary" id="btn-add-duvod">Přidat</button>
     </div>
   </div>
 
@@ -206,8 +242,10 @@ table.dtbl { width:100%; border-collapse:collapse; font-size:13px; }
     <h3>Recepční — seznam loginů</h3>
     <div id="recepni-list"><p class="empty">Načítám…</p></div>
     <div style="display:flex;gap:8px;margin-top:14px;flex-wrap:wrap">
-      <input type="text" id="inp-rl-login" placeholder="Login (KONO)" style="width:100px;padding:7px 10px;border:1px solid var(--border);border-radius:7px;background:var(--bg);color:var(--text);font-family:inherit;font-size:13px">
-      <input type="text" id="inp-rl-name" placeholder="Příjmení Jméno" style="flex:1;min-width:140px;padding:7px 10px;border:1px solid var(--border);border-radius:7px;background:var(--bg);color:var(--text);font-family:inherit;font-size:13px">
+      <input type="text" id="inp-rl-login" placeholder="Login (KONO)"
+        style="width:100px;padding:7px 10px;border:1px solid var(--border);border-radius:7px;background:var(--bg);color:var(--text);font-family:inherit;font-size:13px">
+      <input type="text" id="inp-rl-name" placeholder="Příjmení Jméno"
+        style="flex:1;min-width:140px;padding:7px 10px;border:1px solid var(--border);border-radius:7px;background:var(--bg);color:var(--text);font-family:inherit;font-size:13px">
       <button class="btn btn-primary" id="btn-add-rl">Přidat / Aktualizovat</button>
     </div>
     <div id="rl-err" style="color:#e74c3c;font-size:12px;margin-top:6px"></div>
@@ -232,9 +270,9 @@ table.dtbl { width:100%; border-collapse:collapse; font-size:13px; }
         <select name="sekce" id="sel-sekce" required>
           <option value="">— vyberte —</option>
           <option value="braní směn">Braní směn</option>
-          <option value="ostatní">Ostatní</option>
           <option value="recenze">Recenze</option>
           <option value="školení">Školení</option>
+          <option value="ostatní">Ostatní</option>
           <option value="pokuta">Pokuta</option>
         </select>
       </div>
@@ -245,7 +283,7 @@ table.dtbl { width:100%; border-collapse:collapse; font-size:13px; }
           <label>Recepční *</label>
           <div class="ac-wrap">
             <input type="text" id="inp-ac" autocomplete="off"
-                   placeholder="Zadejte login nebo jméno…"
+                   placeholder="Zadejte login nebo příjmení…"
                    oninput="acFilter(this.value)"
                    onfocus="acFilter(this.value)"
                    onblur="setTimeout(acClose, 200)">
@@ -291,7 +329,7 @@ table.dtbl { width:100%; border-collapse:collapse; font-size:13px; }
         </div>
       </div>
 
-      <!-- Částka: recenze = dropdown, ostatní = volné -->
+      <!-- Částka: recenze = dropdown, ostatní sekce = volné číslo -->
       <div class="field hidden" id="field-castka-select">
         <label>Částka *</label>
         <select name="castkaSel" id="sel-castka">
@@ -330,13 +368,11 @@ table.dtbl { width:100%; border-collapse:collapse; font-size:13px; }
         <input type="text" name="koho_skolil" placeholder="Login nebo jméno školené osoby">
       </div>
 
-      <!-- Poznámka — Braní směn (speciální dropdown) -->
+      <!-- Poznámka — Braní směn (dropdown s vlastním důvodem) -->
       <div class="field hidden" id="field-pozn-brani">
         <label>Důvod</label>
         <select id="sel-brani-duvod" onchange="toggleBraniJine()">
-          <option value="Směna navíc">Směna navíc</option>
-          <option value="Pohotovost">Pohotovost</option>
-          <option value="Jiné">Jiné…</option>
+          <!-- populated by loadDuvodyDropdown() -->
         </select>
       </div>
       <div class="field hidden" id="field-pozn-brani-jine">
@@ -344,15 +380,9 @@ table.dtbl { width:100%; border-collapse:collapse; font-size:13px; }
         <input type="text" id="inp-brani-jine" placeholder="Napište důvod…">
       </div>
 
-      <!-- Poznámka — standardní (ostatní sekce) -->
+      <!-- Poznámka — standardní (ostatní sekce) — plain textarea only -->
       <div class="field" id="field-poznamka">
         <label>Poznámka</label>
-        <div style="display:flex;gap:6px;margin-bottom:5px">
-          <select id="sel-poznamka-preset" style="flex:1;padding:6px 8px;border:1px solid var(--border);border-radius:6px;background:var(--bg);color:var(--text);font-family:inherit;font-size:13px">
-            <option value="">— předdefinované —</option>
-          </select>
-          <button type="button" class="btn btn-secondary btn-sm" id="btn-insert-poznamka">Vložit</button>
-        </div>
         <textarea name="poznamka" rows="2" placeholder="Volný text…"></textarea>
       </div>
 
@@ -384,13 +414,15 @@ const now = new Date();
 rok   = now.getFullYear();
 mesic = now.getMonth() + 1;
 
-let recepniAll   = [];  // [{login, full_name, active}] — vše pro AC
-let recepniMap   = {};  // login → full_name (aktivní)
+let recepniAll   = [];  // [{login, full_name, active}]
+let recepniMap   = {};  // login → full_name
 let cachedData   = [];
-let poznamkyList = [];
+let duvodyList   = [];  // DB entries for braní směn reasons
 
 const MESICE = ['','Leden','Únor','Březen','Duben','Květen','Červen',
                 'Červenec','Srpen','Září','Říjen','Listopad','Prosinec'];
+
+const SEKCE_ORDER = {'braní směn':1, 'recenze':2, 'školení':3, 'ostatní':4, 'pokuta':5};
 
 // ═══ Záložky ════════════════════════════════════════════════════════════════
 document.querySelectorAll('.tab-btn').forEach(btn => btn.addEventListener('click', () => {
@@ -398,7 +430,7 @@ document.querySelectorAll('.tab-btn').forEach(btn => btn.addEventListener('click
   document.querySelectorAll('.tab-panel').forEach(p => p.classList.remove('active'));
   btn.classList.add('active');
   document.getElementById('tab-' + btn.dataset.tab).classList.add('active');
-  if (btn.dataset.tab === 'nastaveni') { loadNotes(); loadRecepniList(); }
+  if (btn.dataset.tab === 'nastaveni') { loadDuvodyList(); loadRecepniList(); }
 }));
 
 // ═══ Měsíc navigace ═════════════════════════════════════════════════════════
@@ -421,7 +453,7 @@ document.getElementById('btn-next').addEventListener('click', () => {
 async function init() {
   updateMonthLabel();
   await loadRecepniDropdown();
-  await loadPoznamkyDropdown();
+  await loadDuvodyDropdown();
   loadPrehled();
   initFormConds();
 }
@@ -443,11 +475,11 @@ function acFilter(val) {
   if (!v) { listEl.innerHTML = ''; listEl.classList.add('hidden'); return; }
 
   const active = recepniAll.filter(r => r.active);
-  const filtered = active.filter(r =>
-    r.login.toLowerCase().startsWith(v) ||
-    r.full_name.toLowerCase().startsWith(v) ||
-    r.full_name.toLowerCase().split(' ').some(part => part.startsWith(v))
-  ).slice(0, 12);
+  const filtered = active.filter(r => {
+    // Match login prefix OR příjmení (= first word of full_name) prefix only
+    const prijmeni = r.full_name.toLowerCase().split(' ')[0];
+    return r.login.toLowerCase().startsWith(v) || prijmeni.startsWith(v);
+  }).slice(0, 12);
 
   if (!filtered.length) { listEl.innerHTML = ''; listEl.classList.add('hidden'); return; }
 
@@ -460,7 +492,7 @@ function acFilter(val) {
 }
 
 function acSelect(login, name) {
-  document.getElementById('inp-ac').value       = `${login} – ${name}`;
+  document.getElementById('inp-ac').value           = `${login} – ${name}`;
   document.getElementById('inp-login-hidden').value = login;
   document.getElementById('ac-list').classList.add('hidden');
 }
@@ -504,25 +536,32 @@ function acSetValue(login, name) {
   document.getElementById('inp-login-hidden').value = login;
 }
 
-// ═══ Poznámky dropdown ════════════════════════════════════════════════════════
-async function loadPoznamkyDropdown() {
+// ═══ Důvody Braní směn dropdown ══════════════════════════════════════════════
+async function loadDuvodyDropdown() {
   const resp = await fetch('/api/priplatky/poznamky');
-  poznamkyList = await resp.json();
-  const sel = document.getElementById('sel-poznamka-preset');
-  sel.innerHTML = '<option value="">— předdefinované —</option>';
-  poznamkyList.forEach(n => {
-    const o = document.createElement('option');
-    o.value = n.text; o.textContent = n.text;
-    sel.appendChild(o);
-  });
+  duvodyList = await resp.json();
+  rebuildBraniDuvodSel();
 }
 
-document.getElementById('btn-insert-poznamka').addEventListener('click', () => {
-  const v  = document.getElementById('sel-poznamka-preset').value;
-  if (!v) return;
-  const ta = document.querySelector('#zaznam-form textarea[name=poznamka]');
-  ta.value = ta.value ? ta.value + '; ' + v : v;
-});
+function rebuildBraniDuvodSel(selectedVal) {
+  const sel = document.getElementById('sel-brani-duvod');
+  sel.innerHTML = '';
+  // Fixed options first
+  ['Směna navíc', 'Pohotovost'].forEach(v => {
+    const o = document.createElement('option');
+    o.value = v; o.textContent = v; sel.appendChild(o);
+  });
+  // DB entries
+  duvodyList.forEach(n => {
+    const o = document.createElement('option');
+    o.value = n.text; o.textContent = n.text; sel.appendChild(o);
+  });
+  // Jiné always last
+  const jiné = document.createElement('option');
+  jiné.value = 'Jiné'; jiné.textContent = 'Jiné…'; sel.appendChild(jiné);
+
+  if (selectedVal !== undefined) sel.value = selectedVal;
+}
 
 // ═══ Přehled ═════════════════════════════════════════════════════════════════
 async function loadPrehled() {
@@ -545,57 +584,57 @@ function renderPrehled(data) {
   data.forEach(z => {
     const isKnown = z.login in recepniMap || z.full_name;
     const bucket  = isKnown ? known : unknown;
-    if (!bucket[z.login]) bucket[z.login] = { name: z.full_name || z.login, bs:0, os:0, re:0, sk:0, po:0 };
+    if (!bucket[z.login]) bucket[z.login] = { name: z.full_name || z.login, bs:0, re:0, sk:0, os:0, po:0 };
     const b = bucket[z.login];
     if      (z.sekce === 'braní směn') b.bs += z.castka;
-    else if (z.sekce === 'ostatní')    b.os += z.castka;
     else if (z.sekce === 'recenze')    b.re += z.castka;
     else if (z.sekce === 'školení')    b.sk += z.castka;
+    else if (z.sekce === 'ostatní')    b.os += z.castka;
     else if (z.sekce === 'pokuta')     b.po += z.castka;
   });
 
   function tableRows(bucket, cssClass='') {
     return Object.entries(bucket).map(([login, b]) => {
-      const soucet = b.bs + b.os + b.re + b.sk - b.po;
+      const soucet = b.bs + b.re + b.sk + b.os - b.po;
       const sClass = soucet < 0 ? 'neg' : (soucet > 0 ? 'pos' : '');
       return `<tr>
         <td><span class="${cssClass || 'login-link'}" onclick="openDetail('${esc(login)}')">${esc(login)}</span>
             <br><small style="color:var(--text-muted)">${esc(b.name)}</small></td>
-        <td>${b.bs || ''}</td><td>${b.os || ''}</td><td>${b.re || ''}</td>
-        <td>${b.sk || ''}</td><td>${b.po || ''}</td>
+        <td>${b.bs || ''}</td><td>${b.re || ''}</td><td>${b.sk || ''}</td>
+        <td>${b.os || ''}</td><td>${b.po || ''}</td>
         <td class="soucet ${sClass}">${soucet}</td>
       </tr>`;
     }).join('');
   }
 
   const allBuckets = {...known, ...unknown};
-  const totals = { bs:0,os:0,re:0,sk:0,po:0 };
-  Object.values(allBuckets).forEach(b => { totals.bs+=b.bs; totals.os+=b.os; totals.re+=b.re; totals.sk+=b.sk; totals.po+=b.po; });
-  const totSoucet = totals.bs+totals.os+totals.re+totals.sk-totals.po;
+  const totals = { bs:0, re:0, sk:0, os:0, po:0 };
+  Object.values(allBuckets).forEach(b => { totals.bs+=b.bs; totals.re+=b.re; totals.sk+=b.sk; totals.os+=b.os; totals.po+=b.po; });
+  const totSoucet = totals.bs + totals.re + totals.sk + totals.os - totals.po;
 
   let html = `
     <table class="stbl">
       <thead><tr>
         <th>Login / Jméno</th>
-        <th>Braní směn</th><th>Ostatní</th><th>Recenze</th>
-        <th>Školení</th><th>Pokuty</th><th>Součet</th>
+        <th>Braní směn</th><th>Recenze</th><th>Školení</th>
+        <th>Ostatní</th><th>Pokuty</th><th>Součet</th>
       </tr></thead>
       <tbody>${tableRows(known)}</tbody>
       <tfoot><tr>
         <td>Celkem</td>
-        <td>${totals.bs||''}</td><td>${totals.os||''}</td><td>${totals.re||''}</td>
-        <td>${totals.sk||''}</td><td>${totals.po||''}</td>
+        <td>${totals.bs||''}</td><td>${totals.re||''}</td><td>${totals.sk||''}</td>
+        <td>${totals.os||''}</td><td>${totals.po||''}</td>
         <td class="soucet ${totSoucet<0?'neg':'pos'}">${totSoucet}</td>
       </tr></tfoot>
     </table>`;
 
   if (Object.keys(unknown).length) {
     html += `<div class="section-unknown">
-      <h3>⚠️ Neznámé loginy — poslat mailem</h3>
+      <h3>⚠️ Neznámé loginy</h3>
       <table class="stbl">
         <thead><tr>
-          <th>Login</th><th>Braní směn</th><th>Ostatní</th><th>Recenze</th>
-          <th>Školení</th><th>Pokuty</th><th>Součet</th>
+          <th>Login</th><th>Braní směn</th><th>Recenze</th><th>Školení</th>
+          <th>Ostatní</th><th>Pokuty</th><th>Součet</th>
         </tr></thead>
         <tbody>${tableRows(unknown, 'unknown-login')}</tbody>
       </table>
@@ -610,17 +649,29 @@ function openDetail(login) {
   const name = recepniMap[login] || (rows[0]?.full_name) || login;
   document.getElementById('detail-title').textContent = `${login} – ${name}`;
 
+  // Sort: sekce order ASC, then datum ASC
+  const sorted = [...rows].sort((a, b) => {
+    const so = (SEKCE_ORDER[a.sekce] || 9) - (SEKCE_ORDER[b.sekce] || 9);
+    if (so !== 0) return so;
+    return (a.datum || '').localeCompare(b.datum || '');
+  });
+
   let html = `<table class="dtbl"><thead><tr>
-    <th>Datum</th><th>Sekce</th><th>Hotel</th><th>Částka</th><th>Poznámka</th><th></th>
+    <th>Datum</th><th>Hotel</th><th>Částka</th><th>Poznámka</th><th></th>
   </tr></thead><tbody>`;
 
-  rows.forEach(z => {
+  let lastSekce = null;
+  sorted.forEach(z => {
+    if (z.sekce !== lastSekce) {
+      const label = z.sekce.charAt(0).toUpperCase() + z.sekce.slice(1);
+      html += `<tr class="sekce-header"><td colspan="5">${esc(label)}</td></tr>`;
+      lastSekce = z.sekce;
+    }
     const dat   = z.datum ? z.datum.slice(0,10) : '';
     const extra = z.partner ? ` | ${z.partner}${z.klient ? ' / '+z.klient:''}` :
                   z.koho_skolil ? ` | Školil: ${z.koho_skolil}` : '';
     html += `<tr>
       <td>${dat}</td>
-      <td>${esc(z.sekce)}</td>
       <td>${esc(z.hotel||'')}</td>
       <td><strong>${z.castka} Kč</strong></td>
       <td>${esc((z.poznamka||'') + extra)}</td>
@@ -629,8 +680,8 @@ function openDetail(login) {
         <button class="icon-btn btn-sm danger" onclick="deleteZaznam(${z.id})">🗑</button>
       </td>
     </tr>
-    <tr><td colspan="6" class="audit-info" style="padding-bottom:8px">
-      Vložil: ${esc(z.vlozil)} ${fmtTs(z.vlozeno_kdy)}
+    <tr><td colspan="5" class="audit-info" style="padding-bottom:8px">
+      Vložil: ${esc(z.vlozil||'')} ${fmtTs(z.vlozeno_kdy)}
       ${z.upravil ? ` · Upravil: ${esc(z.upravil)} ${fmtTs(z.upraveno_kdy)}` : ''}
     </td></tr>`;
   });
@@ -656,9 +707,12 @@ function updateFormConds() {
   const isSkoleni = s === 'školení';
 
   document.getElementById('field-castka-select').classList.toggle('hidden', !isRecenze);
-  document.getElementById('field-castka-input').classList.toggle('hidden',
-    isRecenze || !s || (isRecenze && document.getElementById('sel-castka').value !== '0'));
-  if (s && !isRecenze) document.getElementById('field-castka-input').classList.remove('hidden');
+  if (isRecenze) {
+    document.getElementById('field-castka-input').classList.toggle('hidden',
+      document.getElementById('sel-castka').value !== '0');
+  } else {
+    document.getElementById('field-castka-input').classList.toggle('hidden', !s);
+  }
 
   document.getElementById('fields-recenze').classList.toggle('hidden', !isRecenze);
   document.getElementById('field-skoleni').classList.toggle('hidden', !isSkoleni);
@@ -678,9 +732,9 @@ function toggleBraniJine() {
 document.getElementById('btn-add').addEventListener('click', () => {
   resetForm();
   const t = new Date();
-  document.getElementById('inp-den').value      = t.getDate();
+  document.getElementById('inp-den').value        = t.getDate();
   document.getElementById('sel-mesic-form').value = mesic;
-  document.getElementById('inp-rok-form').value  = rok;
+  document.getElementById('inp-rok-form').value   = rok;
   document.getElementById('modal-form-title').textContent = 'Přidat záznam';
   openOverlay('modal-form');
 });
@@ -689,6 +743,7 @@ function resetForm() {
   document.getElementById('zaznam-form').reset();
   document.querySelector('#zaznam-form [name=editId]').value = '';
   acReset();
+  rebuildBraniDuvodSel();
   document.getElementById('field-castka-input').classList.add('hidden');
   document.getElementById('field-castka-select').classList.add('hidden');
   document.getElementById('fields-recenze').classList.add('hidden');
@@ -698,6 +753,7 @@ function resetForm() {
   document.getElementById('field-poznamka').classList.remove('hidden');
 }
 
+// ═══ Uložit záznam ═══════════════════════════════════════════════════════════
 document.getElementById('btn-zaznam-save').addEventListener('click', async () => {
   const form = document.getElementById('zaznam-form');
   const fd   = new FormData(form);
@@ -765,16 +821,15 @@ function editZaznam(id) {
   updateFormConds();
 
   // Login → AC
-  const name = recepniMap[z.login];
-  acSetValue(z.login, name || null);
+  acSetValue(z.login, recepniMap[z.login] || null);
 
   form.elements.hotel.value = z.hotel || '';
 
   if (z.datum) {
     const parts = z.datum.slice(0,10).split('-');
-    document.getElementById('inp-den').value         = parseInt(parts[2]);
-    document.getElementById('sel-mesic-form').value  = parseInt(parts[1]);
-    document.getElementById('inp-rok-form').value    = parseInt(parts[0]);
+    document.getElementById('inp-den').value        = parseInt(parts[2]);
+    document.getElementById('sel-mesic-form').value = parseInt(parts[1]);
+    document.getElementById('inp-rok-form').value   = parseInt(parts[0]);
   }
 
   // Částka
@@ -789,13 +844,11 @@ function editZaznam(id) {
     form.elements.castkaInput.value = z.castka;
   }
 
-  // Poznámka
+  // Poznámka – braní směn: check against known fixed + DB values
   if (z.sekce === 'braní směn') {
-    const known = ['Směna navíc','Pohotovost'];
-    if (known.includes(z.poznamka || '')) {
-      document.getElementById('sel-brani-duvod').value = z.poznamka;
-    } else {
-      document.getElementById('sel-brani-duvod').value = 'Jiné';
+    const knownVals = ['Směna navíc', 'Pohotovost', ...duvodyList.map(n => n.text)];
+    rebuildBraniDuvodSel(knownVals.includes(z.poznamka||'') ? z.poznamka : 'Jiné');
+    if (!knownVals.includes(z.poznamka||'')) {
       document.getElementById('field-pozn-brani-jine').classList.remove('hidden');
       document.getElementById('inp-brani-jine').value = z.poznamka || '';
     }
@@ -820,10 +873,10 @@ async function deleteZaznam(id) {
 }
 
 // ═══ Doplnit do šablony ══════════════════════════════════════════════════════
-document.getElementById('btn-fill-template').addEventListener('click', async () => {
-  const file = document.getElementById('inp-template-file').files[0];
-  if (!file) { alert('Vyberte soubor.'); return; }
-
+// File input change → auto process
+document.getElementById('inp-template-file').addEventListener('change', function() {
+  const file = this.files[0];
+  if (!file) return;
   const status = document.getElementById('fill-status');
   status.textContent = '⏳ Zpracovávám…';
 
@@ -843,11 +896,11 @@ document.getElementById('btn-fill-template').addEventListener('click', async () 
       const blob = await resp.blob();
       const url  = URL.createObjectURL(blob);
       const a    = document.createElement('a');
-      a.href     = url;
-      a.download = file.name;
-      a.click();
+      a.href = url; a.download = file.name; a.click();
       URL.revokeObjectURL(url);
-      status.textContent = '✅ Hotovo';
+      status.textContent = `✅ Hotovo (${MESICE[mesic]} ${rok})`;
+      // Reset so the same file can be picked again
+      this.value = '';
     } catch(err) {
       status.textContent = '❌ ' + err.message;
     }
@@ -855,21 +908,23 @@ document.getElementById('btn-fill-template').addEventListener('click', async () 
   reader.readAsDataURL(file);
 });
 
-// ═══ Nastavení: poznámky ══════════════════════════════════════════════════════
-async function loadNotes() {
+// ═══ Nastavení: důvody braní směn ════════════════════════════════════════════
+async function loadDuvodyList() {
   const resp = await fetch('/api/priplatky/poznamky');
-  const list = await resp.json();
-  const el   = document.getElementById('notes-list');
-  if (!list.length) { el.innerHTML = '<p class="empty">Žádné předdefinované poznámky.</p>'; return; }
-  el.innerHTML = list.map(n => `
+  duvodyList = await resp.json();
+  const el   = document.getElementById('duvody-list');
+  if (!duvodyList.length) {
+    el.innerHTML = '<p class="empty">Žádné přidané důvody.</p>'; return;
+  }
+  el.innerHTML = duvodyList.map(n => `
     <div class="note-item">
       <span>${esc(n.text)}</span>
-      <button class="icon-btn danger" onclick="deleteNote(${n.id})">🗑</button>
+      <button class="icon-btn danger" onclick="deleteDuvod(${n.id})">🗑</button>
     </div>`).join('');
 }
 
-document.getElementById('btn-add-note').addEventListener('click', async () => {
-  const inp  = document.getElementById('inp-note');
+document.getElementById('btn-add-duvod').addEventListener('click', async () => {
+  const inp  = document.getElementById('inp-duvod');
   const text = inp.value.trim();
   if (!text) return;
   await fetch('/api/priplatky/poznamky', {
@@ -877,13 +932,15 @@ document.getElementById('btn-add-note').addEventListener('click', async () => {
     body: JSON.stringify({ text, poradi:0 })
   });
   inp.value = '';
-  loadNotes(); loadPoznamkyDropdown();
+  loadDuvodyList();
+  loadDuvodyDropdown(); // refresh dropdown
 });
 
-async function deleteNote(id) {
-  if (!confirm('Smazat poznámku?')) return;
+async function deleteDuvod(id) {
+  if (!confirm('Smazat důvod?')) return;
   await fetch(`/api/priplatky/poznamky/${id}`, { method:'DELETE' });
-  loadNotes(); loadPoznamkyDropdown();
+  loadDuvodyList();
+  loadDuvodyDropdown();
 }
 
 // ═══ Nastavení: recepční ══════════════════════════════════════════════════════
@@ -896,19 +953,14 @@ async function loadRecepniList() {
     <div class="recepni-row">
       <code style="font-size:12px">${esc(r.login)}</code>
       <span>${esc(r.full_name)}</span>
-      <div style="display:flex;gap:6px;align-items:center">
-        <span class="badge ${r.active?'badge-on':'badge-off'}">${r.active?'aktivní':'neaktivní'}</span>
-        <button class="icon-btn" onclick="toggleRecepni('${esc(r.login)}', ${!r.active})">
-          ${r.active ? '⏸' : '▶️'}
-        </button>
-      </div>
+      <button class="icon-btn danger" onclick="deleteRecepni('${esc(r.login)}')">🗑 Smazat</button>
     </div>`).join('');
 }
 
 document.getElementById('btn-add-rl').addEventListener('click', async () => {
-  const login    = document.getElementById('inp-rl-login').value.trim();
+  const login     = document.getElementById('inp-rl-login').value.trim();
   const full_name = document.getElementById('inp-rl-name').value.trim();
-  const errEl    = document.getElementById('rl-err');
+  const errEl     = document.getElementById('rl-err');
   errEl.textContent = '';
   if (!login || !full_name) { errEl.textContent = 'Vyplňte login i jméno.'; return; }
   const resp = await fetch('/api/priplatky/recepni', {
@@ -922,11 +974,9 @@ document.getElementById('btn-add-rl').addEventListener('click', async () => {
   loadRecepniList(); loadRecepniDropdown();
 });
 
-async function toggleRecepni(login, active) {
-  await fetch(`/api/priplatky/recepni/${encodeURIComponent(login)}`, {
-    method:'PATCH', headers:{'Content-Type':'application/json'},
-    body: JSON.stringify({ active })
-  });
+async function deleteRecepni(login) {
+  if (!confirm(`Smazat recepčního "${login}"?\nHistorické záznamy v DB zůstanou zachovány.`)) return;
+  await fetch(`/api/priplatky/recepni/${encodeURIComponent(login)}`, { method:'DELETE' });
   loadRecepniList(); loadRecepniDropdown();
 }
 
@@ -934,7 +984,14 @@ async function toggleRecepni(login, active) {
 document.getElementById('btn-import-file1').addEventListener('click', async () => {
   const file = document.getElementById('inp-import-file1').files[0];
   if (!file) { alert('Vyberte soubor.'); return; }
-  if (!confirm('Importuje záznamy za DUBEN a KVĚTEN 2026. Pokračovat?')) return;
+
+  const months = Array.from(
+    document.querySelectorAll('input[name="imp-month"]:checked')
+  ).map(cb => parseInt(cb.value));
+  if (!months.length) { alert('Vyberte alespoň jeden měsíc.'); return; }
+
+  const mesNames = months.map(m => MESICE[m]).join(', ');
+  if (!confirm(`Importovat záznamy za: ${mesNames} 2026?\nPozor: záznamy se přidají i pokud již existují.`)) return;
 
   const statusEl = document.getElementById('import-status');
   statusEl.textContent = '⏳ Zpracovávám…';
@@ -945,15 +1002,15 @@ document.getElementById('btn-import-file1').addEventListener('click', async () =
     try {
       const resp = await fetch('/api/priplatky/import-file1', {
         method:'POST', headers:{'Content-Type':'application/json'},
-        body: JSON.stringify({ fileData: base64 }),
+        body: JSON.stringify({ fileData: base64, months }),
       });
       const j = await resp.json();
       let msg = j.ok
-        ? `✅ Importováno ${j.imported} záznamů.`
+        ? `✅ Importováno ${j.imported} záznamů za ${mesNames}.`
         : `❌ ${j.msg}`;
       if (j.errors && j.errors.length)
-        msg += ` | Chyby: ${j.errors.join('; ')}`;
-      statusEl.textContent = msg;
+        msg += `<br><small style="color:#e74c3c">Chyby: ${j.errors.join('; ')}</small>`;
+      statusEl.innerHTML = msg;
       loadPrehled();
     } catch(err) {
       statusEl.textContent = '❌ ' + err.message;
