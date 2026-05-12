@@ -1543,6 +1543,235 @@ app.get('/api/blacklist/export/pdf', requireLogin, async (req, res) => {
 });
 
 // ══════════════════════════════════════════════════════════════════════════════
+//  PŘÍPLATKY A POKUTY
+// ══════════════════════════════════════════════════════════════════════════════
+
+app.get('/priplatky', requireLogin, (req, res) =>
+  res.sendFile(path.join(__dirname, 'views', 'priplatky.html'))
+);
+
+// Recepční (login ↔ jméno)
+app.get('/api/priplatky/recepni', requireLogin, async (req, res) => {
+  const db = getPool();
+  const { rows } = await db.query(
+    `SELECT login, full_name, active FROM receptionist_logins ORDER BY full_name`
+  );
+  res.json(rows);
+});
+
+app.post('/api/priplatky/recepni', requireLogin, async (req, res) => {
+  const { login, full_name } = req.body;
+  const db = getPool();
+  try {
+    const r = await db.query(
+      `INSERT INTO receptionist_logins (login, full_name) VALUES ($1,$2)
+       ON CONFLICT (login) DO UPDATE SET full_name=$2, active=TRUE RETURNING *`,
+      [login, full_name]
+    );
+    res.json({ ok: true, row: r.rows[0] });
+  } catch (err) {
+    res.status(400).json({ ok: false, msg: err.message });
+  }
+});
+
+app.patch('/api/priplatky/recepni/:login', requireLogin, async (req, res) => {
+  const { full_name, active } = req.body;
+  const db = getPool();
+  await db.query(
+    `UPDATE receptionist_logins SET
+       full_name = COALESCE($1, full_name),
+       active    = COALESCE($2, active)
+     WHERE login = $3`,
+    [full_name || null, active !== undefined ? active : null, req.params.login]
+  );
+  res.json({ ok: true });
+});
+
+// Záznamy
+app.get('/api/priplatky/zaznamy', requireLogin, async (req, res) => {
+  const { rok, mesic } = req.query;
+  const db = getPool();
+  const { rows } = await db.query(
+    `SELECT z.*,
+            rl.full_name
+     FROM priplatky_zaznamy z
+     LEFT JOIN receptionist_logins rl ON rl.login = z.login
+     WHERE z.rok = $1 AND z.mesic = $2
+     ORDER BY z.datum, z.id`,
+    [rok, mesic]
+  );
+  res.json(rows);
+});
+
+app.post('/api/priplatky/zaznamy', requireLogin, async (req, res) => {
+  const { den, mesic, rok, sekce, login, hotel, castka,
+          poznamka, partner, klient, koho_skolil } = req.body;
+  const db = getPool();
+  const datum = `${rok}-${String(mesic).padStart(2,'0')}-${String(den).padStart(2,'0')}`;
+  try {
+    const r = await db.query(
+      `INSERT INTO priplatky_zaznamy
+         (rok,mesic,sekce,login,datum,hotel,castka,poznamka,partner,klient,koho_skolil,vlozil)
+       VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12) RETURNING id`,
+      [rok, mesic, sekce, login, datum, hotel||null, castka||0,
+       poznamka||null, partner||null, klient||null, koho_skolil||null,
+       req.session.user.username]
+    );
+    await logEvent(req.session.user.id, req.session.user.username,
+      'priplatky_add', { id: r.rows[0].id, login, sekce });
+    res.json({ ok: true, id: r.rows[0].id });
+  } catch (err) {
+    res.status(400).json({ ok: false, msg: err.message });
+  }
+});
+
+app.patch('/api/priplatky/zaznamy/:id', requireLogin, async (req, res) => {
+  const { den, mesic, rok, sekce, login, hotel, castka,
+          poznamka, partner, klient, koho_skolil } = req.body;
+  const db = getPool();
+  const datum = den
+    ? `${rok}-${String(mesic).padStart(2,'0')}-${String(den).padStart(2,'0')}`
+    : undefined;
+  try {
+    await db.query(
+      `UPDATE priplatky_zaznamy SET
+         rok=$1, mesic=$2, sekce=$3, login=$4,
+         datum=COALESCE($5,datum), hotel=$6, castka=$7,
+         poznamka=$8, partner=$9, klient=$10, koho_skolil=$11,
+         upravil=$12, upraveno_kdy=NOW()
+       WHERE id=$13`,
+      [rok, mesic, sekce, login, datum||null, hotel||null, castka||0,
+       poznamka||null, partner||null, klient||null, koho_skolil||null,
+       req.session.user.username, req.params.id]
+    );
+    res.json({ ok: true });
+  } catch (err) {
+    res.status(400).json({ ok: false, msg: err.message });
+  }
+});
+
+app.delete('/api/priplatky/zaznamy/:id', requireLogin, async (req, res) => {
+  const db = getPool();
+  await db.query(`DELETE FROM priplatky_zaznamy WHERE id=$1`, [req.params.id]);
+  await logEvent(req.session.user.id, req.session.user.username,
+    'priplatky_delete', { id: req.params.id });
+  res.json({ ok: true });
+});
+
+// Předdefinované poznámky
+app.get('/api/priplatky/poznamky', requireLogin, async (req, res) => {
+  const db = getPool();
+  const { rows } = await db.query(
+    `SELECT * FROM priplatky_poznamky ORDER BY poradi, id`
+  );
+  res.json(rows);
+});
+
+app.post('/api/priplatky/poznamky', requireLogin, async (req, res) => {
+  const { text, poradi } = req.body;
+  const db = getPool();
+  const r = await db.query(
+    `INSERT INTO priplatky_poznamky (text, poradi) VALUES ($1,$2) RETURNING *`,
+    [text, poradi || 0]
+  );
+  res.json({ ok: true, row: r.rows[0] });
+});
+
+app.delete('/api/priplatky/poznamky/:id', requireLogin, async (req, res) => {
+  const db = getPool();
+  await db.query(`DELETE FROM priplatky_poznamky WHERE id=$1`, [req.params.id]);
+  res.json({ ok: true });
+});
+
+// Export XLSX
+app.get('/api/priplatky/export/xlsx', requireLogin, async (req, res) => {
+  const { rok, mesic } = req.query;
+  const db = getPool();
+
+  // Záznamy měsíce
+  const { rows: zaznamy } = await db.query(
+    `SELECT z.*, rl.full_name
+     FROM priplatky_zaznamy z
+     LEFT JOIN receptionist_logins rl ON rl.login = z.login
+     WHERE z.rok=$1 AND z.mesic=$2 ORDER BY z.login, z.datum`,
+    [rok, mesic]
+  );
+
+  // Souhrn per login
+  const { rows: souhrn } = await db.query(
+    `SELECT z.login, rl.full_name,
+       SUM(CASE WHEN z.sekce='braní směn' THEN z.castka ELSE 0 END) AS brani_smen,
+       SUM(CASE WHEN z.sekce='ostatní'    THEN z.castka ELSE 0 END) AS ostatni,
+       SUM(CASE WHEN z.sekce='recenze'    THEN z.castka ELSE 0 END) AS recenze,
+       SUM(CASE WHEN z.sekce='školení'    THEN z.castka ELSE 0 END) AS skoleni,
+       SUM(CASE WHEN z.sekce='pokuta'     THEN z.castka ELSE 0 END) AS pokuty
+     FROM priplatky_zaznamy z
+     LEFT JOIN receptionist_logins rl ON rl.login = z.login
+     WHERE z.rok=$1 AND z.mesic=$2
+     GROUP BY z.login, rl.full_name ORDER BY z.login`,
+    [rok, mesic]
+  );
+
+  const XLSX = require('xlsx');
+  const wb   = XLSX.utils.book_new();
+  const mesicNazvy = ['','Leden','Únor','Březen','Duben','Květen','Červen',
+                       'Červenec','Srpen','Září','Říjen','Listopad','Prosinec'];
+  const label = `${mesicNazvy[mesic]} ${rok}`;
+
+  // Sheet 1: Souhrn
+  const sData = [
+    [`Příplatky a pokuty — ${label}`],
+    ['Login','Jméno','Braní směn','Ostatní','Recenze','Školení','Pokuty','Součet'],
+    ...souhrn.map(r => {
+      const soucet = (+r.brani_smen)+(+r.ostatni)+(+r.recenze)+(+r.skoleni)-(+r.pokuty);
+      return [r.login, r.full_name||'', +r.brani_smen, +r.ostatni,
+              +r.recenze, +r.skoleni, +r.pokuty, soucet];
+    }),
+  ];
+  XLSX.utils.book_append_sheet(wb, XLSX.utils.aoa_to_sheet(sData), 'Souhrn');
+
+  // Sheets 2–6: jednotlivé sekce
+  const SEKCE = ['braní směn','ostatní','recenze','školení','pokuta'];
+  const SEKCE_NAZVY = ['Braní směn','Ostatní','Recenze','Školení','Pokuty'];
+  SEKCE.forEach((s, i) => {
+    const rows = zaznamy.filter(z => z.sekce === s);
+    const headers = ['Datum','Login','Jméno','Hotel','Částka','Poznámka'];
+    if (s === 'recenze')   headers.push('Partner','Klient');
+    if (s === 'školení')   headers.push('Koho školil');
+    const data = [
+      [`${SEKCE_NAZVY[i]} — ${label}`],
+      headers,
+      ...rows.map(r => {
+        const base = [
+          r.datum ? r.datum.toISOString().slice(0,10) : '',
+          r.login, r.full_name||'', r.hotel||'', r.castka, r.poznamka||''
+        ];
+        if (s === 'recenze') base.push(r.partner||'', r.klient||'');
+        if (s === 'školení') base.push(r.koho_skolil||'');
+        return base;
+      }),
+    ];
+    XLSX.utils.book_append_sheet(wb, XLSX.utils.aoa_to_sheet(data), SEKCE_NAZVY[i]);
+  });
+
+  const buf = XLSX.write(wb, { type: 'buffer', bookType: 'xlsx' });
+  const fname = `Priplatky_${rok}_${String(mesic).padStart(2,'0')}.xlsx`;
+  res.setHeader('Content-Type',
+    'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
+  res.setHeader('Content-Disposition',
+    `attachment; filename*=UTF-8''${encodeURIComponent(fname)}`);
+  res.send(buf);
+});
+
+// Import šablony — placeholder (bude upřesněno po dodání šablony)
+app.post('/api/priplatky/import-template', requireLogin, async (req, res) => {
+  res.status(501).json({
+    ok: false,
+    msg: 'Funkce "Doplnit do šablony" bude implementována po dodání vzorového Excel souboru.'
+  });
+});
+
+// ══════════════════════════════════════════════════════════════════════════════
 //  PRACOVNÍ SMLOUVY
 // ══════════════════════════════════════════════════════════════════════════════
 

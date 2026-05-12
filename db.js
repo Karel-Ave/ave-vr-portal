@@ -269,6 +269,87 @@ async function init() {
   `);
   await db.query(`CREATE INDEX IF NOT EXISTS idx_scl_key ON schedule_change_log (raspis_key, timestamp DESC)`);
 
+  // ── Příplatky a pokuty: mapování login ↔ celé jméno ─────────────────────────
+  await db.query(`
+    CREATE TABLE IF NOT EXISTS receptionist_logins (
+      id        SERIAL PRIMARY KEY,
+      login     VARCHAR(50) UNIQUE NOT NULL,
+      full_name VARCHAR(200) NOT NULL,
+      active    BOOLEAN NOT NULL DEFAULT TRUE
+    )
+  `);
+
+  // ── Příplatky a pokuty: záznamy ──────────────────────────────────────────────
+  await db.query(`
+    CREATE TABLE IF NOT EXISTS priplatky_zaznamy (
+      id           SERIAL PRIMARY KEY,
+      rok          INTEGER NOT NULL,
+      mesic        INTEGER NOT NULL CHECK (mesic BETWEEN 1 AND 12),
+      sekce        VARCHAR(50) NOT NULL CHECK (sekce IN ('braní směn','ostatní','recenze','školení','pokuta')),
+      login        VARCHAR(50) NOT NULL,
+      datum        DATE NOT NULL,
+      hotel        VARCHAR(10),
+      castka       INTEGER NOT NULL DEFAULT 0,
+      poznamka     TEXT,
+      partner      VARCHAR(20),
+      klient       VARCHAR(200),
+      koho_skolil  VARCHAR(200),
+      vlozil       VARCHAR(100) NOT NULL,
+      vlozeno_kdy  TIMESTAMPTZ DEFAULT NOW(),
+      upravil      VARCHAR(100),
+      upraveno_kdy TIMESTAMPTZ
+    )
+  `);
+  await db.query(`CREATE INDEX IF NOT EXISTS idx_pz_rok_mesic ON priplatky_zaznamy (rok, mesic)`);
+  await db.query(`CREATE INDEX IF NOT EXISTS idx_pz_login    ON priplatky_zaznamy (login)`);
+
+  // ── Příplatky a pokuty: předdefinované poznámky ──────────────────────────────
+  await db.query(`
+    CREATE TABLE IF NOT EXISTS priplatky_poznamky (
+      id     SERIAL PRIMARY KEY,
+      text   VARCHAR(500) NOT NULL,
+      poradi INTEGER NOT NULL DEFAULT 0
+    )
+  `);
+
+  // Seed: receptionist_logins (65 recepčních) — jen pokud je tabulka prázdná
+  {
+    const { rows: rlRows } = await db.query('SELECT COUNT(*) AS cnt FROM receptionist_logins');
+    if (parseInt(rlRows[0].cnt, 10) === 0) {
+      const SEED = [
+        ['MABS','Absolon Marek'],['ANTD','Antipin Dmitrii'],['AUGP','Augustin Patrik'],
+        ['BAID','Baidiuk Dmytrii'],['MINA','Bartošková Mína'],['LIZA','Bendos Elizaveta'],
+        ['BST','Beránek Stanislav'],['BERN','Bernat Luboš'],['BICI','Bičišťová Klaudie'],
+        ['RADEK','Blahout Radek'],['BOGD','Bogdanovich Olesia'],['BRIS','Brisudová Anna'],
+        ['BRO','Brovko Vjačeslav'],['BURD','Burda Tomáš'],['GLEB','Buslaev Gleb'],
+        ['CIPL','Ciple Anna Mária'],['CAD','Čada Štěpán'],['CEH','Čermáková Helena'],
+        ['CERN','Černocká Marie'],['DOGM','Dognal Mark'],['DUBI','Dubinina Viktorie'],
+        ['FAL','Fialová Alena'],['FORT','Fořt David'],['HOP','Hoppeová Klára'],
+        ['HUDK','Hudečková Kateřina'],['GIUS','Ielitro Giuseppe'],['SASHA','Ivanov Alexandr'],
+        ['JANAJ','Juklová Jana'],['KLIM','Klimchenko Darya'],['KOCH','Kochurikhina Valeriia'],
+        ['KONO','Konovalenko Yuriy'],['KRJ','Korejs Martin'],['KOAL','Kovářová Alice'],
+        ['KUK','Kukelková Martina'],['KUUL','Kuular Saiana'],['LESL','Lesnichenka Lizaveta'],
+        ['LINH','Linhartová Jana'],['LITV','Litvínov Vladimír'],['MAKH','Makhanova Malika'],
+        ['MOTE','Motejlková Barbora'],['Jaroslav','Nechvátal Jaroslav'],['NERM','Nermesanová Manuela'],
+        ['NGUY','Nguyen Thi Nhung'],['ROMANA','Nováková Romana'],['PAVE','Pavelka Filip'],
+        ['PESS','Pešek Stanislav'],['POLA','Polášková Blanka'],['PROA','Prokhorian Anna'],
+        ['SKR','Skřivánek Jan'],['SMOK','Smolová Kristýna'],['SMJ','Smrčková Jitka'],
+        ['SEZ','Smutná Petra'],['OLES','Stalchenko Oleksandra'],['STEN','Stéblová Natálie'],
+        ['IVAS','Stempak Ivan'],['SMEI','Šmejkalová Iva'],['STEO','Štěpánek Ondřej'],
+        ['JUN','Štochlová Gabriela'],['TATA','Tatara Juraj'],['THA','Tremlová Hana'],
+        ['TSAR','Tsarkov Valentin'],['VALE','Valeyeva Kristina'],['ALEKS','Viktorenkov Aleksei'],
+        ['VORO','Voropaeva Anastasiia'],['VRAM','Vránek Matyáš'],
+      ];
+      for (const [login, full_name] of SEED) {
+        await db.query(
+          'INSERT INTO receptionist_logins (login, full_name) VALUES ($1,$2) ON CONFLICT (login) DO NOTHING',
+          [login, full_name]
+        );
+      }
+      console.log('Seed: receptionist_logins — vloženo', SEED.length, 'záznamů.');
+    }
+  }
+
   // ── Pracovní smlouvy: seznam recepčních ──────────────────────────────────────
   await db.query(`
     CREATE TABLE IF NOT EXISTS receptionist (
