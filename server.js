@@ -1946,18 +1946,23 @@ app.post('/api/priplatky/import-template', requireLogin, async (req, res) => {
     // Aktualizuj konkrétní buňku přímou XML manipulací
     function updateCell(xml, addr, val) {
       const v = String(val);
-      // 1) Buňka s <v> (případně i <f> formule před ní)
-      const re1 = new RegExp(`(<c r="${addr}"(?:\\s[^>]*)?>)(?:<f>[^<]*</f>)?<v>[^<]*</v>`, 'g');
-      let out = xml.replace(re1, `$1<v>${v}</v>`);
+
+      // 1) Buňka s jakýmkoliv obsahem (včetně shared formula <f t="shared" .../>)
+      //    Nahradí celý vnitřní obsah <c>...</c> hodnotou — funguje pro
+      //    <c r="E5"><v>0</v></c>  i  <c r="E5" s="2"><f t="shared" .../><v>0</v></c>
+      const reFull = new RegExp(`(<c r="${addr}"(?:\\s[^>]*)?>)(?:(?!</c>).)*</c>`, 'gs');
+      let out = xml.replace(reFull, `$1<v>${v}</v></c>`);
       if (out !== xml) return out;
-      // 2) Prázdná self-closing buňka: <c r="E5" s="2"/>
-      const re2 = new RegExp(`(<c r="${addr}"(?:\\s[^>]*)?)\\/>`, 'g');
-      out = xml.replace(re2, `$1><v>${v}</v></c>`);
+
+      // 2) Self-closing prázdná buňka: <c r="E5" s="2"/>
+      const reSelf = new RegExp(`(<c r="${addr}"(?:\\s[^>]*)?)\\/>`, 'g');
+      out = xml.replace(reSelf, `$1><v>${v}</v></c>`);
       if (out !== xml) return out;
-      // 3) Buňka v XML vůbec není — vlož na konec řádku
+
+      // 3) Buňka v XML vůbec není — vlož do příslušného řádku
       const rowN = addr.replace(/[A-Z]+/g, '');
-      const re3  = new RegExp(`(<row r="${rowN}"(?:\\s[^>]*)?>)(.*?)(</row>)`, 'gs');
-      return xml.replace(re3, (_, open, cont, close) =>
+      const reRow = new RegExp(`(<row r="${rowN}"(?:\\s[^>]*)?>)(.*?)(</row>)`, 'gs');
+      return xml.replace(reRow, (_, open, cont, close) =>
         `${open}${cont}<c r="${addr}"><v>${v}</v></c>${close}`
       );
     }
