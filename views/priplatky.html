@@ -109,8 +109,8 @@ label.btn { display: inline-flex; align-items: center; cursor: pointer; }
 
 /* Summary table */
 .stbl-wrap { overflow-x: auto; }
-table.stbl { width: 100%; border-collapse: collapse; font-size: 14px; }
-.stbl th { padding: 8px 10px; font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: .05em; color: var(--text-muted); border-bottom: 2px solid var(--border); text-align: right; }
+table.stbl { width: 100%; border-collapse: separate; border-spacing: 0; font-size: 14px; }
+.stbl th { padding: 8px 10px; font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: .05em; color: var(--text-muted); border-bottom: 2px solid var(--border); text-align: right; background: var(--bg); position: sticky; top: 160px; z-index: 5; }
 .stbl th:first-child { text-align: left; }
 .stbl td { padding: 9px 10px; border-bottom: 1px solid var(--border); text-align: right; }
 .stbl td:first-child { text-align: left; }
@@ -364,7 +364,7 @@ table.dtbl { width: 100%; border-collapse: collapse; font-size: 13px; }
 
       <!-- Datum -->
       <div class="field">
-        <label>Datum *</label>
+        <label id="lbl-datum">Datum *</label>
         <div class="date-fields">
           <input type="number" name="den" id="inp-den" min="1" max="31" placeholder="Den" required>
           <select name="mesicForm" id="sel-mesic-form">
@@ -376,6 +376,24 @@ table.dtbl { width: 100%; border-collapse: collapse; font-size: 13px; }
             <option value="11">Listopad</option><option value="12">Prosinec</option>
           </select>
           <input type="number" name="rokForm" id="inp-rok-form" min="2020" max="2099" placeholder="Rok" required>
+        </div>
+      </div>
+
+      <!-- Zaúčtovat do měsíce (platební měsíc — do kterého přehledu záznam patří) -->
+      <div class="field">
+        <label>Zaúčtovat do měsíce *
+          <span style="font-weight:400;color:var(--text-muted);font-size:11px">(výchozí = aktuální přehled)</span>
+        </label>
+        <div class="date-fields">
+          <select id="sel-mesic-platby">
+            <option value="1">Leden</option><option value="2">Únor</option>
+            <option value="3">Březen</option><option value="4">Duben</option>
+            <option value="5">Květen</option><option value="6">Červen</option>
+            <option value="7">Červenec</option><option value="8">Srpen</option>
+            <option value="9">Září</option><option value="10">Říjen</option>
+            <option value="11">Listopad</option><option value="12">Prosinec</option>
+          </select>
+          <input type="number" id="inp-rok-platby" min="2026" max="2099" placeholder="Rok">
         </div>
       </div>
 
@@ -735,7 +753,23 @@ function renderPrehled(data) {
       </table></div>`;
   }
   wrap.innerHTML = html;
+  // Aktualizuj sticky offset hlavičky tabulky
+  requestAnimationFrame(updateStickyTableHeader);
 }
+
+function updateStickyTableHeader() {
+  const stickyWrap = document.getElementById('prehled-sticky-wrap');
+  if (!stickyWrap) return;
+  const top = stickyWrap.getBoundingClientRect().bottom + window.scrollY - window.scrollY
+            + stickyWrap.getBoundingClientRect().top - document.documentElement.getBoundingClientRect().top
+            + stickyWrap.offsetHeight;
+  // Jednodušší: spočítat fixní výšky
+  const tabsH   = document.getElementById('tabs')?.offsetHeight || 43;
+  const stickyH = stickyWrap.offsetHeight;
+  const totalTop = 58 + tabsH + stickyH;
+  document.querySelectorAll('.stbl thead th').forEach(th => { th.style.top = totalTop + 'px'; });
+}
+window.addEventListener('resize', updateStickyTableHeader);
 
 // ═══ Detail (záznamy jednoho loginu) ═════════════════════════════════════════
 function openDetail(login) {
@@ -797,6 +831,9 @@ function updateFormConds() {
   const isBrani   = s === 'braní směn';
   const isSkoleni = s === 'školení';
 
+  // Datum label
+  document.getElementById('lbl-datum').textContent = isRecenze ? 'Datum nahlášení *' : 'Datum *';
+
   document.getElementById('field-castka-select').classList.toggle('hidden', !isRecenze);
   if (isRecenze) {
     document.getElementById('field-castka-input').classList.toggle('hidden',
@@ -822,8 +859,11 @@ document.getElementById('btn-add').addEventListener('click', () => {
   resetForm();
   const t = new Date();
   document.getElementById('inp-den').value        = t.getDate();
-  document.getElementById('sel-mesic-form').value = mesic;
-  document.getElementById('inp-rok-form').value   = rok;
+  document.getElementById('sel-mesic-form').value = t.getMonth() + 1;
+  document.getElementById('inp-rok-form').value   = t.getFullYear();
+  // Platební měsíc = aktuálně zobrazený přehled
+  document.getElementById('sel-mesic-platby').value = mesic;
+  document.getElementById('inp-rok-platby').value   = rok;
   document.getElementById('modal-form-title').textContent = 'Přidat záznam';
   openOverlay('modal-form');
 });
@@ -872,7 +912,11 @@ document.getElementById('btn-zaznam-save').addEventListener('click', async () =>
   const payload = {
     sekce, login: loginFinal,
     hotel: d.hotel || null,
-    den: d.den, mesic: d.mesicForm, rok: d.rokForm,
+    // Skutečné datum záznamu (den/mesicForm/rokForm)
+    den: d.den, mesicDatum: d.mesicForm, rokDatum: d.rokForm,
+    // Platební měsíc — do kterého přehledu záznam patří
+    mesic: document.getElementById('sel-mesic-platby').value,
+    rok:   document.getElementById('inp-rok-platby').value,
     castka, poznamka,
     partner:     d.partner     || null,
     klient:      d.klient      || null,
@@ -910,6 +954,9 @@ function editZaznam(id) {
     document.getElementById('sel-mesic-form').value = parseInt(parts[1]);
     document.getElementById('inp-rok-form').value   = parseInt(parts[0]);
   }
+  // Platební měsíc = z.mesic / z.rok (do jakého přehledu záznam patří)
+  document.getElementById('sel-mesic-platby').value = z.mesic;
+  document.getElementById('inp-rok-platby').value   = z.rok;
 
   if (z.sekce === 'recenze') {
     const opts = ['400','200','100','50'];

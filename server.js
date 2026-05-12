@@ -1630,10 +1630,13 @@ app.get('/api/priplatky/zaznamy', requireLogin, async (req, res) => {
 });
 
 app.post('/api/priplatky/zaznamy', requireLogin, async (req, res) => {
-  const { den, mesic, rok, sekce, login, hotel, castka,
+  const { den, mesic, rok, mesicDatum, rokDatum, sekce, login, hotel, castka,
           poznamka, partner, klient, koho_skolil } = req.body;
   const db = getPool();
-  const datum = `${rok}-${String(mesic).padStart(2,'0')}-${String(den).padStart(2,'0')}`;
+  // mesicDatum/rokDatum = skutečné datum záznamu; mesic/rok = platební měsíc (přehled)
+  const dM = mesicDatum || mesic;
+  const dR = rokDatum   || rok;
+  const datum = `${dR}-${String(dM).padStart(2,'0')}-${String(den).padStart(2,'0')}`;
   try {
     const r = await db.query(
       `INSERT INTO priplatky_zaznamy
@@ -1652,11 +1655,13 @@ app.post('/api/priplatky/zaznamy', requireLogin, async (req, res) => {
 });
 
 app.patch('/api/priplatky/zaznamy/:id', requireLogin, async (req, res) => {
-  const { den, mesic, rok, sekce, login, hotel, castka,
+  const { den, mesic, rok, mesicDatum, rokDatum, sekce, login, hotel, castka,
           poznamka, partner, klient, koho_skolil } = req.body;
   const db = getPool();
+  const dM = mesicDatum || mesic;
+  const dR = rokDatum   || rok;
   const datum = den
-    ? `${rok}-${String(mesic).padStart(2,'0')}-${String(den).padStart(2,'0')}`
+    ? `${dR}-${String(dM).padStart(2,'0')}-${String(den).padStart(2,'0')}`
     : undefined;
   try {
     await db.query(
@@ -1888,8 +1893,9 @@ app.post('/api/priplatky/import-template', requireLogin, async (req, res) => {
     return null;
   }
 
-  // Fill worksheet cells
+  // Build row-fills list using SheetJS (jen čtení struktury, ne zápis)
   const range = XLSX.utils.decode_range(ws['!ref'] || 'A1:L80');
+  const rowFills = []; // { excelRow (1-indexed), sums }
   for (let r = range.s.r; r <= range.e.r; r++) {
     const cellA = ws[XLSX.utils.encode_cell({r, c:0})];
     if (!cellA || !cellA.v) continue;
@@ -1897,35 +1903,107 @@ app.post('/api/priplatky/import-template', requireLogin, async (req, res) => {
     if (!rawName || /^(celkem|jméno|jmeno)$/i.test(rawName)) continue;
     const sums = findSums(rawName);
     if (!sums) continue;
-
-    const setCell = (col, val) => {
-      if (!val) return;
-      const addr = XLSX.utils.encode_cell({r, c:col});
-      if (ws[addr]) {
-        // Mutate existing cell — preserves style (s) property
-        ws[addr].v = val; ws[addr].t = 'n';
-        delete ws[addr].w; // clear cached formatted text
-        delete ws[addr].f; // clear formula if any
-      } else {
-        ws[addr] = { t:'n', v:val };
-      }
-    };
-    setCell(4,  sums.brani_smen);  // E – Braní směn
-    setCell(5,  sums.skoleni);     // F – Školení / Účast
-    setCell(6,  sums.ostatni);     // G – Ostatní příplatky
-    setCell(7,  sums.recenze);     // H – Review jmenovitě
-    setCell(11, sums.pokuty);      // L – Pokuty celkem
+    rowFills.push({ excelRow: r + 1, sums }); // Excel rows jsou 1-indexed
   }
 
-  const ext  = (fileName||'').toLowerCase().endsWith('.xlsx') ? 'xlsx' : 'xls';
-  const out  = XLSX.write(wb, { type:'buffer', bookType: ext, cellStyles: true });
-  const ct   = ext === 'xlsx'
-    ? 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'
-    : 'application/vnd.ms-excel';
-  res.setHeader('Content-Type', ct);
+  const ext = (fileName||'').toLowerCase().endsWith('.xlsx') ? 'xlsx' : 'xls';
+
+  if (ext === 'xlsx') {
+    // ── XLSX: PizZip — přímá XML manipulace → zachová 100% formátování ──────
+    const PizZip = require('pizzip');
+    const zip    = new PizZip(buf);
+
+    // Najdi XML soubor cílového listu přes workbook.xml + .rels
+    const normName = s => String(s).toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g,'');
+    const targetNorm = normName(sheetName);
+
+    const wbXml   = zip.file('xl/workbook.xml').asText();
+    const wbRels  = zip.file('xl/_rels/workbook.xml.rels').asText();
+
+    let rId = null;
+    // name= ... r:id=
+    for (const m of wbXml.matchAll(/name="([^"]+)"[^>]*r:id="(rId\d+)"/g))
+      if (!rId && normName(m[1]).startsWith(targetNorm.substring(0,4))) rId = m[2];
+    // r:id= ... name=  (opačné pořadí atributů)
+    if (!rId) for (const m of wbXml.matchAll(/r:id="(rId\d+)"[^>]*name="([^"]+)"/g))
+      if (!rId && normName(m[2]).startsWith(targetNorm.substring(0,4))) rId = m[1];
+
+    if (!rId) return res.status(500).json({ ok:false, msg:'Nelze najít list v ZIP souboru.' });
+
+    let sheetPath = null;
+    for (const m of wbRels.matchAll(/Id="([^"]+)"[^>]*Target="([^"]+)"/g)) {
+      if (m[1] === rId) {
+        const t = m[2].replace(/^\//, ''); // odstraň úvodní /
+        sheetPath = t.startsWith('xl/') ? t : 'xl/' + t;
+        break;
+      }
+    }
+    if (!sheetPath || !zip.file(sheetPath))
+      return res.status(500).json({ ok:false, msg:'Nelze najít XML listu.' });
+
+    let sheetXml = zip.file(sheetPath).asText();
+
+    // Aktualizuj konkrétní buňku přímou XML manipulací
+    function updateCell(xml, addr, val) {
+      const v = String(val);
+      // 1) Buňka s <v> (případně i <f> formule před ní)
+      const re1 = new RegExp(`(<c r="${addr}"(?:\\s[^>]*)?>)(?:<f>[^<]*</f>)?<v>[^<]*</v>`, 'g');
+      let out = xml.replace(re1, `$1<v>${v}</v>`);
+      if (out !== xml) return out;
+      // 2) Prázdná self-closing buňka: <c r="E5" s="2"/>
+      const re2 = new RegExp(`(<c r="${addr}"(?:\\s[^>]*)?)\\/>`, 'g');
+      out = xml.replace(re2, `$1><v>${v}</v></c>`);
+      if (out !== xml) return out;
+      // 3) Buňka v XML vůbec není — vlož na konec řádku
+      const rowN = addr.replace(/[A-Z]+/g, '');
+      const re3  = new RegExp(`(<row r="${rowN}"(?:\\s[^>]*)?>)(.*?)(</row>)`, 'gs');
+      return xml.replace(re3, (_, open, cont, close) =>
+        `${open}${cont}<c r="${addr}"><v>${v}</v></c>${close}`
+      );
+    }
+
+    // Sloupce: E=Braní směn, F=Školení, G=Ostatní, H=Recenze, L=Pokuty
+    const COLS  = ['E','F','G','H','L'];
+    const KEYS  = ['brani_smen','skoleni','ostatni','recenze','pokuty'];
+
+    for (const { excelRow, sums } of rowFills) {
+      COLS.forEach((col, i) => {
+        if (sums[KEYS[i]] > 0)
+          sheetXml = updateCell(sheetXml, `${col}${excelRow}`, sums[KEYS[i]]);
+      });
+    }
+
+    zip.file(sheetPath, sheetXml);
+    const out = zip.generate({ type:'nodebuffer', compression:'DEFLATE' });
+
+    res.setHeader('Content-Type', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
+    res.setHeader('Content-Disposition',
+      `attachment; filename*=UTF-8''${encodeURIComponent(fileName || `export_${rok}_${mesic}.xlsx`)}`);
+    return res.send(out);
+  }
+
+  // ── XLS fallback: SheetJS best-effort (formátování se nemusí zachovat) ────
+  const wbS = XLSX.read(buf, { type:'buffer', cellDates:true, cellStyles:true, sheetStubs:true });
+  const wsS = wbS.Sheets[sheetName];
+  for (const { excelRow, sums } of rowFills) {
+    const ri = excelRow - 1;
+    const setCell = (col, val) => {
+      if (!val) return;
+      const addr = XLSX.utils.encode_cell({r:ri, c:col});
+      if (wsS[addr]) { wsS[addr].v = val; wsS[addr].t = 'n'; delete wsS[addr].w; delete wsS[addr].f; }
+      else wsS[addr] = { t:'n', v:val };
+    };
+    setCell(4,  sums.brani_smen);
+    setCell(5,  sums.skoleni);
+    setCell(6,  sums.ostatni);
+    setCell(7,  sums.recenze);
+    setCell(11, sums.pokuty);
+  }
+  const outXls = XLSX.write(wbS, { type:'buffer', bookType:'xls', cellStyles:true });
+  res.setHeader('Content-Type', 'application/vnd.ms-excel');
   res.setHeader('Content-Disposition',
-    `attachment; filename*=UTF-8''${encodeURIComponent(fileName || `export_${rok}_${mesic}.${ext}`)}`);
-  res.send(out);
+    `attachment; filename*=UTF-8''${encodeURIComponent(fileName || `export_${rok}_${mesic}.xls`)}`);
+  res.send(outXls);
 });
 
 // (import-file1 removed — historical data imported 2026-05-12, 243 records)
