@@ -37,9 +37,9 @@
       --nav-fg:      #777870;
     }
 
-    /* Shrink to content — no scrollbars */
     html, body {
       width: fit-content;
+      min-width: 0;
       overflow: hidden;
       scrollbar-width: none;
       font-family: 'Segoe UI', system-ui, sans-serif;
@@ -47,7 +47,6 @@
       color: var(--name-fg);
     }
 
-    /* ── Header ── */
     .hdr {
       background: var(--hdr-bg);
       padding: 4px 7px 3px;
@@ -80,8 +79,8 @@
     }
     .dot.off { background: var(--offline); }
 
-    /* ── Table — natural (fit-content) width ── */
-    table { border-collapse: collapse; }  /* NO width:100% */
+    /* Table: natural width, columns stable via min-width on td */
+    table { border-collapse: collapse; }
 
     thead th {
       font-size: 7.5px; font-weight: 700; letter-spacing: .04em;
@@ -98,8 +97,7 @@
 
     tbody td {
       font-size: 8px; padding: 2px 5px;
-      white-space: nowrap;
-      vertical-align: middle;
+      white-space: nowrap; vertical-align: middle;
     }
     td.code {
       font-weight: 800; color: var(--hotel-fg);
@@ -107,15 +105,15 @@
       border-right: 1px solid var(--border-mid);
       background: var(--page-bg);
     }
-    /* min-width sized to fit "Kochurikhina Valeriia" (21 chars @ 8px) */
+    /* min-width wide enough for "Kochurikhina Valeriia" (21 chars @ 8px ~125px incl padding) */
     td.day {
-      min-width: 120px;
+      min-width: 125px;
       background: var(--day-bg);
       border-right: 1px solid var(--border);
       color: var(--name-fg);
     }
     td.ngt {
-      min-width: 120px;
+      min-width: 125px;
       background: var(--night-bg);
       color: var(--name-fg);
     }
@@ -128,30 +126,41 @@
     tr.q td.day  { background: var(--q-day); }
     tr.q td.ngt  { background: var(--q-ngt); }
 
-    /* ── Footer ── */
     .foot {
       font-size: 7px; color: var(--foot-fg);
       padding: 2px 7px 3px;
       border-top: 1px solid var(--border);
       white-space: nowrap;
       cursor: default; user-select: none;
+      display: flex; align-items: center; justify-content: space-between;
     }
+    /* Resize button — click if window is too large */
+    .resize-btn {
+      font-size: 9px; background: none; border: none;
+      color: var(--border-mid); cursor: pointer; padding: 0 2px;
+      line-height: 1;
+    }
+    .resize-btn:hover { color: var(--foot-fg); }
+
     .msg { padding: 10px 16px; font-size: 8px; color: var(--foot-fg); white-space: nowrap; }
   </style>
 </head>
 <body>
 
   <div class="hdr">
-    <button class="nav-btn" onclick="navDay(-1)" title="Předchozí den">&#8249;</button>
+    <button class="nav-btn" onclick="navDay(-1)">&#8249;</button>
     <div class="hdr-date" id="hdr-date">—</div>
-    <button class="nav-btn" onclick="navDay(1)" title="Následující den">&#8250;</button>
+    <button class="nav-btn" onclick="navDay(1)">&#8250;</button>
     <button class="today-btn" id="btn-today" onclick="goToday()">Dnes</button>
     <div class="dot" id="dot"></div>
   </div>
 
   <div id="content"><div class="msg">Načítání…</div></div>
 
-  <div class="foot" id="foot">AVE Hotels · Recepce</div>
+  <div class="foot">
+    <span id="foot-txt">AVE Hotels · Recepce</span>
+    <button class="resize-btn" onclick="fitWindow()" title="Přizpůsobit velikost okna">⛶</button>
+  </div>
 
   <script>
     const HOTELS = ['A','B','C','D','E','G','H','I','J','L','M','N','S','T','U','P','Q'];
@@ -174,13 +183,30 @@
 
     function fitWindow(){
       try {
+        // Measure the actual rendered table width
+        const tbl = document.querySelector('table');
+        const hdr = document.querySelector('.hdr');
+        if (!tbl || !hdr) return;
+
+        const contentW = Math.max(
+          tbl.getBoundingClientRect().width,
+          hdr.scrollWidth
+        );
+        const contentH =
+          hdr.getBoundingClientRect().height +
+          document.getElementById('content').getBoundingClientRect().height +
+          document.querySelector('.foot').getBoundingClientRect().height;
+
+        // Window chrome: title bar height, optional border
         const chromeW = window.outerWidth  - window.innerWidth;
         const chromeH = window.outerHeight - window.innerHeight;
-        // offsetWidth = rendered width of html element (= fit-content width)
-        const w = document.documentElement.offsetWidth;
-        // scrollHeight = full content height including any overflow
-        const h = document.documentElement.scrollHeight;
-        window.resizeTo(w + chromeW, h + chromeH);
+        // Fallback if chrome measurement seems off
+        const safeH = chromeH > 5 ? chromeH : 33;
+
+        window.resizeTo(
+          Math.ceil(contentW) + chromeW,
+          Math.ceil(contentH) + safeH
+        );
       } catch(e) {}
     }
 
@@ -195,9 +221,9 @@
 
     function render(){
       document.getElementById('btn-today').classList.toggle('on-today', isToday());
-      const el = document.getElementById('content');
-      if(!data){el.innerHTML='<div class="msg">Načítání…</div>';fitWindow();return;}
-      if(!data.ok){el.innerHTML='<div class="msg">Žádný rozpis.</div>';fitWindow();return;}
+      const el=document.getElementById('content');
+      if(!data){el.innerHTML='<div class="msg">Načítání…</div>';return;}
+      if(!data.ok){el.innerHTML='<div class="msg">Žádný rozpis.</div>';return;}
 
       const dt=new Date(data.year,data.month-1,data.day);
       document.getElementById('hdr-date').textContent=
@@ -225,13 +251,14 @@
       </table>`;
 
       if(updated)
-        document.getElementById('foot').textContent=
+        document.getElementById('foot-txt').textContent=
           `Aktualizováno ${fmt2(updated.getHours())}:${fmt2(updated.getMinutes())}`;
 
-      // Two-tick resize: paint first, then snap window
+      // Attempt resize: immediately + delayed (Chrome sometimes needs a tick)
       requestAnimationFrame(()=>requestAnimationFrame(()=>{
         fitWindow();
-        setTimeout(fitWindow, 100);
+        setTimeout(fitWindow, 150);
+        setTimeout(fitWindow, 600);
       }));
     }
 
@@ -260,6 +287,12 @@
       const n=new Date(),m=new Date(n.getFullYear(),n.getMonth(),n.getDate()+1);
       setTimeout(()=>{goToday();scheduleMidnight();},m-n+500);
     }
+
+    // Also attempt resize on full window load
+    window.addEventListener('load', () => {
+      setTimeout(fitWindow, 300);
+      setTimeout(fitWindow, 800);
+    });
 
     load(); connect(); scheduleMidnight();
   </script>
