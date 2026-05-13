@@ -83,18 +83,23 @@ body { min-height: 100vh; background: var(--bg); font-family: 'Segoe UI', system
   label[for="inp-template-file"], #link-export, #fill-status { display: none !important; }
 }
 
+/* Záhlaví tabulky — zkrácené/plné verze */
+.stbl th .col-short { display: none; }
+.stbl th .col-full  { display: inline; }
+
 /* Portrait: tabulka bez horizontálního scrollu */
 @media (max-width: 600px) {
   #stbl-scroll { overflow-x: hidden; padding: 0 8px 60px; }
   table.stbl { table-layout: fixed; width: 100%; font-size: 11px; }
   .stbl th {
-    padding: 6px 2px; font-size: 9px; letter-spacing: 0;
-    white-space: normal; word-break: break-word;
+    padding: 6px 2px; font-size: 10px; letter-spacing: 0;
+    white-space: nowrap;
   }
+  .stbl th .col-full  { display: none; }
+  .stbl th .col-short { display: inline; }
   .stbl td { padding: 7px 2px; font-size: 11px; }
   .stbl th:first-child, .stbl td:first-child { width: 82px; }
   .stbl td:first-child small { font-size: 9px; }
-  .stbl td:first-child br + small { display: block; }
 }
 
 /* Landscape: kompaktnější controls */
@@ -584,7 +589,6 @@ document.getElementById('btn-next').addEventListener('click', () => {
 // ═══ Inicializace ════════════════════════════════════════════════════════════
 async function init() {
   updateMonthLabel();
-  updateStickyTableHeader(); // nastav výšku hned při startu
   await loadRecepniDropdown();
   await loadDuvodyDropdowns();
   loadPrehled();
@@ -767,10 +771,12 @@ function renderPrehled(data) {
   Object.values(allBuckets).forEach(b => { totals.bs+=b.bs; totals.re+=b.re; totals.sk+=b.sk; totals.os+=b.os; totals.po+=b.po; });
   const totSoucet = totals.bs + totals.re + totals.sk + totals.os - totals.po;
 
+  const TH = (full, short) =>
+    `<th><span class="col-full">${full}</span><span class="col-short">${short}</span></th>`;
   let html = `<table class="stbl">
     <thead><tr>
-      <th>Login / Jméno</th>
-      <th>Braní směn</th><th>Recenze</th><th>Školení</th><th>Ostatní</th><th>Pokuty</th><th>Součet</th>
+      <th><span class="col-full">Login / Jméno</span><span class="col-short">Login</span></th>
+      ${TH('Braní směn','BS')}${TH('Recenze','Re')}${TH('Školení','Sk')}${TH('Ostatní','Os')}${TH('Pokuty','Po')}${TH('Součet','∑')}
     </tr></thead>
     <tbody>${tableRows(known)}</tbody>
     <tfoot><tr>
@@ -786,7 +792,8 @@ function renderPrehled(data) {
       <h3>⚠️ Neznámé loginy</h3>
       <table class="stbl">
         <thead><tr>
-          <th>Login</th><th>Braní směn</th><th>Recenze</th><th>Školení</th><th>Ostatní</th><th>Pokuty</th><th>Součet</th>
+          <th><span class="col-full">Login</span><span class="col-short">Login</span></th>
+          ${TH('Braní směn','BS')}${TH('Recenze','Re')}${TH('Školení','Sk')}${TH('Ostatní','Os')}${TH('Pokuty','Po')}${TH('Součet','∑')}
         </tr></thead>
         <tbody>${tableRows(unknown,'unknown-login')}</tbody>
       </table></div>`;
