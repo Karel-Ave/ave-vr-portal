@@ -11,6 +11,10 @@
   <style>
     *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
 
+    /* Hide scrollbars completely */
+    ::-webkit-scrollbar { display: none; }
+    html { scrollbar-width: none; }
+
     :root {
       --hdr-bg:      #1E2228;
       --hdr-text:    #DDDDDD;
@@ -36,13 +40,10 @@
       --nav-fg:      #777870;
     }
 
-    /* No scrollbars — window is sized to content */
-    html {
-      width: fit-content;
-      overflow: hidden;
-    }
-    body {
-      width: fit-content;
+    html, body {
+      /* Fill the viewport fully — no empty space inside the content area */
+      width:   100%;
+      height:  100%;
       overflow: hidden;
       font-family: 'Segoe UI', system-ui, sans-serif;
       background: var(--page-bg);
@@ -65,22 +66,17 @@
       transition: color .12s; flex-shrink: 0;
     }
     .nav-btn:hover { color: #fff; }
-
     .hdr-date {
       font-size: 8px; font-weight: 700; color: var(--hdr-text);
       flex: 1; white-space: nowrap; padding: 0 3px;
     }
-
     .today-btn {
       font-size: 7px; font-weight: 700;
       padding: 1px 6px; border-radius: 3px; border: none; cursor: pointer;
       background: #2C3540; color: #fff;
-      transition: opacity .15s; flex-shrink: 0;
+      flex-shrink: 0;
     }
-    .today-btn.on-today {
-      background: #3E444C; color: #666860; cursor: default;
-    }
-
+    .today-btn.on-today { background: #3E444C; color: #666860; cursor: default; }
     .dot {
       width: 5px; height: 5px; border-radius: 50%;
       background: var(--online); flex-shrink: 0;
@@ -91,48 +87,46 @@
     /* ── Table ── */
     table {
       border-collapse: collapse;
-      /* table naturally sizes to widest content */
+      width: 100%; /* fill the window width */
+      table-layout: fixed; /* fixed layout = stable column widths */
     }
 
-    /* Column header row */
+    /* Fixed column widths — sized for longest expected name */
+    col.col-code { width: 26px; }
+    col.col-day  { width: 128px; } /* fits "Nermesanová Manuela" @ 8px */
+    col.col-ngt  { width: 128px; }
+
     thead th {
       font-size: 7.5px; font-weight: 700; letter-spacing: .04em;
-      padding: 2px 6px; color: #fff; white-space: nowrap;
+      padding: 2px 5px; color: #fff; white-space: nowrap;
       border-bottom: 2px solid var(--border-mid);
+      overflow: hidden;
     }
-    thead th.th-code { background: var(--page-bg); color: transparent; width: 1px; padding: 2px 4px; }
+    thead th.th-code { background: var(--page-bg); color: transparent; }
     thead th.th-day  { background: var(--chdr-day); border-right: 1px solid var(--border-mid); }
     thead th.th-ngt  { background: var(--chdr-ngt); }
 
-    /* Hotel rows */
     tbody tr { border-bottom: 1px solid var(--border); }
     tbody tr:last-child { border-bottom: none; }
 
     tbody td {
-      font-size: 8px; white-space: nowrap;
-      padding: 2px 6px; line-height: 1.35;
+      font-size: 8px; padding: 2px 5px;
+      white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
       vertical-align: middle;
     }
-
-    /* Hotel code column */
     td.code {
       font-weight: 800; color: var(--hotel-fg);
-      padding: 2px 4px 2px 7px;
+      padding-left: 7px;
       border-right: 1px solid var(--border-mid);
       background: var(--page-bg);
     }
-
-    /* Day / night cells */
     td.day { background: var(--day-bg); border-right: 1px solid var(--border); color: var(--name-fg); }
     td.ngt { background: var(--night-bg); color: var(--name-fg); }
     td.empty { color: var(--dash-fg); font-weight: 700; }
 
-    /* P row */
     tr.p td.code { background: var(--p-code); }
     tr.p td.day  { background: var(--p-day); }
     tr.p td.ngt  { background: var(--p-ngt); }
-
-    /* Q row */
     tr.q td.code { background: var(--q-code); }
     tr.q td.day  { background: var(--q-day); }
     tr.q td.ngt  { background: var(--q-ngt); }
@@ -142,11 +136,12 @@
       font-size: 7px; color: var(--foot-fg);
       padding: 2px 7px 3px;
       border-top: 1px solid var(--border);
-      white-space: nowrap;
+      white-space: nowrap; overflow: hidden;
       cursor: default; user-select: none;
+      background: var(--page-bg);
     }
 
-    .msg { padding: 10px 16px; font-size: 8px; color: var(--foot-fg); white-space: nowrap; }
+    .msg { padding: 10px 16px; font-size: 8px; color: var(--foot-fg); }
   </style>
 </head>
 <body>
@@ -159,9 +154,7 @@
     <div class="dot" id="dot"></div>
   </div>
 
-  <div id="content">
-    <div class="msg">Načítání…</div>
-  </div>
+  <div id="content"><div class="msg">Načítání…</div></div>
 
   <div class="foot" id="foot">AVE Hotels · Recepce</div>
 
@@ -171,14 +164,11 @@
     const MONTHS = ['ledna','února','března','dubna','května','června',
                     'července','srpna','září','října','listopadu','prosince'];
 
-    let data = null, updated = null;
-    const _n = new Date();
+    let data=null, updated=null;
+    const _n=new Date();
     let viewDay=_n.getDate(), viewMonth=_n.getMonth()+1, viewYear=_n.getFullYear();
 
-    function isToday() {
-      const n=new Date();
-      return viewDay===n.getDate()&&viewMonth===n.getMonth()+1&&viewYear===n.getFullYear();
-    }
+    function isToday(){const n=new Date();return viewDay===n.getDate()&&viewMonth===n.getMonth()+1&&viewYear===n.getFullYear();}
     function daysInMonth(m,y){return new Date(y,m,0).getDate();}
     function fmt2(n){return String(n).padStart(2,'0');}
     function fmtName(s){
@@ -187,22 +177,25 @@
       return c||null;
     }
 
-    function fitWindow(){
-      try{
-        // measure exact content size before browser lays out scrollbars
-        const cw=window.outerWidth -window.innerWidth;   // chrome width
-        const ch=window.outerHeight-window.innerHeight;  // chrome height (title bar)
-        const w=document.documentElement.scrollWidth;
-        const h=document.documentElement.scrollHeight;
-        window.resizeTo(w+cw, h+ch);
-      }catch(e){}
+    // Target content size (fixed — based on longest name, never changes)
+    // col-code:26 + col-day:128 + border:1 + col-ngt:128 = 283px content
+    // + scrollbar chrome etc — measured once after first render
+    let targetW = 0, targetH = 0;
+
+    function fitWindow() {
+      try {
+        const chromeW = window.outerWidth  - window.innerWidth;
+        const chromeH = window.outerHeight - window.innerHeight;
+        if (targetW === 0) {
+          // First time: measure actual rendered content size
+          targetW = document.documentElement.scrollWidth;
+          targetH = document.documentElement.scrollHeight;
+        }
+        window.resizeTo(targetW + chromeW, targetH + chromeH);
+      } catch(e) {}
     }
 
-    function goToday(){
-      const n=new Date();
-      viewDay=n.getDate();viewMonth=n.getMonth()+1;viewYear=n.getFullYear();
-      load();
-    }
+    function goToday(){const n=new Date();viewDay=n.getDate();viewMonth=n.getMonth()+1;viewYear=n.getFullYear();load();}
     function navDay(d){
       viewDay+=d;
       const dim=daysInMonth(viewMonth,viewYear);
@@ -213,10 +206,9 @@
 
     function render(){
       document.getElementById('btn-today').classList.toggle('on-today',isToday());
-
       const el=document.getElementById('content');
-      if(!data){el.innerHTML='<div class="msg">Načítání…</div>';fitWindow();return;}
-      if(!data.ok){el.innerHTML='<div class="msg">Žádný rozpis pro tento den.</div>';fitWindow();return;}
+      if(!data){el.innerHTML='<div class="msg">Načítání…</div>';return;}
+      if(!data.ok){el.innerHTML='<div class="msg">Žádný rozpis.</div>';return;}
 
       const dt=new Date(data.year,data.month-1,data.day);
       document.getElementById('hdr-date').textContent=
@@ -226,8 +218,7 @@
       let rows='';
       for(const code of HOTELS){
         const info=h[code]||{};
-        const dn=fmtName(info.day);
-        const nn=fmtName(info.night);
+        const dn=fmtName(info.day), nn=fmtName(info.night);
         const cls=code==='P'?'p':code==='Q'?'q':'';
         rows+=`<tr class="${cls}">` +
           `<td class="code">${code}</td>` +
@@ -235,8 +226,8 @@
           `<td class="ngt${nn?'':' empty'}">${nn||'—'}</td>` +
           `</tr>`;
       }
-
       el.innerHTML=`<table>
+        <colgroup><col class="col-code"><col class="col-day"><col class="col-ngt"></colgroup>
         <thead><tr>
           <th class="th-code"></th>
           <th class="th-day">Denní</th>
@@ -245,13 +236,15 @@
         <tbody>${rows}</tbody>
       </table>`;
 
-      if(updated){
+      if(updated)
         document.getElementById('foot').textContent=
           `Aktualizováno ${fmt2(updated.getHours())}:${fmt2(updated.getMinutes())}`;
-      }
 
-      // Give the browser one frame to paint, then resize
-      requestAnimationFrame(()=>requestAnimationFrame(fitWindow));
+      // Resize: call immediately, then again after paint to catch any rounding
+      requestAnimationFrame(()=>{
+        fitWindow();
+        setTimeout(fitWindow, 80);
+      });
     }
 
     async function load(){
@@ -262,7 +255,7 @@
       }catch(e){console.error(e);}
     }
 
-    let es,retryMs=3000;
+    let es, retryMs=3000;
     function connect(){
       if(es){es.close();es=null;}
       es=new EventSource('/api/widget-events');
