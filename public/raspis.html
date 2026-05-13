@@ -663,33 +663,35 @@ body {
   color:       var(--text) !important;
 }
 
-/* Záložkový pás — tmavý, jako portálový topbar */
+/* Záložkový pás — stejný styl jako v Příplatcích (#tabs) */
 #raspis-tabs-bar {
   display: flex !important;
-  align-items: stretch;
-  background: var(--bg-topbar, #1E2228);
-  border-bottom: 1px solid rgba(255,255,255,.1);
+  align-items: flex-end;
+  background: var(--bg);
+  border-bottom: 1px solid var(--border);
   flex-shrink: 0;
   min-height: 44px;
-  padding: 0 8px;
-  gap: 2px;
+  padding: 0 12px;
+  gap: 4px;
 }
 .rtab {
-  padding: 0 16px;
+  padding: 9px 18px;
   border: none;
-  border-bottom: 3px solid transparent;
+  border-radius: 8px 8px 0 0;
   background: none;
-  color: rgba(255,255,255,.55);
+  color: var(--text-muted);
   cursor: pointer;
-  font-size: 13px;
+  font-size: 14px;
   font-weight: 600;
   font-family: inherit;
   white-space: nowrap;
-  transition: color .15s, border-color .15s;
+  border-bottom: 3px solid transparent;
+  margin-bottom: -1px;
+  transition: color .15s, border-color .15s, background .15s;
   flex-shrink: 0;
 }
-.rtab:hover  { color: rgba(255,255,255,.85); }
-.rtab.rtab-active { color: #fff; border-bottom-color: rgba(255,255,255,.75); }
+.rtab:hover  { color: var(--text); background: var(--surface-alt); }
+.rtab.rtab-active { color: var(--accent); border-bottom-color: var(--accent); background: none; }
 
 /* Akční tlačítka v záložkovém pásu */
 #raspis-tab-actions {
@@ -697,7 +699,7 @@ body {
   align-items: center;
   gap: 6px;
   margin-left: auto;
-  padding: 6px 0;
+  padding: 0 0 6px;
 }
 
 /* Portálové ovládání (Raspis tab) */
@@ -757,7 +759,7 @@ body {
 }
 table.staff-tbl th { background: var(--bg, #f5f5f0) !important; border-color: var(--border, #ccc) !important; color: var(--text-muted, #666) !important; }
 table.staff-tbl td { border-color: var(--border, #ccc) !important; }
-table.staff-tbl tr:hover td { background: var(--surface-alt, #f0f0ea) !important; }
+/* Pozor: tr:hover NEpřepisujeme — PC app má vlastní hover a náš by v dark modu překryl barevná jména */
 
 /* Legend */
 #legend { background: var(--surface, #fff) !important; border-color: var(--border, #ccc) !important; }
@@ -6533,7 +6535,7 @@ function _setStatus(txt, ok) {
   const el = document.getElementById('web-save-status');
   if (!el) return;
   el.textContent = txt;
-  el.style.color  = ok ? 'rgba(255,255,255,.7)' : '#ff9090';
+  el.style.color  = ok ? 'var(--text-muted)' : 'var(--offline, #c04040)';
   el.style.opacity = '1';
   if (ok && txt.startsWith('✓')) setTimeout(() => { el.style.opacity = '0'; }, 3000);
 }
@@ -6589,15 +6591,16 @@ async function loadLatestDraft() {
   try {
     const r = await fetch('/api/drafts', { credentials: 'include' });
     const list = await r.json();
-    if (!list.length) { return; }
+    if (!list.length) return; // __app_data__ already loaded in onload
     const r2 = await fetch('/api/drafts/' + list[0].id, { credentials: 'include' });
     const j2  = await r2.json();
     if (j2.ok && j2.data) {
       applyData(j2.data);
+      if (typeof renderStaff === 'function') renderStaff(); // aktualizuj staff tabulku
       _lastSavedJson = JSON.stringify(buildWebSaveObj());
-      if (typeof showHint === 'function') showHint('Načten: ' + list[0].label);
+      if (typeof showHint === 'function') showHint('Načten draft: ' + list[0].label);
     }
-  } catch(e) { /* fallback: default staff */ }
+  } catch(e) { /* __app_data__ zůstane */ }
 }
 
 // ── Readonly ──────────────────────────────────────────────────────────────────
@@ -7139,9 +7142,14 @@ window.onload = async function() {
   // Skryj případné původní záložky z PC app
   document.querySelectorAll('.tab').forEach(t => t.style.display = 'none');
 
-  // Inicializuj PC app tabulky
+  // ── Baseline: načti data z __app_data__ (embedded v HTML ze souboru Rozpis směn.html)
+  // autoLoad() = funkce PC apky, čte __app_data__ div → plný seznam recepčních + rozpis
+  if (typeof autoLoad === 'function') autoLoad();
+
+  // Inicializuj PC app tabulky (s daty z __app_data__)
   if (typeof renderStaff    === 'function') renderStaff();
   if (typeof buildHotelBtns === 'function') buildHotelBtns();
+  if (typeof buildSchedule  === 'function') buildSchedule();
 
   // Wire portal events
   _wirePortalEvents();
@@ -7151,12 +7159,12 @@ window.onload = async function() {
 
   // Výchozí záložka dle URL
   if (WEB_MODE === 'tvorba') {
-    // Tvorba: načti draft
+    // Tvorba: pokus načíst draft (může přepsat __app_data__)
     await loadLatestDraft();
     if (typeof buildSchedule === 'function') buildSchedule();
     showAppTab('tvorba');
-    // Obnov stav "Zapamatuj požadavky" pokud jsou v draftu
-    if (state.requirements && Object.keys(state.requirements).length > 0) {
+    // Obnov stav "Zapamatuj požadavky" pokud jsou v draftu/datech
+    if (state && state.requirements && Object.keys(state.requirements).length > 0) {
       setTimeout(() => {
         if (typeof updateAllDeletedCells === 'function') updateAllDeletedCells();
         if (typeof updateReqSumTooltips  === 'function') updateReqSumTooltips();
@@ -7165,9 +7173,8 @@ window.onload = async function() {
       }, 100);
     }
   } else {
-    // Raspis: zobraz prázdný rozpis, pak načti seznam
-    if (typeof buildSchedule === 'function') buildSchedule();
-    showAppTab('view');
+    // Raspis: zobraz data z __app_data__ (viditelné hned), pak načti portálový seznam
+    showAppTab('view'); // spustí loadRozpisyList() pro první zobrazení
   }
 };
 </script>
