@@ -78,8 +78,8 @@ body { min-height: 100vh; background: var(--bg); font-family: 'Segoe UI', system
 }
 
 /* ── Mobilní zobrazení ── */
-/* Skrýt Šablona + Export na mobilech */
-@media (max-width: 768px) {
+/* Skrýt Šablona + Export na dotykových zařízeních (mobil, tablet) */
+@media (pointer: coarse) {
   label[for="inp-template-file"], #link-export, #fill-status { display: none !important; }
 }
 
