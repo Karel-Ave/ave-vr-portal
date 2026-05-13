@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, viewport-fit=cover">
-<title>Příplatky a pokuty – VR AVE</title>
+<title>💵 Příplatky a pokuty – VR AVE</title>
 <link rel="icon" type="image/png" href="/static/logo.png">
 <script src="/static/theme.js"></script>
 <link rel="stylesheet" href="/static/theme.css">
@@ -23,32 +23,34 @@ body { min-height: 100vh; background: var(--bg); font-family: 'Segoe UI', system
 .tab-panel { display:none; }
 .tab-panel.active { display:block; }
 
-/* Přehled: sticky top area + scrollable table */
-#prehled-top {
-  position: sticky;
-  top: calc(58px + 43px); /* topbar + tabs */
+/* Přehled: flexbox layout — controls stuck at top, table fills rest */
+#tab-prehled {
+  display: flex;
+  flex-direction: column;
+  height: calc(100dvh - 58px - 43px); /* topbar + tabs */
+  overflow: hidden;
+}
+#prehled-sticky-wrap {
+  flex-shrink: 0;
+  background: var(--bg);
+  border-bottom: 1px solid var(--border);
   z-index: 90;
+}
+#prehled-top {
+  /* fallback legacy rule – no longer sticky */
   background: var(--bg);
   padding: 14px 16px 10px;
-  border-bottom: 1px solid var(--border);
   max-width: 1020px;
   margin: 0 auto;
   width: 100%;
 }
-/* We need to cover full width for the sticky bg */
-#prehled-sticky-wrap {
-  position: sticky;
-  top: calc(58px + 43px);
-  z-index: 90;
-  background: var(--bg);
-  border-bottom: 1px solid var(--border);
-}
-
 #stbl-scroll {
+  flex: 1;
+  min-height: 0;
   max-width: 1020px;
   margin: 0 auto;
-  padding: 16px 16px 80px;
-  /* Výška nastavená JS, overflow-y umožní sticky thead uvnitř */
+  width: 100%;
+  padding: 0 16px 60px;
   overflow-y: auto;
   overflow-x: auto;
   box-sizing: border-box;
@@ -73,6 +75,32 @@ body { min-height: 100vh; background: var(--bg); font-family: 'Segoe UI', system
   .month-label { min-width: 90px; font-size: 13px; }
   .controls-bar .btn-sm { padding: 4px 7px; font-size: 11px; }
   .nav-btn { padding: 5px 9px; font-size: 13px; }
+}
+
+/* ── Mobilní zobrazení ── */
+/* Skrýt Šablona + Export na mobilech */
+@media (max-width: 768px) {
+  label[for="inp-template-file"], #link-export, #fill-status { display: none !important; }
+}
+
+/* Portrait: tabulka bez horizontálního scrollu */
+@media (max-width: 600px) {
+  #stbl-scroll { overflow-x: hidden; padding: 0 8px 60px; }
+  table.stbl { table-layout: fixed; width: 100%; font-size: 11px; }
+  .stbl th {
+    padding: 6px 2px; font-size: 9px; letter-spacing: 0;
+    white-space: normal; word-break: break-word;
+  }
+  .stbl td { padding: 7px 2px; font-size: 11px; }
+  .stbl th:first-child, .stbl td:first-child { width: 82px; }
+  .stbl td:first-child small { font-size: 9px; }
+  .stbl td:first-child br + small { display: block; }
+}
+
+/* Landscape: kompaktnější controls */
+@media (orientation: landscape) and (max-height: 500px) {
+  #tab-prehled { height: calc(100dvh - 58px - 43px); }
+  .btn-add-big { padding: 8px 16px; font-size: 13px; margin: 6px auto 0; }
 }
 
 /* File-trigger label acts as button */
@@ -206,7 +234,7 @@ table.dtbl { width: 100%; border-collapse: collapse; font-size: 13px; }
 <body>
 
 <div id="topbar">
-  <h1>💰 Příplatky a pokuty</h1>
+  <h1>💵 Příplatky a pokuty</h1>
 </div>
 
 <div id="tabs">
@@ -764,18 +792,7 @@ function renderPrehled(data) {
       </table></div>`;
   }
   wrap.innerHTML = html;
-  // Aktualizuj sticky offset hlavičky tabulky
-  requestAnimationFrame(updateStickyTableHeader);
 }
-
-function updateStickyTableHeader() {
-  const scroll = document.getElementById('stbl-scroll');
-  if (!scroll) return;
-  // Výška kontejneru = zbytek viewportu od jeho horního okraje
-  const top = scroll.getBoundingClientRect().top;
-  scroll.style.height = (window.innerHeight - top) + 'px';
-}
-window.addEventListener('resize', updateStickyTableHeader);
 
 // ═══ Detail (záznamy jednoho loginu) ═════════════════════════════════════════
 function openDetail(login) {

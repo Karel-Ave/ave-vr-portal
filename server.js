@@ -1785,8 +1785,8 @@ app.get('/api/priplatky/export/xlsx', requireLogin, async (req, res) => {
               +r.ostatni, +r.pokuty, s];
     }),
   ]);
-  // Sloupce B, C, D → indexy 1, 2, 3
-  setColWidths(wsSouhrn, [1, 2, 3], 24);
+  // Sloupec B (Jméno) → širší; ostatní číselné sloupce standardní šíře
+  setColWidths(wsSouhrn, [1], 24);
   XLSX.utils.book_append_sheet(wb, wsSouhrn, 'Souhrn');
 
   // Sheet 2: Všechny záznamy (seřazené dle recepčního → sekce → datum)
