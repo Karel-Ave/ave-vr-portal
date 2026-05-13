@@ -167,12 +167,19 @@ table.stbl { width: 100%; border-collapse: separate; border-spacing: 0; font-siz
 /* Modal */
 .overlay { display: none; position: fixed; inset: 0; background: rgba(0,0,0,.5); z-index: 2000; align-items: center; justify-content: center; padding: 16px; }
 .overlay.show { display: flex; }
-.modal { background: var(--modal-bg,var(--surface)); border: 1px solid var(--modal-border,var(--border)); border-radius: 14px; width: min(560px,100%); max-height: 90vh; overflow-y: auto; box-shadow: 0 8px 32px rgba(0,0,0,.2); }
-.modal-header { display: flex; align-items: center; padding: 18px 20px 12px; border-bottom: 1px solid var(--border); }
+/* Flex column: header+footer fixed, body scrollable — funguje správně i v landscape na mobilu */
+.modal {
+  background: var(--modal-bg,var(--surface)); border: 1px solid var(--modal-border,var(--border));
+  border-radius: 14px; width: min(560px,100%); max-height: 90vh;
+  overflow: hidden; display: flex; flex-direction: column;
+  box-shadow: 0 8px 32px rgba(0,0,0,.2);
+}
+.modal-header { display: flex; align-items: center; padding: 18px 20px 12px; border-bottom: 1px solid var(--border); flex-shrink: 0; }
 .modal-header h3 { font-size: 16px; font-weight: 700; flex: 1; }
 .modal-close { background: none; border: none; font-size: 22px; cursor: pointer; color: var(--text-muted); padding: 0 4px; }
-.modal-body { padding: 20px; }
-.modal-footer { padding: 12px 20px 18px; display: flex; gap: 8px; justify-content: flex-end; border-top: 1px solid var(--border); }
+/* Scrollovatelné tělo modalu */
+.modal-body { padding: 20px; flex: 1; min-height: 0; overflow-y: auto; -webkit-overflow-scrolling: touch; overscroll-behavior: contain; }
+.modal-footer { padding: 12px 20px 18px; display: flex; gap: 8px; justify-content: flex-end; border-top: 1px solid var(--border); flex-shrink: 0; }
 
 /* Form fields */
 .field { margin-bottom: 12px; }
@@ -208,11 +215,11 @@ input[type=number].no-spin { -moz-appearance: textfield; appearance: textfield; 
 .date-pick-display.has-date { color: var(--text); }
 
 /* Inline kalendář (uvnitř formulářového modalu) */
-/* Kompaktní modal při výběru data — pevná šířka, bez scrollbaru (ten by sebral šířku mřížce) */
+/* Kompaktní modal při výběru data */
 .modal.dp-compact {
   width: min(310px, 98%) !important;
-  max-height: none !important;
-  overflow: hidden !important;
+  max-height: none !important;   /* kalendář nesmí být oříznutý */
+  align-self: center;            /* vertikální centrování v portrait i landscape */
 }
 .dp-header { display:flex; align-items:center; padding:0 0 8px 0; }
 .dp-header span { flex:1; text-align:center; font-weight:700; font-size:14px; }
