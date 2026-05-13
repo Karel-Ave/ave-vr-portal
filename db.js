@@ -225,7 +225,8 @@ async function init() {
   // Seed výchozích skupin
   const adminPerms  = JSON.stringify({ raspis: { enabled: true, buttons: { import: true, delete: true, trash: true, edit: true, export: true } } });
   const vedPerms    = JSON.stringify({ raspis: { enabled: true, buttons: { import: false, delete: false, trash: false, edit: true, export: true } } });
-  await db.query(`INSERT INTO permission_groups (name, display_name, perms) VALUES ('admin','Admin',$1),('vedoucí','VR',$2) ON CONFLICT (name) DO NOTHING`, [adminPerms, vedPerms]);
+  const widgetPerms = JSON.stringify({});
+  await db.query(`INSERT INTO permission_groups (name, display_name, perms) VALUES ('admin','Admin',$1),('vedoucí','VR',$2),('widget','Widget',$3) ON CONFLICT (name) DO NOTHING`, [adminPerms, vedPerms, widgetPerms]);
 
   // ── Zprávy pro uživatele ──────────────────────────────────────────────────
   await db.query(`

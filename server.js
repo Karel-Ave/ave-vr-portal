@@ -38,8 +38,19 @@ app.use(session({
 const requireLogin = (req, res, next) =>
   req.session.user ? next() : res.redirect('/');
 
+// Widget: nepřihlášený → login s ?next=/widget (aby se vrátil zpět)
+const requireLoginWidget = (req, res, next) =>
+  req.session.user ? next() : res.redirect('/?next=/widget');
+
 const requireAdmin = (req, res, next) =>
   req.session.user?.role === 'admin' ? next() : res.redirect('/portal');
+
+// Portál: widget-only uživatelé sem nesmí
+const requirePortalAccess = (req, res, next) => {
+  if (!req.session.user) return res.redirect('/');
+  if (req.session.user.role === 'widget') return res.redirect('/widget');
+  return next();
+};
 
 // ── In-memory zámky (zabrání dvěma uživatelům editovat zároveň) ──────────────
 
@@ -78,11 +89,13 @@ async function logEvent(userId, userName, action, details = {}) {
 
 // ── Stránky ───────────────────────────────────────────────────────────────────
 
-app.get('/', (req, res) =>
-  req.session.user ? res.redirect('/portal') : res.sendFile(path.join(__dirname, 'views', 'login.html'))
-);
+app.get('/', (req, res) => {
+  if (!req.session.user) return res.sendFile(path.join(__dirname, 'views', 'login.html'));
+  if (req.session.user.role === 'widget') return res.redirect('/widget');
+  return res.redirect('/portal');
+});
 
-app.get('/portal', requireLogin, (req, res) =>
+app.get('/portal', requirePortalAccess, (req, res) =>
   res.sendFile(path.join(__dirname, 'views', 'portal.html'))
 );
 
@@ -101,7 +114,7 @@ app.get('/rozpis-view', requireLogin, (req, res) =>
 );
 
 // Desktop widget — dnešní rozpis
-app.get('/widget', requireLogin, (req, res) =>
+app.get('/widget', requireLoginWidget, (req, res) =>
   res.sendFile(path.join(__dirname, 'views', 'widget.html'))
 );
 
@@ -139,6 +152,11 @@ app.post('/login', async (req, res) => {
       theme: user.theme || 'light'
     };
     logEvent(user.id, user.username, 'login', { role: user.role });
+    // Widget-only uživatelé vždy na widget; ostatní dle ?next nebo na portál
+    const next = req.body.next || '';
+    if (user.role === 'widget' || next === '/widget') {
+      return res.redirect('/widget');
+    }
     res.redirect('/portal');
   } catch (err) {
     console.error('Chyba přihlášení:', err);
@@ -211,7 +229,7 @@ app.post('/api/users', requireLogin, requireAdmin, async (req, res) => {
   if (password.length < 6) {
     return res.json({ ok: false, msg: 'Heslo musí mít alespoň 6 znaků.' });
   }
-  if (!['admin', 'vedoucí'].includes(role)) {
+  if (!['admin', 'vedoucí', 'widget'].includes(role)) {
     return res.json({ ok: false, msg: 'Neplatná role.' });
   }
   try {

@@ -136,7 +136,8 @@
     <div class="logo-sub">Interní portál VR</div>
   </div>
   <div class="error" id="err">Nesprávné přihlašovací údaje.</div>
-  <form method="POST" action="/login">
+  <form method="POST" action="/login" id="login-form">
+    <input type="hidden" name="next" id="next-field" value="">
     <label>Uživatelské jméno</label>
     <input type="text" name="username" autocomplete="username" autofocus required>
     <label>Heslo</label>
@@ -146,8 +147,16 @@
 </div>
 <button id="btn-theme" title="Přepnout světlé / tmavé téma">🌙</button>
 <script>
-  if (location.search.includes('error=1')) {
+  const _params = new URLSearchParams(location.search);
+  if (_params.get('error') === '1') {
     document.getElementById('err').classList.add('show');
+  }
+  // Předej ?next= do formuláře (např. /widget → po přihlášení zpět na widget)
+  const _next = _params.get('next') || '';
+  document.getElementById('next-field').value = _next;
+  // Pokud přicházíme z widgetu, zobraz podtitulek
+  if (_next === '/widget') {
+    document.querySelector('.logo-sub').textContent = 'Mini Rozpis';
   }
 </script>
 </body>
