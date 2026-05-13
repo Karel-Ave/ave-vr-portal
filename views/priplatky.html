@@ -82,6 +82,9 @@ body { min-height: 100vh; background: var(--bg); font-family: 'Segoe UI', system
 /* Skrýt Šablona + Export na dotykových zařízeních (mobil, tablet) */
 @media (pointer: coarse) {
   label[for="inp-template-file"], #link-export, #fill-status { display: none !important; }
+  /* Centrovat výběr měsíce — separator a skryté tlačítka ho tlačí doleva */
+  .controls-bar { justify-content: center; }
+  .controls-sep { display: none; }
 }
 
 /* Záhlaví tabulky — zkrácené/plné verze */
@@ -213,15 +216,16 @@ input[type=number].no-spin { -moz-appearance: textfield; appearance: textfield; 
 }
 .dp-header { display:flex; align-items:center; padding:0 0 8px 0; }
 .dp-header span { flex:1; text-align:center; font-weight:700; font-size:14px; }
-/* Mřížka: grid-auto-rows = pevná výška řádku → žádné skoky při přepnutí měsíce */
-.dp-weekdays { display:grid; grid-template-columns:repeat(7,1fr); }
-.dp-weekday { text-align:center; font-size:10px; font-weight:700; color:var(--text-muted); padding:4px 0 3px; }
-.dp-days { display:grid; grid-template-columns:repeat(7,1fr); grid-auto-rows:34px; }
+/* Mřížka: minmax(0,1fr) zabrání rozepnutí buněk nad 1fr (jinak overflow na mobilu) */
+.dp-weekdays { display:grid; grid-template-columns:repeat(7,minmax(0,1fr)); overflow:hidden; }
+.dp-weekday { text-align:center; font-size:10px; font-weight:700; color:var(--text-muted); padding:4px 0 3px; overflow:hidden; min-width:0; }
+.dp-days { display:grid; grid-template-columns:repeat(7,minmax(0,1fr)); grid-auto-rows:34px; overflow:hidden; }
 .dp-day {
   display:flex; align-items:center; justify-content:center;
   border-radius:50%; cursor:pointer; font-size:13px;
   border:none; background:none; color:var(--text);
   font-family:inherit; transition:background .12s;
+  min-width:0; overflow:hidden;
 }
 .dp-day:hover:not(.empty):not(.selected) { background:var(--surface-alt); }
 .dp-day.selected { background:var(--accent); color:#fff; font-weight:700; }
@@ -1470,9 +1474,10 @@ function dpRenderGrid() {
   const offset   = (firstDow === 0) ? 6 : firstDow - 1;
   const days     = new Date(dpYear, dpMonth, 0).getDate();
 
-  // Vždy 42 buněk (6 řádků × 7 sloupců) — konstantní výška
+  // Počet buněk = nejmenší násobek 7 ≥ offset+days (jen tolik řádků kolik měsíc potřebuje)
+  const totalCells = Math.ceil((offset + days) / 7) * 7;
   let html = '';
-  for (let i = 0; i < 42; i++) {
+  for (let i = 0; i < totalCells; i++) {
     const dayNum = i - offset + 1;
     if (dayNum < 1 || dayNum > days) {
       html += '<div class="dp-day empty"></div>';
