@@ -12,95 +12,85 @@
     *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
 
     :root {
-      --header-bg:   #1e3a5f;
-      --header-text: #ffffff;
-      --page-bg:     #f8fafc;
-      --tab-act-bg:  #1e3a5f;
-      --tab-act-fg:  #ffffff;
-      --tab-idle-bg: #dde3ec;
-      --tab-idle-fg: #475569;
-      --border:      #e2e8f0;
-      --hotel-fg:    #1a3050;
-      --name-fg:     #1e293b;
-      --dash-fg:     #dc2626;
-      --p-bg:        #ffe0e6;
-      --q-bg:        #fed7aa;
-      --online:      #4ade80;
-      --offline:     #f87171;
+      --header-bg:  #1e3a5f;
+      --page-bg:    #f8fafc;
+      --tab-act:    #1e3a5f;
+      --tab-idle:   #dde3ec;
+      --tab-idle-fg:#475569;
+      --border:     #e2e8f0;
+      --hotel-fg:   #1a3050;
+      --name-fg:    #1e293b;
+      --dash-fg:    #dc2626;
+      --p-bg:       #ffe0e6;
+      --q-bg:       #fed7aa;
+      --online:     #4ade80;
+      --offline:    #f87171;
     }
 
     html, body {
       font-family: 'Segoe UI', system-ui, sans-serif;
       background: var(--page-bg);
-      /* narrow default — user resizes once, browser remembers */
-      min-width: 220px;
+      /* Suggest compact width — user drags window once, browser remembers */
+      width: 100%;
+      max-width: 260px;
     }
 
     /* ── Header ── */
     .hdr {
       background: var(--header-bg);
-      color: var(--header-text);
-      padding: 7px 10px 6px;
+      color: #fff;
+      padding: 4px 8px 4px;
       display: flex;
       align-items: center;
-      gap: 8px;
-      cursor: default;
+      gap: 5px;
       user-select: none;
     }
-    .hdr-text { flex: 1; min-width: 0; }
-    .hdr-date { font-size: 12px; font-weight: 700; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-    .hdr-sub  { font-size: 10px; opacity: .6; margin-top: 1px; }
-    .dot {
-      width: 7px; height: 7px; border-radius: 50%;
-      background: var(--online); flex-shrink: 0;
-      transition: background .4s;
-    }
-    .dot.off { background: var(--offline); }
+    .hdr-text   { flex: 1; min-width: 0; }
+    .hdr-date   { font-size: 8px; font-weight: 700; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+    .hdr-sub    { font-size: 7px; opacity: .6; margin-top: 1px; }
+    .dot        { width: 5px; height: 5px; border-radius: 50%; background: var(--online); flex-shrink: 0; transition: background .4s; }
+    .dot.off    { background: var(--offline); }
 
     /* ── Tabs ── */
     .tabs { display: flex; }
     .tab {
-      flex: 1; padding: 5px 0;
-      font-size: 12px; font-weight: 700;
+      flex: 1; padding: 3px 0;
+      font-size: 8px; font-weight: 700;
       text-align: center; cursor: pointer;
-      border: none; background: var(--tab-idle-bg); color: var(--tab-idle-fg);
+      border: none; background: var(--tab-idle); color: var(--tab-idle-fg);
       transition: background .12s, color .12s;
       user-select: none;
       border-bottom: 2px solid transparent;
     }
-    .tab.active { background: var(--tab-act-bg); color: var(--tab-act-fg); border-bottom-color: var(--tab-act-bg); }
+    .tab.active { background: var(--tab-act); color: #fff; border-bottom-color: var(--tab-act); }
 
     /* ── Hotel list ── */
-    .list { padding: 2px 0 4px; }
+    .list { padding: 1px 0 2px; }
 
     .row {
       display: flex; align-items: center;
-      padding: 3px 10px; gap: 8px;
+      padding: 2px 7px; gap: 5px;
       border-bottom: 1px solid var(--border);
-      min-height: 26px;
+      min-height: 19px;
     }
     .row:last-child { border-bottom: none; }
     .row.p { background: var(--p-bg); }
     .row.q { background: var(--q-bg); }
 
-    .code {
-      font-size: 12px; font-weight: 800;
-      color: var(--hotel-fg); width: 13px; flex-shrink: 0;
-    }
-    .name { font-size: 11.5px; color: var(--name-fg); flex: 1; line-height: 1.25; }
+    .code { font-size: 8px; font-weight: 800; color: var(--hotel-fg); width: 10px; flex-shrink: 0; }
+    .name { font-size: 8px; color: var(--name-fg); flex: 1; line-height: 1.3; }
     .name.empty { color: var(--dash-fg); font-weight: 700; }
 
     /* ── Footer ── */
     .foot {
-      padding: 3px 10px 4px;
-      font-size: 9.5px; color: #94a3b8;
+      padding: 2px 7px 3px;
+      font-size: 7px; color: #94a3b8;
       border-top: 1px solid var(--border);
-      display: flex; justify-content: space-between; align-items: center;
-      cursor: default;
+      display: flex; justify-content: space-between;
+      cursor: default; user-select: none;
     }
 
-    /* ── Msg ── */
-    .msg { padding: 20px; text-align: center; color: #94a3b8; font-size: 12px; }
+    .msg { padding: 12px; text-align: center; color: #94a3b8; font-size: 8px; }
   </style>
 </head>
 <body>
@@ -110,7 +100,7 @@
       <div class="hdr-date" id="hdr-date">—</div>
       <div class="hdr-sub">AVE Hotels · Recepce</div>
     </div>
-    <div class="dot" id="dot" title="SSE připojení"></div>
+    <div class="dot" id="dot"></div>
   </div>
 
   <div class="tabs">
@@ -123,20 +113,8 @@
   </div>
 
   <div class="foot">
-    <span id="foot-time"></span>
-    <span id="foot-tip" style="opacity:.55;cursor:pointer" title="Jak zobrazit vždy navrchu" onclick="toggleTip()">?</span>
-  </div>
-
-  <!-- tip overlay -->
-  <div id="tip" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,.55);z-index:99;padding:16px;display:none;align-items:center;justify-content:center;">
-    <div style="background:#fff;border-radius:8px;padding:14px 16px;max-width:280px;font-size:12px;line-height:1.6;color:#1e293b;">
-      <b style="display:block;margin-bottom:6px;">Vždy navrchu – PowerToys</b>
-      1. Stáhni <b>Microsoft PowerToys</b> z Microsoft Store (zdarma).<br>
-      2. Otevři PowerToys → <b>Always on Top</b> → zapni.<br>
-      3. Klikni do okna widgetu a stiskni <b>Win + Ctrl + T</b>.<br>
-      Okno zůstane trvale navrchu i při přepínání aplikací.<br>
-      <button onclick="toggleTip()" style="margin-top:10px;padding:4px 12px;background:#1e3a5f;color:#fff;border:none;border-radius:4px;cursor:pointer;font-size:12px;">Zavřít</button>
-    </div>
+    <span id="foot-upd"></span>
+    <span style="opacity:.4">AVE</span>
   </div>
 
   <script>
@@ -145,50 +123,52 @@
     const MONTHS = ['ledna','února','března','dubna','května','června',
                     'července','srpna','září','října','listopadu','prosince'];
 
-    let tab      = localStorage.getItem('widget-tab') || 'day';
-    let data     = null;
-    let updated  = null;
+    let tab     = localStorage.getItem('widget-tab') || 'day';
+    let data    = null;
+    let updated = null;
 
-    function fmt2(n){ return String(n).padStart(2,'0'); }
+    function fmt2(n) { return String(n).padStart(2,'0'); }
 
-    // Converts "Jana Nováková" → "Nováková Jana"
+    // Strip leading "z " prefix (legacy) — names already stored as "Příjmení Jméno"
     function fmtName(s) {
       if (!s) return null;
-      const p = s.trim().split(/\s+/);
-      return p.length < 2 ? s : p[p.length-1] + ' ' + p.slice(0,-1).join(' ');
+      const clean = s.trim().startsWith('z ') ? s.trim().slice(2).trim() : s.trim();
+      return clean || null;
     }
 
     function switchTab(t) {
       tab = t;
       localStorage.setItem('widget-tab', t);
-      document.getElementById('tab-d').classList.toggle('active', t==='day');
-      document.getElementById('tab-n').classList.toggle('active', t==='night');
+      document.getElementById('tab-d').classList.toggle('active', t === 'day');
+      document.getElementById('tab-n').classList.toggle('active', t === 'night');
       render();
     }
 
     function render() {
       const el = document.getElementById('list');
-      if (!data) { el.innerHTML = '<div class="msg">Načítání…</div>'; return; }
-      if (!data.ok) { el.innerHTML = '<div class="msg">Chyba dat.</div>'; return; }
+      if (!data)      { el.innerHTML = '<div class="msg">Načítání…</div>'; return; }
+      if (!data.ok)   { el.innerHTML = '<div class="msg">Chyba dat.</div>'; return; }
 
-      const dt = new Date(data.year, data.month-1, data.day);
+      const dt = new Date(data.year, data.month - 1, data.day);
       document.getElementById('hdr-date').textContent =
-        `${DAYS[dt.getDay()]} ${data.day}. ${MONTHS[data.month-1]} ${data.year}`;
+        `${DAYS[dt.getDay()]} ${data.day}. ${MONTHS[data.month - 1]} ${data.year}`;
 
       const h = data.hotels || {};
       let html = '';
       for (const code of HOTELS) {
         const info = h[code] || {};
-        const raw  = tab==='day' ? info.day : info.night;
+        const raw  = tab === 'day' ? info.day : info.night;
         const name = fmtName(raw);
-        const cls  = code==='P' ? 'p' : code==='Q' ? 'q' : '';
-        html += `<div class="row ${cls}"><span class="code">${code}</span>` +
-                `<span class="name${name?'':' empty'}">${name||'—'}</span></div>`;
+        const cls  = code === 'P' ? 'p' : code === 'Q' ? 'q' : '';
+        html += `<div class="row ${cls}">` +
+                `<span class="code">${code}</span>` +
+                `<span class="name${name ? '' : ' empty'}">${name || '—'}</span>` +
+                `</div>`;
       }
       el.innerHTML = html;
 
       if (updated) {
-        document.getElementById('foot-time').textContent =
+        document.getElementById('foot-upd').textContent =
           'Aktualizováno ' + fmt2(updated.getHours()) + ':' + fmt2(updated.getMinutes());
       }
     }
@@ -196,39 +176,33 @@
     async function load() {
       try {
         const r = await fetch('/api/widget-today', { credentials: 'include' });
-        if (!r.ok || r.redirected) { window.location.href='/'; return; }
+        if (!r.ok || r.redirected) { window.location.href = '/'; return; }
         data    = await r.json();
         updated = new Date();
         render();
-      } catch(e) { console.error(e); }
+      } catch (e) { console.error(e); }
     }
 
     /* SSE */
     let es, retryMs = 3000;
     function connect() {
-      if (es) { es.close(); es=null; }
+      if (es) { es.close(); es = null; }
       es = new EventSource('/api/widget-events');
-      es.onopen    = () => { retryMs=3000; document.getElementById('dot').classList.remove('off'); };
-      es.onmessage = e => { if(e.data==='update') load(); };
+      es.onopen    = () => { retryMs = 3000; document.getElementById('dot').classList.remove('off'); };
+      es.onmessage = e => { if (e.data === 'update') load(); };
       es.onerror   = () => {
         document.getElementById('dot').classList.add('off');
-        es.close(); es=null;
-        retryMs = Math.min(retryMs*2, 60000);
+        es.close(); es = null;
+        retryMs = Math.min(retryMs * 2, 60000);
         setTimeout(connect, retryMs);
       };
     }
 
-    /* Midnight auto-refresh */
+    /* Midnight refresh */
     function scheduleMidnight() {
       const n = new Date();
-      const m = new Date(n.getFullYear(), n.getMonth(), n.getDate()+1);
-      setTimeout(() => { load(); scheduleMidnight(); }, m-n+500);
-    }
-
-    /* Tip overlay */
-    function toggleTip() {
-      const t = document.getElementById('tip');
-      t.style.display = t.style.display==='flex' ? 'none' : 'flex';
+      const m = new Date(n.getFullYear(), n.getMonth(), n.getDate() + 1);
+      setTimeout(() => { load(); scheduleMidnight(); }, m - n + 500);
     }
 
     /* Init */
