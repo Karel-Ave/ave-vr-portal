@@ -399,11 +399,15 @@ table.dtbl { width: 100%; border-collapse: collapse; font-size: 13px; }
         </div>
       </div>
 
-      <!-- Zaúčtovat do měsíce (platební měsíc — do kterého přehledu záznam patří) -->
-      <div class="field">
-        <label>Zaúčtovat do měsíce *
-          <span style="font-weight:400;color:var(--text-muted);font-size:11px">(výchozí = aktuální přehled)</span>
-        </label>
+      <!-- Zaúčtovat do jiného měsíce (skrytá, rozbalí se tlačítkem) -->
+      <div style="margin: -4px 0 10px">
+        <button type="button" id="btn-toggle-platby"
+          style="background:none;border:none;color:var(--accent);cursor:pointer;font-size:12px;padding:2px 0;font-family:inherit;text-decoration:underline;opacity:.8">
+          📅 Zaúčtovat do jiného měsíce…
+        </button>
+      </div>
+      <div class="field hidden" id="field-mesic-platby">
+        <label>Zaúčtovat do měsíce</label>
         <div class="date-fields">
           <select id="sel-mesic-platby">
             <option value="1">Leden</option><option value="2">Únor</option>
@@ -896,6 +900,8 @@ function resetForm() {
   document.getElementById('field-pozn-brani').classList.add('hidden');
   document.getElementById('field-pozn-brani-jine').classList.add('hidden');
   document.getElementById('field-poznamka').classList.remove('hidden');
+  // Zaúčtovat do jiného měsíce — vždy skrýt při resetu
+  document.getElementById('field-mesic-platby').classList.add('hidden');
 }
 
 // ═══ Uložit záznam ═══════════════════════════════════════════════════════════
@@ -973,6 +979,10 @@ function editZaznam(id) {
   // Platební měsíc = z.mesic / z.rok (do jakého přehledu záznam patří)
   document.getElementById('sel-mesic-platby').value = z.mesic;
   document.getElementById('inp-rok-platby').value   = z.rok;
+  // Auto-rozbal pole pokud se liší od aktuálního přehledu
+  if (parseInt(z.mesic) !== mesic || parseInt(z.rok) !== rok) {
+    document.getElementById('field-mesic-platby').classList.remove('hidden');
+  }
 
   if (z.sekce === 'recenze') {
     const opts = ['400','200','100','50'];
@@ -1166,8 +1176,19 @@ function closeOverlay(id) { document.getElementById(id).classList.remove('show')
 document.querySelectorAll('[data-close]').forEach(btn => {
   btn.addEventListener('click', () => closeOverlay(btn.dataset.close));
 });
+// Zavři overlay kliknutím na pozadí — ale NE při drag (mousedown začal uvnitř modalu)
+let _ovMousedownTarget = null;
 document.querySelectorAll('.overlay').forEach(ov => {
-  ov.addEventListener('click', e => { if (e.target === ov) closeOverlay(ov.id); });
+  ov.addEventListener('mousedown', e => { _ovMousedownTarget = e.target; });
+  ov.addEventListener('click', e => {
+    if (e.target === ov && _ovMousedownTarget === ov) closeOverlay(ov.id);
+    _ovMousedownTarget = null;
+  });
+});
+
+// Toggle "Zaúčtovat do jiného měsíce"
+document.getElementById('btn-toggle-platby').addEventListener('click', () => {
+  document.getElementById('field-mesic-platby').classList.toggle('hidden');
 });
 
 // ═══ Utility ══════════════════════════════════════════════════════════════════

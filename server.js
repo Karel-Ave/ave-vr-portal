@@ -1864,18 +1864,23 @@ app.post('/api/priplatky/import-template', requireLogin, async (req, res) => {
     } catch(e) { console.error('Raspis parse err:', e.message); }
   }
 
-  // Build name → sums map
-  const nameToSums = {};
+  // Build login → sums a name → sums mapy
+  const loginToSums = {};  // login (lowercase) → sums  -- přesné, spolehlivé
+  const nameToSums  = {};  // full_name (lowercase) → sums -- záloha
   for (const r of souhrn) {
-    const k = (r.full_name || r.login).toLowerCase();
-    nameToSums[k] = {
+    const sumsObj = {
       brani_smen: +(r.brani_smen)||0, ostatni: +(r.ostatni)||0,
       recenze:    +(r.recenze)   ||0, skoleni: +(r.skoleni)||0,
       pokuty:     +(r.pokuty)    ||0,
     };
-    nameToSums[k].ostatni += raspisBonuses[k] || 0;
+    loginToSums[r.login.toLowerCase()] = sumsObj;
+    if (r.full_name) {
+      const nk = r.full_name.toLowerCase();
+      nameToSums[nk] = sumsObj;
+      nameToSums[nk].ostatni += raspisBonuses[nk] || 0;
+    }
   }
-  // Add Raspis-only bonuses (person not in DB this month)
+  // Raspis-only bonuses
   for (const [k, bonus] of Object.entries(raspisBonuses)) {
     if (bonus > 0 && !nameToSums[k])
       nameToSums[k] = { brani_smen:0, ostatni:bonus, recenze:0, skoleni:0, pokuty:0 };
@@ -1885,7 +1890,8 @@ app.post('/api/priplatky/import-template', requireLogin, async (req, res) => {
   function stripSuffix(n) {
     return n.trim().replace(/\s+([\d]+[,.]?[\d]*|DPP|DPČ|DPC)\s*$/i,'').trim();
   }
-  function findSums(rawName) {
+  // Hledání přes jméno (záloha)
+  function findSumsByName(rawName) {
     const clean = stripSuffix(rawName).toLowerCase();
     if (nameToSums[clean]) return nameToSums[clean];
     for (const [k,v] of Object.entries(nameToSums))
@@ -1893,15 +1899,31 @@ app.post('/api/priplatky/import-template', requireLogin, async (req, res) => {
     return null;
   }
 
-  // Build row-fills list using SheetJS (jen čtení struktury, ne zápis)
+  // Build row-fills list using SheetJS (jen čtení struktury)
+  // Primárně matchuje přes LOGIN (col B) — přesné, bez problémů s pravopisem jmen
+  // Záloha: jméno (col A)
   const range = XLSX.utils.decode_range(ws['!ref'] || 'A1:L80');
   const rowFills = []; // { excelRow (1-indexed), sums }
   for (let r = range.s.r; r <= range.e.r; r++) {
-    const cellA = ws[XLSX.utils.encode_cell({r, c:0})];
-    if (!cellA || !cellA.v) continue;
-    const rawName = String(cellA.v).trim();
-    if (!rawName || /^(celkem|jméno|jmeno)$/i.test(rawName)) continue;
-    const sums = findSums(rawName);
+    const cellA = ws[XLSX.utils.encode_cell({r, c:0})]; // Jméno
+    const cellB = ws[XLSX.utils.encode_cell({r, c:1})]; // Login
+
+    let sums = null;
+
+    // 1) Login z col B — nejspolehlivější
+    if (cellB && cellB.v) {
+      const login = String(cellB.v).trim().toLowerCase();
+      if (login && !/^(login|přihlašovací)$/i.test(login))
+        sums = loginToSums[login] || null;
+    }
+
+    // 2) Záloha: jméno z col A
+    if (!sums && cellA && cellA.v) {
+      const rawName = String(cellA.v).trim();
+      if (rawName && !/^(celkem|jméno|jmeno|name)$/i.test(rawName))
+        sums = findSumsByName(rawName);
+    }
+
     if (!sums) continue;
     rowFills.push({ excelRow: r + 1, sums }); // Excel rows jsou 1-indexed
   }
