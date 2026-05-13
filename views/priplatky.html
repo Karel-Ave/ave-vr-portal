@@ -205,23 +205,27 @@ input[type=number].no-spin { -moz-appearance: textfield; appearance: textfield; 
 .date-pick-display.has-date { color: var(--text); }
 
 /* Inline kalendář (uvnitř formulářového modalu) */
+/* Kompaktní šířka modalu při výběru data */
+.modal.dp-compact { width: min(310px, 98%) !important; }
 .dp-header { display:flex; align-items:center; padding:0 0 10px 0; }
 .dp-header span { flex:1; text-align:center; font-weight:700; font-size:15px; }
-.dp-body { padding:10px 12px 6px; }
-.dp-weekdays { display:grid; grid-template-columns:repeat(7,1fr); margin-bottom:4px; }
-.dp-weekday { text-align:center; font-size:10px; font-weight:700; color:var(--text-muted); padding:4px 0; }
-.dp-days { display:grid; grid-template-columns:repeat(7,1fr); gap:2px; }
+.dp-body { }
+.dp-weekdays { display:grid; grid-template-columns:repeat(7,1fr); }
+.dp-weekday { text-align:center; font-size:10px; font-weight:700; color:var(--text-muted); padding:5px 0; }
+/* Vždy 42 buněk (6 řádků × 7) — čtvercové buňky přes aspect-ratio */
+.dp-days { display:grid; grid-template-columns:repeat(7,1fr); width:100%; }
 .dp-day {
-  text-align:center; padding:9px 2px; border-radius:7px; cursor:pointer;
-  font-size:13px; border:none; background:none; color:var(--text);
-  font-family:inherit; line-height:1; transition:background .1s;
+  aspect-ratio: 1;
+  display:flex; align-items:center; justify-content:center;
+  border-radius:50%; cursor:pointer; font-size:13px;
+  border:none; background:none; color:var(--text);
+  font-family:inherit; transition:background .12s;
+  width:100%;
 }
 .dp-day:hover:not(.empty):not(.selected) { background:var(--surface-alt); }
-.dp-day.selected { background:var(--accent); color:#fff; border-radius:50%; font-weight:700; }
+.dp-day.selected { background:var(--accent); color:#fff; font-weight:700; }
 .dp-day.today:not(.selected) { font-weight:700; color:var(--accent); }
-.dp-day.empty { pointer-events:none; }
-.dp-footer { padding:10px 16px 16px; display:flex; justify-content:center; border-top:1px solid var(--border); }
-.dp-confirm-btn { width:58%; padding:11px; font-size:15px; font-weight:700; border-radius:8px; }
+.dp-day.empty { pointer-events:none; cursor:default; }
 
 /* Koho školil — autocomplete (custom dropdown, same style as Recepční) */
 #koho-ac-list { right: 0; }
@@ -584,9 +588,6 @@ table.dtbl { width: 100%; border-collapse: collapse; font-size: 13px; }
           <div class="dp-weekday">Ne</div>
         </div>
         <div class="dp-days" id="dp-grid"></div>
-      </div>
-      <div class="dp-footer">
-        <button type="button" id="dp-confirm" class="btn btn-primary dp-confirm-btn">Potvrdit</button>
       </div>
     </div><!-- /date-page -->
 
@@ -1447,6 +1448,7 @@ function openDatePicker() {
   document.getElementById('form-page').classList.add('hidden');
   document.getElementById('date-page').classList.remove('hidden');
   document.getElementById('form-modal-footer').classList.add('hidden');
+  document.querySelector('#modal-form .modal').classList.add('dp-compact');
   _savedModalTitle = document.getElementById('modal-form-title').textContent;
   document.getElementById('modal-form-title').textContent = 'Vyberte datum';
   // ✕ → zpět na formulář
@@ -1462,31 +1464,38 @@ function dpRenderGrid() {
   const now = new Date();
   const todY = now.getFullYear(), todM = now.getMonth()+1, todD = now.getDate();
 
-  // Week starts Monday: Sun(0)→6, Mon(1)→0, ...
+  // Pondělí jako první den: Sun(0)→6, Mon(1)→0, ...
   const firstDow = new Date(dpYear, dpMonth-1, 1).getDay();
   const offset   = (firstDow === 0) ? 6 : firstDow - 1;
   const days     = new Date(dpYear, dpMonth, 0).getDate();
 
+  // Vždy 42 buněk (6 řádků × 7 sloupců) — konstantní výška
   let html = '';
-  for (let i = 0; i < offset; i++) html += '<div class="dp-day empty"></div>';
-  for (let d = 1; d <= days; d++) {
-    let cls = 'dp-day';
-    if (dpYear===todY && dpMonth===todM && d===todD) cls += ' today';
-    if (dpYear===dpSelY && dpMonth===dpSelM && d===dpSelD) cls += ' selected';
-    html += `<div class="${cls}" onclick="dpSelectDay(${d})">${d}</div>`;
+  for (let i = 0; i < 42; i++) {
+    const dayNum = i - offset + 1;
+    if (dayNum < 1 || dayNum > days) {
+      html += '<div class="dp-day empty"></div>';
+    } else {
+      let cls = 'dp-day';
+      if (dpYear===todY && dpMonth===todM && dayNum===todD) cls += ' today';
+      if (dpYear===dpSelY && dpMonth===dpSelM && dayNum===dpSelD) cls += ' selected';
+      html += `<div class="${cls}" onclick="dpSelectDay(${dayNum})">${dayNum}</div>`;
+    }
   }
   document.getElementById('dp-grid').innerHTML = html;
 }
 
 function dpSelectDay(d) {
+  // Okamžité potvrzení — jeden klik vybere datum a zavře kalendář
   dpSelY = dpYear; dpSelM = dpMonth; dpSelD = d;
-  dpRenderGrid();
+  dpConfirm();
 }
 
 function dpClose() {
   document.getElementById('date-page').classList.add('hidden');
   document.getElementById('form-page').classList.remove('hidden');
   document.getElementById('form-modal-footer').classList.remove('hidden');
+  document.querySelector('#modal-form .modal').classList.remove('dp-compact');
   document.getElementById('modal-form-title').textContent = _savedModalTitle;
   const closeBtn = document.getElementById('modal-form-close');
   closeBtn.textContent = '✕';
@@ -1511,7 +1520,6 @@ document.getElementById('dp-prev').addEventListener('click', () => {
 document.getElementById('dp-next').addEventListener('click', () => {
   dpMonth++; if (dpMonth > 12) { dpMonth = 1; dpYear++; } dpRenderGrid();
 });
-document.getElementById('dp-confirm').addEventListener('click', dpConfirm);
 
 // ═══ Start ════════════════════════════════════════════════════════════════════
 init();
