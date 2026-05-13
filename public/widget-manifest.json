@@ -1,6 +1,6 @@
 {
-  "name": "AVE Rozpis – dnes",
-  "short_name": "AVE Rozpis",
+  "name": "Mini Rozpis",
+  "short_name": "Mini Rozpis",
   "description": "Denní a noční přehled recepčních pro dnešní den",
   "start_url": "/widget",
   "display": "standalone",
