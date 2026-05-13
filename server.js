@@ -1864,9 +1864,31 @@ app.post('/api/priplatky/import-template', requireLogin, async (req, res) => {
     } catch(e) { console.error('Raspis parse err:', e.message); }
   }
 
+  // Normalize name: lowercase + remove diacritics + collapse spaces
+  function normName(n) {
+    return String(n||'').trim().toLowerCase()
+      .normalize('NFD').replace(/[̀-ͯ]/g,'')
+      .replace(/\s+/g,' ');
+  }
+  // Sort words alphabetically — makes "Ivanov Aleksandr" == "Aleksandr Ivanov"
+  function sortedWords(n) { return normName(n).split(' ').sort().join(' '); }
+
+  // Levenshtein distance
+  function levenshtein(a, b) {
+    const m = a.length, n = b.length;
+    const dp = [];
+    for (let i = 0; i <= m; i++) { dp[i] = [i]; }
+    for (let j = 0; j <= n; j++) { dp[0][j] = j; }
+    for (let i = 1; i <= m; i++)
+      for (let j = 1; j <= n; j++)
+        dp[i][j] = a[i-1] === b[j-1] ? dp[i-1][j-1]
+          : 1 + Math.min(dp[i-1][j], dp[i][j-1], dp[i-1][j-1]);
+    return dp[m][n];
+  }
+
   // Build login → sums a name → sums mapy
-  const loginToSums = {};  // login (lowercase) → sums  -- přesné, spolehlivé
-  const nameToSums  = {};  // full_name (lowercase) → sums -- záloha
+  const loginToSums = {};  // login (lowercase) → sums
+  const nameToSums  = {};  // normName(full_name) → sums
   for (const r of souhrn) {
     const sumsObj = {
       brani_smen: +(r.brani_smen)||0, ostatni: +(r.ostatni)||0,
@@ -1875,55 +1897,67 @@ app.post('/api/priplatky/import-template', requireLogin, async (req, res) => {
     };
     loginToSums[r.login.toLowerCase()] = sumsObj;
     if (r.full_name) {
-      const nk = r.full_name.toLowerCase();
+      const nk = normName(r.full_name);
       nameToSums[nk] = sumsObj;
-      nameToSums[nk].ostatni += raspisBonuses[nk] || 0;
+      nameToSums[nk].ostatni += raspisBonuses[r.full_name.toLowerCase()] || 0;
     }
   }
   // Raspis-only bonuses
   for (const [k, bonus] of Object.entries(raspisBonuses)) {
-    if (bonus > 0 && !nameToSums[k])
-      nameToSums[k] = { brani_smen:0, ostatni:bonus, recenze:0, skoleni:0, pokuty:0 };
+    const nk = normName(k);
+    if (bonus > 0 && !nameToSums[nk])
+      nameToSums[nk] = { brani_smen:0, ostatni:bonus, recenze:0, skoleni:0, pokuty:0 };
   }
 
   // Strip contract-type suffix ("37,5" / "DPP" / "DPČ" etc.)
   function stripSuffix(n) {
     return n.trim().replace(/\s+([\d]+[,.]?[\d]*|DPP|DPČ|DPC)\s*$/i,'').trim();
   }
-  // Hledání přes jméno (záloha)
+
+  // Hledání přes jméno — víceúrovňové, odolné vůči variantám zápisu
   function findSumsByName(rawName) {
-    const clean = stripSuffix(rawName).toLowerCase();
+    const clean = normName(stripSuffix(rawName));
+    if (!clean) return null;
+
+    // 1) Přesná shoda (normalizovaně)
     if (nameToSums[clean]) return nameToSums[clean];
-    for (const [k,v] of Object.entries(nameToSums))
+
+    // 2) Shoda bez ohledu na pořadí slov (Ivanov Aleksandr == Aleksandr Ivanov)
+    const cleanSorted = sortedWords(clean);
+    for (const [k, v] of Object.entries(nameToSums))
+      if (sortedWords(k) === cleanSorted) return v;
+
+    // 3) Prefix/suffix match (jeden ze řetězců začíná druhým)
+    for (const [k, v] of Object.entries(nameToSums))
       if (k.startsWith(clean) || clean.startsWith(k)) return v;
+
+    // 4) Shoda příjmení (první slovo)
+    const surname = clean.split(' ')[0];
+    if (surname.length >= 3) {
+      for (const [k, v] of Object.entries(nameToSums)) {
+        const ks = k.split(' ')[0];
+        if (ks === surname) return v;
+      }
+    }
+
+    // 5) Levenshtein ≤ 2 (tolerance překlepů/diakritiky)
+    for (const [k, v] of Object.entries(nameToSums))
+      if (levenshtein(k, clean) <= 2) return v;
+
     return null;
   }
 
   // Build row-fills list using SheetJS (jen čtení struktury)
-  // Primárně matchuje přes LOGIN (col B) — přesné, bez problémů s pravopisem jmen
-  // Záloha: jméno (col A)
+  // Šablona obsahuje pouze jména (col A) — login matching vynechán
   const range = XLSX.utils.decode_range(ws['!ref'] || 'A1:L80');
   const rowFills = []; // { excelRow (1-indexed), sums }
   for (let r = range.s.r; r <= range.e.r; r++) {
     const cellA = ws[XLSX.utils.encode_cell({r, c:0})]; // Jméno
-    const cellB = ws[XLSX.utils.encode_cell({r, c:1})]; // Login
-
-    let sums = null;
-
-    // 1) Login z col B — nejspolehlivější
-    if (cellB && cellB.v) {
-      const login = String(cellB.v).trim().toLowerCase();
-      if (login && !/^(login|přihlašovací)$/i.test(login))
-        sums = loginToSums[login] || null;
-    }
-
-    // 2) Záloha: jméno z col A
-    if (!sums && cellA && cellA.v) {
-      const rawName = String(cellA.v).trim();
-      if (rawName && !/^(celkem|jméno|jmeno|name)$/i.test(rawName))
-        sums = findSumsByName(rawName);
-    }
-
+    if (!cellA || !cellA.v) continue;
+    const rawName = String(cellA.v).trim();
+    // Přeskočit záhlaví / součtové řádky
+    if (!rawName || /^(celkem|jméno|jmeno|name|login|přihlašovací)/i.test(rawName)) continue;
+    const sums = findSumsByName(rawName);
     if (!sums) continue;
     rowFills.push({ excelRow: r + 1, sums }); // Excel rows jsou 1-indexed
   }

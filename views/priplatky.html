@@ -13,8 +13,6 @@ body { min-height: 100vh; background: var(--bg); font-family: 'Segoe UI', system
 
 /* Topbar */
 #topbar { position: fixed; top:0; left:0; right:0; z-index:900; height:58px; background:var(--bg-topbar); border-bottom:1px solid var(--border); display:flex; align-items:center; gap:10px; padding:0 16px; }
-#topbar a { color:var(--text); text-decoration:none; font-size:20px; padding:4px 8px; border-radius:6px; }
-#topbar a:hover { background:var(--surface-alt); }
 #topbar h1 { font-size:16px; font-weight:700; flex:1; }
 
 /* Tabs */
@@ -206,7 +204,6 @@ table.dtbl { width: 100%; border-collapse: collapse; font-size: 13px; }
 <body>
 
 <div id="topbar">
-  <a href="/portal">←</a>
   <h1>💰 Příplatky a pokuty</h1>
 </div>
 
@@ -385,18 +382,23 @@ table.dtbl { width: 100%; border-collapse: collapse; font-size: 13px; }
       <!-- Datum -->
       <div class="field">
         <label id="lbl-datum">Datum *</label>
-        <div class="date-fields">
-          <input type="number" name="den" id="inp-den" min="1" max="31" placeholder="Den" required>
-          <select name="mesicForm" id="sel-mesic-form">
-            <option value="1">Leden</option><option value="2">Únor</option>
-            <option value="3">Březen</option><option value="4">Duben</option>
-            <option value="5">Květen</option><option value="6">Červen</option>
-            <option value="7">Červenec</option><option value="8">Srpen</option>
-            <option value="9">Září</option><option value="10">Říjen</option>
-            <option value="11">Listopad</option><option value="12">Prosinec</option>
-          </select>
-          <input type="number" name="rokForm" id="inp-rok-form" min="2020" max="2099" placeholder="Rok" required>
+        <div style="display:flex;gap:6px;align-items:stretch">
+          <div class="date-fields" style="flex:1">
+            <input type="number" name="den" id="inp-den" min="1" max="31" placeholder="Den" required>
+            <select name="mesicForm" id="sel-mesic-form">
+              <option value="1">Leden</option><option value="2">Únor</option>
+              <option value="3">Březen</option><option value="4">Duben</option>
+              <option value="5">Květen</option><option value="6">Červen</option>
+              <option value="7">Červenec</option><option value="8">Srpen</option>
+              <option value="9">Září</option><option value="10">Říjen</option>
+              <option value="11">Listopad</option><option value="12">Prosinec</option>
+            </select>
+            <input type="number" name="rokForm" id="inp-rok-form" min="2020" max="2099" placeholder="Rok" required>
+          </div>
+          <button type="button" id="btn-date-picker" title="Vybrat z kalendáře"
+            style="padding:0 11px;border:1px solid var(--border);border-radius:7px;background:var(--surface-alt);cursor:pointer;font-size:18px;color:var(--text);flex-shrink:0;line-height:1">📅</button>
         </div>
+        <input type="date" id="inp-date-hidden" style="position:absolute;visibility:hidden;width:0;height:0;pointer-events:none">
       </div>
 
       <!-- Zaúčtovat do jiného měsíce (skrytá, rozbalí se tlačítkem) -->
@@ -1198,6 +1200,40 @@ function fmtTs(iso) {
   const d = new Date(iso);
   return `${d.toLocaleDateString('cs-CZ')} ${d.toLocaleTimeString('cs-CZ',{hour:'2-digit',minute:'2-digit'})}`;
 }
+
+// ═══ Kalendářový výběr data ════════════════════════════════════════════════════
+(function() {
+  const btn = document.getElementById('btn-date-picker');
+  const hdp = document.getElementById('inp-date-hidden');
+  if (!btn || !hdp) return;
+  btn.addEventListener('click', () => {
+    const y = document.getElementById('inp-rok-form').value  || new Date().getFullYear();
+    const m = String(document.getElementById('sel-mesic-form').value || (new Date().getMonth()+1)).padStart(2,'0');
+    const d = String(document.getElementById('inp-den').value || new Date().getDate()).padStart(2,'0');
+    hdp.value = `${y}-${m}-${d}`;
+    if (typeof hdp.showPicker === 'function') {
+      hdp.showPicker();
+    } else {
+      // Fallback pro starší prohlížeče
+      hdp.style.visibility = 'visible';
+      hdp.style.width = '1px';
+      hdp.style.height = '1px';
+      hdp.click();
+      setTimeout(() => {
+        hdp.style.visibility = 'hidden';
+        hdp.style.width = '0';
+        hdp.style.height = '0';
+      }, 500);
+    }
+  });
+  hdp.addEventListener('change', () => {
+    if (!hdp.value) return;
+    const [y, m, d] = hdp.value.split('-');
+    document.getElementById('inp-den').value        = parseInt(d, 10);
+    document.getElementById('sel-mesic-form').value = parseInt(m, 10);
+    document.getElementById('inp-rok-form').value   = parseInt(y, 10);
+  });
+})();
 
 // ═══ Start ════════════════════════════════════════════════════════════════════
 init();
