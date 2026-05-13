@@ -1,0 +1,289 @@
+<!DOCTYPE html>
+<html lang="cs">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+  <meta name="mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <title>AVE Rozpis</title>
+  <link rel="manifest" href="/static/widget-manifest.json">
+  <meta name="theme-color" content="#1e3a5f">
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    :root {
+      --header-bg:   #1e3a5f;
+      --header-text: #ffffff;
+      --page-bg:     #f8fafc;
+      --tab-act-bg:  #1e3a5f;
+      --tab-act-fg:  #ffffff;
+      --tab-idle-bg: #e2e8f0;
+      --tab-idle-fg: #475569;
+      --border:      #e2e8f0;
+      --hotel-fg:    #1e3a5f;
+      --name-fg:     #1e293b;
+      --dash-fg:     #ef4444;
+      --p-bg:        #ffd6db;
+      --q-bg:        #fed7aa;
+      --online-dot:  #4ade80;
+      --offline-dot: #f87171;
+    }
+
+    html, body {
+      height: 100%;
+      font-family: 'Segoe UI', system-ui, -apple-system, sans-serif;
+      background: var(--page-bg);
+      color: var(--name-fg);
+      overflow-x: hidden;
+    }
+
+    /* ─── Header ─────────────────────────────────────────────── */
+    .header {
+      background: var(--header-bg);
+      color: var(--header-text);
+      padding: 12px 14px 10px;
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      user-select: none;
+    }
+    .header-text { flex: 1; }
+    .header-date { font-size: 15px; font-weight: 700; letter-spacing: .01em; }
+    .header-sub  { font-size: 11px; opacity: .65; margin-top: 1px; }
+    .status-dot  {
+      width: 9px; height: 9px; border-radius: 50%;
+      background: var(--online-dot);
+      flex-shrink: 0;
+      transition: background .4s;
+    }
+    .status-dot.offline { background: var(--offline-dot); }
+
+    /* ─── Tabs ───────────────────────────────────────────────── */
+    .tabs { display: flex; border-bottom: 2px solid var(--tab-act-bg); }
+    .tab {
+      flex: 1;
+      padding: 8px 0;
+      font-size: 13px;
+      font-weight: 600;
+      letter-spacing: .03em;
+      text-align: center;
+      cursor: pointer;
+      border: none;
+      background: var(--tab-idle-bg);
+      color: var(--tab-idle-fg);
+      transition: background .15s, color .15s;
+      user-select: none;
+    }
+    .tab.active {
+      background: var(--tab-act-bg);
+      color: var(--tab-act-fg);
+    }
+
+    /* ─── Hotel list ─────────────────────────────────────────── */
+    .hotel-list { padding: 4px 0 8px; }
+
+    .hotel-row {
+      display: flex;
+      align-items: center;
+      padding: 5px 14px;
+      border-bottom: 1px solid var(--border);
+      gap: 10px;
+      min-height: 34px;
+    }
+    .hotel-row:last-child { border-bottom: none; }
+    .hotel-row.p-row { background: var(--p-bg); }
+    .hotel-row.q-row { background: var(--q-bg); }
+
+    .hotel-code {
+      font-size: 14px;
+      font-weight: 800;
+      color: var(--hotel-fg);
+      width: 16px;
+      flex-shrink: 0;
+      letter-spacing: -.01em;
+    }
+    .hotel-name {
+      font-size: 13px;
+      color: var(--name-fg);
+      flex: 1;
+      line-height: 1.3;
+    }
+    .hotel-name.empty {
+      color: var(--dash-fg);
+      font-weight: 700;
+      letter-spacing: .05em;
+    }
+
+    /* ─── Loading / error ────────────────────────────────────── */
+    .msg {
+      text-align: center;
+      padding: 40px 20px;
+      color: #94a3b8;
+      font-size: 13px;
+    }
+
+    /* ─── Updated indicator ──────────────────────────────────── */
+    .footer {
+      padding: 5px 14px 6px;
+      font-size: 10px;
+      color: #94a3b8;
+      text-align: right;
+      border-top: 1px solid var(--border);
+    }
+  </style>
+</head>
+<body>
+
+  <div class="header">
+    <div class="header-text">
+      <div class="header-date" id="hdr-date">—</div>
+      <div class="header-sub">AVE Hotels · Recepce</div>
+    </div>
+    <div class="status-dot" id="status-dot" title="Připojení k serveru"></div>
+  </div>
+
+  <div class="tabs">
+    <button class="tab active" id="tab-day"   onclick="switchTab('day')">Denní</button>
+    <button class="tab"        id="tab-night" onclick="switchTab('night')">Noční</button>
+  </div>
+
+  <div class="hotel-list" id="hotel-list">
+    <div class="msg">Načítání…</div>
+  </div>
+
+  <div class="footer" id="footer"></div>
+
+  <script>
+    // ── Constants ───────────────────────────────────────────────
+    const HOTELS = ['A','B','C','D','E','G','H','I','J','L','M','N','S','T','U','P','Q'];
+    const DAY_NAMES = ['Neděle','Pondělí','Úterý','Středa','Čtvrtek','Pátek','Sobota'];
+    const MONTHS    = ['ledna','února','března','dubna','května','června',
+                       'července','srpna','září','října','listopadu','prosince'];
+
+    // ── State ───────────────────────────────────────────────────
+    let currentTab = localStorage.getItem('widget-tab') || 'day';
+    let hotelData  = null;
+    let lastUpdate = null;
+
+    // ── Helpers ─────────────────────────────────────────────────
+
+    // Converts "Jana Nováková" → "Nováková Jana"
+    function formatName(name) {
+      if (!name) return null;
+      const parts = name.trim().split(/\s+/);
+      if (parts.length < 2) return name;
+      return parts[parts.length - 1] + ' ' + parts.slice(0, -1).join(' ');
+    }
+
+    function fmtTime(d) {
+      return d.toLocaleTimeString('cs-CZ', { hour: '2-digit', minute: '2-digit' });
+    }
+
+    // ── Tab switching ────────────────────────────────────────────
+    function switchTab(tab) {
+      currentTab = tab;
+      localStorage.setItem('widget-tab', tab);
+      document.getElementById('tab-day').classList.toggle('active', tab === 'day');
+      document.getElementById('tab-night').classList.toggle('active', tab === 'night');
+      renderHotels();
+    }
+
+    // ── Render ───────────────────────────────────────────────────
+    function renderHotels() {
+      const list = document.getElementById('hotel-list');
+      if (!hotelData) {
+        list.innerHTML = '<div class="msg">Načítání…</div>';
+        return;
+      }
+      if (!hotelData.ok) {
+        list.innerHTML = '<div class="msg">Chyba načítání dat.</div>';
+        return;
+      }
+
+      // Header date
+      const { day, month, year } = hotelData;
+      const dt = new Date(year, month - 1, day);
+      document.getElementById('hdr-date').textContent =
+        `${DAY_NAMES[dt.getDay()]} ${day}. ${MONTHS[month - 1]} ${year}`;
+
+      const hotels = hotelData.hotels || {};
+      let html = '';
+      for (const h of HOTELS) {
+        const info    = hotels[h] || {};
+        const rawName = currentTab === 'day' ? info.day : info.night;
+        const display = formatName(rawName);
+        const cls     = h === 'P' ? 'p-row' : h === 'Q' ? 'q-row' : '';
+        html += `<div class="hotel-row ${cls}">` +
+          `<span class="hotel-code">${h}</span>` +
+          `<span class="hotel-name${display ? '' : ' empty'}">${display || '—'}</span>` +
+          `</div>`;
+      }
+      list.innerHTML = html;
+
+      // Footer
+      if (lastUpdate) {
+        document.getElementById('footer').textContent = `Aktualizováno ${fmtTime(lastUpdate)}`;
+      }
+    }
+
+    // ── Data fetching ────────────────────────────────────────────
+    async function loadData() {
+      try {
+        const r = await fetch('/api/widget-today', { credentials: 'include' });
+        if (r.status === 302 || r.redirected) {
+          // Not logged in — redirect to portal login
+          window.location.href = '/';
+          return;
+        }
+        if (!r.ok) throw new Error('HTTP ' + r.status);
+        hotelData  = await r.json();
+        lastUpdate = new Date();
+        renderHotels();
+      } catch (e) {
+        console.error('loadData error:', e);
+      }
+    }
+
+    // ── SSE ──────────────────────────────────────────────────────
+    let evtSource   = null;
+    let sseRetryMs  = 3000;
+
+    function connectSSE() {
+      if (evtSource) { evtSource.close(); evtSource = null; }
+
+      evtSource = new EventSource('/api/widget-events');
+
+      evtSource.onopen = () => {
+        sseRetryMs = 3000;
+        document.getElementById('status-dot').classList.remove('offline');
+      };
+
+      evtSource.onmessage = (e) => {
+        if (e.data === 'update') loadData();
+      };
+
+      evtSource.onerror = () => {
+        document.getElementById('status-dot').classList.add('offline');
+        evtSource.close();
+        evtSource = null;
+        // Exponential back-off (max 60 s)
+        sseRetryMs = Math.min(sseRetryMs * 2, 60000);
+        setTimeout(connectSSE, sseRetryMs);
+      };
+    }
+
+    // ── Midnight refresh ─────────────────────────────────────────
+    function scheduleMidnight() {
+      const now      = new Date();
+      const midnight = new Date(now.getFullYear(), now.getMonth(), now.getDate() + 1);
+      setTimeout(() => { loadData(); scheduleMidnight(); }, midnight - now + 500);
+    }
+
+    // ── Init ─────────────────────────────────────────────────────
+    switchTab(currentTab);
+    loadData();
+    connectSSE();
+    scheduleMidnight();
+  </script>
+</body>
+</html>

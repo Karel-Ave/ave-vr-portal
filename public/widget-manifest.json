@@ -1,0 +1,17 @@
+{
+  "name": "AVE Rozpis – dnes",
+  "short_name": "AVE Rozpis",
+  "description": "Denní a noční přehled recepčních pro dnešní den",
+  "start_url": "/widget",
+  "display": "standalone",
+  "background_color": "#f8fafc",
+  "theme_color": "#1e3a5f",
+  "orientation": "portrait",
+  "icons": [
+    {
+      "src": "/apple-touch-icon.png",
+      "sizes": "180x180",
+      "type": "image/png"
+    }
+  ]
+}

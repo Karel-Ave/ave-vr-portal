@@ -47,6 +47,16 @@ const locks = {};
 const lockTimers = {};
 const LOCK_TTL = 10 * 60 * 1000; // 10 minut
 
+// ── Widget SSE ─────────────────────────────────────────────────────────────────
+const widgetSseClients = new Set();
+
+function broadcastWidgetUpdate() {
+  const msg = 'data: update\n\n';
+  for (const res of widgetSseClients) {
+    try { res.write(msg); } catch (e) { widgetSseClients.delete(res); }
+  }
+}
+
 function setLockTimer(key) {
   if (lockTimers[key]) clearTimeout(lockTimers[key]);
   lockTimers[key] = setTimeout(() => { delete locks[key]; delete lockTimers[key]; }, LOCK_TTL);
@@ -88,6 +98,11 @@ app.get('/tvorba-rozpisu', requireLogin, requireAdmin, (req, res) =>
 // Zobrazení/editace hotového rozpisu — admin i vedoucí
 app.get('/rozpis-view', requireLogin, (req, res) =>
   res.sendFile(path.join(__dirname, 'public', 'raspis.html'))
+);
+
+// Desktop widget — dnešní rozpis
+app.get('/widget', requireLogin, (req, res) =>
+  res.sendFile(path.join(__dirname, 'views', 'widget.html'))
 );
 
 // ── API: Auth ─────────────────────────────────────────────────────────────────
@@ -535,9 +550,69 @@ app.post('/api/rozpisy/publish', requireLogin, requireAdmin, async (req, res) =>
       [key, month, year, label, JSON.stringify(data), req.session.user.name]
     );
     logEvent(req.session.user.id, req.session.user.username, 'raspis_publish', { key, label });
+    broadcastWidgetUpdate();
     res.json({ ok: true, key, label });
   } catch (err) {
     console.error('Chyba uložení rozpisu:', err);
+    res.json({ ok: false, msg: 'Chyba serveru.' });
+  }
+});
+
+// ── Widget API ─────────────────────────────────────────────────────────────────
+
+// SSE stream — widget se připojí sem a čeká na "update"
+app.get('/api/widget-events', requireLogin, (req, res) => {
+  res.setHeader('Content-Type', 'text/event-stream');
+  res.setHeader('Cache-Control', 'no-cache');
+  res.setHeader('Connection', 'keep-alive');
+  res.flushHeaders();
+  res.write('data: connected\n\n');
+  widgetSseClients.add(res);
+  req.on('close', () => widgetSseClients.delete(res));
+});
+
+// Data dnešního rozpisu pro widget
+app.get('/api/widget-today', requireLogin, async (req, res) => {
+  try {
+    const now        = new Date();
+    const todayDay   = now.getDate();
+    const todayMonth = now.getMonth() + 1;
+    const todayYear  = now.getFullYear();
+    const key        = `${String(todayMonth).padStart(2, '0')}/${todayYear}`;
+
+    const db = getPool();
+    const { rows } = await db.query('SELECT data FROM rozpisy WHERE key = $1', [key]);
+
+    const HOTELS      = ['A','B','C','D','E','G','H','I','J','L','M','N','S','T','U','P','Q'];
+    const VALID_TYPES = new Set(['Denní','Noční','Obojí','Vedoucí']);
+
+    const hotelMap = {};
+    HOTELS.forEach(h => { hotelMap[h] = { day: null, night: null }; });
+
+    if (rows.length) {
+      const data     = rows[0].data;
+      const staff    = data.staff    || [];
+      const schedule = data.schedule || {};
+      const ci_day   = (todayDay - 1) * 2;
+      const ci_night = (todayDay - 1) * 2 + 1;
+
+      staff.forEach((s, si) => {
+        if (!VALID_TYPES.has(s.type)) return;
+        const dh = (schedule[`${si}_${ci_day}`]   || '').toUpperCase();
+        const nh = (schedule[`${si}_${ci_night}`] || '').toUpperCase();
+        if (dh && hotelMap[dh] !== undefined && !hotelMap[dh].day)   hotelMap[dh].day   = s.name;
+        if (nh && hotelMap[nh] !== undefined && !hotelMap[nh].night) hotelMap[nh].night = s.name;
+      });
+    }
+
+    res.json({
+      ok: true,
+      day: todayDay, month: todayMonth, year: todayYear,
+      hotels: hotelMap,
+      hotels_order: HOTELS
+    });
+  } catch (err) {
+    console.error('Widget today error:', err);
     res.json({ ok: false, msg: 'Chyba serveru.' });
   }
 });
@@ -696,6 +771,7 @@ app.post('/api/rozpisy/save-edits', requireLogin, async (req, res) => {
     );
     if (!rowCount) return res.json({ ok: false, msg: 'Raspis nenalezen.' });
     logEvent(req.session.user.id, req.session.user.username, 'raspis_save', { key });
+    broadcastWidgetUpdate();
     const lockKey = 'raspis-view';
     if (locks[lockKey]?.userId === req.session.user.id) {
       locks[lockKey].until = new Date(Date.now() + LOCK_TTL).toISOString();
