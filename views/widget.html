@@ -212,6 +212,11 @@
       transition: color .12s;
     }
     .resize-btn:hover { color: var(--accent); }
+    .logout-btn {
+      font-size: 12px; color: var(--nav-fg); text-decoration: none;
+      line-height: 1; padding: 0 2px; transition: color .12s;
+    }
+    .logout-btn:hover { color: var(--offline); }
 
     .msg { padding: 14px 20px; font-size: 11px; color: var(--text-muted); }
   </style>
@@ -235,7 +240,10 @@
 
   <div class="foot">
     <span id="foot-txt">AVE Hotels · Recepce</span>
-    <button class="resize-btn" onclick="fitWindow()" title="Přizpůsobit velikost okna obsahu">⛶</button>
+    <div style="display:flex;align-items:center;gap:6px;">
+      <a href="/logout" class="logout-btn" title="Odhlásit se">⏻</a>
+      <button class="resize-btn" onclick="fitWindow()" title="Přizpůsobit velikost okna obsahu">⛶</button>
+    </div>
   </div>
 
   <script>
