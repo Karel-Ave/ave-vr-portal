@@ -254,7 +254,7 @@ table.staff-tbl td select:focus { background: #fff; border-radius: 2px; }
   min-width: 100px;
 }
 /* Všechna akční tlačítka — stejná pevná šířka jako "Vyber recepční" */
-#toggle-hotels-btn, #btn-filter-day, #btn-filter-night,
+#toggle-hotels-btn, #btn-filter-day, #btn-filter-night, #btn-filter-today,
 #btn-select-mode, #btn-toggle-highlight,
 .sc-mid .hb {
   width: 88px;
@@ -264,6 +264,12 @@ table.staff-tbl td select:focus { background: #fff; border-radius: 2px; }
   text-overflow: ellipsis;
   white-space: nowrap;
   font-size: 10px;
+}
+/* Responsive button text: desktop shows .hb-d, mobile shows .hb-m */
+.hb .hb-m { display: none; }
+@media (max-width: 768px) {
+  .hb .hb-d { display: none; }
+  .hb .hb-m { display: inline; }
 }
 .hb {
   padding: 2px 7px;
@@ -3092,6 +3098,7 @@ body.readonly-mode #topbar { pointer-events: all !important; }
             <button class="hb" id="toggle-hotels-btn" onclick="toggleHotelRows()" style="background:#FFE0B2;border-color:#e0924a;color:#7a4010;">Skrýt hotely</button>
             <button class="hb" id="btn-filter-day" onclick="filterByShiftType('day')" style="background:#F8FF35; border-color:#ccc;">Jen denní</button>
             <button class="hb" id="btn-filter-night" onclick="filterByShiftType('night')" style="background:#4DC3F5; border-color:#ccc;">Jen noční</button>
+            <button class="hb" id="btn-filter-today" onclick="filterByTodayBusy()" style="background:#F5D800;border-color:#c8a800;color:#5a4000;"><span class="hb-d">Dnes obsazené</span><span class="hb-m">DO</span></button>
             <button class="hb" id="btn-select-mode" onclick="toggleSelectMode()" style="background:#cce0ff;border-color:#6699cc;color:#1a4a8a;">Označ vybrané</button>
             <button class="hb" id="btn-toggle-highlight" onclick="toggleRowHighlight()" style="background:#e0e0e0;border-color:#aaa;color:#333;">Hover on</button>
             <button class="hb" id="btn-show-hidden" onclick="showAllHidden()" style="display:none">Zobraz skryté</button>
@@ -4041,6 +4048,43 @@ function toggleHotelRows() {
 // 'all' | 'day' | 'night'
 let shiftTypeFilter = 'all';
 
+// Dnes obsazené filter
+let todayBusyFilter = false;
+const TODAY_BUSY_HOTELS = new Set(['A','B','C','D','E','G','H','I','J','L','M','N','S','T','U','P','Q']);
+const TODAY_BUSY_TYPES  = new Set(['Denní','Noční','Obojí','Vedoucí']);
+
+function filterByTodayBusy() {
+  todayBusyFilter = !todayBusyFilter;
+  document.getElementById('btn-filter-today').classList.toggle('selected', todayBusyFilter);
+  applyShiftTypeFilter(); // applyTodayBusyFilter is called inside
+}
+
+function applyTodayBusyFilter() {
+  if (!todayBusyFilter) {
+    document.querySelectorAll('#sch-tbody tr.sch-row').forEach(tr => { tr.dataset.busyHidden = '0'; });
+    return;
+  }
+  const now = new Date();
+  const todayDay   = now.getDate();
+  const todayMonth = now.getMonth() + 1;
+  const todayYear  = now.getFullYear();
+  document.querySelectorAll('#sch-tbody tr.sch-row').forEach(tr => {
+    const si   = parseInt(tr.dataset.staffIdx);
+    const type = state.staff[si]?.type || '';
+    if (!TODAY_BUSY_TYPES.has(type)) { tr.dataset.busyHidden = '1'; return; }
+    let hasBusy = false;
+    for (let ci = 0; ci < calCols.length; ci++) {
+      const col     = calCols[ci];
+      const colYear = col.nextYear ? state.year + 1 : state.year;
+      const colMon  = col.nextYear ? 1 : state.month;
+      if (colYear !== todayYear || colMon !== todayMonth || col.day !== todayDay) continue;
+      const val = getScheduleVal(si, ci);
+      if (val && TODAY_BUSY_HOTELS.has(val.toUpperCase())) { hasBusy = true; break; }
+    }
+    tr.dataset.busyHidden = hasBusy ? '0' : '1';
+  });
+}
+
 function filterByShiftType(mode) {
   if (shiftTypeFilter === mode) {
     // toggle off
@@ -4072,6 +4116,7 @@ function applyShiftTypeFilter() {
       tr.dataset.shiftHidden = hide ? '1' : '0';
     });
   }
+  applyTodayBusyFilter(); // refresh busy-hidden before applying hotel filter
   applyHotelFilter(); // re-apply to respect both filters
 }
 
@@ -4690,7 +4735,7 @@ function applyHotelFilter() {
   // Show/hide staff rows based on hotel selection
   if (all) {
     document.querySelectorAll('#sch-tbody tr.sch-row').forEach(tr => {
-      const hidden = tr.dataset.shiftHidden === '1' || tr.dataset.manualHidden === '1';
+      const hidden = tr.dataset.shiftHidden === '1' || tr.dataset.manualHidden === '1' || tr.dataset.busyHidden === '1';
       tr.style.display = hidden ? 'none' : '';
     });
   } else {
@@ -4708,7 +4753,7 @@ function applyHotelFilter() {
     });
     document.querySelectorAll('#sch-tbody tr.sch-row').forEach(tr => {
       const si = parseInt(tr.dataset.staffIdx);
-      const hidden = tr.dataset.shiftHidden === '1' || tr.dataset.manualHidden === '1';
+      const hidden = tr.dataset.shiftHidden === '1' || tr.dataset.manualHidden === '1' || tr.dataset.busyHidden === '1';
       // Always show selected staff (unless shift-hidden), regardless of hotel filter
       const isSelected = selectedStaff.has(si);
       tr.style.display = ((si_set.has(si) || isSelected) && !hidden) ? '' : 'none';
