@@ -205,22 +205,23 @@ input[type=number].no-spin { -moz-appearance: textfield; appearance: textfield; 
 .date-pick-display.has-date { color: var(--text); }
 
 /* Inline kalendář (uvnitř formulářového modalu) */
-/* Kompaktní šířka modalu při výběru data */
-.modal.dp-compact { width: min(310px, 98%) !important; }
-.dp-header { display:flex; align-items:center; padding:0 0 10px 0; }
-.dp-header span { flex:1; text-align:center; font-weight:700; font-size:15px; }
-.dp-body { }
+/* Kompaktní modal při výběru data — pevná šířka, bez scrollbaru (ten by sebral šířku mřížce) */
+.modal.dp-compact {
+  width: min(310px, 98%) !important;
+  max-height: none !important;
+  overflow: hidden !important;
+}
+.dp-header { display:flex; align-items:center; padding:0 0 8px 0; }
+.dp-header span { flex:1; text-align:center; font-weight:700; font-size:14px; }
+/* Mřížka: grid-auto-rows = pevná výška řádku → žádné skoky při přepnutí měsíce */
 .dp-weekdays { display:grid; grid-template-columns:repeat(7,1fr); }
-.dp-weekday { text-align:center; font-size:10px; font-weight:700; color:var(--text-muted); padding:5px 0; }
-/* Vždy 42 buněk (6 řádků × 7) — čtvercové buňky přes aspect-ratio */
-.dp-days { display:grid; grid-template-columns:repeat(7,1fr); width:100%; }
+.dp-weekday { text-align:center; font-size:10px; font-weight:700; color:var(--text-muted); padding:4px 0 3px; }
+.dp-days { display:grid; grid-template-columns:repeat(7,1fr); grid-auto-rows:34px; }
 .dp-day {
-  aspect-ratio: 1;
   display:flex; align-items:center; justify-content:center;
   border-radius:50%; cursor:pointer; font-size:13px;
   border:none; background:none; color:var(--text);
   font-family:inherit; transition:background .12s;
-  width:100%;
 }
 .dp-day:hover:not(.empty):not(.selected) { background:var(--surface-alt); }
 .dp-day.selected { background:var(--accent); color:#fff; font-weight:700; }
@@ -574,7 +575,7 @@ table.dtbl { width: 100%; border-collapse: collapse; font-size: 13px; }
     </div><!-- /form-page -->
 
     <!-- Stránka 2: Výběr data (inline uvnitř stejného modalu) -->
-    <div id="date-page" class="hidden" style="padding:16px 20px 20px">
+    <div id="date-page" class="hidden" style="padding:14px 16px 16px">
       <div class="dp-header">
         <button type="button" class="nav-btn" id="dp-prev">◀</button>
         <span id="dp-month-label"></span>
