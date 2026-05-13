@@ -183,8 +183,16 @@ table.stbl { width: 100%; border-collapse: separate; border-spacing: 0; font-siz
 .field-full { grid-column: 1/-1; }
 .hidden { display: none !important; }
 
-/* Date fields */
-.date-fields { display: grid; grid-template-columns: 1fr 2fr 2fr; gap: 8px; }
+/* Date fields (for Zaúčtovat do měsíce) */
+.date-fields { display: grid; grid-template-columns: 2fr 1fr; gap: 8px; }
+
+/* Skrýt šipky u číselných polí (Ostatní, Pokuta, Jiné…) */
+input[type=number].no-spin::-webkit-inner-spin-button,
+input[type=number].no-spin::-webkit-outer-spin-button { -webkit-appearance: none; margin: 0; }
+input[type=number].no-spin { -moz-appearance: textfield; appearance: textfield; }
+
+/* Koho školil — autocomplete datalist styling */
+#inp-koho-skolil { width: 100%; }
 
 /* Autocomplete */
 .ac-wrap { position: relative; display: flex; gap: 6px; }
@@ -402,23 +410,8 @@ table.dtbl { width: 100%; border-collapse: collapse; font-size: 13px; }
       <!-- Datum -->
       <div class="field">
         <label id="lbl-datum">Datum *</label>
-        <div style="display:flex;gap:6px;align-items:stretch">
-          <div class="date-fields" style="flex:1">
-            <input type="number" name="den" id="inp-den" min="1" max="31" placeholder="Den" required>
-            <select name="mesicForm" id="sel-mesic-form">
-              <option value="1">Leden</option><option value="2">Únor</option>
-              <option value="3">Březen</option><option value="4">Duben</option>
-              <option value="5">Květen</option><option value="6">Červen</option>
-              <option value="7">Červenec</option><option value="8">Srpen</option>
-              <option value="9">Září</option><option value="10">Říjen</option>
-              <option value="11">Listopad</option><option value="12">Prosinec</option>
-            </select>
-            <input type="number" name="rokForm" id="inp-rok-form" min="2020" max="2099" placeholder="Rok" required>
-          </div>
-          <button type="button" id="btn-date-picker" title="Vybrat z kalendáře"
-            style="padding:0 11px;border:1px solid var(--border);border-radius:7px;background:var(--surface-alt);cursor:pointer;font-size:18px;color:var(--text);flex-shrink:0;line-height:1">📅</button>
-        </div>
-        <input type="date" id="inp-date-hidden" style="position:absolute;visibility:hidden;width:0;height:0;pointer-events:none">
+        <input type="date" id="inp-date" name="datumForm" required
+          style="width:100%;padding:8px 11px;border:1px solid var(--border);border-radius:7px;background:var(--input-bg,var(--bg));color:var(--text);font-size:14px;font-family:inherit">
       </div>
 
       <!-- Zaúčtovat do jiného měsíce (skrytá, rozbalí se tlačítkem) -->
@@ -430,7 +423,7 @@ table.dtbl { width: 100%; border-collapse: collapse; font-size: 13px; }
       </div>
       <div class="field hidden" id="field-mesic-platby">
         <label>Zaúčtovat do měsíce</label>
-        <div class="date-fields">
+        <div style="display:grid;grid-template-columns:2fr 1fr;gap:8px">
           <select id="sel-mesic-platby">
             <option value="1">Leden</option><option value="2">Únor</option>
             <option value="3">Březen</option><option value="4">Duben</option>
@@ -443,7 +436,7 @@ table.dtbl { width: 100%; border-collapse: collapse; font-size: 13px; }
         </div>
       </div>
 
-      <!-- Částka: recenze = dropdown, ostatní sekce = volné číslo -->
+      <!-- Částka: recenze dropdown -->
       <div class="field hidden" id="field-castka-select">
         <label>Částka *</label>
         <select name="castkaSel" id="sel-castka">
@@ -454,16 +447,37 @@ table.dtbl { width: 100%; border-collapse: collapse; font-size: 13px; }
           <option value="0">Jiné…</option>
         </select>
       </div>
+      <!-- Částka: braní směn dropdown -->
+      <div class="field hidden" id="field-castka-brani">
+        <label>Částka *</label>
+        <select id="sel-castka-brani">
+          <option value="500">500 Kč</option>
+          <option value="600">600 Kč</option>
+          <option value="700">700 Kč</option>
+          <option value="800">800 Kč</option>
+          <option value="1000">1000 Kč</option>
+          <option value="0">Jiné…</option>
+        </select>
+      </div>
+      <!-- Částka: školení dropdown -->
+      <div class="field hidden" id="field-castka-skoleni">
+        <label>Částka *</label>
+        <select id="sel-castka-skoleni">
+          <option value="500">500 Kč</option>
+          <option value="0">Jiné…</option>
+        </select>
+      </div>
+      <!-- Vlastní částka (Jiné) nebo Ostatní/Pokuta volné pole -->
       <div class="field hidden" id="field-castka-input">
-        <label>Částka (Kč) *</label>
-        <input type="number" name="castkaInput" min="0" placeholder="Kč">
+        <label id="lbl-castka-input">Částka (Kč) *</label>
+        <input type="number" name="castkaInput" id="inp-castka-input" min="0" placeholder="Kč" class="no-spin">
       </div>
 
       <!-- Recenze: partner + klient -->
       <div class="fields-2 hidden" id="fields-recenze">
         <div class="field">
           <label>Partner</label>
-          <select name="partner">
+          <select name="partner" id="sel-partner">
             <option value="">—</option>
             <option value="BOO">BOO</option>
             <option value="EXD">EXD</option>
@@ -476,10 +490,13 @@ table.dtbl { width: 100%; border-collapse: collapse; font-size: 13px; }
         </div>
       </div>
 
-      <!-- Školení: koho školil -->
+      <!-- Školení: koho školil (s autocomplete z minulých záznamů) -->
       <div class="field hidden" id="field-skoleni">
         <label>Koho školil</label>
-        <input type="text" name="koho_skolil" placeholder="Login nebo jméno školené osoby">
+        <input type="text" name="koho_skolil" id="inp-koho-skolil"
+          placeholder="Jméno nebo login školené osoby"
+          autocomplete="off" list="koho-skolil-datalist">
+        <datalist id="koho-skolil-datalist"></datalist>
       </div>
 
       <!-- Poznámka — Braní směn (dropdown s vlastním důvodem) -->
@@ -850,29 +867,46 @@ function openDetail(login) {
 // ═══ Formulář — podmíněná pole ════════════════════════════════════════════════
 function initFormConds() {
   document.getElementById('sel-sekce').addEventListener('change', updateFormConds);
-  document.getElementById('sel-castka').addEventListener('change', () => {
-    document.getElementById('field-castka-input').classList.toggle('hidden',
-      document.getElementById('sel-castka').value !== '0');
-  });
+  document.getElementById('sel-castka').addEventListener('change', updateFormConds);
+  document.getElementById('sel-castka-brani').addEventListener('change', updateFormConds);
+  document.getElementById('sel-castka-skoleni').addEventListener('change', updateFormConds);
 }
 function updateFormConds() {
   const s         = document.getElementById('sel-sekce').value;
   const isRecenze = s === 'recenze';
   const isBrani   = s === 'braní směn';
   const isSkoleni = s === 'školení';
+  const isOstatni = s === 'ostatní';
+  const isPokuta  = s === 'pokuta';
 
   // Datum label
   document.getElementById('lbl-datum').textContent = isRecenze ? 'Datum nahlášení *' : 'Datum *';
 
+  // Částka dropdowny
   document.getElementById('field-castka-select').classList.toggle('hidden', !isRecenze);
-  if (isRecenze) {
-    document.getElementById('field-castka-input').classList.toggle('hidden',
-      document.getElementById('sel-castka').value !== '0');
-  } else {
-    document.getElementById('field-castka-input').classList.toggle('hidden', !s);
-  }
+  document.getElementById('field-castka-brani').classList.toggle('hidden', !isBrani);
+  document.getElementById('field-castka-skoleni').classList.toggle('hidden', !isSkoleni);
+
+  // castkaInput: pro braní/školení/recenze jen při "Jiné", pro ostatní/pokuta vždy
+  let showInput = false;
+  if (isRecenze)      showInput = document.getElementById('sel-castka').value === '0';
+  else if (isBrani)   showInput = document.getElementById('sel-castka-brani').value === '0';
+  else if (isSkoleni) showInput = document.getElementById('sel-castka-skoleni').value === '0';
+  else if (isOstatni || isPokuta) showInput = true;
+  document.getElementById('field-castka-input').classList.toggle('hidden', !showInput);
+  document.getElementById('lbl-castka-input').textContent =
+    (isOstatni || isPokuta) ? 'Částka (Kč) *' : 'Vlastní částka (Kč) *';
+
+  // Partner: u recenze předvol BOO pouze u nového záznamu
   document.getElementById('fields-recenze').classList.toggle('hidden', !isRecenze);
+  if (isRecenze) {
+    const editId = document.querySelector('#zaznam-form [name=editId]').value;
+    if (!editId) document.getElementById('sel-partner').value = 'BOO';
+  }
+
   document.getElementById('field-skoleni').classList.toggle('hidden', !isSkoleni);
+  if (isSkoleni) loadKohoSkolilHints();
+
   document.getElementById('field-pozn-brani').classList.toggle('hidden', !isBrani);
   document.getElementById('field-pozn-brani-jine').classList.toggle('hidden',
     !(isBrani && document.getElementById('sel-brani-duvod').value === 'Jiné'));
@@ -888,9 +922,8 @@ function toggleBraniJine() {
 document.getElementById('btn-add').addEventListener('click', () => {
   resetForm();
   const t = new Date();
-  document.getElementById('inp-den').value        = t.getDate();
-  document.getElementById('sel-mesic-form').value = t.getMonth() + 1;
-  document.getElementById('inp-rok-form').value   = t.getFullYear();
+  document.getElementById('inp-date').value =
+    `${t.getFullYear()}-${String(t.getMonth()+1).padStart(2,'0')}-${String(t.getDate()).padStart(2,'0')}`;
   // Platební měsíc = aktuálně zobrazený přehled
   document.getElementById('sel-mesic-platby').value = mesic;
   document.getElementById('inp-rok-platby').value   = rok;
@@ -905,6 +938,8 @@ function resetForm() {
   rebuildPoznamkaPreset();
   document.getElementById('field-castka-input').classList.add('hidden');
   document.getElementById('field-castka-select').classList.add('hidden');
+  document.getElementById('field-castka-brani').classList.add('hidden');
+  document.getElementById('field-castka-skoleni').classList.add('hidden');
   document.getElementById('fields-recenze').classList.add('hidden');
   document.getElementById('field-skoleni').classList.add('hidden');
   document.getElementById('field-pozn-brani').classList.add('hidden');
@@ -924,9 +959,22 @@ document.getElementById('btn-zaznam-save').addEventListener('click', async () =>
   const sekce = d.sekce;
   if (!sekce) { alert('Vyberte sekci.'); return; }
 
+  // Datum z nového single date inputu
+  const dateParts = (d.datumForm || '').split('-');
+  const den = parseInt(dateParts[2]) || 0;
+  const mesicDatum = parseInt(dateParts[1]) || 0;
+  const rokDatum   = parseInt(dateParts[0]) || 0;
+  if (!den || !mesicDatum || !rokDatum) { alert('Vyplňte datum.'); return; }
+
   let castka;
   if (sekce === 'recenze') {
     castka = d.castkaSel === '0' ? parseInt(d.castkaInput)||0 : parseInt(d.castkaSel);
+  } else if (sekce === 'braní směn') {
+    const bv = document.getElementById('sel-castka-brani').value;
+    castka = bv === '0' ? parseInt(d.castkaInput)||0 : parseInt(bv);
+  } else if (sekce === 'školení') {
+    const sv = document.getElementById('sel-castka-skoleni').value;
+    castka = sv === '0' ? parseInt(d.castkaInput)||0 : parseInt(sv);
   } else {
     castka = parseInt(d.castkaInput) || 0;
   }
@@ -944,8 +992,8 @@ document.getElementById('btn-zaznam-save').addEventListener('click', async () =>
   const payload = {
     sekce, login: loginFinal,
     hotel: d.hotel || null,
-    // Skutečné datum záznamu (den/mesicForm/rokForm)
-    den: d.den, mesicDatum: d.mesicForm, rokDatum: d.rokForm,
+    // Skutečné datum záznamu
+    den, mesicDatum, rokDatum,
     // Platební měsíc — do kterého přehledu záznam patří
     mesic: document.getElementById('sel-mesic-platby').value,
     rok:   document.getElementById('inp-rok-platby').value,
@@ -981,10 +1029,7 @@ function editZaznam(id) {
   form.elements.hotel.value = z.hotel || '';
 
   if (z.datum) {
-    const parts = z.datum.slice(0,10).split('-');
-    document.getElementById('inp-den').value        = parseInt(parts[2]);
-    document.getElementById('sel-mesic-form').value = parseInt(parts[1]);
-    document.getElementById('inp-rok-form').value   = parseInt(parts[0]);
+    document.getElementById('inp-date').value = z.datum.slice(0, 10);
   }
   // Platební měsíc = z.mesic / z.rok (do jakého přehledu záznam patří)
   document.getElementById('sel-mesic-platby').value = z.mesic;
@@ -994,10 +1039,24 @@ function editZaznam(id) {
     document.getElementById('field-mesic-platby').classList.remove('hidden');
   }
 
+  const cs = String(z.castka);
   if (z.sekce === 'recenze') {
     const opts = ['400','200','100','50'];
-    document.getElementById('sel-castka').value = opts.includes(String(z.castka)) ? String(z.castka) : '0';
-    if (!opts.includes(String(z.castka))) {
+    document.getElementById('sel-castka').value = opts.includes(cs) ? cs : '0';
+    if (!opts.includes(cs)) {
+      document.getElementById('field-castka-input').classList.remove('hidden');
+      form.elements.castkaInput.value = z.castka;
+    }
+  } else if (z.sekce === 'braní směn') {
+    const opts = ['500','600','700','800','1000'];
+    document.getElementById('sel-castka-brani').value = opts.includes(cs) ? cs : '0';
+    if (!opts.includes(cs)) {
+      document.getElementById('field-castka-input').classList.remove('hidden');
+      form.elements.castkaInput.value = z.castka;
+    }
+  } else if (z.sekce === 'školení') {
+    document.getElementById('sel-castka-skoleni').value = cs === '500' ? '500' : '0';
+    if (cs !== '500') {
       document.getElementById('field-castka-input').classList.remove('hidden');
       form.elements.castkaInput.value = z.castka;
     }
@@ -1231,39 +1290,15 @@ function fmtTs(iso) {
   return `${d.toLocaleDateString('cs-CZ')} ${d.toLocaleTimeString('cs-CZ',{hour:'2-digit',minute:'2-digit'})}`;
 }
 
-// ═══ Kalendářový výběr data ════════════════════════════════════════════════════
-(function() {
-  const btn = document.getElementById('btn-date-picker');
-  const hdp = document.getElementById('inp-date-hidden');
-  if (!btn || !hdp) return;
-  btn.addEventListener('click', () => {
-    const y = document.getElementById('inp-rok-form').value  || new Date().getFullYear();
-    const m = String(document.getElementById('sel-mesic-form').value || (new Date().getMonth()+1)).padStart(2,'0');
-    const d = String(document.getElementById('inp-den').value || new Date().getDate()).padStart(2,'0');
-    hdp.value = `${y}-${m}-${d}`;
-    if (typeof hdp.showPicker === 'function') {
-      hdp.showPicker();
-    } else {
-      // Fallback pro starší prohlížeče
-      hdp.style.visibility = 'visible';
-      hdp.style.width = '1px';
-      hdp.style.height = '1px';
-      hdp.click();
-      setTimeout(() => {
-        hdp.style.visibility = 'hidden';
-        hdp.style.width = '0';
-        hdp.style.height = '0';
-      }, 500);
-    }
-  });
-  hdp.addEventListener('change', () => {
-    if (!hdp.value) return;
-    const [y, m, d] = hdp.value.split('-');
-    document.getElementById('inp-den').value        = parseInt(d, 10);
-    document.getElementById('sel-mesic-form').value = parseInt(m, 10);
-    document.getElementById('inp-rok-form').value   = parseInt(y, 10);
-  });
-})();
+// ═══ Koho školil — autocomplete z minulých záznamů ═══════════════════════════
+let _kohoSkolilLoaded = false;
+async function loadKohoSkolilHints() {
+  if (_kohoSkolilLoaded) return;
+  _kohoSkolilLoaded = true;
+  const list = await fetch('/api/priplatky/koho-skolil-hints').then(r => r.json()).catch(() => []);
+  const dl = document.getElementById('koho-skolil-datalist');
+  if (dl) dl.innerHTML = list.map(v => `<option value="${esc(v)}">`).join('');
+}
 
 // ═══ Start ════════════════════════════════════════════════════════════════════
 init();

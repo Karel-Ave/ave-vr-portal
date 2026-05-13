@@ -1727,6 +1727,18 @@ app.delete('/api/priplatky/poznamky/:id', requireLogin, async (req, res) => {
   res.json({ ok: true });
 });
 
+// Autocomplete pro "Koho školil"
+app.get('/api/priplatky/koho-skolil-hints', requireLogin, async (req, res) => {
+  const db = getPool();
+  const { rows } = await db.query(
+    `SELECT DISTINCT koho_skolil
+     FROM priplatky_zaznamy
+     WHERE koho_skolil IS NOT NULL AND koho_skolil <> ''
+     ORDER BY koho_skolil`
+  );
+  res.json(rows.map(r => r.koho_skolil));
+});
+
 // Export XLSX
 app.get('/api/priplatky/export/xlsx', requireLogin, async (req, res) => {
   const { rok, mesic } = req.query;
