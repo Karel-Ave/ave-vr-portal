@@ -651,69 +651,47 @@ table.staff-tbl td select:focus { background: #fff; border-radius: 2px; }
   height: 1px;
 }
 
-/* ════════════════════════════════════════════════
-   PORTAL OVERRIDE — AVE VR portál
-   Přebije barvy z Rozpis směn.html portálovými
-   ════════════════════════════════════════════════ */
+/* ════════════════════════════════════════════════════════
+   PORTAL OVERRIDE v3 — AVE VR portál (iframe mode)
+   Stránka běží v iframe, portálový topbar je vně.
+   #topbar je odstraněn; záložky nahrazují topbar.
+   ════════════════════════════════════════════════════════ */
 
-/* Body: místo pro fixed portal topbar */
+/* Body: flex sloupec, žádný padding-top (topbar odstraněn) */
 body {
-  padding-top: 58px !important;
   background: var(--bg) !important;
   color:       var(--text) !important;
-  font-family: 'Segoe UI', system-ui, sans-serif !important;
 }
 
-/* Portal topbar (theme.js doplní nav obsah) */
-#topbar {
-  position: fixed !important;
-  top: 0 !important; left: 0 !important; right: 0 !important;
-  height: 58px !important;
-  background: var(--bg-topbar, #1a1a20) !important;
-  border-bottom: 1px solid var(--border) !important;
-  color: var(--text) !important;
-  z-index: 1000 !important;
-  padding: 0 16px !important;
-  gap: 10px !important;
-  flex-shrink: 0 !important;
-}
-#topbar h1 {
-  font-size: 16px !important;
-  font-weight: 700 !important;
-  color: var(--text) !important;
-  letter-spacing: normal !important;
-}
-
-/* Záložkový pás pod topbarem */
+/* Záložkový pás — tmavý, jako portálový topbar */
 #raspis-tabs-bar {
-  display: flex;
+  display: flex !important;
   align-items: stretch;
-  background: var(--bg);
-  border-bottom: 2px solid var(--border);
-  padding: 0 12px;
+  background: var(--bg-topbar, #1E2228);
+  border-bottom: 1px solid rgba(255,255,255,.1);
   flex-shrink: 0;
   min-height: 44px;
+  padding: 0 8px;
   gap: 2px;
 }
 .rtab {
-  padding: 0 18px;
+  padding: 0 16px;
   border: none;
   border-bottom: 3px solid transparent;
-  margin-bottom: -2px;
   background: none;
-  color: var(--text-muted, #888);
+  color: rgba(255,255,255,.55);
   cursor: pointer;
   font-size: 13px;
   font-weight: 600;
   font-family: inherit;
   white-space: nowrap;
-  transition: color .15s, border-color .15s, background .15s;
-  border-radius: 6px 6px 0 0;
+  transition: color .15s, border-color .15s;
+  flex-shrink: 0;
 }
-.rtab:hover { color: var(--text); background: var(--surface-alt, rgba(128,128,128,.08)); }
-.rtab.rtab-active { color: var(--accent); border-bottom-color: var(--accent); }
+.rtab:hover  { color: rgba(255,255,255,.85); }
+.rtab.rtab-active { color: #fff; border-bottom-color: rgba(255,255,255,.75); }
 
-/* Tlačítka akcí v záložkovém pásu (Publikovat, Nový raspis) */
+/* Akční tlačítka v záložkovém pásu */
 #raspis-tab-actions {
   display: flex;
   align-items: center;
@@ -722,34 +700,55 @@ body {
   padding: 6px 0;
 }
 
-/* Schedule controls — přizpůsob portálovým barvám */
+/* Portálové ovládání (Raspis tab) */
+#portal-controls-bar {
+  align-items: center;
+  gap: 6px;
+  background: var(--bg-controls, #ECEAE2);
+  border-bottom: 1px solid var(--bg-controls-border, #D8D5CC);
+  padding: 5px 12px;
+  flex-shrink: 0;
+  flex-wrap: wrap;
+  min-height: 38px;
+  position: relative;
+}
+/* Dark theme override */
+[data-theme="dark"] #portal-controls-bar {
+  background: var(--bg-controls, #1A1E24);
+  border-bottom-color: var(--bg-controls-border, #272D36);
+}
+#portal-controls-bar .pcb-left  { display:flex; align-items:center; gap:6px; }
+#portal-controls-bar .pcb-center { position:absolute; left:50%; transform:translateX(-50%); display:flex; align-items:center; gap:6px; }
+#portal-controls-bar .pcb-right { margin-left:auto; display:flex; align-items:center; gap:6px; }
+#portal-controls-bar .btn { font-family: inherit; font-size: 12px; }
+#portal-rozpis-sel { height: 26px; padding: 0 8px; font-size: 12px; font-family: inherit; border: 1px solid var(--border); border-radius: 5px; background: var(--surface); color: var(--text); cursor: pointer; max-width: 180px; }
+
+/* Readonly ochrana (Raspis tab) */
+#schedule-wrap.portal-readonly button { pointer-events: none !important; }
+#schedule-wrap.portal-readonly input,
+#schedule-wrap.portal-readonly textarea,
+#schedule-wrap.portal-readonly select { pointer-events: none !important; }
+
+/* Původní topbar skrýt pokud splyne — bezpečnostní catch */
+#topbar { display: none !important; }
+
+/* Schedule controls přizpůsob portálovým barvám */
 #schedule-controls {
   background: var(--surface, #fff) !important;
   border-bottom: 1px solid var(--border) !important;
 }
-.hb {
-  background: var(--surface, #fff) !important;
-  border-color: var(--border, #ccc) !important;
-  color: var(--text, #222) !important;
-}
+
+/* Hotel buttons — ponech původní barvy, jen focus/selected dle portálu */
 .hb.selected {
   background: var(--accent, #2a5caa) !important;
   color: #fff !important;
   border-color: var(--accent, #2a5caa) !important;
-}
-.hotel-btn {
-  background: var(--surface, #fff) !important;
-  border-color: var(--border, #ccc) !important;
-  color: var(--text, #222) !important;
 }
 .hotel-btn.selected {
   background: var(--accent, #2a5caa) !important;
   color: #fff !important;
   border-color: var(--accent, #2a5caa) !important;
 }
-
-/* Jméno recepčního — portálové pozadí */
-.sch-name { background: var(--surface, #fff) !important; }
 
 /* Nastavení panel */
 .settings-top, .staff-table-wrap {
@@ -759,16 +758,11 @@ body {
 table.staff-tbl th { background: var(--bg, #f5f5f0) !important; border-color: var(--border, #ccc) !important; color: var(--text-muted, #666) !important; }
 table.staff-tbl td { border-color: var(--border, #ccc) !important; }
 table.staff-tbl tr:hover td { background: var(--surface-alt, #f0f0ea) !important; }
-table.staff-tbl td input[type=text]:focus,
-table.staff-tbl td select:focus { background: var(--surface, #fff) !important; }
 
 /* Legend */
 #legend { background: var(--surface, #fff) !important; border-color: var(--border, #ccc) !important; }
 
-/* Sticky name column v dark modu */
-.hotel-name-cell { background: var(--surface, #fff) !important; }
-
-/* Scrollbar skrytí */
+/* Scrollbar */
 #schedule-wrap::-webkit-scrollbar { width: 6px; height: 6px; }
 #schedule-wrap::-webkit-scrollbar-track { background: transparent; }
 #schedule-wrap::-webkit-scrollbar-thumb { background: var(--border, #ccc); border-radius: 3px; }
@@ -776,18 +770,35 @@ table.staff-tbl td select:focus { background: var(--surface, #fff) !important; }
 </head>
 <body>
 
-<div id="topbar">
-  <h1>📅 Rozpis</h1>
-</div>
+
 
 <div id="raspis-tabs-bar">
   <button class="rtab rtab-active" id="rtab-settings" onclick="showAppTab('settings')">⚙ Nastavení</button>
-  <button class="rtab" id="rtab-tvorba" onclick="showAppTab('tvorba')">✏ Tvorba raspisu</button>
+  <button class="rtab" id="rtab-tvorba" onclick="showAppTab('tvorba')">✏ Tvorba rozpisu</button>
   <button class="rtab" id="rtab-view" onclick="showAppTab('view')">📋 Raspis</button>
   <div id="raspis-tab-actions">
-    <span id="web-save-status" style="font-size:10px;opacity:0;transition:opacity .3s;margin-right:2px;"></span>
-    <button class="btn btn-sm btn-danger" id="btn-new-schedule" onclick="newSchedule()" style="display:none" title="Začít nový prázdný rozpis">🆕 Nový raspis</button>
-    <button class="btn btn-sm" id="btn-publish" onclick="publishToWeb()" style="display:none;background:#e8f4fd;border-color:#5a9ec7;color:#1a5c8a;" title="Publikovat hotový rozpis">📤 Publikovat</button>
+    <span id="web-save-status" style="font-size:10px;opacity:0;transition:opacity .3s;margin-right:4px;color:var(--text,#222);"></span>
+    <button class="btn btn-sm btn-danger" id="btn-new-schedule" onclick="newSchedule()" style="display:none;" title="Začít nový prázdný rozpis">🆕 Nový</button>
+    <button class="btn btn-sm btn-primary" id="btn-publish" onclick="publishToWeb()" style="display:none;" title="Publikovat hotový rozpis">📤 Publikovat</button>
+  </div>
+</div>
+
+<div id="portal-controls-bar" style="display:none;">
+  <div class="pcb-left">
+    <select id="portal-rozpis-sel" title="Vyberte měsíc raspisu"></select>
+    <button id="portal-import-btn" class="btn btn-sm">📥 Nahrát</button>
+    <input type="file" id="portal-import-input" accept=".json" style="display:none">
+    <button id="portal-delete-btn" class="btn btn-sm btn-danger" style="display:none;">🗑 Smazat</button>
+    <button id="portal-trash-btn" class="btn btn-sm" style="display:none;background:#fff8e1;border-color:#f9a825;color:#795548;">📦 Archiv</button>
+    <button id="portal-log-btn" class="btn btn-sm" style="display:none;background:#e8f0ff;border-color:#6699cc;color:#1a4a8a;" onclick="openLogModal()">📋 Log</button>
+  </div>
+  <div class="pcb-center">
+    <span id="portal-lock-status" style="font-size:11px;color:#888;white-space:nowrap;display:none;"></span>
+    <button id="portal-edit-btn" class="btn btn-sm" style="background:#f0c800;color:#333;border-color:#c8a800;font-weight:600;">✏ Editovat</button>
+    <button id="portal-save-btn" class="btn btn-sm btn-primary" style="display:none;">💾 Uložit</button>
+  </div>
+  <div class="pcb-right">
+    <button id="portal-export-btn" class="btn btn-sm" onclick="exportXlsx()" style="background:#4caf50;color:#fff;border-color:#388e3c;">📊 Export .xlsx</button>
   </div>
 </div>
 
@@ -6455,25 +6466,79 @@ document.addEventListener('mouseup', (e) => {
 
 
 <div id="__app_data__" style="display: none;">{"v":3,"month":6,"year":2026,"fondHpp":"165","fondZpp":"99","holidays":"","staff":[{"name":"Absolon Marek","type":"Denní","contract":"DPP","maxHrs":"","regular":"","dates":"","noteM":"","noteP":""},{"name":"Antipin Dmitrii","type":"Noční","contract":"HPP","maxHrs":"","regular":"","dates":"","noteM":"","noteP":""},{"name":"Augustin Patrik","type":"Denní","contract":"HPP","maxHrs":"","regular":"","dates":"","noteM":"","noteP":""},{"name":"Baidiuk Dmytrii","type":"Obojí","contract":"HPP","maxHrs":"","regular":"","dates":"","noteM":"","noteP":""},{"name":"Bartošková Mína","type":"Denní","contract":"DPP","maxHrs":"","regular":"","dates":"","noteM":"","noteP":"max. 50 hod."},{"name":"Bendos Elizaveta","type":"Obojí","contract":"HPP","maxHrs":"","regular":"","dates":"","noteM":"","noteP":""},{"name":"Beránek Stanislav","type":"Denní","contract":"HPP","maxHrs":"","regular":"","dates":"","noteM":"","noteP":""},{"name":"Bernat Luboš","type":"Denní","contract":"DPČ","maxHrs":"","regular":"Pá-d, So-d, Ne-d, Sv-d","dates":"","noteM":"","noteP":"chtěl by ideálně 10 směn"},{"name":"Bičišťová Klaudie","type":"Denní","contract":"HPP","maxHrs":"","regular":"","dates":"","noteM":"","noteP":""},{"name":"Blahout Radek","type":"Denní","contract":"HPP","maxHrs":"","regular":"","dates":"","noteM":"","noteP":""},{"name":"Bogdanovich Olesia","type":"Noční","contract":"ZPP","maxHrs":"","regular":"","dates":"","noteM":"","noteP":""},{"name":"Brisudová Anna","type":"Noční","contract":"ZPP","maxHrs":"","regular":"Po-d, Út-d, St-d, Ne-d","dates":"15","noteM":"klidně 4 po sobě, chce 11-12 směn\n","noteP":"co nejvíc C"},{"name":"Brovko Vjačeslav","type":"Denní","contract":"HPP","maxHrs":"","regular":"","dates":"","noteM":"","noteP":"nemůže s KUK"},{"name":"Burda Tomáš","type":"Noční","contract":"HPP","maxHrs":"205","regular":"","dates":"","noteM":"","noteP":""},{"name":"Buslaev Gleb","type":"Denní","contract":"DPP","maxHrs":"25","regular":"","dates":"1-30","noteM":"","noteP":"směny ideálně v So, Ne možná "},{"name":"Ciple Anna Maria","type":"Noční","contract":"HPP","maxHrs":"","regular":"","dates":"","noteM":"","noteP":""},{"name":"Čada Štěpán","type":"Denní","contract":"HPP","maxHrs":"","regular":"","dates":"","noteM":"","noteP":""},{"name":"Čermáková Helena","type":"Denní","contract":"ZPP","maxHrs":"","regular":"","dates":"","noteM":"","noteP":"nemůže s KUK"},{"name":"Černocká Marie","type":"Denní","contract":"DPČ","maxHrs":"","regular":"","dates":"","noteM":"","noteP":""},{"name":"Dognal Mark","type":"Noční","contract":"HPP","maxHrs":"193","regular":"","dates":"","noteM":"","noteP":"nestřídat s STEO"},{"name":"Dubinina Viktorie","type":"Noční","contract":"HPP","maxHrs":"","regular":"","dates":"","noteM":"","noteP":""},{"name":"Fialová Alena","type":"Denní","contract":"HPP","maxHrs":"","regular":"","dates":"","noteM":"","noteP":""},{"name":"Fořt David","type":"Noční","contract":"HPP","maxHrs":"","regular":"","dates":"","noteM":"","noteP":"vždy jen fond"},{"name":"Hoppeová Klára","type":"Denní","contract":"HPP","maxHrs":"205","regular":"","dates":"","noteM":"","noteP":""},{"name":"Hudečková Kateřina","type":"Denní","contract":"DPČ","maxHrs":"","regular":"","dates":"14-15, 19-20, 24-29","noteM":"","noteP":""},{"name":"Ielitro Giuseppe","type":"Denní","contract":"HPP","maxHrs":"","regular":"","dates":"","noteM":"","noteP":""},{"name":"Ivanov Alexandr","type":"Noční","contract":"HPP","maxHrs":"193","regular":"","dates":"","noteM":"","noteP":""},{"name":"Juklová Jana","type":"Denní","contract":"ZPP","maxHrs":"","regular":"","dates":"","noteM":"","noteP":""},{"name":"Klimchenko Darya","type":"Denní","contract":"HPP","maxHrs":"","regular":"","dates":"","noteM":"","noteP":""},{"name":"Kochurikhina Valeriia","type":"Noční","contract":"HPP","maxHrs":"","regular":"","dates":"","noteM":"","noteP":""},{"name":"Konovalenko Yuriy","type":"Denní","contract":"HPP","maxHrs":"193","regular":"","dates":"","noteM":"","noteP":""},{"name":"Korejs Martin","type":"Noční","contract":"HPP","maxHrs":"","regular":"","dates":"","noteM":"","noteP":""},{"name":"Kovářová Alice","type":"Denní","contract":"HPP","maxHrs":"","regular":"","dates":"","noteM":"","noteP":""},{"name":"Kukelková Martina","type":"Denní","contract":"HPP","maxHrs":"","regular":"","dates":"","noteM":"","noteP":""},{"name":"Kuular Saiana","type":"Noční","contract":"HPP","maxHrs":"","regular":"","dates":"","noteM":"","noteP":""},{"name":"Lesnichenka Liza","type":"Denní","contract":"DPČ","maxHrs":"","regular":"","dates":"1-30","noteM":"celý červen dovolená","noteP":"nemůže s AUGP"},{"name":"Linhartová Jana","type":"Denní","contract":"ZPP","maxHrs":"","regular":"","dates":"","noteM":"","noteP":""},{"name":"Litvínov Vladimír","type":"Obojí","contract":"HPP","maxHrs":"193","regular":"","dates":"","noteM":"","noteP":"nestřídat s KUK, KOAL"},{"name":"Makhanova Malika","type":"Noční","contract":"HPP","maxHrs":"","regular":"","dates":"","noteM":"","noteP":""},{"name":"Motejlková Barbora","type":"Denní","contract":"HPP","maxHrs":"","regular":"","dates":"","noteM":"","noteP":""},{"name":"Nechvátal Jaroslav","type":"Noční","contract":"HPP","maxHrs":"205","regular":"","dates":"","noteM":"","noteP":""},{"name":"Nermesanová Manuela","type":"Obojí","contract":"HPP","maxHrs":"","regular":"Út-d, Út-n, St-d, St-n","dates":"","noteM":"","noteP":"úterý noční teoreticky může"},{"name":"Nguyen Thi Nhung","type":"Noční","contract":"ZPP","maxHrs":"","regular":"","dates":"","noteM":"","noteP":""},{"name":"Nováková Romana","type":"Denní","contract":"HPP","maxHrs":"","regular":"","dates":"","noteM":"dovolená 28.6.-7.7","noteP":"dovolená 28.6.-7.7. a 4.8.-14.8."},{"name":"Pavelka Filip","type":"Denní","contract":"HPP","maxHrs":"205","regular":"","dates":"","noteM":"","noteP":""},{"name":"Pešek Stanislav","type":"Noční","contract":"DPČ","maxHrs":"","regular":"","dates":"","noteM":"","noteP":"chtěl by 9 směn"},{"name":"Polášková Blanka","type":"Denní","contract":"HPP","maxHrs":"","regular":"","dates":"","noteM":"","noteP":""},{"name":"Prokhorian Anna","type":"Denní","contract":"HPP","maxHrs":"","regular":"","dates":"","noteM":"","noteP":"4-5 směn na C, zbytek E"},{"name":"Skřivánek Jan","type":"Denní","contract":"HPP","maxHrs":"","regular":"","dates":"","noteM":"volno 13.-25.6.","noteP":""},{"name":"Smolová Kristýna","type":"Noční","contract":"DPČ","maxHrs":"","regular":"","dates":"","noteM":"","noteP":""},{"name":"Smrčková Jitka","type":"Denní","contract":"ZPP","maxHrs":"","regular":"","dates":"","noteM":"","noteP":""},{"name":"Smutná Petra","type":"Denní","contract":"HPP","maxHrs":"","regular":"","dates":"","noteM":"","noteP":""},{"name":"Stalchenko Oleksandra","type":"Obojí","contract":"HPP","maxHrs":"","regular":"","dates":"","noteM":"","noteP":""},{"name":"Steblová Natálie","type":"Denní","contract":"DPP","maxHrs":"","regular":"","dates":"15-18, 20-30","noteM":"","noteP":"nemůže s KUK"},{"name":"Stempak Ivan","type":"Noční","contract":"DPČ","maxHrs":"","regular":"","dates":"","noteM":"","noteP":""},{"name":"Šmejkalová Iva","type":"Noční","contract":"HPP","maxHrs":"","regular":"","dates":"","noteM":"","noteP":""},{"name":"Štěpánek Ondřej","type":"Denní","contract":"HPP","maxHrs":"","regular":"","dates":"","noteM":"","noteP":"nestřídat s DOGM"},{"name":"Štochlová Gabriela","type":"Denní","contract":"HPP","maxHrs":"","regular":"","dates":"","noteM":"","noteP":""},{"name":"Tatara Juraj","type":"Denní","contract":"ZPP","maxHrs":"","regular":"","dates":"","noteM":"","noteP":""},{"name":"Tremlová Hana","type":"Denní","contract":"HPP","maxHrs":"","regular":"","dates":"","noteM":"","noteP":""},{"name":"Tsarkov Valentin","type":"Noční","contract":"HPP","maxHrs":"193","regular":"","dates":"","noteM":"","noteP":""},{"name":"Valeyeva Kristina","type":"Denní","contract":"HPP","maxHrs":"","regular":"","dates":"1-2","noteM":"","noteP":""},{"name":"Viktorenkov Aleksei","type":"Noční","contract":"HPP","maxHrs":"193","regular":"","dates":"","noteM":"","noteP":""},{"name":"Voropaeva Anastasiia","type":"Obojí","contract":"HPP","maxHrs":"","regular":"Po-n, Út-d, Út-n, St-d, Čt-n, Pá-d","dates":"","noteM":"","noteP":"co nejvíc B"},{"name":"Vránek Matyáš","type":"Denní","contract":"DPP","maxHrs":"","regular":"","dates":"","noteM":"","noteP":""},{"name":"z Dvořák Karel","type":"Vedoucí","contract":"","maxHrs":"","regular":"","dates":"","noteM":"","noteP":""},{"name":"z Pětivlas Matěj","type":"Vedoucí","contract":"","maxHrs":"","regular":"","dates":"","noteM":"","noteP":""},{"name":"z Schubert Adam","type":"Vedoucí","contract":"","maxHrs":"","regular":"","dates":"","noteM":"","noteP":""},{"name":"zz Pohotovost","type":"Pohotovost","contract":"","maxHrs":"","regular":"","dates":"","noteM":"","noteP":""},{"name":"zzz Essence","type":"Speciální","contract":"","maxHrs":"","regular":"","dates":"","noteM":"","noteP":""},{"name":"zzz Theatrino","type":"Speciální","contract":"","maxHrs":"","regular":"","dates":"","noteM":"","noteP":""},{"name":"zzz Waldstein","type":"Speciální","contract":"","maxHrs":"","regular":"","dates":"","noteM":"","noteP":""}],"schedule":{"69_0":"F","69_2":"F","69_4":"F","69_6":"F","69_8":"F","69_10":"F","69_12":"F","69_14":"F","69_16":"F","69_18":"F","69_20":"F","69_22":"F","69_24":"F","69_26":"F","69_28":"F","69_30":"F","69_32":"F","69_34":"F","69_36":"F","69_38":"F","69_40":"F","69_42":"F","69_44":"F","69_46":"F","69_48":"F","69_50":"F","69_52":"F","69_54":"F","69_56":"F","69_58":"F","69_60":"F","71_0":"W","71_1":"W","71_2":"W","71_3":"W","71_4":"W","71_5":"W","71_6":"W","71_7":"W","71_8":"W","71_9":"W","71_10":"W","71_11":"W","71_12":"W","71_13":"W","71_14":"W","71_15":"W","71_16":"W","71_17":"W","71_18":"W","71_19":"W","71_20":"W","71_21":"W","71_22":"W","71_23":"W","71_24":"W","71_25":"W","71_26":"W","71_27":"W","71_28":"W","71_29":"W","71_30":"W","71_31":"W","71_32":"W","71_33":"W","71_34":"W","71_35":"W","71_36":"W","71_37":"W","71_38":"W","71_39":"W","71_40":"W","71_41":"W","71_42":"W","71_43":"W","71_44":"W","71_45":"W","71_46":"W","71_47":"W","71_48":"W","71_49":"W","71_50":"W","71_51":"W","71_52":"W","71_53":"W","71_54":"W","71_55":"W","71_56":"W","71_57":"W","71_58":"W","71_59":"W","71_60":"W","71_61":"W","0_4":"I","0_6":"I","0_8":"J","0_10":"J","0_12":"J","0_18":"J","0_20":"I","0_22":"x","0_24":"x","0_26":"x","0_28":"J","0_36":"J","0_42":"I","0_44":"I","0_48":"x","0_50":"x","0_52":"x","0_54":"x","0_56":"y","0_58":"y","3_4":"x","3_14":"x","3_30":"x","4_26":"J","4_32":"J","4_38":"J","4_40":"J","4_44":"J","4_54":"J","4_58":"J","5_0":"x","5_1":"x","5_2":"x","5_3":"x","5_4":"x","5_7":"C","5_9":"C","5_11":"C","5_16":"C","5_21":"C","5_23":"C","5_25":"C","5_30":"I","5_32":"I","5_41":"x","5_42":"B","5_44":"B","5_46":"J","5_49":"C","5_52":"C","5_55":"x","5_57":"x","5_58":"I","6_8":"B","6_18":"B","6_20":"B","6_28":"B","6_30":"B","6_36":"B","6_38":"B","6_40":"B","6_46":"B","6_48":"B","6_50":"B","7_20":"x","7_22":"x","7_28":"x","7_56":"x","7_58":"x","8_4":"G","8_6":"G","8_14":"G","8_16":"G","8_24":"G","8_26":"G","8_28":"G","8_36":"G","8_38":"G","8_40":"G","8_46":"G","8_48":"G","8_50":"G","8_56":"P","8_58":"G","9_2":"S","9_4":"S","9_6":"S","9_10":"x","9_14":"S","9_16":"S","9_18":"S","9_22":"S","9_24":"S","9_26":"S","9_32":"S","9_34":"S","9_36":"x","9_38":"x","9_40":"x","9_42":"S","9_44":"S","9_46":"S","9_50":"x","9_52":"x","9_54":"x","9_56":"S","9_58":"S","10_11":"B","10_13":"x","10_15":"x","10_17":"B","10_19":"B","10_33":"B","10_35":"B","10_39":"B","10_41":"x","10_43":"B","10_55":"x","10_57":"x","10_59":"x","11_1":"x","11_3":"x","11_5":"x","11_7":"x","11_9":"x","11_11":"x","11_13":"x","11_15":"y","11_17":"y","11_19":"y","11_21":"y","11_23":"y","11_25":"y","11_27":"y","15_1":"E","15_3":"E","15_7":"E","15_9":"E","15_11":"E","15_15":"E","15_17":"E","15_21":"E","15_23":"E","15_25":"E","15_29":"E","15_31":"E","15_33":"x","15_35":"x","15_37":"x","15_39":"x","15_41":"E","15_43":"x","15_45":"x","15_47":"x","15_49":"E","15_51":"E","15_53":"E","15_57":"E","15_58":"z","16_0":"N","16_2":"N","16_4":"N","16_8":"N","16_10":"N","16_12":"N","16_14":"z","16_16":"z","16_18":"z","16_22":"N","16_24":"N","16_26":"N","16_28":"N","16_36":"x","16_38":"x","16_42":"N","16_44":"N","16_48":"x","16_50":"x","16_52":"x","16_54":"x","16_56":"x","16_58":"N","17_14":"B","17_16":"B","17_56":"B","17_58":"B","20_1":"x","20_3":"x","20_5":"M","20_11":"A","20_13":"A","20_15":"A","20_21":"A","20_27":"x","20_29":"A","20_31":"x","20_33":"A","20_40":"A","20_43":"A","20_45":"A","20_47":"A","20_56":"M","20_58":"M","21_0":"C","21_2":"x","21_4":"C","21_6":"x","21_10":"x","21_12":"x","21_14":"C","21_16":"x","21_18":"C","21_20":"C","21_28":"C","21_30":"C","21_36":"z","21_38":"C","21_40":"C","21_44":"x","21_46":"C","21_48":"C","21_50":"P","21_52":"x","21_56":"C","21_58":"C","25_2":"C","25_4":"x","25_10":"C","25_12":"C","25_32":"C","25_34":"C","25_36":"C","25_42":"C","25_44":"C","25_50":"C","26_1":"I","26_3":"I","26_5":"I","26_7":"I","26_9":"X","26_11":"X","26_13":"X","26_15":"I","26_25":"I","26_27":"I","26_29":"I","26_31":"I","26_39":"I","26_43":"I","26_45":"I","26_47":"I","26_49":"I","26_59":"I","27_0":"G","27_2":"G","27_8":"G","27_10":"G","27_12":"G","27_16":"P","27_18":"G","27_20":"x","27_22":"x","27_24":"x","27_26":"x","27_42":"G","27_44":"G","27_46":"y","27_48":"y","27_50":"y","27_52":"y","27_54":"y","27_56":"y","27_58":"y","28_0":"U","28_2":"U","28_4":"U","28_6":"U","28_8":"x","28_10":"x","28_12":"x","28_14":"x","28_16":"x","28_18":"x","28_26":"U","28_28":"U","28_34":"U","28_36":"U","28_42":"U","28_44":"U","28_48":"U","28_50":"U","28_58":"U","29_1":"x","29_3":"x","29_5":"x","29_7":"x","29_9":"M","29_11":"M","29_13":"M","29_19":"M","29_21":"M","29_25":"M","29_27":"M","29_33":"M","29_37":"M","29_39":"M","29_41":"M","29_47":"M","29_49":"M","29_51":"M","29_53":"M","29_55":"x","29_57":"y","29_59":"y","30_8":"I","30_10":"I","30_12":"I","30_14":"I","30_22":"I","30_24":"I","30_26":"I","30_28":"I","30_34":"I","30_36":"I","30_38":"I","30_40":"I","30_48":"I","30_50":"I","30_52":"I","30_54":"I","31_21":"x","31_47":"x","31_49":"x","32_2":"L","32_4":"L","32_6":"x","32_10":"L","32_12":"L","32_14":"x","32_18":"L","32_20":"L","32_34":"x","32_36":"L","32_38":"L","32_40":"L","32_44":"x","32_46":"x","32_50":"N","32_52":"N","32_56":"x","32_58":"L","33_0":"H","33_4":"H","33_6":"H","33_14":"U","33_16":"U","33_18":"H","33_24":"x","33_26":"H","33_32":"H","33_34":"H","33_38":"P","33_42":"x","33_44":"H","33_46":"H","33_48":"x","33_50":"M","33_52":"x","33_54":"x","33_56":"x","33_58":"x","34_1":"x","34_3":"x","34_7":"A","34_9":"A","34_15":"x","34_17":"x","34_19":"A","34_23":"A","34_25":"A","34_27":"x","34_29":"x","34_31":"x","34_35":"A","34_37":"A","34_39":"A","34_49":"A","34_51":"A","34_53":"A","34_59":"A","36_2":"x","36_16":"y","36_18":"x","36_20":"G","36_22":"G","36_24":"x","36_26":"x","36_28":"P","36_30":"G","36_32":"G","36_34":"G","36_36":"y","36_38":"y","36_42":"x","36_44":"x","36_46":"y","36_50":"x","36_52":"G","36_54":"G","36_56":"G","37_1":"T","37_3":"T","37_5":"T","37_11":"T","37_13":"T","37_15":"T","37_23":"T","37_25":"T","37_27":"T","37_33":"T","37_35":"T","37_43":"T","37_45":"T","37_51":"T","37_53":"T","37_55":"T","38_1":"G","38_3":"G","38_7":"G","38_13":"x","38_15":"G","38_17":"G","38_19":"G","38_25":"x","38_27":"x","38_29":"G","38_31":"G","38_33":"G","38_39":"x","38_41":"x","38_43":"G","38_45":"G","38_47":"G","38_53":"x","38_55":"x","38_57":"G","38_59":"G","39_8":"U","39_10":"U","39_12":"U","39_18":"U","39_20":"U","39_22":"U","39_28":"x","39_30":"U","39_32":"U","39_38":"U","39_40":"U","39_44":"x","39_46":"U","39_52":"U","39_54":"U","39_56":"U","41_9":"x","41_10":"x","41_11":"x","41_51":"x","41_52":"x","41_53":"x","41_54":"x","42_13":"C","42_27":"C","42_33":"C","42_39":"C","42_53":"C","42_55":"C","43_0":"L","43_6":"L","43_8":"L","43_14":"L","43_16":"L","43_30":"L","43_32":"L","43_34":"L","43_42":"L","43_44":"L","43_46":"L","43_48":"L","43_54":"z","43_56":"z","43_58":"z","45_1":"y","45_3":"A","45_5":"A","45_15":"y","45_17":"A","45_19":"P","45_23":"y","45_25":"y","45_27":"A","45_29":"y","45_31":"A","45_41":"A","45_49":"y","45_51":"y","45_55":"A","45_57":"A","46_0":"x","46_2":"x","46_4":"A","46_6":"A","46_14":"A","46_16":"A","46_18":"A","46_24":"A","46_26":"A","46_28":"x","46_30":"x","46_32":"A","46_34":"A","46_38":"A","46_46":"A","46_48":"A","46_56":"A","46_58":"A","47_6":"C","47_8":"C","47_10":"E","47_12":"E","47_20":"E","47_22":"C","47_24":"C","47_26":"C","47_34":"E","47_36":"E","47_38":"E","47_40":"E","47_48":"E","47_52":"E","47_54":"C","47_56":"x","47_58":"x","48_0":"T","48_2":"T","48_8":"T","48_10":"T","48_12":"T","48_18":"T","48_20":"T","48_22":"T","48_24":"x","48_26":"x","48_28":"x","48_30":"x","48_32":"x","48_34":"z","48_36":"z","48_38":"x","48_40":"x","48_42":"z","48_44":"z","48_46":"z","48_48":"z","48_50":"T","48_52":"T","48_54":"T","48_56":"T","49_1":"B","49_5":"B","49_11":"x","49_13":"x","49_15":"x","49_17":"x","49_19":"x","49_25":"B","49_27":"B","49_41":"B","49_47":"B","49_49":"B","49_51":"x","49_53":"x","49_57":"B","50_22":"L","50_24":"L","50_26":"L","50_28":"L","50_50":"L","50_52":"L","50_54":"L","50_56":"L","51_2":"M","51_4":"M","51_8":"M","51_10":"M","51_12":"x","51_16":"P","51_18":"M","51_20":"M","51_26":"x","51_28":"M","51_30":"M","51_36":"M","51_38":"M","51_40":"M","51_46":"M","51_48":"M","51_50":"x","51_52":"x","51_54":"x","51_56":"x","51_58":"x","52_10":"x","52_11":"x","52_12":"x","52_13":"x","52_15":"x","52_16":"x","52_17":"x","53_4":"B","53_6":"B","53_10":"B","53_12":"B","53_22":"B","53_24":"B","53_26":"B","54_5":"E","54_13":"E","54_19":"E","54_27":"E","54_33":"E","55_1":"x","55_3":"B","55_7":"B","55_9":"B","55_11":"x","55_13":"x","55_15":"x","55_17":"x","55_21":"B","55_23":"B","55_25":"x","55_29":"B","55_31":"B","55_35":"B","55_37":"B","55_43":"x","55_45":"B","55_51":"B","55_53":"B","55_55":"B","55_59":"B","56_0":"A","56_2":"A","56_8":"A","56_10":"A","56_12":"A","56_16":"x","56_20":"A","56_22":"A","56_24":"x","56_26":"x","56_28":"A","56_30":"A","56_36":"A","56_42":"A","56_44":"A","56_46":"x","56_50":"A","56_52":"A","56_54":"A","56_56":"x","57_6":"N","57_8":"P","57_14":"N","57_16":"N","57_18":"N","57_22":"x","57_24":"x","57_26":"x","57_28":"x","57_30":"N","57_32":"N","57_34":"N","57_36":"x","57_38":"N","57_40":"N","57_42":"x","57_44":"x","57_46":"N","57_48":"N","57_50":"z","57_52":"z","57_54":"z","57_56":"z","57_58":"z","58_8":"H","58_10":"H","58_12":"H","58_20":"H","58_22":"H","58_24":"H","58_36":"H","58_38":"H","58_40":"H","58_48":"H","58_50":"H","58_52":"H","59_0":"M","59_2":"P","59_6":"M","59_12":"M","59_14":"M","59_16":"M","59_22":"M","59_24":"M","59_26":"M","59_32":"M","59_34":"M","59_36":"x","59_38":"x","59_40":"x","59_42":"M","59_44":"M","59_48":"x","59_50":"x","59_52":"M","59_54":"M","59_56":"x","59_58":"x","60_1":"E","60_3":"E","60_9":"E","60_11":"E","60_13":"E","60_19":"x","60_21":"E","60_23":"E","60_25":"E","60_27":"I","60_35":"E","60_37":"E","60_39":"E","60_43":"E","60_45":"E","60_47":"E","60_55":"E","60_57":"x","60_59":"x","61_4":"E","61_14":"E","61_16":"E","61_18":"E","61_22":"E","61_28":"E","61_30":"E","61_32":"E","61_42":"E","61_44":"E","61_46":"E","61_50":"E","61_56":"E","61_58":"E","62_1":"x","62_3":"x","62_5":"x","62_7":"x","62_9":"x","62_11":"x","62_13":"x","62_17":"I","62_19":"I","62_21":"I","62_23":"I","62_29":"I","62_33":"I","62_35":"I","62_37":"I","62_39":"I","62_47":"I","62_51":"I","62_53":"I","62_55":"I","62_57":"I","63_0":"x","63_1":"x","63_2":"x","63_3":"x","63_5":"G","63_11":"G","63_13":"G","63_21":"G","63_24":"B","63_26":"B","63_28":"x","63_29":"x","63_30":"x","63_32":"B","63_34":"B","63_37":"G","63_39":"G","63_46":"I","63_52":"B","63_54":"B","63_58":"J","64_2":"I","64_4":"J","64_6":"J","64_18":"I","64_20":"J","64_22":"x","64_24":"x","64_26":"x","64_30":"J","64_34":"J","64_48":"x","64_50":"x","64_52":"x","64_54":"x","44_0":"D","40_1":"D","44_2":"D","40_3":"D","23_4":"D","13_5":"D","23_6":"D","13_7":"D","44_8":"D","40_9":"D","44_10":"D","40_11":"D","44_12":"D","40_13":"D","23_14":"D","13_15":"D","23_16":"D","13_17":"D","44_18":"D","40_19":"D","44_20":"D","40_21":"D","23_22":"D","13_23":"D","23_24":"D","13_25":"D","23_26":"D","13_27":"D","44_28":"D","40_29":"D","44_30":"D","40_31":"D","23_32":"D","13_33":"D","23_34":"D","13_35":"D","44_36":"D","40_37":"D","44_38":"D","40_39":"D","44_40":"D","40_41":"D","23_42":"D","13_43":"D","23_44":"D","13_45":"D","44_46":"D","40_47":"D","44_48":"D","40_49":"D","23_50":"D","13_51":"D","23_52":"D","13_53":"D","23_54":"D","13_55":"D","44_56":"D","40_57":"D","44_58":"D","40_59":"D","65_0":"Q","65_1":"Q","65_2":"Q","65_3":"Q","65_4":"Q","65_5":"Q","65_6":"Q","65_7":"Q","65_8":"Q","65_9":"Q","65_10":"Q","65_11":"Q","65_12":"Q","65_13":"Q","66_14":"Q","66_15":"Q","66_16":"Q","66_17":"Q","66_18":"Q","66_19":"Q","66_20":"Q","66_21":"Q","66_22":"Q","66_23":"Q","66_24":"Q","66_25":"Q","66_26":"Q","66_27":"Q","67_28":"Q","67_29":"Q","67_30":"Q","67_31":"Q","67_32":"Q","67_33":"Q","67_34":"Q","67_35":"Q","67_36":"Q","67_37":"Q","67_38":"Q","67_39":"Q","67_40":"Q","67_41":"Q","65_42":"Q","65_43":"Q","65_44":"Q","65_45":"Q","65_46":"Q","65_47":"Q","65_48":"Q","65_49":"Q","65_50":"Q","65_51":"Q","65_52":"Q","65_53":"Q","65_54":"Q","65_55":"Q","66_56":"Q","66_57":"Q","66_58":"Q","66_59":"Q","61_6":"E","61_8":"E","17_4":"B","17_6":"B","6_0":"B","6_2":"B","6_10":"B","6_12":"B"},"extras":{},"requirements":{},"requirementSums":{},"customHotels":[],"hotelOverrides":{},"prevMonthData":{},"lockInfo":null}</div>
+<!-- Koš smazaných rozpisů -->
+<div id="portal-trash-overlay" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,.5);z-index:9999;align-items:center;justify-content:center;">
+  <div style="background:var(--surface,#fff);border-radius:10px;padding:24px;width:480px;max-height:70vh;display:flex;flex-direction:column;box-shadow:0 8px 32px rgba(0,0,0,.3);">
+    <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:16px;">
+      <strong style="font-size:15px;color:var(--text);">📦 Koš smazaných rozpisů</strong>
+      <button id="portal-trash-close" style="background:none;border:none;font-size:18px;cursor:pointer;color:var(--text-muted);">&times;</button>
+    </div>
+    <div id="portal-trash-list" style="overflow-y:auto;flex:1;font-size:13px;color:var(--text);"></div>
+  </div>
+</div>
+
+<!-- Log změn -->
+<div id="portal-log-overlay" style="display:none;position:fixed;inset:0;z-index:8500;background:rgba(0,0,0,.5);align-items:flex-start;justify-content:center;padding:52px 12px 12px;overflow-y:auto;">
+  <div style="background:var(--surface,#fff);border-radius:12px;padding:22px 22px 18px;width:min(640px,100%);position:relative;box-shadow:0 8px 32px rgba(0,0,0,.25);">
+    <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:14px;gap:12px;">
+      <h3 style="font-size:14px;font-weight:600;color:var(--text);white-space:nowrap;">📋 Log změn: <span id="portal-log-title"></span></h3>
+      <div style="display:flex;align-items:center;gap:10px;flex-shrink:0;">
+        <label style="display:flex;align-items:center;gap:5px;font-size:12px;color:var(--text-muted);cursor:pointer;white-space:nowrap;">
+          <input type="checkbox" id="log-saved-only"> Jen uložené
+        </label>
+        <button onclick="closeLogModal()" style="padding:4px 10px;border:1px solid var(--border);border-radius:6px;background:var(--surface-alt,#f5f5f5);color:var(--text-muted);cursor:pointer;font-size:13px;font-family:inherit;">✕ Zavřít</button>
+      </div>
+    </div>
+    <div id="portal-log-list" style="max-height:65vh;overflow-y:auto;"></div>
+  </div>
+</div>
+
+
 <script>
 /* ════════════════════════════════════════════════════════════════════════════
-   WEB OVERRIDE — AVE VR Portál (raspis.html)
-   Přepisuje localStorage/file funkce na serverové API.
+   WEB OVERRIDE v3 — AVE VR Portál
+   Záložky: Nastavení | Tvorba rozpisu | Raspis
+   Tvorba = PC editor + auto-save draft + Publikovat
+   Raspis  = portal view se všemi původními tlačítky
    ════════════════════════════════════════════════════════════════════════════ */
 
-const WEB_MODE = window.location.pathname.includes('tvorba') ? 'tvorba' : 'raspis';
+const WEB_MODE   = window.location.pathname.includes('tvorba') ? 'tvorba' : 'view';
+const LOCK_APP   = 'raspis-view';
+const POLL_INTERVAL    = 10000;
+const AUTOSAVE_INTERVAL = 30000;
 
-/* ── Status display ── */
+// ── Portálový stav ────────────────────────────────────────────────────────────
+let _portalKey       = null;
+let _portalAdmin     = false;
+let _portalEditMode  = false;
+let _portalUserId    = null;
+let _portalEditPerm  = false;
+let _portalLockTimer = null;
+let _portalAutoTimer = null;
+let _portalLastAct   = Date.now();
+let _portalInactTimer= null;
+let _tvorbaSnapshot  = null;   // draft state when entering Raspis tab
+let _currentTab      = 'settings';
+let _saveTimer       = null;
+let _lastSavedJson   = null;
+let _logSavedOnly    = false;
+let _raspisInited    = false;
+
+// Expose for PC app internals (scheduleLogChange, celHotelPick)
+window.__raspisGetCurrentKey = () => _portalKey;
+window.__raspisIsEditMode    = () => _portalEditMode;
+
+// ── Status display ────────────────────────────────────────────────────────────
 function _setStatus(txt, ok) {
   const el = document.getElementById('web-save-status');
   if (!el) return;
   el.textContent = txt;
-  el.style.color = ok ? 'var(--online, #5a9a5a)' : 'var(--offline, #c04040)';
+  el.style.color  = ok ? 'rgba(255,255,255,.7)' : '#ff9090';
   el.style.opacity = '1';
   if (ok && txt.startsWith('✓')) setTimeout(() => { el.style.opacity = '0'; }, 3000);
 }
 
-/* ── Sestav datový objekt ── */
+// ── Sestav datový objekt ──────────────────────────────────────────────────────
 function buildWebSaveObj() {
   return {
     v: 3,
@@ -6490,21 +6555,18 @@ function buildWebSaveObj() {
     customHotels:    state.customHotels   || [],
     hotelOverrides:  state.hotelOverrides || {},
     prevMonthData:   state.prevMonthData  || {},
+    lockInfo:        state.lockInfo       || null,
   };
 }
 
-/* ── AUTO-SAVE (debounced 2 s) ── */
-let _saveTimer = null;
-let _lastSavedJson = null;
-
+// ── Auto-save draft (Tvorba) ──────────────────────────────────────────────────
 function autoSave() {
   clearTimeout(_saveTimer);
   _saveTimer = setTimeout(_doAutoSave, 2000);
 }
 
 async function _doAutoSave() {
-  if (_currentTab === 'view') { await _saveRaspisEdits(); return; }
-  if (WEB_MODE !== 'tvorba' && _currentTab !== 'tvorba') return;
+  if (_currentTab !== 'tvorba') return;
   const data = buildWebSaveObj();
   const json = JSON.stringify(data);
   if (json === _lastSavedJson) return;
@@ -6512,9 +6574,9 @@ async function _doAutoSave() {
   _setStatus('Ukládám…', true);
   try {
     const r = await fetch('/api/drafts/save', {
-      method: 'POST',
+      method:  'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ month: data.month, year: data.year, data }),
+      body:    JSON.stringify({ month: data.month, year: data.year, data }),
       credentials: 'include',
     });
     const j = await r.json();
@@ -6522,258 +6584,590 @@ async function _doAutoSave() {
   } catch(e) { _setStatus('⚠ Offline', false); }
 }
 
-async function _saveRaspisEdits() {
-  if (!_currentRaspisKey) return;
-  const data = buildWebSaveObj();
-  const json = JSON.stringify(data);
-  if (json === _lastSavedJson) return;
-  _lastSavedJson = json;
-  _setStatus('Ukládám…', true);
-  try {
-    const r = await fetch('/api/rozpisy/save-edits', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ key: _currentRaspisKey, data }),
-      credentials: 'include',
-    });
-    const j = await r.json();
-    _setStatus(j.ok ? '✓ Uloženo' : '⚠ Chyba', j.ok);
-  } catch(e) { _setStatus('⚠ Offline', false); }
-}
-
-/* ── PUBLISH ── */
-async function publishToWeb() {
-  const data = buildWebSaveObj();
-  if (!confirm('Publikovat rozpis ' + String(data.month).padStart(2,'0') + '/' + data.year + ' do záložky Raspis?')) return;
-  data.requirements    = Object.assign({}, data.schedule);
-  data.requirementSums = {};
-  _setStatus('Publikuji…', true);
-  try {
-    const r = await fetch('/api/rozpisy/publish', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ month: data.month, year: data.year, data }),
-      credentials: 'include',
-    });
-    const j = await r.json();
-    if (j.ok) {
-      showHint('✓ Publikováno! Přepínám na záložku Raspis…');
-      _setStatus('✓ Publikováno', true);
-      setTimeout(() => {
-        showAppTab('view');
-        _currentRaspisKey = null; // vynutí reload
-        _initRaspisPanel();
-      }, 800);
-    } else {
-      showHint('Chyba: ' + (j.msg || '?'));
-      _setStatus('⚠ Chyba', false);
-    }
-  } catch(e) { showHint('Chyba spojení.'); _setStatus('⚠ Offline', false); }
-}
-
-/* ── NOVÝ ROZPIS ── */
-function newSchedule() {
-  if (!confirm('Začít nový raspis? Rozepsané směny budou smazány (recepční a nastavení zůstanou).')) return;
-  state.schedule = {}; state.extras = {}; state.requirements = {}; state.requirementSums = {};
-  buildSchedule();
-  const btn = document.getElementById('btn-remember-req');
-  if (btn) { btn.textContent = 'Zapamatuj požadavky'; btn.classList.remove('remembered'); btn.style.cssText = 'background:#e8d5f5;border-color:#9b6fc7;color:#5a2d8a;'; }
-  autoSave();
-  showHint('Nový raspis připraven.');
-}
-
-/* ── NOOP funkce ── */
-function saveData()   { showHint('Na webu se rozpis ukládá automaticky.'); }
-function exportJson() { publishToWeb(); }
-
-/* ════════════════════════════════════════════════
-   ZÁLOŽKOVÝ SYSTÉM (3 záložky)
-   ════════════════════════════════════════════════ */
-let _currentTab = 'settings';
-let _currentRaspisKey = null;
-let _tvorbaStateSnapshot = null; // uložený stav Tvorby při přepnutí na Raspis
-
-function showAppTab(tabName) {
-  // Tlačítka záložek
-  document.querySelectorAll('.rtab').forEach(b => b.classList.remove('rtab-active'));
-  const activeBtn = document.getElementById('rtab-' + tabName);
-  if (activeBtn) activeBtn.classList.add('rtab-active');
-
-  // Panely — použij původní panel-settings a panel-schedule
-  const ps = document.getElementById('panel-settings');
-  const pc = document.getElementById('panel-schedule');
-
-  // Skryj všechny panely
-  [ps, pc].forEach(p => { if (p) { p.classList.remove('active'); p.style.display = 'none'; } });
-
-  // Skryj/ukáž Raspis panel
-  let pv = document.getElementById('panel-raspis-view');
-  if (pv) { pv.classList.remove('active'); pv.style.display = 'none'; }
-
-  if (tabName === 'settings' && ps) { ps.classList.add('active'); ps.style.display = ''; }
-  else if (tabName === 'tvorba' && pc) { pc.classList.add('active'); pc.style.display = ''; }
-  else if (tabName === 'view') {
-    if (!pv) { pv = _createRaspisPanel(); }
-    pv.classList.add('active'); pv.style.display = '';
-  }
-
-  // Akční tlačítka
-  const showTvorba = (tabName === 'tvorba') && (WEB_MODE === 'tvorba');
-  const elNew = document.getElementById('btn-new-schedule');
-  const elPub = document.getElementById('btn-publish');
-  if (elNew) elNew.style.display = showTvorba ? '' : 'none';
-  if (elPub) elPub.style.display = showTvorba ? '' : 'none';
-
-  // Export .xlsx — jen v Raspis záložce
-  const xlsx = document.getElementById('btn-export-xlsx');
-  if (xlsx) xlsx.style.display = (tabName === 'view') ? '' : 'none';
-
-  _currentTab = tabName;
-
-  // Při přepnutí na Raspis — inicializuj panel
-  if (tabName === 'view') _initRaspisPanel();
-}
-
-/* Override původního showTab */
-function showTab(name) {
-  if (name === 'settings') showAppTab('settings');
-  else if (name === 'schedule') showAppTab('tvorba');
-}
-
-/* ── Vytvoř Raspis panel ── */
-function _createRaspisPanel() {
-  const pv = document.createElement('div');
-  pv.id = 'panel-raspis-view';
-  pv.className = 'panel';
-  pv.style.cssText = 'flex:1;overflow:hidden;flex-direction:column;display:none;';
-  pv.innerHTML =
-    '<div id="raspis-view-controls" style="padding:8px 12px;border-bottom:1px solid var(--border);background:var(--surface);display:flex;align-items:center;gap:8px;flex-shrink:0;">' +
-      '<span style="font-size:12px;font-weight:600;color:var(--text-muted)">Měsíc:</span>' +
-      '<select id="raspis-view-sel" style="font-size:12px;padding:3px 8px;border:1px solid var(--border);border-radius:5px;background:var(--surface);color:var(--text);cursor:pointer;"><option>Načítám…</option></select>' +
-      '<span id="raspis-view-info" style="font-size:11px;color:var(--text-muted);margin-left:4px;"></span>' +
-    '</div>' +
-    '<div id="raspis-view-content" style="flex:1;display:flex;align-items:center;justify-content:center;">' +
-      '<span style="color:var(--text-muted);font-size:13px;">Vyberte měsíc…</span>' +
-    '</div>';
-  document.getElementById('content').appendChild(pv);
-
-  document.getElementById('raspis-view-sel').addEventListener('change', function() {
-    _loadAndRenderRaspis(this.value);
-  });
-  return pv;
-}
-
-/* ── Inicializuj Raspis panel ── */
-let _raspisPanelInited = false;
-async function _initRaspisPanel() {
-  if (_raspisPanelInited) return;
-  _raspisPanelInited = true;
-  const sel = document.getElementById('raspis-view-sel');
-  if (!sel) return;
-  try {
-    const r = await fetch('/api/rozpisy', { credentials: 'include' });
-    const j = await r.json();
-    const list = j.history || [];
-    sel.innerHTML = list.length
-      ? list.map(e => '<option value="' + e.key + '">' + e.label + '</option>').join('')
-      : '<option value="">— žádný rozpis —</option>';
-    if (list.length) _loadAndRenderRaspis(list[0].key);
-  } catch(e) { sel.innerHTML = '<option>Chyba načtení</option>'; }
-}
-
-/* ── Načti a vyrenderuj konkrétní Raspis ── */
-async function _loadAndRenderRaspis(key) {
-  const container = document.getElementById('raspis-view-content');
-  const info = document.getElementById('raspis-view-info');
-  if (!container) return;
-  if (info) info.textContent = 'Načítám…';
-  container.innerHTML = '<span style="color:var(--text-muted);font-size:13px;">Načítám…</span>';
-  try {
-    const r = await fetch('/api/rozpisy/' + encodeURIComponent(key), { credentials: 'include' });
-    const j = await r.json();
-    if (!j.ok || !j.entry) { container.innerHTML = '<span style="color:var(--offline,red)">Chyba načtení.</span>'; return; }
-    const raw  = j.entry.data;
-    const data = typeof raw === 'string' ? JSON.parse(raw) : raw;
-
-    // Uložíme snapshot Tvorby a přepneme state na tento Raspis
-    _tvorbaStateSnapshot = buildWebSaveObj();
-    applyData(data);
-    _currentRaspisKey = key;
-    _lastSavedJson = JSON.stringify(buildWebSaveObj());
-
-    // Přesuň #schedule-wrap do Raspis panelu
-    const schedWrap = document.getElementById('schedule-wrap');
-    const legend    = document.getElementById('legend');
-    const sctrl     = document.getElementById('schedule-controls');
-    if (schedWrap && container) {
-      container.innerHTML = '';
-      if (sctrl)    container.appendChild(sctrl);
-      if (schedWrap) container.appendChild(schedWrap);
-      if (legend)   container.appendChild(legend);
-      container.style.cssText = 'flex:1;overflow:hidden;flex-direction:column;display:flex;';
-    }
-
-    buildSchedule();
-    if (state.requirements && Object.keys(state.requirements).length) {
-      setTimeout(() => { updateAllDeletedCells(); if (typeof updateReqSumTooltips === 'function') updateReqSumTooltips(); }, 80);
-    }
-    if (info) {
-      const pub = j.entry.published_at ? new Date(j.entry.published_at).toLocaleString('cs') : '';
-      info.textContent = pub ? 'Publikováno: ' + pub : '';
-    }
-  } catch(e) { container.innerHTML = '<span style="color:var(--offline,red)">Chyba: ' + e.message + '</span>'; }
-}
-
-/* ════════════════════════════════════════════════
-   LOAD TVORBA DRAFT
-   ════════════════════════════════════════════════ */
+// ── Load draft (Tvorba) ───────────────────────────────────────────────────────
 async function loadLatestDraft() {
   try {
     const r = await fetch('/api/drafts', { credentials: 'include' });
     const list = await r.json();
-    if (!list.length) { loadDefaultStaff(); return; }
+    if (!list.length) { return; }
     const r2 = await fetch('/api/drafts/' + list[0].id, { credentials: 'include' });
     const j2  = await r2.json();
     if (j2.ok && j2.data) {
       applyData(j2.data);
       _lastSavedJson = JSON.stringify(buildWebSaveObj());
-      showHint('Načten: ' + list[0].label);
-    } else { loadDefaultStaff(); }
-  } catch(e) { loadDefaultStaff(); }
+      if (typeof showHint === 'function') showHint('Načten: ' + list[0].label);
+    }
+  } catch(e) { /* fallback: default staff */ }
 }
 
-/* ════════════════════════════════════════════════
-   OVERRIDE window.onload
-   ════════════════════════════════════════════════ */
-window.onload = async function() {
-  // Skryj původní záložkový systém v topbaru (tam ho již nemáme, ale pro jistotu)
-  document.querySelectorAll('.tab').forEach(t => t.style.display = 'none');
-
-  if (WEB_MODE === 'tvorba') {
-    await loadLatestDraft();
+// ── Readonly ──────────────────────────────────────────────────────────────────
+function setReadOnly(ro) {
+  const wrap = document.getElementById('schedule-wrap');
+  if (!wrap) return;
+  if (ro) {
+    wrap.classList.add('portal-readonly');
+    if (!wrap._roBlocker) {
+      wrap._roBlocker = e => { e.stopPropagation(); e.preventDefault(); };
+      wrap.addEventListener('keydown',     wrap._roBlocker, true);
+      wrap.addEventListener('input',       wrap._roBlocker, true);
+      wrap.addEventListener('beforeinput', wrap._roBlocker, true);
+    }
   } else {
-    loadDefaultStaff();
+    wrap.classList.remove('portal-readonly');
+    if (wrap._roBlocker) {
+      wrap.removeEventListener('keydown',     wrap._roBlocker, true);
+      wrap.removeEventListener('input',       wrap._roBlocker, true);
+      wrap.removeEventListener('beforeinput', wrap._roBlocker, true);
+      delete wrap._roBlocker;
+    }
+  }
+}
+
+// ── Lock UI ───────────────────────────────────────────────────────────────────
+function updateLockUI(editMode, lockInfo) {
+  const editBtn = document.getElementById('portal-edit-btn');
+  const saveBtn = document.getElementById('portal-save-btn');
+  const status  = document.getElementById('portal-lock-status');
+  if (!editBtn) return;
+  if (editMode) {
+    editBtn.textContent = '✕ Zrušit';
+    editBtn.style.cssText = 'background:#e53935;color:#fff;border-color:#b71c1c;font-weight:600;font-family:inherit;';
+    if (saveBtn) saveBtn.style.display = '';
+    if (status)  { status.textContent = ''; status.style.display = 'none'; }
+  } else if (lockInfo && lockInfo.userId !== _portalUserId) {
+    editBtn.style.display = 'none';
+    if (saveBtn) saveBtn.style.display = 'none';
+    if (status) {
+      const t = new Date(lockInfo.since).toLocaleTimeString('cs-CZ', {hour:'2-digit',minute:'2-digit'});
+      status.textContent = '🔒 Edituje ' + lockInfo.userName + ' od ' + t;
+      status.style.cssText = 'font-size:12px;color:#c00;font-weight:600;white-space:nowrap;display:inline;';
+    }
+  } else {
+    if (_portalEditPerm) {
+      editBtn.style.display = '';
+      editBtn.textContent = '✏ Editovat';
+      editBtn.style.cssText = 'background:#f0c800;color:#333;border-color:#c8a800;font-weight:600;font-family:inherit;';
+    }
+    if (saveBtn) saveBtn.style.display = 'none';
+    if (status)  { status.textContent = ''; status.style.display = 'none'; }
+  }
+}
+
+async function acquireEdit() {
+  if (_portalEditMode) { await releaseEdit(false); return; }
+  try {
+    const r    = await fetch('/api/lock/' + LOCK_APP + '/acquire', { method: 'POST', credentials: 'include' });
+    const json = await r.json();
+    if (json.ok) {
+      _portalEditMode = true;
+      _portalLastAct  = Date.now();
+      setReadOnly(false);
+      updateLockUI(true, json.lock);
+      startPortalAutosave();
+    } else { updateLockUI(false, json.lock); }
+  } catch(e) {}
+}
+
+async function releaseEdit(save) {
+  stopPortalAutosave();
+  if (save) await doSave(false);
+  try { await fetch('/api/lock/' + LOCK_APP + '/release', { method: 'POST', credentials: 'include' }); } catch(e) {}
+  _portalEditMode = false;
+  setReadOnly(true);
+  updateLockUI(false, null);
+}
+
+function startPortalAutosave() {
+  stopPortalAutosave();
+  _portalAutoTimer = setInterval(async () => { if (_portalEditMode) await doSave(true); }, AUTOSAVE_INTERVAL);
+}
+function stopPortalAutosave() {
+  if (_portalAutoTimer) { clearInterval(_portalAutoTimer); _portalAutoTimer = null; }
+}
+
+function startLockPoll() {
+  if (_portalLockTimer) clearInterval(_portalLockTimer);
+  _portalLockTimer = setInterval(async () => {
+    try {
+      const r    = await fetch('/api/lock/' + LOCK_APP, { credentials: 'include' });
+      const json = await r.json();
+      if (_portalEditMode) {
+        if (!json.lock || json.lock.userId !== _portalUserId) {
+          stopPortalAutosave();
+          _portalEditMode = false;
+          setReadOnly(true);
+          updateLockUI(false, json.lock);
+        }
+      } else { updateLockUI(false, json.lock); }
+    } catch(e) {}
+  }, POLL_INTERVAL);
+}
+
+// ── Save (Raspis edit mode) ───────────────────────────────────────────────────
+async function doSave(silent) {
+  if (!_portalKey) { if (!silent) alert('Není vybrán žádný rozpis.'); return false; }
+  try {
+    const data = buildWebSaveObj();
+    const r = await fetch('/api/rozpisy/save-edits', {
+      method:  'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body:    JSON.stringify({ key: _portalKey, data }),
+      credentials: 'include',
+    });
+    const result = await r.json();
+    if (result.ok) {
+      fetch('/api/schedule-log/' + encodeURIComponent(_portalKey) + '/mark-saved', { method: 'POST', credentials: 'include' }).catch(() => {});
+    }
+    if (!silent) {
+      if (result.ok) { if (typeof showHint === 'function') showHint('✓ Rozpis uložen.'); }
+      else alert('Chyba uložení: ' + (result.msg || '?'));
+    }
+    return result.ok;
+  } catch(e) { if (!silent) alert('Chyba při ukládání.'); return false; }
+}
+
+// Override saveData (volané PC app tlačítkem Uložit, pokud by zůstalo)
+window.saveData = async function() { if (!_portalEditMode) return; await doSave(false); };
+
+// ── Load list of published schedules ─────────────────────────────────────────
+async function loadRozpisyList(selectKey) {
+  try {
+    const resp = await fetch('/api/rozpisy', { credentials: 'include' });
+    if (!resp.ok) return;
+    const { current, history } = await resp.json();
+    const sel = document.getElementById('portal-rozpis-sel');
+    if (!sel) return;
+    sel.innerHTML = '';
+    if (!history || !history.length) {
+      sel.innerHTML = '<option disabled>— žádný rozpis —</option>';
+      return;
+    }
+    history.forEach(r => {
+      const opt = document.createElement('option');
+      opt.value = r.key;
+      opt.textContent = r.label;
+      sel.appendChild(opt);
+    });
+    const keyToSelect = selectKey || current;
+    if (keyToSelect) sel.value = keyToSelect;
+    if (sel.value) await loadRozpis(sel.value);
+  } catch(e) { console.error('[Portal] loadRozpisyList:', e); }
+}
+
+async function loadRozpis(key) {
+  if (!key) return;
+  try {
+    const resp = await fetch('/api/rozpisy/' + encodeURIComponent(key), { credentials: 'include' });
+    const json = await resp.json();
+    if (!json.ok || !json.entry) return;
+    const data = typeof json.entry.data === 'string' ? JSON.parse(json.entry.data) : json.entry.data;
+    _portalKey = key;
+    applyData(data);
+    if (state) state.hotelsVisible = false;
+    const thb = document.getElementById('toggle-hotels-btn');
+    if (thb) thb.textContent = 'Zobrazit hotely';
+    buildSchedule();
+    if (data.requirements && Object.keys(data.requirements).length > 0) {
+      setTimeout(() => {
+        if (typeof updateAllDeletedCells === 'function') updateAllDeletedCells();
+        if (typeof updateReqSumTooltips  === 'function') updateReqSumTooltips();
+        const reqBtn = document.getElementById('btn-remember-req');
+        if (reqBtn) {
+          reqBtn.textContent = 'Požadavky zapamatovány';
+          reqBtn.classList.add('remembered');
+          reqBtn.style.background = '#f0e6ff';
+          reqBtn.style.borderColor = '#7b3fa0';
+          reqBtn.style.color = '#4a1a6b';
+        }
+      }, 150);
+    }
+  } catch(e) { console.error('[Portal] loadRozpis:', e); }
+}
+
+// ── Portal init ───────────────────────────────────────────────────────────────
+async function initPortal() {
+  try {
+    const me = await fetch('/api/me', { credentials: 'include' }).then(r => r.json());
+    _portalAdmin  = me.role === 'admin';
+    _portalUserId = me.id;
+
+    const perms = await fetch('/api/my-permissions', { credentials: 'include' }).then(r => r.json()).catch(() => null);
+    const rp    = (perms && perms.raspis)
+      ? perms.raspis
+      : { enabled: true, buttons: { import: true, delete: _portalAdmin, trash: _portalAdmin, edit: true, export: true } };
+    const btns  = rp.buttons || {};
+
+    const show = (id, flag) => { const el = document.getElementById(id); if (el) el.style.display = flag !== false ? '' : 'none'; };
+    show('portal-import-btn', btns.import);
+    show('portal-delete-btn', btns.delete);
+    show('portal-trash-btn',  btns.trash);
+    show('portal-export-btn', btns.export);
+    const showLog = btns.log !== undefined ? btns.log : _portalAdmin;
+    show('portal-log-btn', showLog);
+
+    _portalEditPerm = btns.edit !== false;
+    if (_portalEditPerm) {
+      try {
+        const lr = await fetch('/api/lock/' + LOCK_APP, { credentials: 'include' });
+        const lj = await lr.json();
+        updateLockUI(false, lj.lock);
+      } catch(e) { show('portal-edit-btn', true); }
+    } else {
+      const eb = document.getElementById('portal-edit-btn');
+      if (eb) eb.style.display = 'none';
+    }
+  } catch(e) { /* not in portal, skip */ }
+  startLockPoll();
+}
+
+// ── Záložkový systém ──────────────────────────────────────────────────────────
+function showAppTab(tabName) {
+  // Záložková tlačítka
+  document.querySelectorAll('.rtab').forEach(b => b.classList.remove('rtab-active'));
+  const activeBtn = document.getElementById('rtab-' + tabName);
+  if (activeBtn) activeBtn.classList.add('rtab-active');
+
+  const ps = document.getElementById('panel-settings');
+  const pc = document.getElementById('panel-schedule');
+  const pb = document.getElementById('portal-controls-bar');
+
+  // Nastavení tab
+  if (tabName === 'settings') {
+    if (ps) { ps.classList.add('active');    ps.style.display = ''; }
+    if (pc) { pc.classList.remove('active'); pc.style.display = 'none'; }
+    if (pb) pb.style.display = 'none';
+    document.getElementById('btn-new-schedule')?.setAttribute('style', 'display:none');
+    document.getElementById('btn-publish')?.setAttribute('style', 'display:none');
   }
 
-  renderStaff();
+  // Tvorba tab
+  else if (tabName === 'tvorba') {
+    if (ps) { ps.classList.remove('active'); ps.style.display = 'none'; }
+    if (pc) { pc.classList.add('active');    pc.style.display = ''; }
+    if (pb) pb.style.display = 'none';
+
+    // Pokud přicházíme z Raspis — obnov draft stav
+    if (_currentTab === 'view' && _tvorbaSnapshot) {
+      // Uvolni edit zámek
+      if (_portalEditMode) {
+        fetch('/api/lock/' + LOCK_APP + '/release', { method: 'POST', credentials: 'include' }).catch(() => {});
+        stopPortalAutosave();
+        _portalEditMode = false;
+      }
+      setReadOnly(false);
+      applyData(_tvorbaSnapshot);
+      buildSchedule();
+      if (_tvorbaSnapshot.requirements && Object.keys(_tvorbaSnapshot.requirements).length > 0) {
+        setTimeout(() => {
+          if (typeof updateAllDeletedCells === 'function') updateAllDeletedCells();
+          const reqBtn = document.getElementById('btn-remember-req');
+          if (reqBtn) {
+            reqBtn.textContent = 'Požadavky zapamatovány';
+            reqBtn.classList.add('remembered');
+            reqBtn.style.background = '#f0e6ff'; reqBtn.style.borderColor = '#7b3fa0'; reqBtn.style.color = '#4a1a6b';
+          }
+        }, 80);
+      }
+    } else if (_currentTab !== 'tvorba') {
+      setReadOnly(false);
+    }
+
+    document.getElementById('btn-new-schedule')?.style?.removeProperty('display');
+    document.getElementById('btn-new-schedule')?.setAttribute('style', '');
+    document.getElementById('btn-publish')?.setAttribute('style', '');
+    // Přepíšeme správně
+    const btn_new = document.getElementById('btn-new-schedule');
+    const btn_pub = document.getElementById('btn-publish');
+    if (btn_new) btn_new.style.display = '';
+    if (btn_pub) btn_pub.style.display = '';
+
+    // Skryj export v tvorba záložce
+    const xlsx = document.getElementById('btn-export-xlsx');
+    if (xlsx) xlsx.style.display = 'none';
+  }
+
+  // Raspis tab
+  else if (tabName === 'view') {
+    if (ps) { ps.classList.remove('active'); ps.style.display = 'none'; }
+    if (pc) { pc.classList.add('active');    pc.style.display = ''; }
+    if (pb) pb.style.display = 'flex';
+
+    // Ulož draft stav (pro návrat na Tvorba)
+    if (_currentTab === 'tvorba') {
+      _tvorbaSnapshot = buildWebSaveObj();
+    }
+
+    document.getElementById('btn-new-schedule')?.setAttribute('style', 'display:none');
+    document.getElementById('btn-publish')?.setAttribute('style', 'display:none');
+
+    // Zobraz export v Raspis záložce
+    const xlsx = document.getElementById('btn-export-xlsx');
+    if (xlsx) xlsx.style.display = '';
+
+    // Readonly mode
+    setReadOnly(true);
+
+    // Načti rozpisy při prvním zobrazení
+    if (!_raspisInited) {
+      _raspisInited = true;
+      loadRozpisyList();
+    }
+  }
+
+  _currentTab = tabName;
+}
+
+// Kompatibilita s PC app původním showTab
+function showTab(name) {
+  if      (name === 'settings') showAppTab('settings');
+  else if (name === 'schedule') showAppTab('tvorba');
+}
+
+// ── Publikovat (Tvorba → Raspis) ──────────────────────────────────────────────
+async function publishToWeb() {
+  const data = buildWebSaveObj();
+  if (!confirm('Publikovat rozpis ' + String(data.month).padStart(2,'0') + '/' + data.year + '?')) return;
+  const pubData = Object.assign({}, data, {
+    requirements: Object.assign({}, data.schedule),
+    requirementSums: {},
+  });
+  _setStatus('Publikuji…', true);
+  try {
+    const r = await fetch('/api/rozpisy/publish', {
+      method:  'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body:    JSON.stringify({ month: pubData.month, year: pubData.year, data: pubData }),
+      credentials: 'include',
+    });
+    const j = await r.json();
+    if (j.ok) {
+      if (typeof showHint === 'function') showHint('✓ Publikováno! Přepínám na záložku Raspis…');
+      _setStatus('✓ Publikováno', true);
+      _raspisInited = false; // vynutí reload seznamu
+      setTimeout(() => showAppTab('view'), 600);
+    } else {
+      if (typeof showHint === 'function') showHint('Chyba: ' + (j.msg || '?'));
+      _setStatus('⚠ Chyba', false);
+    }
+  } catch(e) { _setStatus('⚠ Offline', false); }
+}
+
+// ── Nový prázdný raspis ────────────────────────────────────────────────────────
+function newSchedule() {
+  if (!confirm('Začít nový raspis? Směny budou smazány (recepční a nastavení zůstanou).')) return;
+  state.schedule = {}; state.extras = {}; state.requirements = {}; state.requirementSums = {};
   buildSchedule();
-  buildHotelBtns();
+  const btn = document.getElementById('btn-remember-req');
+  if (btn) { btn.textContent = 'Zapamatuj požadavky'; btn.classList.remove('remembered'); btn.style.cssText = ''; }
+  autoSave();
+  if (typeof showHint === 'function') showHint('Nový raspis připraven.');
+}
 
-  // Výchozí záložka
-  const startTab = WEB_MODE === 'tvorba' ? 'tvorba' : 'view';
-  showAppTab(startTab);
+// ── NOOP – nahrazuje PC app funkce ─────────────────────────────────────────────
+function saveData()   { if (typeof showHint === 'function') showHint('Na webu se ukládá automaticky.'); }
+function exportJson() { publishToWeb(); }
 
-  // Obnov stav "Zapamatuj požadavky"
-  if (state.requirements && Object.keys(state.requirements).length > 0) {
-    setTimeout(() => {
-      const btn = document.getElementById('btn-remember-req');
-      if (!btn) return;
-      btn.textContent = 'Požadavky zapamatovány';
-      btn.classList.add('remembered');
-      btn.style.cssText = 'background:#f0e6ff;border-color:#7b3fa0;color:#4a1a6b;';
-      updateAllDeletedCells();
-      if (typeof updateReqSumTooltips === 'function') updateReqSumTooltips();
-    }, 100);
+// ── Portal tlačítka: event handlers ──────────────────────────────────────────
+function _onSelChange() {
+  const sel = document.getElementById('portal-rozpis-sel');
+  if (!sel || !sel.value) return;
+  if (_portalEditMode) {
+    fetch('/api/lock/' + LOCK_APP + '/release', { method: 'POST', credentials: 'include' }).catch(() => {});
+    stopPortalAutosave();
+    _portalEditMode = false;
+    setReadOnly(true);
+    updateLockUI(false, null);
+  }
+  loadRozpis(sel.value);
+}
+
+function _onImportBtn() {
+  const inp = document.getElementById('portal-import-input');
+  if (inp) inp.click();
+}
+
+function _onImportFile(e) {
+  const file = e.target.files[0];
+  if (!file) return;
+  const reader = new FileReader();
+  reader.onload = async function(ev) {
+    try {
+      const data  = JSON.parse(ev.target.result);
+      const month = data.month || new Date().getMonth() + 1;
+      const year  = data.year  || new Date().getFullYear();
+      const r = await fetch('/api/rozpisy/publish', {
+        method:  'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body:    JSON.stringify({ month, year, data }),
+        credentials: 'include',
+      });
+      const result = await r.json();
+      if (result.ok) { _raspisInited = false; await loadRozpisyList(result.key); }
+      else alert('Chyba: ' + (result.msg || '?'));
+    } catch(err) { alert('Chyba čtení: ' + err.message); }
+    e.target.value = '';
+  };
+  reader.readAsText(file, 'UTF-8');
+}
+
+async function _onDeleteBtn() {
+  if (!_portalKey) { alert('Není vybrán žádný rozpis.'); return; }
+  if (!confirm('Smazat rozpis "' + _portalKey + '"? Přesune se do koše.')) return;
+  try {
+    const r = await fetch('/api/rozpisy/' + encodeURIComponent(_portalKey), { method: 'DELETE', credentials: 'include' });
+    const result = await r.json();
+    if (result.ok) {
+      _portalKey = null;
+      _raspisInited = false;
+      await loadRozpisyList();
+    } else { alert('Chyba: ' + (result.msg || '?')); }
+  } catch(e) { alert('Chyba při mazání.'); }
+}
+
+async function _onTrashBtn() {
+  const overlay = document.getElementById('portal-trash-overlay');
+  const list    = document.getElementById('portal-trash-list');
+  if (!overlay || !list) return;
+  overlay.style.display = 'flex';
+  list.innerHTML = '<em style="color:#999">Načítám…</em>';
+  try {
+    const resp  = await fetch('/api/rozpisy/trash', { credentials: 'include' });
+    const json  = await resp.json();
+    const items = Array.isArray(json) ? json : (json.items || []);
+    if (!items.length) { list.innerHTML = '<em style="color:#999">Koš je prázdný.</em>'; return; }
+    list.innerHTML = '';
+    items.forEach(function(item) {
+      const row  = document.createElement('div');
+      row.style.cssText = 'display:flex;align-items:center;gap:8px;padding:8px 0;border-bottom:1px solid var(--border);';
+      const d    = new Date(item.deleted_at);
+      const ds   = d.toLocaleDateString('cs-CZ') + ' ' + d.toLocaleTimeString('cs-CZ', {hour:'2-digit',minute:'2-digit'});
+      const span = document.createElement('span');
+      span.style.flex = '1'; span.style.color = 'var(--text)';
+      span.innerHTML  = '<b>' + item.label + '</b> <small style="color:var(--text-muted)">(smazán ' + ds + ')</small>';
+      const btnR = document.createElement('button');
+      btnR.className = 'btn btn-sm btn-primary'; btnR.textContent = 'Obnovit';
+      (function(id) { btnR.onclick = async function() {
+        await fetch('/api/rozpisy/restore/' + id, { method: 'POST', credentials: 'include' });
+        _raspisInited = false; _onTrashBtn(); loadRozpisyList(_portalKey);
+      }; })(item.id);
+      const btnD = document.createElement('button');
+      btnD.className = 'btn btn-sm btn-danger'; btnD.textContent = 'Trvale smazat';
+      (function(id) { btnD.onclick = async function() {
+        if (!confirm('Trvale smazat? Nelze vrátit.')) return;
+        await fetch('/api/rozpisy/perma/' + id, { method: 'DELETE', credentials: 'include' });
+        _onTrashBtn();
+      }; })(item.id);
+      row.appendChild(span); row.appendChild(btnR); row.appendChild(btnD);
+      list.appendChild(row);
+    });
+  } catch(e) { list.innerHTML = '<em style="color:#c00">Chyba.</em>'; }
+}
+
+// ── Log změn ──────────────────────────────────────────────────────────────────
+async function openLogModal() {
+  if (!_portalKey) { alert('Není načten žádný rozpis.'); return; }
+  document.getElementById('portal-log-overlay').style.display = 'flex';
+  document.getElementById('portal-log-title').textContent = _portalKey;
+  const cb = document.getElementById('log-saved-only');
+  if (cb) cb.checked = _logSavedOnly;
+  await loadLogEntries();
+}
+
+function closeLogModal() {
+  const el = document.getElementById('portal-log-overlay');
+  if (el) el.style.display = 'none';
+}
+
+async function loadLogEntries() {
+  const list = document.getElementById('portal-log-list');
+  if (!list || !_portalKey) return;
+  list.innerHTML = '<div style="text-align:center;color:var(--text-muted);padding:20px;">Načítám…</div>';
+  try {
+    const url  = '/api/schedule-log/' + encodeURIComponent(_portalKey) + (_logSavedOnly ? '?saved=true' : '');
+    const data = await fetch(url, { credentials: 'include' }).then(r => r.json());
+    if (!data.entries || !data.entries.length) {
+      list.innerHTML = '<div style="text-align:center;color:var(--text-muted);padding:30px;font-size:13px;">Žádné záznamy.</div>';
+      return;
+    }
+    list.innerHTML = data.entries.map(e => {
+      const ts   = new Date(e.timestamp).toLocaleString('cs-CZ', {day:'2-digit',month:'2-digit',year:'numeric',hour:'2-digit',minute:'2-digit'});
+      const oldV = e.old_value || '(prázdné)';
+      const newV = e.new_value || '(prázdné)';
+      let desc = '';
+      if (e.change_type === 'cell') {
+        const dn  = e.dn === 'n' ? 'Noční' : 'Denní';
+        const day = e.day ? e.day + '.' : '';
+        desc = '<b>' + e.staff_name + '</b> — ' + day + ' ' + dn + ': <span style="color:#c00">' + oldV + '</span> → <span style="color:#1a5c1a">' + newV + '</span>';
+      } else if (e.change_type === 'hours') {
+        desc = '<b>' + e.staff_name + '</b> — Hodiny: <span style="color:#c00">' + oldV + '</span> → <span style="color:#1a5c1a">' + newV + '</span>';
+      }
+      const savedBadge = e.is_saved
+        ? '<span style="font-size:9px;background:#e8f5e9;color:#2e7d32;border:1px solid #a5d6a7;border-radius:3px;padding:1px 5px;margin-left:6px;">uloženo</span>'
+        : '<span style="font-size:9px;background:#fff8e1;color:#f57f17;border:1px solid #ffe082;border-radius:3px;padding:1px 5px;margin-left:6px;">čeká</span>';
+      return '<div style="padding:9px 0;border-bottom:1px solid var(--border);font-size:12px;line-height:1.5;">' +
+        '<div style="color:var(--text-muted);font-size:11px;margin-bottom:3px;">' + ts + ' · ' + e.user_name + savedBadge + '</div>' +
+        '<div style="color:var(--text)">' + desc + '</div>' +
+        '</div>';
+    }).join('');
+  } catch(e) { list.innerHTML = '<div style="color:#c00;padding:16px;">Chyba při načítání.</div>'; }
+}
+
+// ── Wire up events ────────────────────────────────────────────────────────────
+function _wirePortalEvents() {
+  const sel = document.getElementById('portal-rozpis-sel');
+  if (sel) sel.addEventListener('change', _onSelChange);
+  const importBtn = document.getElementById('portal-import-btn');
+  if (importBtn) importBtn.addEventListener('click', _onImportBtn);
+  const importInp = document.getElementById('portal-import-input');
+  if (importInp) importInp.addEventListener('change', _onImportFile);
+  const deleteBtn = document.getElementById('portal-delete-btn');
+  if (deleteBtn) deleteBtn.addEventListener('click', _onDeleteBtn);
+  const editBtn   = document.getElementById('portal-edit-btn');
+  if (editBtn) editBtn.addEventListener('click', acquireEdit);
+  const saveBtn   = document.getElementById('portal-save-btn');
+  if (saveBtn) saveBtn.addEventListener('click', () => releaseEdit(true));
+  const trashBtn  = document.getElementById('portal-trash-btn');
+  if (trashBtn) trashBtn.addEventListener('click', _onTrashBtn);
+  const trashClose = document.getElementById('portal-trash-close');
+  if (trashClose) trashClose.addEventListener('click', () => { document.getElementById('portal-trash-overlay').style.display = 'none'; });
+  const logCb = document.getElementById('log-saved-only');
+  if (logCb) logCb.addEventListener('change', async function() { _logSavedOnly = this.checked; await loadLogEntries(); });
+}
+
+// ── Window onload override ────────────────────────────────────────────────────
+window.onload = async function() {
+  // Skryj případné původní záložky z PC app
+  document.querySelectorAll('.tab').forEach(t => t.style.display = 'none');
+
+  // Inicializuj PC app tabulky
+  if (typeof renderStaff    === 'function') renderStaff();
+  if (typeof buildHotelBtns === 'function') buildHotelBtns();
+
+  // Wire portal events
+  _wirePortalEvents();
+
+  // Načti oprávnění, spusť lock poll
+  await initPortal();
+
+  // Výchozí záložka dle URL
+  if (WEB_MODE === 'tvorba') {
+    // Tvorba: načti draft
+    await loadLatestDraft();
+    if (typeof buildSchedule === 'function') buildSchedule();
+    showAppTab('tvorba');
+    // Obnov stav "Zapamatuj požadavky" pokud jsou v draftu
+    if (state.requirements && Object.keys(state.requirements).length > 0) {
+      setTimeout(() => {
+        if (typeof updateAllDeletedCells === 'function') updateAllDeletedCells();
+        if (typeof updateReqSumTooltips  === 'function') updateReqSumTooltips();
+        const btn = document.getElementById('btn-remember-req');
+        if (btn) { btn.textContent = 'Požadavky zapamatovány'; btn.classList.add('remembered'); btn.style.background = '#f0e6ff'; btn.style.borderColor = '#7b3fa0'; btn.style.color = '#4a1a6b'; }
+      }, 100);
+    }
+  } else {
+    // Raspis: zobraz prázdný rozpis, pak načti seznam
+    if (typeof buildSchedule === 'function') buildSchedule();
+    showAppTab('view');
   }
 };
 </script>
