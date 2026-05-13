@@ -14,135 +14,165 @@
     :root {
       --hdr-bg:      #1E2228;
       --hdr-text:    #DDDDDD;
-      --hdr-sub:     #666860;
+      --hdr-sub:     #555850;
       --page-bg:     #F5F4EE;
-      --tab-act-bg:  #2C3540;
-      --tab-act-fg:  #FFFFFF;
-      --tab-idle-bg: #ECEAE2;
-      --tab-idle-fg: #6A6A64;
-      --nav-idle:    #8A8A82;
-      --nav-hover:   #2C3540;
-      --nav-hover-bg:#D8D5CC;
+      --day-bg:      #FFFFFF;
+      --night-bg:    #E8EDF6;
+      --col-day-hdr: #2C3540;
+      --col-ngt-hdr: #3A4A6A;
       --border:      #D4D0C8;
+      --border-mid:  #C8C4BC;
       --hotel-fg:    #2C3540;
       --name-fg:     #1A1A18;
-      --dash-fg:     #c0392b;
-      --p-bg:        #ffe0e6;
-      --q-bg:        #fed7aa;
+      --dash-fg:     #b03030;
+      --p-day:       #ffe0e6;
+      --p-ngt:       #f4cad4;
+      --p-code:      #ffe0e6;
+      --q-day:       #fed7aa;
+      --q-ngt:       #f4c48a;
+      --q-code:      #fed7aa;
       --online:      #4ade80;
       --offline:     #f87171;
-      --foot-fg:     #999990;
+      --foot-fg:     #999890;
+      --nav-fg:      #888880;
+      --nav-hover:   #FFFFFF;
+      --today-bg:    #2C3540;
+      --today-fg:    #FFFFFF;
+      --today-dis:   #3E444C;
+      --today-dis-fg:#666860;
     }
 
     html, body {
-      width: 100%;
+      width: fit-content;
+      min-width: 0;
       font-family: 'Segoe UI', system-ui, sans-serif;
       background: var(--page-bg);
       color: var(--name-fg);
-      overflow-x: hidden;
+      white-space: nowrap;
     }
 
-    /* ── Header (date + dot only) ── */
+    /* ── Header: ‹ date › [Dnes] • ── */
     .hdr {
       background: var(--hdr-bg);
-      padding: 4px 8px 3px;
+      padding: 4px 6px 3px;
       display: flex;
       align-items: center;
-      gap: 6px;
-      user-select: none;
+      gap: 3px;
+      width: 100%;
     }
-    .hdr-text  { flex: 1; min-width: 0; }
-    .hdr-date  { font-size: 8px; font-weight: 700; color: var(--hdr-text);
-                 white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-    .hdr-today { font-size: 6.5px; color: var(--hdr-sub); margin-top: 1px; min-height: 8px; }
-    .dot       { width: 5px; height: 5px; border-radius: 50%;
-                 background: var(--online); flex-shrink: 0; transition: background .4s; }
-    .dot.off   { background: var(--offline); }
-
-    /* ── Tabs + nav row ── */
-    .tabs-row {
-      display: flex;
-      align-items: stretch;
-      border-bottom: 2px solid var(--tab-act-bg);
-    }
-
-    /* nav arrows flanking the tabs */
     .nav-btn {
-      background: var(--tab-idle-bg);
-      border: none;
-      cursor: pointer;
-      color: var(--nav-idle);
-      font-size: 13px;
-      font-weight: 700;
-      width: 22px;
-      line-height: 1;
-      transition: color .12s, background .12s;
-      flex-shrink: 0;
-      display: flex; align-items: center; justify-content: center;
+      background: none; border: none; cursor: pointer;
+      color: var(--nav-fg); font-size: 13px; font-weight: 700;
+      width: 16px; text-align: center; line-height: 1; padding: 0;
+      border-radius: 2px; flex-shrink: 0;
+      transition: color .12s;
     }
-    .nav-btn:hover { color: var(--nav-hover); background: var(--nav-hover-bg); }
+    .nav-btn:hover { color: var(--nav-hover); }
 
-    .tabs { flex: 1; display: flex; }
-    .tab {
-      flex: 1; padding: 3px 0;
-      font-size: 8px; font-weight: 700; letter-spacing: .02em;
-      text-align: center; cursor: pointer;
-      border: none; background: var(--tab-idle-bg); color: var(--tab-idle-fg);
-      transition: background .12s, color .12s;
-      user-select: none;
+    .hdr-mid { flex: 1; min-width: 0; }
+    .hdr-date { font-size: 8px; font-weight: 700; color: var(--hdr-text);
+                white-space: nowrap; }
+
+    .today-btn {
+      font-size: 7px; font-weight: 700; padding: 1px 5px;
+      border-radius: 3px; cursor: pointer; border: none; flex-shrink: 0;
+      background: var(--today-bg); color: var(--today-fg);
+      transition: opacity .15s;
     }
-    .tab.active { background: var(--tab-act-bg); color: var(--tab-act-fg); }
+    .today-btn.on-today {
+      background: var(--today-dis); color: var(--today-dis-fg);
+      cursor: default;
+    }
 
-    /* ── Hotel list ── */
-    .list { padding: 1px 0 1px; }
+    .dot { width: 5px; height: 5px; border-radius: 50%;
+           background: var(--online); flex-shrink: 0;
+           margin-left: 3px; transition: background .4s; }
+    .dot.off { background: var(--offline); }
+
+    /* ── Column header row ── */
+    .col-hdr {
+      display: flex;
+      border-bottom: 2px solid var(--border-mid);
+      width: 100%;
+    }
+    .chdr-code { width: 22px; flex-shrink: 0; background: var(--page-bg); }
+    .chdr-cell {
+      flex: 1; font-size: 7px; font-weight: 700; letter-spacing: .04em;
+      text-align: center; padding: 2px 4px; color: #fff;
+    }
+    .chdr-cell.day { background: var(--col-day-hdr); border-right: 1px solid var(--border-mid); }
+    .chdr-cell.ngt { background: var(--col-ngt-hdr); }
+
+    /* ── Hotel rows ── */
+    .list { width: 100%; }
 
     .row {
-      display: flex; align-items: center;
-      padding: 2px 8px; gap: 6px;
+      display: flex; align-items: stretch;
       border-bottom: 1px solid var(--border);
-      min-height: 20px;
+      min-height: 20px; width: 100%;
     }
     .row:last-child { border-bottom: none; }
-    .row.p { background: var(--p-bg); }
-    .row.q { background: var(--q-bg); }
 
-    .code { font-size: 8px; font-weight: 800; color: var(--hotel-fg); width: 11px; flex-shrink: 0; }
-    .name { font-size: 8px; color: var(--name-fg); flex: 1; line-height: 1.3;
-            white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-    .name.empty { color: var(--dash-fg); font-weight: 700; }
+    /* hotel code cell */
+    .code {
+      width: 22px; flex-shrink: 0;
+      font-size: 8px; font-weight: 800; color: var(--hotel-fg);
+      padding: 2px 3px 2px 6px;
+      display: flex; align-items: center;
+      border-right: 1px solid var(--border-mid);
+      background: var(--page-bg);
+    }
+
+    /* day / night name cells */
+    .cell {
+      flex: 1; font-size: 8px; padding: 2px 5px;
+      display: flex; align-items: center;
+      overflow: hidden; /* clip if somehow overflows */
+    }
+    .cell.day { background: var(--day-bg); border-right: 1px solid var(--border); color: var(--name-fg); }
+    .cell.ngt { background: var(--night-bg); color: var(--name-fg); }
+    .cell.empty { color: var(--dash-fg); font-weight: 700; }
+
+    /* P / Q row overrides */
+    .row.p .code { background: var(--p-code); }
+    .row.p .cell.day { background: var(--p-day); }
+    .row.p .cell.ngt { background: var(--p-ngt); }
+    .row.q .code { background: var(--q-code); }
+    .row.q .cell.day { background: var(--q-day); }
+    .row.q .cell.ngt { background: var(--q-ngt); }
 
     /* ── Footer ── */
     .foot {
-      padding: 2px 8px 3px;
+      padding: 2px 6px 3px;
       font-size: 7px; color: var(--foot-fg);
       border-top: 1px solid var(--border);
-      white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
-      cursor: default; user-select: none;
+      width: 100%; cursor: default; user-select: none;
     }
 
-    .msg { padding: 10px; text-align: center; color: var(--foot-fg); font-size: 8px; }
+    .msg { padding: 10px 16px; font-size: 8px; color: var(--foot-fg); }
   </style>
 </head>
 <body>
 
+  <!-- Header -->
   <div class="hdr">
-    <div class="hdr-text">
+    <button class="nav-btn" onclick="navDay(-1)" title="Předchozí den">&#8249;</button>
+    <div class="hdr-mid">
       <div class="hdr-date" id="hdr-date">—</div>
-      <div class="hdr-today" id="hdr-today"></div>
     </div>
+    <button class="nav-btn" onclick="navDay(1)" title="Následující den">&#8250;</button>
+    <button class="today-btn" id="btn-today" onclick="goToday()">Dnes</button>
     <div class="dot" id="dot"></div>
   </div>
 
-  <!-- Tabs row: [‹] [Denní] [Noční] [›] -->
-  <div class="tabs-row">
-    <button class="nav-btn" id="btn-prev" onclick="navDay(-1)" title="Předchozí den">&#8249;</button>
-    <div class="tabs">
-      <button class="tab active" id="tab-d" onclick="switchTab('day')">Denní</button>
-      <button class="tab"        id="tab-n" onclick="switchTab('night')">Noční</button>
-    </div>
-    <button class="nav-btn" id="btn-next" onclick="navDay(1)" title="Následující den">&#8250;</button>
+  <!-- Column headers -->
+  <div class="col-hdr">
+    <div class="chdr-code"></div>
+    <div class="chdr-cell day">Denní</div>
+    <div class="chdr-cell ngt">Noční</div>
   </div>
 
+  <!-- Hotel rows -->
   <div class="list" id="list">
     <div class="msg">Načítání…</div>
   </div>
@@ -150,90 +180,88 @@
   <div class="foot" id="foot">AVE Hotels · Recepce</div>
 
   <script>
-    const DAY_HOTELS   = ['A','B','C','D','E','G','H','I','J','L','M','N','S','T','U','P','Q'];
-    const NIGHT_HOTELS = ['A','B','C','D','E','G','H','I','M','T','P','Q'];
+    const HOTELS = ['A','B','C','D','E','G','H','I','J','L','M','N','S','T','U','P','Q'];
 
     const DAYS   = ['Neděle','Pondělí','Úterý','Středa','Čtvrtek','Pátek','Sobota'];
     const MONTHS = ['ledna','února','března','dubna','května','června',
                     'července','srpna','září','října','listopadu','prosince'];
 
-    let tab     = localStorage.getItem('widget-tab') || 'day';
     let data    = null;
     let updated = null;
 
-    const _now = new Date();
-    let viewDay   = _now.getDate();
-    let viewMonth = _now.getMonth() + 1;
-    let viewYear  = _now.getFullYear();
+    const _n = new Date();
+    let viewDay   = _n.getDate();
+    let viewMonth = _n.getMonth() + 1;
+    let viewYear  = _n.getFullYear();
 
     function isToday() {
       const n = new Date();
       return viewDay===n.getDate() && viewMonth===n.getMonth()+1 && viewYear===n.getFullYear();
     }
-    function daysInMonth(m, y) { return new Date(y, m, 0).getDate(); }
+    function daysInMonth(m,y) { return new Date(y,m,0).getDate(); }
     function fmt2(n) { return String(n).padStart(2,'0'); }
 
+    // Strip leading "z " — names stored as "Příjmení Jméno"
     function fmtName(s) {
       if (!s) return null;
       const c = s.trim().startsWith('z ') ? s.trim().slice(2).trim() : s.trim();
       return c || null;
     }
 
-    function fitWindow() {
-      // Resize PWA window to fit content exactly
-      try {
-        const h = document.body.scrollHeight;
-        const w = 210; // target width in CSS px
-        // account for browser chrome (title bar ~30px, borders ~2px)
-        window.resizeTo(w + 2, h + 32);
-      } catch(e) { /* browser may block */ }
-    }
-
-    function switchTab(t) {
-      tab = t;
-      localStorage.setItem('widget-tab', t);
-      document.getElementById('tab-d').classList.toggle('active', t==='day');
-      document.getElementById('tab-n').classList.toggle('active', t==='night');
-      render();
+    function goToday() {
+      const n = new Date();
+      viewDay=n.getDate(); viewMonth=n.getMonth()+1; viewYear=n.getFullYear();
+      load();
     }
 
     function navDay(delta) {
       viewDay += delta;
       const dim = daysInMonth(viewMonth, viewYear);
       if (viewDay < 1) {
-        viewMonth--;
-        if (viewMonth < 1) { viewMonth = 12; viewYear--; }
+        viewMonth--; if (viewMonth<1){viewMonth=12;viewYear--;}
         viewDay = daysInMonth(viewMonth, viewYear);
       } else if (viewDay > dim) {
-        viewDay = 1;
-        viewMonth++;
-        if (viewMonth > 12) { viewMonth = 1; viewYear++; }
+        viewDay=1; viewMonth++; if(viewMonth>12){viewMonth=1;viewYear++;}
       }
       load();
     }
 
+    function fitWindow() {
+      try {
+        // content width is determined by CSS (fit-content on html/body)
+        // height: scrollHeight + browser chrome (~32px title bar)
+        const w = document.body.scrollWidth;
+        const h = document.body.scrollHeight;
+        window.resizeTo(w + 2, h + 32);
+      } catch(e) {}
+    }
+
     function render() {
+      // Update Dnes button
+      const btnToday = document.getElementById('btn-today');
+      btnToday.classList.toggle('on-today', isToday());
+
       const el = document.getElementById('list');
-      if (!data)    { el.innerHTML = '<div class="msg">Načítání…</div>'; fitWindow(); return; }
-      if (!data.ok) { el.innerHTML = '<div class="msg">Žádný rozpis.</div>'; fitWindow(); return; }
+      if (!data) { el.innerHTML='<div class="msg">Načítání…</div>'; fitWindow(); return; }
+      if (!data.ok) { el.innerHTML='<div class="msg">Žádný rozpis.</div>'; fitWindow(); return; }
 
       const dt = new Date(data.year, data.month-1, data.day);
       document.getElementById('hdr-date').textContent =
         `${DAYS[dt.getDay()]} ${data.day}. ${MONTHS[data.month-1]} ${data.year}`;
-      document.getElementById('hdr-today').textContent = isToday() ? '— dnes —' : '';
 
-      const hotels = tab==='day' ? DAY_HOTELS : NIGHT_HOTELS;
       const h = data.hotels || {};
       let html = '';
-      for (const code of hotels) {
-        const info = h[code] || {};
-        const raw  = tab==='day' ? info.day : info.night;
-        const name = fmtName(raw);
-        const cls  = code==='P' ? 'p' : code==='Q' ? 'q' : '';
-        html += `<div class="row ${cls}">` +
-                `<span class="code">${code}</span>` +
-                `<span class="name${name?'':' empty'}">${name||'—'}</span>` +
-                `</div>`;
+      for (const code of HOTELS) {
+        const info  = h[code] || {};
+        const dname = fmtName(info.day);
+        const nname = fmtName(info.night);
+        const cls   = code==='P' ? 'p' : code==='Q' ? 'q' : '';
+        html +=
+          `<div class="row ${cls}">` +
+            `<span class="code">${code}</span>` +
+            `<span class="cell day${dname?'':' empty'}">${dname||'—'}</span>` +
+            `<span class="cell ngt${nname?'':' empty'}">${nname||'—'}</span>` +
+          `</div>`;
       }
       el.innerHTML = html;
 
@@ -271,17 +299,13 @@
       };
     }
 
-    /* Midnight snap back to today */
+    /* Midnight snap */
     function scheduleMidnight() {
       const n = new Date();
       const m = new Date(n.getFullYear(), n.getMonth(), n.getDate()+1);
-      setTimeout(() => {
-        viewDay=m.getDate(); viewMonth=m.getMonth()+1; viewYear=m.getFullYear();
-        load(); scheduleMidnight();
-      }, m-n+500);
+      setTimeout(() => { goToday(); scheduleMidnight(); }, m-n+500);
     }
 
-    switchTab(tab);
     load();
     connect();
     scheduleMidnight();
