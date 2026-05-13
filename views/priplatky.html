@@ -191,8 +191,25 @@ input[type=number].no-spin::-webkit-inner-spin-button,
 input[type=number].no-spin::-webkit-outer-spin-button { -webkit-appearance: none; margin: 0; }
 input[type=number].no-spin { -moz-appearance: textfield; appearance: textfield; }
 
-/* Koho školil — autocomplete datalist styling */
-#inp-koho-skolil { width: 100%; }
+/* Datum — vlastní overlay (placeholder + showPicker trigger) */
+.date-pick-wrap { position: relative; width: 100%; }
+.date-pick-display {
+  width: 100%; padding: 8px 11px; border: 1px solid var(--border); border-radius: 7px;
+  background: var(--input-bg,var(--bg)); color: var(--text-muted); font-size: 14px;
+  font-family: inherit; cursor: pointer; user-select: none;
+  min-height: 38px; display: flex; align-items: center;
+  transition: border-color .15s;
+}
+.date-pick-display:hover { border-color: var(--accent); }
+.date-pick-display.has-date { color: var(--text); }
+.date-pick-input {
+  position: absolute; inset: 0; width: 100%; height: 100%;
+  opacity: 0; cursor: pointer; border: none; padding: 0;
+  font-size: 14px; /* ensure native picker triggers correctly */
+}
+
+/* Koho školil — autocomplete (custom dropdown, same style as Recepční) */
+#koho-ac-list { right: 0; }
 
 /* Autocomplete */
 .ac-wrap { position: relative; display: flex; gap: 6px; }
@@ -410,15 +427,17 @@ table.dtbl { width: 100%; border-collapse: collapse; font-size: 13px; }
       <!-- Datum -->
       <div class="field">
         <label id="lbl-datum">Datum *</label>
-        <input type="date" id="inp-date" name="datumForm" required
-          style="width:100%;padding:8px 11px;border:1px solid var(--border);border-radius:7px;background:var(--input-bg,var(--bg));color:var(--text);font-size:14px;font-family:inherit">
+        <div class="date-pick-wrap">
+          <div id="date-pick-display" class="date-pick-display">Klikni pro výběr data</div>
+          <input type="date" id="inp-date" name="datumForm" required class="date-pick-input">
+        </div>
       </div>
 
       <!-- Zaúčtovat do jiného měsíce (skrytá, rozbalí se tlačítkem) -->
       <div style="margin: -4px 0 10px">
         <button type="button" id="btn-toggle-platby"
           style="background:none;border:none;color:var(--accent);cursor:pointer;font-size:12px;padding:2px 0;font-family:inherit;text-decoration:underline;opacity:.8">
-          📅 Zaúčtovat do jiného měsíce…
+          Zaúčtovat do jiného měsíce
         </button>
       </div>
       <div class="field hidden" id="field-mesic-platby">
@@ -490,13 +509,19 @@ table.dtbl { width: 100%; border-collapse: collapse; font-size: 13px; }
         </div>
       </div>
 
-      <!-- Školení: koho školil (s autocomplete z minulých záznamů) -->
+      <!-- Školení: koho školil (custom autocomplete z minulých záznamů) -->
       <div class="field hidden" id="field-skoleni">
         <label>Koho školil</label>
-        <input type="text" name="koho_skolil" id="inp-koho-skolil"
-          placeholder="Jméno nebo login školené osoby"
-          autocomplete="off" list="koho-skolil-datalist">
-        <datalist id="koho-skolil-datalist"></datalist>
+        <div class="ac-wrap" style="display:block;position:relative">
+          <input type="text" name="koho_skolil" id="inp-koho-skolil"
+            placeholder="Jméno nebo login školené osoby"
+            autocomplete="off"
+            oninput="kohoFilter(this.value)"
+            onfocus="kohoFilter(this.value)"
+            onblur="setTimeout(kohoClose, 150)"
+            style="width:100%">
+          <div id="koho-ac-list" class="ac-list hidden"></div>
+        </div>
       </div>
 
       <!-- Poznámka — Braní směn (dropdown s vlastním důvodem) -->
@@ -896,6 +921,13 @@ function updateFormConds() {
   document.getElementById('field-castka-input').classList.toggle('hidden', !showInput);
   document.getElementById('lbl-castka-input').textContent =
     (isOstatni || isPokuta) ? 'Částka (Kč) *' : 'Vlastní částka (Kč) *';
+  // Auto-focus the text input when "Jiné" is selected from a dropdown
+  if (showInput && (isRecenze || isBrani || isSkoleni)) {
+    requestAnimationFrame(() => {
+      const el = document.getElementById('inp-castka-input');
+      if (el) el.focus();
+    });
+  }
 
   // Partner: u recenze předvol BOO pouze u nového záznamu
   document.getElementById('fields-recenze').classList.toggle('hidden', !isRecenze);
@@ -921,9 +953,7 @@ function toggleBraniJine() {
 // ═══ Přidat záznam ════════════════════════════════════════════════════════════
 document.getElementById('btn-add').addEventListener('click', () => {
   resetForm();
-  const t = new Date();
-  document.getElementById('inp-date').value =
-    `${t.getFullYear()}-${String(t.getMonth()+1).padStart(2,'0')}-${String(t.getDate()).padStart(2,'0')}`;
+  // Datum prázdné — uživatel klikne a vybere
   // Platební měsíc = aktuálně zobrazený přehled
   document.getElementById('sel-mesic-platby').value = mesic;
   document.getElementById('inp-rok-platby').value   = rok;
@@ -936,6 +966,12 @@ function resetForm() {
   acReset();
   rebuildBraniDuvodSel();
   rebuildPoznamkaPreset();
+  // Reset datum display
+  const dd = document.getElementById('date-pick-display');
+  if (dd) { dd.textContent = 'Klikni pro výběr data'; dd.classList.remove('has-date'); }
+  // Reset koho skolil AC
+  kohoClose();
+  _kohoLoaded = false;
   document.getElementById('field-castka-input').classList.add('hidden');
   document.getElementById('field-castka-select').classList.add('hidden');
   document.getElementById('field-castka-brani').classList.add('hidden');
@@ -1029,7 +1065,14 @@ function editZaznam(id) {
   form.elements.hotel.value = z.hotel || '';
 
   if (z.datum) {
-    document.getElementById('inp-date').value = z.datum.slice(0, 10);
+    const dateStr = z.datum.slice(0, 10);
+    document.getElementById('inp-date').value = dateStr;
+    const dd = document.getElementById('date-pick-display');
+    if (dd && dateStr) {
+      const [y, m, d] = dateStr.split('-');
+      dd.textContent = `${parseInt(d)}. ${parseInt(m)}. ${y}`;
+      dd.classList.add('has-date');
+    }
   }
   // Platební měsíc = z.mesic / z.rok (do jakého přehledu záznam patří)
   document.getElementById('sel-mesic-platby').value = z.mesic;
@@ -1290,15 +1333,61 @@ function fmtTs(iso) {
   return `${d.toLocaleDateString('cs-CZ')} ${d.toLocaleTimeString('cs-CZ',{hour:'2-digit',minute:'2-digit'})}`;
 }
 
-// ═══ Koho školil — autocomplete z minulých záznamů ═══════════════════════════
-let _kohoSkolilLoaded = false;
+// ═══ Koho školil — vlastní autocomplete dropdown ══════════════════════════════
+let _kohoHints  = [];
+let _kohoLoaded = false;
+
 async function loadKohoSkolilHints() {
-  if (_kohoSkolilLoaded) return;
-  _kohoSkolilLoaded = true;
-  const list = await fetch('/api/priplatky/koho-skolil-hints').then(r => r.json()).catch(() => []);
-  const dl = document.getElementById('koho-skolil-datalist');
-  if (dl) dl.innerHTML = list.map(v => `<option value="${esc(v)}">`).join('');
+  if (_kohoLoaded) return;
+  _kohoLoaded = true;
+  _kohoHints = await fetch('/api/priplatky/koho-skolil-hints').then(r => r.json()).catch(() => []);
 }
+
+function kohoFilter(val) {
+  const list = document.getElementById('koho-ac-list');
+  if (!list) return;
+  const v = val.trim().toLowerCase();
+  const matches = v ? _kohoHints.filter(h => h.toLowerCase().startsWith(v)).slice(0, 10) : [];
+  if (!matches.length) { list.innerHTML = ''; list.classList.add('hidden'); return; }
+  list.innerHTML = matches.map(h =>
+    `<div class="ac-item" onmousedown="kohoSelect('${esc(h).replace(/'/g,"&#39;")}')">${esc(h)}</div>`
+  ).join('');
+  list.classList.remove('hidden');
+}
+
+function kohoSelect(val) {
+  const inp = document.getElementById('inp-koho-skolil');
+  if (inp) inp.value = val;
+  kohoClose();
+}
+
+function kohoClose() {
+  const list = document.getElementById('koho-ac-list');
+  if (list) list.classList.add('hidden');
+}
+
+// ═══ Datum — overlay events ═══════════════════════════════════════════════════
+(function() {
+  const display = document.getElementById('date-pick-display');
+  const inp     = document.getElementById('inp-date');
+
+  // Click on the visual overlay → trigger native date picker
+  display.addEventListener('click', () => {
+    try { inp.showPicker(); } catch(e) { inp.focus(); }
+  });
+
+  // When a date is chosen → update display text
+  inp.addEventListener('change', function() {
+    if (this.value) {
+      const [y, m, d] = this.value.split('-');
+      display.textContent = `${parseInt(d)}. ${parseInt(m)}. ${y}`;
+      display.classList.add('has-date');
+    } else {
+      display.textContent = 'Klikni pro výběr data';
+      display.classList.remove('has-date');
+    }
+  });
+})();
 
 // ═══ Start ════════════════════════════════════════════════════════════════════
 init();
