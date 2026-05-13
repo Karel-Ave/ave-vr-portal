@@ -10,10 +10,7 @@
   <meta name="theme-color" content="#1E2228">
   <style>
     *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
-
-    /* Hide scrollbars completely */
     ::-webkit-scrollbar { display: none; }
-    html { scrollbar-width: none; }
 
     :root {
       --hdr-bg:      #1E2228;
@@ -40,11 +37,11 @@
       --nav-fg:      #777870;
     }
 
+    /* Shrink to content — no scrollbars */
     html, body {
-      /* Fill the viewport fully — no empty space inside the content area */
-      width:   100%;
-      height:  100%;
+      width: fit-content;
       overflow: hidden;
+      scrollbar-width: none;
       font-family: 'Segoe UI', system-ui, sans-serif;
       background: var(--page-bg);
       color: var(--name-fg);
@@ -63,7 +60,7 @@
       background: none; border: none; cursor: pointer;
       color: var(--nav-fg); font-size: 13px; font-weight: 700;
       padding: 0 2px; line-height: 1; border-radius: 2px;
-      transition: color .12s; flex-shrink: 0;
+      transition: color .12s;
     }
     .nav-btn:hover { color: #fff; }
     .hdr-date {
@@ -74,54 +71,54 @@
       font-size: 7px; font-weight: 700;
       padding: 1px 6px; border-radius: 3px; border: none; cursor: pointer;
       background: #2C3540; color: #fff;
-      flex-shrink: 0;
     }
     .today-btn.on-today { background: #3E444C; color: #666860; cursor: default; }
     .dot {
       width: 5px; height: 5px; border-radius: 50%;
-      background: var(--online); flex-shrink: 0;
-      margin-left: 4px; transition: background .4s;
+      background: var(--online); margin-left: 4px;
+      transition: background .4s;
     }
     .dot.off { background: var(--offline); }
 
-    /* ── Table ── */
-    table {
-      border-collapse: collapse;
-      width: 100%; /* fill the window width */
-      table-layout: fixed; /* fixed layout = stable column widths */
-    }
-
-    /* Fixed column widths — sized for longest expected name */
-    col.col-code { width: 26px; }
-    col.col-day  { width: 128px; } /* fits "Nermesanová Manuela" @ 8px */
-    col.col-ngt  { width: 128px; }
+    /* ── Table — natural (fit-content) width ── */
+    table { border-collapse: collapse; }  /* NO width:100% */
 
     thead th {
       font-size: 7.5px; font-weight: 700; letter-spacing: .04em;
-      padding: 2px 5px; color: #fff; white-space: nowrap;
+      padding: 2px 5px; color: #fff;
       border-bottom: 2px solid var(--border-mid);
-      overflow: hidden;
+      white-space: nowrap;
     }
-    thead th.th-code { background: var(--page-bg); color: transparent; }
+    thead th.th-code { background: var(--page-bg); color: transparent; padding: 2px 4px; }
     thead th.th-day  { background: var(--chdr-day); border-right: 1px solid var(--border-mid); }
     thead th.th-ngt  { background: var(--chdr-ngt); }
 
-    tbody tr { border-bottom: 1px solid var(--border); }
+    tbody tr         { border-bottom: 1px solid var(--border); }
     tbody tr:last-child { border-bottom: none; }
 
     tbody td {
       font-size: 8px; padding: 2px 5px;
-      white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+      white-space: nowrap;
       vertical-align: middle;
     }
     td.code {
       font-weight: 800; color: var(--hotel-fg);
-      padding-left: 7px;
+      padding-left: 7px; padding-right: 4px;
       border-right: 1px solid var(--border-mid);
       background: var(--page-bg);
     }
-    td.day { background: var(--day-bg); border-right: 1px solid var(--border); color: var(--name-fg); }
-    td.ngt { background: var(--night-bg); color: var(--name-fg); }
+    /* min-width sized to fit "Kochurikhina Valeriia" (21 chars @ 8px) */
+    td.day {
+      min-width: 120px;
+      background: var(--day-bg);
+      border-right: 1px solid var(--border);
+      color: var(--name-fg);
+    }
+    td.ngt {
+      min-width: 120px;
+      background: var(--night-bg);
+      color: var(--name-fg);
+    }
     td.empty { color: var(--dash-fg); font-weight: 700; }
 
     tr.p td.code { background: var(--p-code); }
@@ -136,12 +133,10 @@
       font-size: 7px; color: var(--foot-fg);
       padding: 2px 7px 3px;
       border-top: 1px solid var(--border);
-      white-space: nowrap; overflow: hidden;
+      white-space: nowrap;
       cursor: default; user-select: none;
-      background: var(--page-bg);
     }
-
-    .msg { padding: 10px 16px; font-size: 8px; color: var(--foot-fg); }
+    .msg { padding: 10px 16px; font-size: 8px; color: var(--foot-fg); white-space: nowrap; }
   </style>
 </head>
 <body>
@@ -177,21 +172,15 @@
       return c||null;
     }
 
-    // Target content size (fixed — based on longest name, never changes)
-    // col-code:26 + col-day:128 + border:1 + col-ngt:128 = 283px content
-    // + scrollbar chrome etc — measured once after first render
-    let targetW = 0, targetH = 0;
-
-    function fitWindow() {
+    function fitWindow(){
       try {
         const chromeW = window.outerWidth  - window.innerWidth;
         const chromeH = window.outerHeight - window.innerHeight;
-        if (targetW === 0) {
-          // First time: measure actual rendered content size
-          targetW = document.documentElement.scrollWidth;
-          targetH = document.documentElement.scrollHeight;
-        }
-        window.resizeTo(targetW + chromeW, targetH + chromeH);
+        // offsetWidth = rendered width of html element (= fit-content width)
+        const w = document.documentElement.offsetWidth;
+        // scrollHeight = full content height including any overflow
+        const h = document.documentElement.scrollHeight;
+        window.resizeTo(w + chromeW, h + chromeH);
       } catch(e) {}
     }
 
@@ -205,10 +194,10 @@
     }
 
     function render(){
-      document.getElementById('btn-today').classList.toggle('on-today',isToday());
-      const el=document.getElementById('content');
-      if(!data){el.innerHTML='<div class="msg">Načítání…</div>';return;}
-      if(!data.ok){el.innerHTML='<div class="msg">Žádný rozpis.</div>';return;}
+      document.getElementById('btn-today').classList.toggle('on-today', isToday());
+      const el = document.getElementById('content');
+      if(!data){el.innerHTML='<div class="msg">Načítání…</div>';fitWindow();return;}
+      if(!data.ok){el.innerHTML='<div class="msg">Žádný rozpis.</div>';fitWindow();return;}
 
       const dt=new Date(data.year,data.month-1,data.day);
       document.getElementById('hdr-date').textContent=
@@ -227,7 +216,6 @@
           `</tr>`;
       }
       el.innerHTML=`<table>
-        <colgroup><col class="col-code"><col class="col-day"><col class="col-ngt"></colgroup>
         <thead><tr>
           <th class="th-code"></th>
           <th class="th-day">Denní</th>
@@ -240,11 +228,11 @@
         document.getElementById('foot').textContent=
           `Aktualizováno ${fmt2(updated.getHours())}:${fmt2(updated.getMinutes())}`;
 
-      // Resize: call immediately, then again after paint to catch any rounding
-      requestAnimationFrame(()=>{
+      // Two-tick resize: paint first, then snap window
+      requestAnimationFrame(()=>requestAnimationFrame(()=>{
         fitWindow();
-        setTimeout(fitWindow, 80);
-      });
+        setTimeout(fitWindow, 100);
+      }));
     }
 
     async function load(){
@@ -263,8 +251,7 @@
       es.onmessage=e=>{if(e.data==='update')load();};
       es.onerror=()=>{
         document.getElementById('dot').classList.add('off');
-        es.close();es=null;
-        retryMs=Math.min(retryMs*2,60000);
+        es.close();es=null;retryMs=Math.min(retryMs*2,60000);
         setTimeout(connect,retryMs);
       };
     }
