@@ -12,20 +12,22 @@
     *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
     ::-webkit-scrollbar { display: none; }
 
-    /* Dark portal theme (matches [data-theme="dark"] in theme.css) */
-    :root {
+    /* ── Dark theme (default) ── */
+    :root, [data-theme="dark"] {
       --bg:          #141618;
       --topbar:      #0E1014;
       --surface:     #1E2228;
-      --surface-alt: #1A2030;   /* noční sloupec – lehce modrý nádech */
+      --surface-alt: #1A2030;
       --border:      #2E333A;
       --border-mid:  #3C4450;
       --text:        #E8E6DC;
       --text-muted:  #8A8A82;
-      --accent:      #C4A96A;   /* zlatá */
+      --accent:      #C4A96A;
+      --accent-fg:   #141618;
       --chdr-bg:     #252B32;
       --hotel-fg:    #C4A96A;
-      --dash-fg:     #e05555;
+      --warn-fg:     #D9744A;
+      --info-fg:     #525A68;
       --p-day:       #3D1E28;
       --p-ngt:       #2E1820;
       --p-code:      #3D1E28;
@@ -38,11 +40,37 @@
       --nav-fg:      #555850;
     }
 
+    /* ── Light theme ── */
+    [data-theme="light"] {
+      --bg:          #f4f6f8;
+      --topbar:      #ffffff;
+      --surface:     #ffffff;
+      --surface-alt: #eef2f7;
+      --border:      #dde2ea;
+      --border-mid:  #b0bac8;
+      --text:        #1a2030;
+      --text-muted:  #6b7280;
+      --accent:      #1e3a5f;
+      --accent-fg:   #ffffff;
+      --chdr-bg:     #e8edf4;
+      --hotel-fg:    #1e3a5f;
+      --warn-fg:     #b83222;
+      --info-fg:     #b0bac8;
+      --p-day:       #fde8ec;
+      --p-ngt:       #fef4f6;
+      --p-code:      #fde8ec;
+      --q-day:       #fff3e0;
+      --q-ngt:       #fff8f0;
+      --q-code:      #fff3e0;
+      --online:      #16a34a;
+      --offline:     #dc2626;
+      --foot-fg:     #94a3b8;
+      --nav-fg:      #94a3b8;
+    }
+
     html, body {
-      width: 100%;
-      height: 100%;
-      overflow: hidden;
-      scrollbar-width: none;
+      width: 100%; height: 100%;
+      overflow: hidden; scrollbar-width: none;
       font-family: 'Segoe UI', system-ui, sans-serif;
       background: var(--bg);
       color: var(--text);
@@ -55,21 +83,27 @@
       padding: 5px 10px;
       display: flex;
       align-items: center;
+      gap: 6px;
       flex-shrink: 0;
       border-bottom: 1px solid var(--border);
     }
 
-    /* Left: Dnes button */
+    /* Dnes: zlaté/accent = nejsi dnes (upozornění), šedé = jsi dnes */
     .today-btn {
       font-size: 9px; font-weight: 700;
-      padding: 2px 8px; border-radius: 3px; border: 1px solid var(--border-mid);
-      cursor: pointer; background: var(--surface); color: var(--text-muted);
-      flex-shrink: 0; transition: background .15s, color .15s;
+      padding: 2px 8px; border-radius: 3px;
+      cursor: pointer; flex-shrink: 0;
+      transition: background .15s, color .15s;
+      background: var(--accent); color: var(--accent-fg);
+      border: 1px solid var(--accent);
     }
-    .today-btn:hover { background: var(--border); color: var(--text); }
-    .today-btn.on-today { background: var(--accent); color: #141618; border-color: var(--accent); cursor: default; }
+    .today-btn.on-today {
+      background: var(--surface); color: var(--text-muted);
+      border-color: var(--border-mid); cursor: default;
+    }
+    .today-btn:not(.on-today):hover { filter: brightness(1.1); }
 
-    /* Centre: ‹ date › */
+    /* Centre */
     .hdr-center {
       flex: 1;
       display: flex; align-items: center; justify-content: center; gap: 6px;
@@ -86,7 +120,14 @@
       white-space: nowrap;
     }
 
-    /* Right: dot */
+    /* Right: theme toggle + dot */
+    .hdr-right { display: flex; align-items: center; gap: 7px; flex-shrink: 0; }
+    .theme-btn {
+      background: none; border: none; cursor: pointer;
+      font-size: 13px; line-height: 1; padding: 0;
+      color: var(--nav-fg); transition: color .12s;
+    }
+    .theme-btn:hover { color: var(--accent); }
     .dot {
       width: 6px; height: 6px; border-radius: 50%;
       background: var(--online); flex-shrink: 0;
@@ -102,7 +143,8 @@
       width: 100%;
       table-layout: fixed;
     }
-    col.col-code { width: 30px; }
+    col.col-code  { width: 28px; }
+    col.col-code2 { width: 28px; }
 
     thead th {
       font-size: 10px; font-weight: 700; letter-spacing: .05em;
@@ -110,8 +152,9 @@
       background: var(--chdr-bg);
       border-bottom: 2px solid var(--border-mid);
     }
-    thead th.th-code { background: var(--topbar); color: transparent; }
-    thead th.th-day  { border-right: 1px solid var(--border-mid); }
+    thead th.th-code  { background: var(--topbar); color: transparent; }
+    thead th.th-code2 { background: var(--topbar); color: transparent; border-left: 1px solid var(--border-mid); }
+    thead th.th-day   { border-right: 1px solid var(--border-mid); }
 
     tbody tr         { border-bottom: 1px solid var(--border); }
     tbody tr:last-child { border-bottom: none; }
@@ -121,26 +164,40 @@
       white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
       vertical-align: middle; height: 26px;
     }
+
     td.code {
       font-size: 10px; font-weight: 800; color: var(--hotel-fg);
       padding-left: 9px; padding-right: 4px;
       border-right: 1px solid var(--border-mid);
       background: var(--topbar);
     }
+    td.code2 {
+      font-size: 10px; font-weight: 800; color: var(--hotel-fg);
+      padding-left: 9px; padding-right: 4px;
+      border-left: 1px solid var(--border-mid);
+      border-right: 1px solid var(--border-mid);
+      background: var(--topbar);
+    }
     td.day { background: var(--surface);     border-right: 1px solid var(--border); color: var(--text); }
     td.ngt { background: var(--surface-alt); color: var(--text); }
-    td.empty { color: var(--dash-fg); font-weight: 600; }
 
-    tr.p td.code { background: var(--p-code); }
-    tr.p td.day  { background: var(--p-day); }
-    tr.p td.ngt  { background: var(--p-ngt); }
-    tr.q td.code { background: var(--q-code); }
-    tr.q td.day  { background: var(--q-day); }
-    tr.q td.ngt  { background: var(--q-ngt); }
+    /* Stavové texty */
+    td.warn { color: var(--warn-fg); font-size: 9px; font-style: italic; }
+    td.info { color: var(--info-fg); font-size: 9px; font-style: italic; }
+
+    /* P / Q speciální řádky */
+    tr.p td.code  { background: var(--p-code); }
+    tr.p td.code2 { background: var(--p-code); }
+    tr.p td.day   { background: var(--p-day); }
+    tr.p td.ngt   { background: var(--p-ngt); }
+    tr.q td.code  { background: var(--q-code); }
+    tr.q td.code2 { background: var(--q-code); }
+    tr.q td.day   { background: var(--q-day); }
+    tr.q td.ngt   { background: var(--q-ngt); }
 
     /* ── Footer ── */
     .foot {
-      font-size: 9px; color: var(--foot-fg);
+      font-size: 9px;
       padding: 3px 10px 4px;
       border-top: 1px solid var(--border);
       background: var(--topbar);
@@ -148,6 +205,7 @@
       display: flex; align-items: center; justify-content: space-between;
       cursor: default; user-select: none;
     }
+    #foot-txt { color: var(--text); }
     .resize-btn {
       font-size: 11px; background: none; border: none;
       color: var(--nav-fg); cursor: pointer; padding: 0 2px; line-height: 1;
@@ -167,7 +225,10 @@
       <div class="hdr-date" id="hdr-date">—</div>
       <button class="nav-btn" onclick="navDay(1)">&#8250;</button>
     </div>
-    <div class="dot" id="dot"></div>
+    <div class="hdr-right">
+      <button class="theme-btn" id="theme-btn" onclick="toggleTheme()" title="Přepnout světlý/tmavý motiv"></button>
+      <div class="dot" id="dot"></div>
+    </div>
   </div>
 
   <div id="content"><div class="msg">Načítání…</div></div>
@@ -182,6 +243,21 @@
     const DAYS   = ['Neděle','Pondělí','Úterý','Středa','Čtvrtek','Pátek','Sobota'];
     const MONTHS = ['ledna','února','března','dubna','května','června',
                     'července','srpna','září','října','listopadu','prosince'];
+
+    // Hotely bez noční recepce (info text)
+    const NO_NIGHT  = new Set(['L','N','U']);   // "Hotel bez noční recepce"
+    const ONLY_DAY  = new Set(['J','S']);        // "Pouze ve dne"
+
+    // ── Téma ──
+    let theme = localStorage.getItem('widget-theme') || 'dark';
+    function applyTheme(t) {
+      theme = t;
+      document.documentElement.setAttribute('data-theme', t);
+      document.getElementById('theme-btn').textContent = t === 'dark' ? '☀' : '🌙';
+      localStorage.setItem('widget-theme', t);
+    }
+    function toggleTheme() { applyTheme(theme === 'dark' ? 'light' : 'dark'); }
+    applyTheme(theme);
 
     let data=null, updated=null;
     const _n=new Date();
@@ -198,20 +274,18 @@
 
     function fitWindow(){
       try {
-        const chromeW = window.outerWidth  - window.innerWidth;
         const chromeH = window.outerHeight - window.innerHeight;
         const safeH   = chromeH > 5 ? chromeH : 33;
         const hdr  = document.querySelector('.hdr');
-        const tbl  = document.querySelector('table');
         const foot = document.querySelector('.foot');
-        if (!tbl || !hdr || !foot) return;
+        if (!hdr || !foot) return;
         const contentH =
           hdr.getBoundingClientRect().height +
           document.getElementById('content').getBoundingClientRect().height +
           foot.getBoundingClientRect().height;
         window.resizeTo(
-          window.outerWidth,          // keep current width (can't shrink horizontally)
-          Math.ceil(contentH) + safeH // snap height to content
+          window.outerWidth,
+          Math.ceil(contentH) + safeH
         );
       } catch(e) {}
     }
@@ -223,6 +297,18 @@
       if(viewDay<1){viewMonth--;if(viewMonth<1){viewMonth=12;viewYear--;}viewDay=daysInMonth(viewMonth,viewYear);}
       else if(viewDay>dim){viewDay=1;viewMonth++;if(viewMonth>12){viewMonth=1;viewYear++;}}
       load();
+    }
+
+    /* Vrátí { text, cls } pro buňku */
+    function cellContent(code, name, isNight) {
+      if (isNight) {
+        if (NO_NIGHT.has(code)) return { text: 'Hotel bez noční recepce', cls: 'info' };
+        if (ONLY_DAY.has(code)) return { text: 'Pouze ve dne',            cls: 'info' };
+      }
+      if (name) return { text: name, cls: '' };
+      // Prázdná směna
+      if (!isNight && code === 'P') return { text: 'Dnes není',    cls: 'warn' };
+      return                               { text: 'Zatím neudáno', cls: 'warn' };
     }
 
     function render(){
@@ -241,17 +327,23 @@
         const info=h[code]||{};
         const dn=fmtName(info.day), nn=fmtName(info.night);
         const cls=code==='P'?'p':code==='Q'?'q':'';
+
+        const dc=cellContent(code, dn, false);
+        const nc=cellContent(code, nn, true);
+
         rows+=`<tr class="${cls}">` +
           `<td class="code">${code}</td>` +
-          `<td class="day${dn?'':' empty'}">${dn||'—'}</td>` +
-          `<td class="ngt${nn?'':' empty'}">${nn||'—'}</td>` +
+          `<td class="day${dc.cls?' '+dc.cls:''}">${dc.text}</td>` +
+          `<td class="code2">${code}</td>` +
+          `<td class="ngt${nc.cls?' '+nc.cls:''}">${nc.text}</td>` +
           `</tr>`;
       }
       el.innerHTML=`<table>
-        <colgroup><col class="col-code"><col><col></colgroup>
+        <colgroup><col class="col-code"><col><col class="col-code2"><col></colgroup>
         <thead><tr>
           <th class="th-code"></th>
           <th class="th-day">Denní</th>
+          <th class="th-code2"></th>
           <th class="th-ngt">Noční</th>
         </tr></thead>
         <tbody>${rows}</tbody>
@@ -261,7 +353,6 @@
         document.getElementById('foot-txt').textContent=
           `Aktualizováno ${fmt2(updated.getHours())}:${fmt2(updated.getMinutes())}`;
 
-      // Try to snap height to content
       requestAnimationFrame(()=>requestAnimationFrame(fitWindow));
     }
 
