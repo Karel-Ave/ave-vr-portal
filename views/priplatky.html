@@ -193,19 +193,20 @@ input[type=number].no-spin { -moz-appearance: textfield; appearance: textfield; 
 
 /* Datum — vlastní overlay (placeholder + showPicker trigger) */
 .date-pick-wrap { position: relative; width: 100%; }
+.date-pick-wrap { cursor: pointer; }
 .date-pick-display {
   width: 100%; padding: 8px 11px; border: 1px solid var(--border); border-radius: 7px;
   background: var(--input-bg,var(--bg)); color: var(--text-muted); font-size: 14px;
-  font-family: inherit; cursor: pointer; user-select: none;
+  font-family: inherit; user-select: none; pointer-events: none; /* kliky jdou na input pod */
   min-height: 38px; display: flex; align-items: center;
   transition: border-color .15s;
 }
-.date-pick-display:hover { border-color: var(--accent); }
+.date-pick-wrap:hover .date-pick-display { border-color: var(--accent); }
 .date-pick-display.has-date { color: var(--text); }
 .date-pick-input {
   position: absolute; inset: 0; width: 100%; height: 100%;
   opacity: 0; cursor: pointer; border: none; padding: 0;
-  font-size: 14px; /* ensure native picker triggers correctly */
+  font-size: 14px;
 }
 
 /* Koho školil — autocomplete (custom dropdown, same style as Recepční) */
