@@ -652,27 +652,26 @@ table.staff-tbl td select:focus { background: #fff; border-radius: 2px; }
 }
 
 /* ════════════════════════════════════════════════════════
-   PORTAL OVERRIDE v3 — AVE VR portál (iframe mode)
+   PORTAL OVERRIDE v4 — AVE VR portál (iframe mode)
    Stránka běží v iframe, portálový topbar je vně.
    #topbar je odstraněn; záložky nahrazují topbar.
    ════════════════════════════════════════════════════════ */
 
-/* Body: flex sloupec, žádný padding-top (topbar odstraněn) */
+/* Body */
 body {
   background: var(--bg) !important;
   color:       var(--text) !important;
 }
 
-/* Záložkový pás — stejný styl jako v Příplatcích (#tabs) */
+/* Záložkový pás — PŘESNĚ jako Příplatky (#tabs):
+   padding:12px 16px 0, background:var(--bg), border-bottom */
 #raspis-tabs-bar {
   display: flex !important;
-  align-items: flex-end;
+  gap: 4px;
+  padding: 12px 16px 0;
   background: var(--bg);
   border-bottom: 1px solid var(--border);
   flex-shrink: 0;
-  min-height: 44px;
-  padding: 0 12px;
-  gap: 4px;
 }
 .rtab {
   padding: 9px 18px;
@@ -686,7 +685,6 @@ body {
   font-family: inherit;
   white-space: nowrap;
   border-bottom: 3px solid transparent;
-  margin-bottom: -1px;
   transition: color .15s, border-color .15s, background .15s;
   flex-shrink: 0;
 }
@@ -714,7 +712,6 @@ body {
   min-height: 38px;
   position: relative;
 }
-/* Dark theme override */
 [data-theme="dark"] #portal-controls-bar {
   background: var(--bg-controls, #1A1E24);
   border-bottom-color: var(--bg-controls-border, #272D36);
@@ -731,16 +728,16 @@ body {
 #schedule-wrap.portal-readonly textarea,
 #schedule-wrap.portal-readonly select { pointer-events: none !important; }
 
-/* Původní topbar skrýt pokud splyne — bezpečnostní catch */
+/* Původní topbar skrýt */
 #topbar { display: none !important; }
 
-/* Schedule controls přizpůsob portálovým barvám */
+/* Schedule controls */
 #schedule-controls {
   background: var(--surface, #fff) !important;
   border-bottom: 1px solid var(--border) !important;
 }
 
-/* Hotel buttons — ponech původní barvy, jen focus/selected dle portálu */
+/* Hotel buttons */
 .hb.selected {
   background: var(--accent, #2a5caa) !important;
   color: #fff !important;
@@ -752,6 +749,31 @@ body {
   border-color: var(--accent, #2a5caa) !important;
 }
 
+/* sc-mid-grid: 2×2 tlačítková mřížka (Hover|AD / Zpět|Vpřed) */
+.sc-mid-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 3px; }
+
+/* Tlačítko "Dnes obsazené" */
+#btn-filter-today:hover { background:#e6c000 !important; border-color:#a88800 !important; color:#3a2a00 !important; }
+#btn-filter-today.selected { background:#c8a800 !important; border-color:#7a6000 !important; color:#fff !important; }
+#btn-filter-today.selected::before { color: #fff !important; }
+
+/* Tlačítko "Jen dostupní" */
+#btn-avail-filter.avail-active { background: #2e7d32 !important; border-color: #1b5e20 !important; color: #fff !important; }
+#btn-avail-filter:hover { background: #b9f0b9 !important; border-color: #2e7d32 !important; }
+
+/* Avail-select kurzory na th-dn headers */
+#scheduleTable.avail-select-mode .th-dn { cursor: pointer; }
+#scheduleTable.avail-select-mode .th-dn:hover { border-color: #388e3c !important; }
+.th-dn.avail-selected { border-color: #388e3c !important; border-width: 2px !important; }
+
+/* Malé overlay-tlačítko hb-ov */
+.hb.hb-ov { font-size: 10px; padding: 1px 5px; }
+
+/* Mobilní AD tlačítko */
+@media (max-width: 600px), (orientation: landscape) and (max-height: 500px) {
+  #btn-today-col-m { display: inline-flex !important; align-items: center; justify-content: center; }
+}
+
 /* Nastavení panel */
 .settings-top, .staff-table-wrap {
   background: var(--surface, #fff) !important;
@@ -759,7 +781,7 @@ body {
 }
 table.staff-tbl th { background: var(--bg, #f5f5f0) !important; border-color: var(--border, #ccc) !important; color: var(--text-muted, #666) !important; }
 table.staff-tbl td { border-color: var(--border, #ccc) !important; }
-/* Pozor: tr:hover NEpřepisujeme — PC app má vlastní hover a náš by v dark modu překryl barevná jména */
+/* Pozor: tr:hover NEpřepisujeme — PC app má vlastní hover */
 
 /* Legend */
 #legend { background: var(--surface, #fff) !important; border-color: var(--border, #ccc) !important; }
@@ -3201,15 +3223,22 @@ table.staff-tbl td { border-color: var(--border, #ccc) !important; }
             <button class="hb" id="toggle-hotels-btn" onclick="toggleHotelRows()" style="background:#FFE0B2;border-color:#e0924a;color:#7a4010;">Skrýt hotely</button>
             <button class="hb selected" id="btn-filter-day" onclick="filterByShiftType('day')" style="background:#F8FF35; border-color:#ccc;">Jen denní</button>
             <button class="hb" id="btn-filter-night" onclick="filterByShiftType('night')" style="background:#4DC3F5; border-color:#ccc;">Jen noční</button>
+            <button class="hb" id="btn-avail-filter" onclick="toggleAvailFilter()" style="background:#c8f0c8;border-color:#4caf50;color:#1a5c1a;">Jen dostupní</button>
+            <button class="hb" id="btn-filter-today" onclick="filterByTodayBusy()" style="background:#F5D800;border-color:#c8a800;color:#5a4000;">Dnes obsazené</button>
+            <button class="hb" id="btn-today-col-m" onclick="toggleTodayCol()" style="background:#ffcdd2;border-color:#ef9a9a;color:#c62828;display:none;">AD</button>
             <button class="hb" id="btn-select-mode" onclick="toggleSelectMode()" style="background:#cce0ff;border-color:#6699cc;color:#1a4a8a;">Označ vybrané</button>
-            <button class="hb" id="btn-toggle-highlight" onclick="toggleRowHighlight()" style="background:#e0e0e0;border-color:#aaa;color:#333;">Hover on</button>
             <button class="hb" id="btn-show-hidden" onclick="showAllHidden()" style="display:none">Zobraz skryté</button>
+            <button class="hb hb-ov" id="btn-show-selected" onclick="toggleShowSelected()" style="display:none;background:#FFA500;border-color:#cc7000;color:#fff;">Zobraz vybrané</button>
             <button class="hb hb-danger" id="btn-cancel-select" onclick="cancelSelectMode()" style="display:none">Zruš výběr</button>
           </div>
-          <!-- Střed -->
+          <!-- Střed: 2×2 grid (Hover|AD / Zpět|Vpřed) -->
           <div class="sc-mid">
-            <button class="hb" onclick="historyUndo()">↩ Zpět</button>
-            <button class="hb" onclick="historyRedo()">↪ Vpřed</button>
+            <div class="sc-mid-grid">
+              <button class="hb" id="btn-toggle-highlight" onclick="toggleRowHighlight()" style="background:#e0e0e0;border-color:#aaa;color:#333;">Hover on</button>
+              <button class="hb" id="btn-today-col" onclick="toggleTodayCol()" style="background:#ffcdd2;border-color:#ef9a9a;color:#c62828;">Aktuální den</button>
+              <button class="hb" onclick="historyUndo()">↩ Zpět</button>
+              <button class="hb" onclick="historyRedo()">↪ Vpřed</button>
+            </div>
           </div>
           <!-- Pravá zóna řádek 2 — stejný grid -->
           <div class="sc-right-grid" style="margin-left:auto;">
@@ -6498,7 +6527,7 @@ document.addEventListener('mouseup', (e) => {
 
 <script>
 /* ════════════════════════════════════════════════════════════════════════════
-   WEB OVERRIDE v3 — AVE VR Portál
+   WEB OVERRIDE v4 — AVE VR Portál
    Záložky: Nastavení | Tvorba rozpisu | Raspis
    Tvorba = PC editor + auto-save draft + Publikovat
    Raspis  = portal view se všemi původními tlačítky
@@ -6519,14 +6548,13 @@ let _portalLockTimer = null;
 let _portalAutoTimer = null;
 let _portalLastAct   = Date.now();
 let _portalInactTimer= null;
-let _tvorbaSnapshot  = null;   // draft state when entering Raspis tab
+let _tvorbaSnapshot  = null;
 let _currentTab      = 'settings';
 let _saveTimer       = null;
 let _lastSavedJson   = null;
 let _logSavedOnly    = false;
 let _raspisInited    = false;
 
-// Expose for PC app internals (scheduleLogChange, celHotelPick)
 window.__raspisGetCurrentKey = () => _portalKey;
 window.__raspisIsEditMode    = () => _portalEditMode;
 
@@ -6591,12 +6619,12 @@ async function loadLatestDraft() {
   try {
     const r = await fetch('/api/drafts', { credentials: 'include' });
     const list = await r.json();
-    if (!list.length) return; // __app_data__ already loaded in onload
+    if (!list.length) return;
     const r2 = await fetch('/api/drafts/' + list[0].id, { credentials: 'include' });
     const j2  = await r2.json();
     if (j2.ok && j2.data) {
       applyData(j2.data);
-      if (typeof renderStaff === 'function') renderStaff(); // aktualizuj staff tabulku
+      if (typeof renderStaff === 'function') renderStaff();
       _lastSavedJson = JSON.stringify(buildWebSaveObj());
       if (typeof showHint === 'function') showHint('Načten draft: ' + list[0].label);
     }
@@ -6729,7 +6757,6 @@ async function doSave(silent) {
   } catch(e) { if (!silent) alert('Chyba při ukládání.'); return false; }
 }
 
-// Override saveData (volané PC app tlačítkem Uložit, pokud by zůstalo)
 window.saveData = async function() { if (!_portalEditMode) return; await doSave(false); };
 
 // ── Load list of published schedules ─────────────────────────────────────────
@@ -6825,7 +6852,6 @@ async function initPortal() {
 
 // ── Záložkový systém ──────────────────────────────────────────────────────────
 function showAppTab(tabName) {
-  // Záložková tlačítka
   document.querySelectorAll('.rtab').forEach(b => b.classList.remove('rtab-active'));
   const activeBtn = document.getElementById('rtab-' + tabName);
   if (activeBtn) activeBtn.classList.add('rtab-active');
@@ -6834,7 +6860,6 @@ function showAppTab(tabName) {
   const pc = document.getElementById('panel-schedule');
   const pb = document.getElementById('portal-controls-bar');
 
-  // Nastavení tab
   if (tabName === 'settings') {
     if (ps) { ps.classList.add('active');    ps.style.display = ''; }
     if (pc) { pc.classList.remove('active'); pc.style.display = 'none'; }
@@ -6843,15 +6868,12 @@ function showAppTab(tabName) {
     document.getElementById('btn-publish')?.setAttribute('style', 'display:none');
   }
 
-  // Tvorba tab
   else if (tabName === 'tvorba') {
     if (ps) { ps.classList.remove('active'); ps.style.display = 'none'; }
     if (pc) { pc.classList.add('active');    pc.style.display = ''; }
     if (pb) pb.style.display = 'none';
 
-    // Pokud přicházíme z Raspis — obnov draft stav
     if (_currentTab === 'view' && _tvorbaSnapshot) {
-      // Uvolni edit zámek
       if (_portalEditMode) {
         fetch('/api/lock/' + LOCK_APP + '/release', { method: 'POST', credentials: 'include' }).catch(() => {});
         stopPortalAutosave();
@@ -6875,27 +6897,20 @@ function showAppTab(tabName) {
       setReadOnly(false);
     }
 
-    document.getElementById('btn-new-schedule')?.style?.removeProperty('display');
-    document.getElementById('btn-new-schedule')?.setAttribute('style', '');
-    document.getElementById('btn-publish')?.setAttribute('style', '');
-    // Přepíšeme správně
     const btn_new = document.getElementById('btn-new-schedule');
     const btn_pub = document.getElementById('btn-publish');
     if (btn_new) btn_new.style.display = '';
     if (btn_pub) btn_pub.style.display = '';
 
-    // Skryj export v tvorba záložce
     const xlsx = document.getElementById('btn-export-xlsx');
     if (xlsx) xlsx.style.display = 'none';
   }
 
-  // Raspis tab
   else if (tabName === 'view') {
     if (ps) { ps.classList.remove('active'); ps.style.display = 'none'; }
     if (pc) { pc.classList.add('active');    pc.style.display = ''; }
     if (pb) pb.style.display = 'flex';
 
-    // Ulož draft stav (pro návrat na Tvorba)
     if (_currentTab === 'tvorba') {
       _tvorbaSnapshot = buildWebSaveObj();
     }
@@ -6903,14 +6918,11 @@ function showAppTab(tabName) {
     document.getElementById('btn-new-schedule')?.setAttribute('style', 'display:none');
     document.getElementById('btn-publish')?.setAttribute('style', 'display:none');
 
-    // Zobraz export v Raspis záložce
     const xlsx = document.getElementById('btn-export-xlsx');
     if (xlsx) xlsx.style.display = '';
 
-    // Readonly mode
     setReadOnly(true);
 
-    // Načti rozpisy při prvním zobrazení
     if (!_raspisInited) {
       _raspisInited = true;
       loadRozpisyList();
@@ -6920,7 +6932,6 @@ function showAppTab(tabName) {
   _currentTab = tabName;
 }
 
-// Kompatibilita s PC app původním showTab
 function showTab(name) {
   if      (name === 'settings') showAppTab('settings');
   else if (name === 'schedule') showAppTab('tvorba');
@@ -6929,7 +6940,7 @@ function showTab(name) {
 // ── Publikovat (Tvorba → Raspis) ──────────────────────────────────────────────
 async function publishToWeb() {
   const data = buildWebSaveObj();
-  if (!confirm('Publikovat rozpis ' + String(data.month).padStart(2,'0') + '/' + data.year + '?')) return;
+  if (!confirm('Publikovat raspis ' + String(data.month).padStart(2,'0') + '/' + data.year + '?')) return;
   const pubData = Object.assign({}, data, {
     requirements: Object.assign({}, data.schedule),
     requirementSums: {},
@@ -6946,7 +6957,7 @@ async function publishToWeb() {
     if (j.ok) {
       if (typeof showHint === 'function') showHint('✓ Publikováno! Přepínám na záložku Raspis…');
       _setStatus('✓ Publikováno', true);
-      _raspisInited = false; // vynutí reload seznamu
+      _raspisInited = false;
       setTimeout(() => showAppTab('view'), 600);
     } else {
       if (typeof showHint === 'function') showHint('Chyba: ' + (j.msg || '?'));
@@ -6966,7 +6977,6 @@ function newSchedule() {
   if (typeof showHint === 'function') showHint('Nový raspis připraven.');
 }
 
-// ── NOOP – nahrazuje PC app funkce ─────────────────────────────────────────────
 function saveData()   { if (typeof showHint === 'function') showHint('Na webu se ukládá automaticky.'); }
 function exportJson() { publishToWeb(); }
 
@@ -7014,8 +7024,8 @@ function _onImportFile(e) {
 }
 
 async function _onDeleteBtn() {
-  if (!_portalKey) { alert('Není vybrán žádný rozpis.'); return; }
-  if (!confirm('Smazat rozpis "' + _portalKey + '"? Přesune se do koše.')) return;
+  if (!_portalKey) { alert('Není vybrán žádný raspis.'); return; }
+  if (!confirm('Smazat raspis "' + _portalKey + '"? Přesune se do koše.')) return;
   try {
     const r = await fetch('/api/rozpisy/' + encodeURIComponent(_portalKey), { method: 'DELETE', credentials: 'include' });
     const result = await r.json();
@@ -7068,7 +7078,7 @@ async function _onTrashBtn() {
 
 // ── Log změn ──────────────────────────────────────────────────────────────────
 async function openLogModal() {
-  if (!_portalKey) { alert('Není načten žádný rozpis.'); return; }
+  if (!_portalKey) { alert('Není načten žádný raspis.'); return; }
   document.getElementById('portal-log-overlay').style.display = 'flex';
   document.getElementById('portal-log-title').textContent = _portalKey;
   const cb = document.getElementById('log-saved-only');
@@ -7137,16 +7147,268 @@ function _wirePortalEvents() {
   if (logCb) logCb.addEventListener('change', async function() { _logSavedOnly = this.checked; await loadLogEntries(); });
 }
 
+// ════════════════════════════════════════════════════════════════════════════
+// WEB-ONLY FUNKCE (z původní webové verze, chybí v PC apce)
+// ════════════════════════════════════════════════════════════════════════════
+
+// ── Aktuální den — zvýraznění sloupce ────────────────────────────────────────
+let todayColVisible = false;
+let _todayCis = new Set();
+let _todayMarkedDay = null;
+
+function clearTodayMarks() {
+  if (_todayMarkedDay !== null) {
+    document.querySelectorAll('.th-daynum[data-day="' + _todayMarkedDay + '"]').forEach(el => {
+      el.style.background = '';
+      el.style.color = '';
+    });
+    _todayMarkedDay = null;
+  }
+  _todayCis.forEach(ci => {
+    document.querySelectorAll('[data-ci="' + ci + '"]').forEach(el => {
+      el.style.boxShadow = '';
+    });
+  });
+  _todayCis.clear();
+}
+
+function scrollToToday() {
+  const now = new Date();
+  if (now.getMonth() + 1 !== state.month || now.getFullYear() !== state.year) return;
+  const today = now.getDate();
+  if (today <= 3) return;
+  const targetDay = today - 3;
+  const ci = calCols.findIndex(col => !col.nextYear && col.day === targetDay && col.dn === 'd');
+  if (ci < 0) return;
+  const wrap = document.getElementById('schedule-wrap');
+  if (wrap) wrap.scrollLeft = ci * 16;
+}
+
+function markTodayColumn(month, year) {
+  clearTodayMarks();
+  if (!todayColVisible) return;
+  const now = new Date();
+  if (now.getMonth() + 1 !== month || now.getFullYear() !== year) return;
+  const todayDay = now.getDate();
+  calCols.forEach((col, ci) => {
+    if (!col.nextYear && col.day === todayDay) _todayCis.add(ci);
+  });
+  if (!_todayCis.size) return;
+  _todayMarkedDay = todayDay;
+  document.querySelectorAll('.th-daynum[data-day="' + todayDay + '"]').forEach(el => {
+    el.style.background = '#e53030';
+    el.style.color = '#fff';
+  });
+  _todayCis.forEach(ci => {
+    const isDcol = calCols[ci]?.dn === 'd';
+    const shadow = isDcol ? 'inset 3px 0 0 #e53030' : 'inset -3px 0 0 #e53030';
+    document.querySelectorAll('[data-ci="' + ci + '"]').forEach(el => {
+      el.style.boxShadow = shadow;
+    });
+  });
+}
+
+function _setTodayColBtnStyle(active) {
+  ['btn-today-col', 'btn-today-col-m'].forEach(id => {
+    const b = document.getElementById(id);
+    if (!b) return;
+    if (active) {
+      b.style.background = '#c62828'; b.style.borderColor = '#b71c1c'; b.style.color = '#fff';
+    } else {
+      b.style.background = '#ffcdd2'; b.style.borderColor = '#ef9a9a'; b.style.color = '#c62828';
+    }
+  });
+}
+
+function toggleTodayCol() {
+  todayColVisible = !todayColVisible;
+  _setTodayColBtnStyle(todayColVisible);
+  if (todayColVisible) {
+    markTodayColumn(state.month, state.year);
+    scrollToToday();
+  } else {
+    clearTodayMarks();
+  }
+}
+
+// ── Dnes obsazené ─────────────────────────────────────────────────────────────
+let todayBusyFilter = false;
+let _todayBusyActivatedCol = false;
+const _TODAY_BUSY_HOTELS = new Set(['A','B','C','D','E','G','H','I','J','L','M','N','Q','S','T','U','P']);
+const _TODAY_BUSY_TYPES  = new Set(['Denní','Noční','Obojí','Vedoucí']);
+
+function filterByTodayBusy() {
+  todayBusyFilter = !todayBusyFilter;
+  const btn = document.getElementById('btn-filter-today');
+  if (btn) btn.classList.toggle('selected', todayBusyFilter);
+  if (todayBusyFilter) {
+    if (!todayColVisible) {
+      _todayBusyActivatedCol = true;
+      todayColVisible = true;
+      _setTodayColBtnStyle(true);
+      markTodayColumn(state.month, state.year);
+      scrollToToday();
+    }
+  } else {
+    if (_todayBusyActivatedCol) {
+      _todayBusyActivatedCol = false;
+      todayColVisible = false;
+      _setTodayColBtnStyle(false);
+      clearTodayMarks();
+    }
+  }
+  // Znovu aplikuj všechny filtry (přes applyShiftTypeFilter → applyHotelFilter → _applyExtraFilters)
+  if (typeof applyShiftTypeFilter === 'function') applyShiftTypeFilter();
+}
+
+// ── Jen dostupní ─────────────────────────────────────────────────────────────
+let availFilterMode = false;
+let availFilterDay  = null;
+let availFilterDn   = null;
+
+function toggleAvailFilter() {
+  availFilterMode = !availFilterMode;
+  const btn = document.getElementById('btn-avail-filter');
+  const tbl = document.getElementById('scheduleTable');
+  if (!availFilterMode) {
+    availFilterDay = null;
+    availFilterDn  = null;
+    if (btn) { btn.classList.remove('avail-active'); btn.style.background='#c8f0c8'; btn.style.borderColor='#4caf50'; btn.style.color='#1a5c1a'; }
+    document.querySelectorAll('.th-dn.avail-selected').forEach(el => el.classList.remove('avail-selected'));
+    if (tbl) tbl.classList.remove('avail-select-mode');
+  } else {
+    availFilterDay = null;
+    availFilterDn  = null;
+    if (btn) { btn.classList.add('avail-active'); btn.style.background=''; btn.style.borderColor=''; btn.style.color=''; }
+    if (tbl) tbl.classList.add('avail-select-mode');
+    // Přidej klik-listenery na th-dn headers (pouze jednou)
+    document.querySelectorAll('.th-dn[data-ci]').forEach(th => {
+      if (!th._availListened) {
+        th._availListened = true;
+        th.addEventListener('click', function() {
+          if (!availFilterMode) return;
+          const ci = parseInt(this.dataset.ci);
+          if (availFilterDay === ci) {
+            availFilterDay = null; availFilterDn = null;
+            document.querySelectorAll('.th-dn.avail-selected').forEach(el => el.classList.remove('avail-selected'));
+          } else {
+            availFilterDay = ci;
+            availFilterDn  = (typeof calCols !== 'undefined' && calCols[ci]) ? calCols[ci].dn : null;
+            document.querySelectorAll('.th-dn.avail-selected').forEach(el => el.classList.remove('avail-selected'));
+            this.classList.add('avail-selected');
+          }
+          if (typeof applyHotelFilter === 'function') applyHotelFilter();
+        });
+      }
+    });
+  }
+  if (typeof applyHotelFilter === 'function') applyHotelFilter();
+}
+
+// ── Hook: po applyHotelFilter aplikuj i vlastní filtry ────────────────────────
+// (Monkey-patch: voláno vždy po standardním filtru hotelů)
+(function() {
+  const _orig = window.applyHotelFilter;
+  if (typeof _orig !== 'function') return;
+  window.applyHotelFilter = function() {
+    _orig.apply(this, arguments);
+    _applyExtraFilters();
+  };
+})();
+
+function _applyExtraFilters() {
+  const now = new Date();
+  const todayDay = now.getDate(), todayMonth = now.getMonth()+1, todayYear = now.getFullYear();
+
+  document.querySelectorAll('#sch-tbody tr.sch-row').forEach(tr => {
+    // Pokud je řádek již skrytý standardním filtrem, přeskoč
+    if (tr.style.display === 'none') return;
+
+    const si = parseInt(tr.dataset.staffIdx);
+
+    // Today-busy filtr
+    if (todayBusyFilter) {
+      const type = (typeof state !== 'undefined' && state.staff && state.staff[si]) ? state.staff[si].type : '';
+      if (!_TODAY_BUSY_TYPES.has(type)) { tr.style.display = 'none'; return; }
+      let hasBusy = false;
+      if (typeof calCols !== 'undefined' && typeof getScheduleVal === 'function') {
+        for (let ci = 0; ci < calCols.length; ci++) {
+          const col = calCols[ci];
+          const cy = col.nextYear ? state.year + 1 : state.year;
+          const cm = col.nextYear ? 1 : state.month;
+          if (cy !== todayYear || cm !== todayMonth || col.day !== todayDay) continue;
+          if (typeof shiftTypeFilter !== 'undefined') {
+            if (shiftTypeFilter === 'day'   && col.dn !== 'd') continue;
+            if (shiftTypeFilter === 'night' && col.dn !== 'n') continue;
+          }
+          const val = (getScheduleVal(si, ci) || '').toUpperCase();
+          if (val && _TODAY_BUSY_HOTELS.has(val)) { hasBusy = true; break; }
+        }
+      }
+      if (!hasBusy) { tr.style.display = 'none'; return; }
+    }
+
+    // Avail filtr
+    if (availFilterMode && availFilterDay !== null) {
+      const si2 = parseInt(tr.dataset.staffIdx);
+      const type = (typeof state !== 'undefined' && state.staff && state.staff[si2]) ? state.staff[si2].type : '';
+      const specialTypes = ['Vedoucí','Pohotovost','Speciální'];
+      if (specialTypes.includes(type)) { tr.style.display = 'none'; return; }
+      if (typeof getScheduleVal === 'function') {
+        const val = getScheduleVal(si2, availFilterDay);
+        const isFree = !val || val.trim() === '' || val.trim() === 'ž' || val.trim() === 'Ž';
+        if (!isFree) { tr.style.display = 'none'; return; }
+      }
+    }
+  });
+}
+
+// ── Hook buildSchedule: po přestavbě znovu zvýrazni aktuální den ───────────────
+(function() {
+  const _origBuildSchedule = window.buildSchedule;
+  if (typeof _origBuildSchedule !== 'function') return;
+  window.buildSchedule = function() {
+    _origBuildSchedule.apply(this, arguments);
+    // Po přestavbě: obnov avail-filter listenery (th-dn byly zničeny a znovu vytvořeny)
+    availFilterDay = null; availFilterDn = null;
+    document.querySelectorAll('.th-dn.avail-selected').forEach(el => el.classList.remove('avail-selected'));
+    if (availFilterMode) {
+      document.querySelectorAll('.th-dn[data-ci]').forEach(th => {
+        if (!th._availListened) {
+          th._availListened = true;
+          th.addEventListener('click', function() {
+            if (!availFilterMode) return;
+            const ci = parseInt(this.dataset.ci);
+            if (availFilterDay === ci) {
+              availFilterDay = null; availFilterDn = null;
+              document.querySelectorAll('.th-dn.avail-selected').forEach(el => el.classList.remove('avail-selected'));
+            } else {
+              availFilterDay = ci;
+              availFilterDn  = (typeof calCols !== 'undefined' && calCols[ci]) ? calCols[ci].dn : null;
+              document.querySelectorAll('.th-dn.avail-selected').forEach(el => el.classList.remove('avail-selected'));
+              this.classList.add('avail-selected');
+            }
+            if (typeof applyHotelFilter === 'function') applyHotelFilter();
+          });
+        }
+      });
+    }
+    // Znovu zvýrazni aktuální den
+    if (todayColVisible) {
+      setTimeout(() => markTodayColumn(state.month, state.year), 0);
+    }
+  };
+})();
+
 // ── Window onload override ────────────────────────────────────────────────────
 window.onload = async function() {
-  // Skryj případné původní záložky z PC app
+  // Skryj původní záložky z PC app
   document.querySelectorAll('.tab').forEach(t => t.style.display = 'none');
 
-  // ── Baseline: načti data z __app_data__ (embedded v HTML ze souboru Rozpis směn.html)
-  // autoLoad() = funkce PC apky, čte __app_data__ div → plný seznam recepčních + rozpis
+  // Baseline: načti data z __app_data__
   if (typeof autoLoad === 'function') autoLoad();
 
-  // Inicializuj PC app tabulky (s daty z __app_data__)
+  // Inicializuj PC app tabulky
   if (typeof renderStaff    === 'function') renderStaff();
   if (typeof buildHotelBtns === 'function') buildHotelBtns();
   if (typeof buildSchedule  === 'function') buildSchedule();
@@ -7157,13 +7419,11 @@ window.onload = async function() {
   // Načti oprávnění, spusť lock poll
   await initPortal();
 
-  // Výchozí záložka dle URL
+  // Výchozí záložka
   if (WEB_MODE === 'tvorba') {
-    // Tvorba: pokus načíst draft (může přepsat __app_data__)
     await loadLatestDraft();
     if (typeof buildSchedule === 'function') buildSchedule();
     showAppTab('tvorba');
-    // Obnov stav "Zapamatuj požadavky" pokud jsou v draftu/datech
     if (state && state.requirements && Object.keys(state.requirements).length > 0) {
       setTimeout(() => {
         if (typeof updateAllDeletedCells === 'function') updateAllDeletedCells();
@@ -7173,8 +7433,7 @@ window.onload = async function() {
       }, 100);
     }
   } else {
-    // Raspis: zobraz data z __app_data__ (viditelné hned), pak načti portálový seznam
-    showAppTab('view'); // spustí loadRozpisyList() pro první zobrazení
+    showAppTab('view');
   }
 };
 </script>
