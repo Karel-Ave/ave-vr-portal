@@ -314,6 +314,17 @@ async function init() {
   `);
   // Migration: add typ column if it doesn't exist yet
   await db.query(`ALTER TABLE priplatky_poznamky ADD COLUMN IF NOT EXISTS typ VARCHAR(20) NOT NULL DEFAULT 'brani'`);
+  // Migration: add built_in flag
+  await db.query(`ALTER TABLE priplatky_poznamky ADD COLUMN IF NOT EXISTS built_in BOOLEAN NOT NULL DEFAULT FALSE`);
+  // Seed: built-in brani entries (only if not already present)
+  await db.query(`
+    INSERT INTO priplatky_poznamky (text, typ, poradi, built_in)
+    SELECT v.text, 'brani', v.poradi, TRUE
+    FROM (VALUES ('Směna navíc', -2), ('Pohotovost', -1)) AS v(text, poradi)
+    WHERE NOT EXISTS (
+      SELECT 1 FROM priplatky_poznamky WHERE text = v.text AND typ = 'brani'
+    )
+  `);
 
   // Seed: receptionist_logins (65 recepčních) — jen pokud je tabulka prázdná
   {

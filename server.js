@@ -1710,6 +1710,17 @@ app.post('/api/priplatky/poznamky', requireLogin, async (req, res) => {
   res.json({ ok: true, row: r.rows[0] });
 });
 
+app.patch('/api/priplatky/poznamky/:id', requireLogin, async (req, res) => {
+  const { text } = req.body;
+  if (!text || !text.trim()) return res.status(400).json({ ok:false, msg:'Prázdný text.' });
+  const db = getPool();
+  const r = await db.query(
+    `UPDATE priplatky_poznamky SET text=$1 WHERE id=$2 RETURNING *`,
+    [text.trim(), req.params.id]
+  );
+  res.json({ ok: true, row: r.rows[0] });
+});
+
 app.delete('/api/priplatky/poznamky/:id', requireLogin, async (req, res) => {
   const db = getPool();
   await db.query(`DELETE FROM priplatky_poznamky WHERE id=$1`, [req.params.id]);
@@ -1758,8 +1769,14 @@ app.get('/api/priplatky/export/xlsx', requireLogin, async (req, res) => {
                  'Červenec','Srpen','Září','Říjen','Listopad','Prosinec'];
   const label = `${MN[mesic]} ${rok}`;
 
+  // Helper: auto-width for specific column indices (0-based)
+  function setColWidths(ws, indices, wch) {
+    if (!ws['!cols']) ws['!cols'] = [];
+    indices.forEach(i => { ws['!cols'][i] = { wch }; });
+  }
+
   // Sheet 1: Souhrn
-  XLSX.utils.book_append_sheet(wb, XLSX.utils.aoa_to_sheet([
+  const wsSouhrn = XLSX.utils.aoa_to_sheet([
     [`Příplatky a pokuty — ${label}`],
     ['Login','Jméno','Braní směn','Recenze','Školení','Ostatní','Pokuty','Součet'],
     ...souhrn.map(r => {
@@ -1767,10 +1784,15 @@ app.get('/api/priplatky/export/xlsx', requireLogin, async (req, res) => {
       return [r.login, r.full_name||'', +r.brani_smen, +r.recenze, +r.skoleni,
               +r.ostatni, +r.pokuty, s];
     }),
-  ]), 'Souhrn');
+  ]);
+  // Sloupce B, C, D → indexy 1, 2, 3
+  setColWidths(wsSouhrn, [1, 2, 3], 24);
+  XLSX.utils.book_append_sheet(wb, wsSouhrn, 'Souhrn');
 
   // Sheet 2: Všechny záznamy (seřazené dle recepčního → sekce → datum)
-  XLSX.utils.book_append_sheet(wb, XLSX.utils.aoa_to_sheet([
+  // Sloupce: A=Login, B=Jméno, C=Sekce, D=Datum, E=Hotel, F=Částka, G=Poznámka,
+  //          H=Partner, I=Klient, J=Koho školil, K=Vložil, L=Vloženo kdy, M=Upravil, N=Upraveno kdy
+  const wsZaznamy = XLSX.utils.aoa_to_sheet([
     [`Záznamy — ${label}`],
     ['Login','Jméno','Sekce','Datum','Hotel','Částka Kč','Poznámka','Partner','Klient','Koho školil','Vložil','Vloženo kdy','Upravil','Upraveno kdy'],
     ...zaznamy.map(r => [
@@ -1783,7 +1805,10 @@ app.get('/api/priplatky/export/xlsx', requireLogin, async (req, res) => {
       r.upravil||'',
       r.upraveno_kdy ? new Date(r.upraveno_kdy).toLocaleString('cs-CZ') : '',
     ]),
-  ]), 'Záznamy');
+  ]);
+  // B=1, C=2, D=3, I=8, J=9, L=11, N=13, O=14
+  setColWidths(wsZaznamy, [1, 2, 3, 6, 7, 8, 9, 11, 13], 22);
+  XLSX.utils.book_append_sheet(wb, wsZaznamy, 'Záznamy');
 
   const buf  = XLSX.write(wb, { type:'buffer', bookType:'xlsx' });
   const fname = `Priplatky_${rok}_${String(mesic).padStart(2,'0')}.xlsx`;
@@ -2035,6 +2060,50 @@ app.post('/api/priplatky/import-template', requireLogin, async (req, res) => {
     }
 
     zip.file(sheetPath, sheetXml);
+
+    // ── Ponechat pouze cílový list — smazat ostatní z ZIP + XML ─────────────
+    // Načteme všechny listy z workbook.xml a workbook.xml.rels
+    const allRels = new Map(); // rId → target path (v ZIP)
+    for (const m of wbRels.matchAll(/Id="([^"]+)"[^>]*Target="([^"]+)"/g)) {
+      const t = m[2].replace(/^\//, '');
+      const p = t.startsWith('xl/') ? t : 'xl/' + t;
+      allRels.set(m[1], p);
+    }
+    // Všechny <sheet ...> záznamy z workbook.xml
+    const sheetEntries = [];
+    const reSheet = /<sheet\b([^>]*)\/>/gs;
+    let mSh;
+    while ((mSh = reSheet.exec(wbXml)) !== null) {
+      const attrs = mSh[1];
+      const mRid  = /r:id="([^"]+)"/.exec(attrs);
+      if (mRid) sheetEntries.push({ rId: mRid[1], fullTag: mSh[0] });
+    }
+
+    let newWbXml  = wbXml;
+    let newWbRels = wbRels;
+    let ctXml     = zip.file('[Content_Types].xml').asText();
+
+    for (const { rId, fullTag } of sheetEntries) {
+      if (allRels.get(rId) === sheetPath) continue; // zachovat cílový list
+      const otherPath = allRels.get(rId);
+      // Smažeme sheet z ZIP
+      if (otherPath && zip.file(otherPath)) zip.remove(otherPath);
+      // Odebereme <sheet .../> z workbook.xml
+      newWbXml = newWbXml.replace(fullTag, '');
+      // Odebereme <Relationship Id="..." .../> z workbook.xml.rels
+      newWbRels = newWbRels.replace(
+        new RegExp(`<Relationship[^>]*Id="${rId}"[^/]*/>`,'g'), '');
+      // Odebereme z [Content_Types].xml
+      if (otherPath) {
+        const partName = ('/' + otherPath).replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+        ctXml = ctXml.replace(new RegExp(`<Override[^>]*PartName="${partName}"[^/]*/>`, 'g'), '');
+      }
+    }
+
+    zip.file('xl/workbook.xml', newWbXml);
+    zip.file('xl/_rels/workbook.xml.rels', newWbRels);
+    zip.file('[Content_Types].xml', ctXml);
+
     const out = zip.generate({ type:'nodebuffer', compression:'DEFLATE' });
 
     res.setHeader('Content-Type', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
@@ -2060,6 +2129,10 @@ app.post('/api/priplatky/import-template', requireLogin, async (req, res) => {
     setCell(7,  sums.recenze);
     setCell(11, sums.pokuty);
   }
+  // Ponechat pouze cílový list
+  wbS.SheetNames = [sheetName];
+  Object.keys(wbS.Sheets).forEach(k => { if (k !== sheetName) delete wbS.Sheets[k]; });
+
   const outXls = XLSX.write(wbS, { type:'buffer', bookType:'xls', cellStyles:true });
   res.setHeader('Content-Type', 'application/vnd.ms-excel');
   res.setHeader('Content-Disposition',

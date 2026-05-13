@@ -184,6 +184,8 @@ table.dtbl { width: 100%; border-collapse: collapse; font-size: 13px; }
 .note-item { display: flex; align-items: center; gap: 8px; padding: 7px 0; border-bottom: 1px solid var(--border); }
 .note-item:last-child { border-bottom: none; }
 .note-item span { flex: 1; font-size: 14px; }
+.note-item .note-edit-inp { flex: 1; font-size: 14px; padding: 4px 8px; border: 1px solid var(--accent); border-radius: 6px; background: var(--bg); color: var(--text); font-family: inherit; }
+.note-item.built-in span { font-style: italic; }
 .icon-btn { padding: 5px 9px; border: 1px solid var(--border); border-radius: 6px; background: none; color: var(--text); cursor: pointer; font-size: 12px; font-family: inherit; }
 .icon-btn:hover { background: var(--surface-alt); }
 .icon-btn.danger { color: #e74c3c; border-color: #e74c3c44; }
@@ -256,26 +258,11 @@ table.dtbl { width: 100%; border-collapse: collapse; font-size: 13px; }
   <!-- Sub-panel: Recepční -->
   <div class="subtab-panel active" id="subtab-recepni">
 
-    <!-- Jednorázové smazání starých dat (dočasné) -->
-    <div class="settings-section" id="sec-clear-data" style="border-color:#e74c3c44;background:#e74c3c08">
-      <h3 style="color:#e74c3c">🗑 Smazat historická data (leden–květen 2026)</h3>
-      <p style="font-size:12px;color:var(--text-muted);margin-bottom:12px">
-        Smaže všechny záznamy za leden–květen 2026 naimportované automaticky. Tuto akci nelze vrátit.
-      </p>
-      <div style="display:flex;align-items:center;gap:12px;flex-wrap:wrap">
-        <button class="btn" id="btn-clear-historicka"
-          style="background:#e74c3c;color:#fff;border:none;padding:9px 18px;border-radius:8px;cursor:pointer;font-weight:600;font-family:inherit;font-size:14px">
-          🗑 Smazat historická data
-        </button>
-        <span id="clear-status" style="font-size:13px;color:var(--text-muted)"></span>
-      </div>
-    </div>
-
     <div class="settings-section">
       <h3>Recepční — seznam loginů</h3>
       <!-- Add row ABOVE list -->
       <div class="add-row">
-        <input type="text" id="inp-rl-login" placeholder="Login (KONO)"
+        <input type="text" id="inp-rl-login" placeholder="Login"
           style="width:100px;padding:7px 10px;border:1px solid var(--border);border-radius:7px;background:var(--bg);color:var(--text);font-family:inherit;font-size:13px">
         <input type="text" id="inp-rl-name" placeholder="Příjmení Jméno"
           style="flex:1;min-width:140px;padding:7px 10px;border:1px solid var(--border);border-radius:7px;background:var(--bg);color:var(--text);font-family:inherit;font-size:13px">
@@ -293,7 +280,7 @@ table.dtbl { width: 100%; border-collapse: collapse; font-size: 13px; }
     <div class="settings-section">
       <h3>Přednastavené důvody – Braní směn</h3>
       <p style="font-size:12px;color:var(--text-muted);margin-bottom:12px">
-        Zobrazí se v rozbalovacím menu „Důvod" u záznamu Braní směn (spolu s pevnými: Směna navíc, Pohotovost).
+        Zobrazí se v rozbalovacím menu „Důvod" u záznamu Braní směn.
       </p>
       <div id="duvody-brani-list"><p class="empty">Načítám…</p></div>
       <div style="display:flex;gap:8px;margin-top:12px">
@@ -669,9 +656,6 @@ async function loadDuvodyDropdowns() {
 function rebuildBraniDuvodSel(selectedVal) {
   const sel = document.getElementById('sel-brani-duvod');
   sel.innerHTML = '';
-  ['Směna navíc','Pohotovost'].forEach(v => {
-    const o = document.createElement('option'); o.value = v; o.textContent = v; sel.appendChild(o);
-  });
   duvodyBrani.forEach(n => {
     const o = document.createElement('option'); o.value = n.text; o.textContent = n.text; sel.appendChild(o);
   });
@@ -998,7 +982,7 @@ function editZaznam(id) {
   }
 
   if (z.sekce === 'braní směn') {
-    const knownVals = ['Směna navíc','Pohotovost', ...duvodyBrani.map(n => n.text)];
+    const knownVals = duvodyBrani.map(n => n.text);
     rebuildBraniDuvodSel(knownVals.includes(z.poznamka||'') ? z.poznamka : 'Jiné');
     if (!knownVals.includes(z.poznamka||'')) {
       document.getElementById('field-pozn-brani-jine').classList.remove('hidden');
@@ -1047,6 +1031,7 @@ document.getElementById('inp-template-file').addEventListener('change', function
       URL.revokeObjectURL(url);
       status.textContent = `✅ ${MESICE[mesic]}`;
       this.value = '';
+      setTimeout(() => { status.textContent = ''; }, 2000);
     } catch(err) {
       status.textContent = '❌';
       alert('Chyba šablony: ' + err.message);
@@ -1056,16 +1041,21 @@ document.getElementById('inp-template-file').addEventListener('change', function
 });
 
 // ═══ Nastavení: Důvody braní směn ════════════════════════════════════════════
+function renderDuvodItem(n, typ) {
+  const bi = n.built_in ? ' built-in' : '';
+  return `<div class="note-item${bi}" id="note-item-${n.id}">
+    <span>${esc(n.text)}</span>
+    <button class="icon-btn" onclick="startEditDuvod(${n.id},'${typ}')" title="Upravit">✏️</button>
+    <button class="icon-btn danger" onclick="deleteDuvod(${n.id},'${typ}')" title="Smazat">🗑</button>
+  </div>`;
+}
+
 async function loadDuvodyBraniList() {
   const list = await fetch('/api/priplatky/poznamky?typ=brani').then(r => r.json());
   duvodyBrani = list;
   const el = document.getElementById('duvody-brani-list');
-  if (!list.length) { el.innerHTML = '<p class="empty">Žádné přidané důvody.</p>'; return; }
-  el.innerHTML = list.map(n => `
-    <div class="note-item">
-      <span>${esc(n.text)}</span>
-      <button class="icon-btn danger" onclick="deleteDuvod(${n.id},'brani')">🗑</button>
-    </div>`).join('');
+  if (!list.length) { el.innerHTML = '<p class="empty">Žádné důvody.</p>'; return; }
+  el.innerHTML = list.map(n => renderDuvodItem(n, 'brani')).join('');
 }
 document.getElementById('btn-add-duvod-brani').addEventListener('click', async () => {
   const inp = document.getElementById('inp-duvod-brani');
@@ -1085,11 +1075,7 @@ async function loadDuvodyObecneList() {
   duvodyObecne = list;
   const el = document.getElementById('duvody-obecne-list');
   if (!list.length) { el.innerHTML = '<p class="empty">Žádné přidané poznámky.</p>'; return; }
-  el.innerHTML = list.map(n => `
-    <div class="note-item">
-      <span>${esc(n.text)}</span>
-      <button class="icon-btn danger" onclick="deleteDuvod(${n.id},'obecne')">🗑</button>
-    </div>`).join('');
+  el.innerHTML = list.map(n => renderDuvodItem(n, 'obecne')).join('');
 }
 document.getElementById('btn-add-duvod-obecne').addEventListener('click', async () => {
   const inp = document.getElementById('inp-duvod-obecne');
@@ -1102,6 +1088,51 @@ document.getElementById('btn-add-duvod-obecne').addEventListener('click', async 
   loadDuvodyObecneList();
   loadDuvodyDropdowns();
 });
+
+// Inline edit
+function startEditDuvod(id, typ) {
+  const row = document.getElementById(`note-item-${id}`);
+  if (!row) return;
+  const span = row.querySelector('span');
+  const oldText = span.textContent;
+  // Replace span with input
+  const inp = document.createElement('input');
+  inp.className = 'note-edit-inp';
+  inp.value = oldText;
+  row.replaceChild(inp, span);
+  inp.focus(); inp.select();
+  // Replace edit button with save
+  const editBtn = row.querySelector('.icon-btn:not(.danger)');
+  editBtn.textContent = '💾';
+  editBtn.title = 'Uložit';
+  editBtn.onclick = () => saveEditDuvod(id, typ, inp, oldText);
+  inp.addEventListener('keydown', e => {
+    if (e.key === 'Enter') saveEditDuvod(id, typ, inp, oldText);
+    if (e.key === 'Escape') { inp.value = oldText; cancelEditDuvod(id, typ, inp, oldText); }
+  });
+}
+async function saveEditDuvod(id, typ, inp, oldText) {
+  const newText = inp.value.trim();
+  if (!newText) return;
+  if (newText === oldText) { cancelEditDuvod(id, typ, inp, oldText); return; }
+  await fetch(`/api/priplatky/poznamky/${id}`, {
+    method:'PATCH', headers:{'Content-Type':'application/json'},
+    body: JSON.stringify({ text: newText })
+  });
+  if (typ === 'brani') { loadDuvodyBraniList(); loadDuvodyDropdowns(); }
+  else { loadDuvodyObecneList(); loadDuvodyDropdowns(); }
+}
+function cancelEditDuvod(id, typ, inp, oldText) {
+  const row = document.getElementById(`note-item-${id}`);
+  if (!row) return;
+  const span = document.createElement('span');
+  span.textContent = oldText;
+  row.replaceChild(span, inp);
+  const editBtn = row.querySelector('.icon-btn:not(.danger)');
+  editBtn.textContent = '✏️';
+  editBtn.title = 'Upravit';
+  editBtn.onclick = () => startEditDuvod(id, typ);
+}
 
 async function deleteDuvod(id, typ) {
   if (!confirm('Smazat?')) return;
@@ -1146,31 +1177,6 @@ async function deleteRecepni(login) {
   loadRecepniList(); loadRecepniDropdown();
 }
 
-// Jednorázové smazání historických dat
-document.getElementById('btn-clear-historicka').addEventListener('click', async () => {
-  const statusEl = document.getElementById('clear-status');
-  if (!confirm('Opravdu smazat VŠECHNA historická data za leden–květen 2026?\nTuto akci nelze vrátit.')) return;
-  statusEl.textContent = 'Mažu…';
-  try {
-    const r = await fetch('/api/priplatky/clear-historicka', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ token: 'clear2026xyz' })
-    });
-    const j = await r.json();
-    if (j.ok) {
-      statusEl.style.color = '#27ae60';
-      statusEl.textContent = `✅ Smazáno ${j.deleted} záznamů.`;
-      document.getElementById('sec-clear-data').style.display = 'none';
-    } else {
-      statusEl.style.color = '#e74c3c';
-      statusEl.textContent = '❌ ' + j.msg;
-    }
-  } catch(e) {
-    statusEl.style.color = '#e74c3c';
-    statusEl.textContent = '❌ Chyba: ' + e.message;
-  }
-});
 
 // ═══ Overlay helpers ══════════════════════════════════════════════════════════
 function openOverlay(id)  { document.getElementById(id).classList.add('show'); }
