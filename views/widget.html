@@ -17,272 +17,224 @@
       --page-bg:     #f8fafc;
       --tab-act-bg:  #1e3a5f;
       --tab-act-fg:  #ffffff;
-      --tab-idle-bg: #e2e8f0;
+      --tab-idle-bg: #dde3ec;
       --tab-idle-fg: #475569;
       --border:      #e2e8f0;
-      --hotel-fg:    #1e3a5f;
+      --hotel-fg:    #1a3050;
       --name-fg:     #1e293b;
-      --dash-fg:     #ef4444;
-      --p-bg:        #ffd6db;
+      --dash-fg:     #dc2626;
+      --p-bg:        #ffe0e6;
       --q-bg:        #fed7aa;
-      --online-dot:  #4ade80;
-      --offline-dot: #f87171;
+      --online:      #4ade80;
+      --offline:     #f87171;
     }
 
     html, body {
-      height: 100%;
-      font-family: 'Segoe UI', system-ui, -apple-system, sans-serif;
+      font-family: 'Segoe UI', system-ui, sans-serif;
       background: var(--page-bg);
-      color: var(--name-fg);
-      overflow-x: hidden;
+      /* narrow default — user resizes once, browser remembers */
+      min-width: 220px;
     }
 
-    /* ─── Header ─────────────────────────────────────────────── */
-    .header {
+    /* ── Header ── */
+    .hdr {
       background: var(--header-bg);
       color: var(--header-text);
-      padding: 12px 14px 10px;
+      padding: 7px 10px 6px;
       display: flex;
       align-items: center;
-      gap: 10px;
+      gap: 8px;
+      cursor: default;
       user-select: none;
     }
-    .header-text { flex: 1; }
-    .header-date { font-size: 15px; font-weight: 700; letter-spacing: .01em; }
-    .header-sub  { font-size: 11px; opacity: .65; margin-top: 1px; }
-    .status-dot  {
-      width: 9px; height: 9px; border-radius: 50%;
-      background: var(--online-dot);
-      flex-shrink: 0;
+    .hdr-text { flex: 1; min-width: 0; }
+    .hdr-date { font-size: 12px; font-weight: 700; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+    .hdr-sub  { font-size: 10px; opacity: .6; margin-top: 1px; }
+    .dot {
+      width: 7px; height: 7px; border-radius: 50%;
+      background: var(--online); flex-shrink: 0;
       transition: background .4s;
     }
-    .status-dot.offline { background: var(--offline-dot); }
+    .dot.off { background: var(--offline); }
 
-    /* ─── Tabs ───────────────────────────────────────────────── */
-    .tabs { display: flex; border-bottom: 2px solid var(--tab-act-bg); }
+    /* ── Tabs ── */
+    .tabs { display: flex; }
     .tab {
-      flex: 1;
-      padding: 8px 0;
-      font-size: 13px;
-      font-weight: 600;
-      letter-spacing: .03em;
-      text-align: center;
-      cursor: pointer;
-      border: none;
-      background: var(--tab-idle-bg);
-      color: var(--tab-idle-fg);
-      transition: background .15s, color .15s;
+      flex: 1; padding: 5px 0;
+      font-size: 12px; font-weight: 700;
+      text-align: center; cursor: pointer;
+      border: none; background: var(--tab-idle-bg); color: var(--tab-idle-fg);
+      transition: background .12s, color .12s;
       user-select: none;
+      border-bottom: 2px solid transparent;
     }
-    .tab.active {
-      background: var(--tab-act-bg);
-      color: var(--tab-act-fg);
-    }
+    .tab.active { background: var(--tab-act-bg); color: var(--tab-act-fg); border-bottom-color: var(--tab-act-bg); }
 
-    /* ─── Hotel list ─────────────────────────────────────────── */
-    .hotel-list { padding: 4px 0 8px; }
+    /* ── Hotel list ── */
+    .list { padding: 2px 0 4px; }
 
-    .hotel-row {
-      display: flex;
-      align-items: center;
-      padding: 5px 14px;
+    .row {
+      display: flex; align-items: center;
+      padding: 3px 10px; gap: 8px;
       border-bottom: 1px solid var(--border);
-      gap: 10px;
-      min-height: 34px;
+      min-height: 26px;
     }
-    .hotel-row:last-child { border-bottom: none; }
-    .hotel-row.p-row { background: var(--p-bg); }
-    .hotel-row.q-row { background: var(--q-bg); }
+    .row:last-child { border-bottom: none; }
+    .row.p { background: var(--p-bg); }
+    .row.q { background: var(--q-bg); }
 
-    .hotel-code {
-      font-size: 14px;
-      font-weight: 800;
-      color: var(--hotel-fg);
-      width: 16px;
-      flex-shrink: 0;
-      letter-spacing: -.01em;
+    .code {
+      font-size: 12px; font-weight: 800;
+      color: var(--hotel-fg); width: 13px; flex-shrink: 0;
     }
-    .hotel-name {
-      font-size: 13px;
-      color: var(--name-fg);
-      flex: 1;
-      line-height: 1.3;
-    }
-    .hotel-name.empty {
-      color: var(--dash-fg);
-      font-weight: 700;
-      letter-spacing: .05em;
-    }
+    .name { font-size: 11.5px; color: var(--name-fg); flex: 1; line-height: 1.25; }
+    .name.empty { color: var(--dash-fg); font-weight: 700; }
 
-    /* ─── Loading / error ────────────────────────────────────── */
-    .msg {
-      text-align: center;
-      padding: 40px 20px;
-      color: #94a3b8;
-      font-size: 13px;
-    }
-
-    /* ─── Updated indicator ──────────────────────────────────── */
-    .footer {
-      padding: 5px 14px 6px;
-      font-size: 10px;
-      color: #94a3b8;
-      text-align: right;
+    /* ── Footer ── */
+    .foot {
+      padding: 3px 10px 4px;
+      font-size: 9.5px; color: #94a3b8;
       border-top: 1px solid var(--border);
+      display: flex; justify-content: space-between; align-items: center;
+      cursor: default;
     }
+
+    /* ── Msg ── */
+    .msg { padding: 20px; text-align: center; color: #94a3b8; font-size: 12px; }
   </style>
 </head>
 <body>
 
-  <div class="header">
-    <div class="header-text">
-      <div class="header-date" id="hdr-date">—</div>
-      <div class="header-sub">AVE Hotels · Recepce</div>
+  <div class="hdr">
+    <div class="hdr-text">
+      <div class="hdr-date" id="hdr-date">—</div>
+      <div class="hdr-sub">AVE Hotels · Recepce</div>
     </div>
-    <div class="status-dot" id="status-dot" title="Připojení k serveru"></div>
+    <div class="dot" id="dot" title="SSE připojení"></div>
   </div>
 
   <div class="tabs">
-    <button class="tab active" id="tab-day"   onclick="switchTab('day')">Denní</button>
-    <button class="tab"        id="tab-night" onclick="switchTab('night')">Noční</button>
+    <button class="tab active" id="tab-d" onclick="switchTab('day')">Denní</button>
+    <button class="tab"        id="tab-n" onclick="switchTab('night')">Noční</button>
   </div>
 
-  <div class="hotel-list" id="hotel-list">
+  <div class="list" id="list">
     <div class="msg">Načítání…</div>
   </div>
 
-  <div class="footer" id="footer"></div>
+  <div class="foot">
+    <span id="foot-time"></span>
+    <span id="foot-tip" style="opacity:.55;cursor:pointer" title="Jak zobrazit vždy navrchu" onclick="toggleTip()">?</span>
+  </div>
+
+  <!-- tip overlay -->
+  <div id="tip" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,.55);z-index:99;padding:16px;display:none;align-items:center;justify-content:center;">
+    <div style="background:#fff;border-radius:8px;padding:14px 16px;max-width:280px;font-size:12px;line-height:1.6;color:#1e293b;">
+      <b style="display:block;margin-bottom:6px;">Vždy navrchu – PowerToys</b>
+      1. Stáhni <b>Microsoft PowerToys</b> z Microsoft Store (zdarma).<br>
+      2. Otevři PowerToys → <b>Always on Top</b> → zapni.<br>
+      3. Klikni do okna widgetu a stiskni <b>Win + Ctrl + T</b>.<br>
+      Okno zůstane trvale navrchu i při přepínání aplikací.<br>
+      <button onclick="toggleTip()" style="margin-top:10px;padding:4px 12px;background:#1e3a5f;color:#fff;border:none;border-radius:4px;cursor:pointer;font-size:12px;">Zavřít</button>
+    </div>
+  </div>
 
   <script>
-    // ── Constants ───────────────────────────────────────────────
     const HOTELS = ['A','B','C','D','E','G','H','I','J','L','M','N','S','T','U','P','Q'];
-    const DAY_NAMES = ['Neděle','Pondělí','Úterý','Středa','Čtvrtek','Pátek','Sobota'];
-    const MONTHS    = ['ledna','února','března','dubna','května','června',
-                       'července','srpna','září','října','listopadu','prosince'];
+    const DAYS   = ['Neděle','Pondělí','Úterý','Středa','Čtvrtek','Pátek','Sobota'];
+    const MONTHS = ['ledna','února','března','dubna','května','června',
+                    'července','srpna','září','října','listopadu','prosince'];
 
-    // ── State ───────────────────────────────────────────────────
-    let currentTab = localStorage.getItem('widget-tab') || 'day';
-    let hotelData  = null;
-    let lastUpdate = null;
+    let tab      = localStorage.getItem('widget-tab') || 'day';
+    let data     = null;
+    let updated  = null;
 
-    // ── Helpers ─────────────────────────────────────────────────
+    function fmt2(n){ return String(n).padStart(2,'0'); }
 
     // Converts "Jana Nováková" → "Nováková Jana"
-    function formatName(name) {
-      if (!name) return null;
-      const parts = name.trim().split(/\s+/);
-      if (parts.length < 2) return name;
-      return parts[parts.length - 1] + ' ' + parts.slice(0, -1).join(' ');
+    function fmtName(s) {
+      if (!s) return null;
+      const p = s.trim().split(/\s+/);
+      return p.length < 2 ? s : p[p.length-1] + ' ' + p.slice(0,-1).join(' ');
     }
 
-    function fmtTime(d) {
-      return d.toLocaleTimeString('cs-CZ', { hour: '2-digit', minute: '2-digit' });
+    function switchTab(t) {
+      tab = t;
+      localStorage.setItem('widget-tab', t);
+      document.getElementById('tab-d').classList.toggle('active', t==='day');
+      document.getElementById('tab-n').classList.toggle('active', t==='night');
+      render();
     }
 
-    // ── Tab switching ────────────────────────────────────────────
-    function switchTab(tab) {
-      currentTab = tab;
-      localStorage.setItem('widget-tab', tab);
-      document.getElementById('tab-day').classList.toggle('active', tab === 'day');
-      document.getElementById('tab-night').classList.toggle('active', tab === 'night');
-      renderHotels();
-    }
+    function render() {
+      const el = document.getElementById('list');
+      if (!data) { el.innerHTML = '<div class="msg">Načítání…</div>'; return; }
+      if (!data.ok) { el.innerHTML = '<div class="msg">Chyba dat.</div>'; return; }
 
-    // ── Render ───────────────────────────────────────────────────
-    function renderHotels() {
-      const list = document.getElementById('hotel-list');
-      if (!hotelData) {
-        list.innerHTML = '<div class="msg">Načítání…</div>';
-        return;
-      }
-      if (!hotelData.ok) {
-        list.innerHTML = '<div class="msg">Chyba načítání dat.</div>';
-        return;
-      }
-
-      // Header date
-      const { day, month, year } = hotelData;
-      const dt = new Date(year, month - 1, day);
+      const dt = new Date(data.year, data.month-1, data.day);
       document.getElementById('hdr-date').textContent =
-        `${DAY_NAMES[dt.getDay()]} ${day}. ${MONTHS[month - 1]} ${year}`;
+        `${DAYS[dt.getDay()]} ${data.day}. ${MONTHS[data.month-1]} ${data.year}`;
 
-      const hotels = hotelData.hotels || {};
+      const h = data.hotels || {};
       let html = '';
-      for (const h of HOTELS) {
-        const info    = hotels[h] || {};
-        const rawName = currentTab === 'day' ? info.day : info.night;
-        const display = formatName(rawName);
-        const cls     = h === 'P' ? 'p-row' : h === 'Q' ? 'q-row' : '';
-        html += `<div class="hotel-row ${cls}">` +
-          `<span class="hotel-code">${h}</span>` +
-          `<span class="hotel-name${display ? '' : ' empty'}">${display || '—'}</span>` +
-          `</div>`;
+      for (const code of HOTELS) {
+        const info = h[code] || {};
+        const raw  = tab==='day' ? info.day : info.night;
+        const name = fmtName(raw);
+        const cls  = code==='P' ? 'p' : code==='Q' ? 'q' : '';
+        html += `<div class="row ${cls}"><span class="code">${code}</span>` +
+                `<span class="name${name?'':' empty'}">${name||'—'}</span></div>`;
       }
-      list.innerHTML = html;
+      el.innerHTML = html;
 
-      // Footer
-      if (lastUpdate) {
-        document.getElementById('footer').textContent = `Aktualizováno ${fmtTime(lastUpdate)}`;
+      if (updated) {
+        document.getElementById('foot-time').textContent =
+          'Aktualizováno ' + fmt2(updated.getHours()) + ':' + fmt2(updated.getMinutes());
       }
     }
 
-    // ── Data fetching ────────────────────────────────────────────
-    async function loadData() {
+    async function load() {
       try {
         const r = await fetch('/api/widget-today', { credentials: 'include' });
-        if (r.status === 302 || r.redirected) {
-          // Not logged in — redirect to portal login
-          window.location.href = '/';
-          return;
-        }
-        if (!r.ok) throw new Error('HTTP ' + r.status);
-        hotelData  = await r.json();
-        lastUpdate = new Date();
-        renderHotels();
-      } catch (e) {
-        console.error('loadData error:', e);
-      }
+        if (!r.ok || r.redirected) { window.location.href='/'; return; }
+        data    = await r.json();
+        updated = new Date();
+        render();
+      } catch(e) { console.error(e); }
     }
 
-    // ── SSE ──────────────────────────────────────────────────────
-    let evtSource   = null;
-    let sseRetryMs  = 3000;
-
-    function connectSSE() {
-      if (evtSource) { evtSource.close(); evtSource = null; }
-
-      evtSource = new EventSource('/api/widget-events');
-
-      evtSource.onopen = () => {
-        sseRetryMs = 3000;
-        document.getElementById('status-dot').classList.remove('offline');
-      };
-
-      evtSource.onmessage = (e) => {
-        if (e.data === 'update') loadData();
-      };
-
-      evtSource.onerror = () => {
-        document.getElementById('status-dot').classList.add('offline');
-        evtSource.close();
-        evtSource = null;
-        // Exponential back-off (max 60 s)
-        sseRetryMs = Math.min(sseRetryMs * 2, 60000);
-        setTimeout(connectSSE, sseRetryMs);
+    /* SSE */
+    let es, retryMs = 3000;
+    function connect() {
+      if (es) { es.close(); es=null; }
+      es = new EventSource('/api/widget-events');
+      es.onopen    = () => { retryMs=3000; document.getElementById('dot').classList.remove('off'); };
+      es.onmessage = e => { if(e.data==='update') load(); };
+      es.onerror   = () => {
+        document.getElementById('dot').classList.add('off');
+        es.close(); es=null;
+        retryMs = Math.min(retryMs*2, 60000);
+        setTimeout(connect, retryMs);
       };
     }
 
-    // ── Midnight refresh ─────────────────────────────────────────
+    /* Midnight auto-refresh */
     function scheduleMidnight() {
-      const now      = new Date();
-      const midnight = new Date(now.getFullYear(), now.getMonth(), now.getDate() + 1);
-      setTimeout(() => { loadData(); scheduleMidnight(); }, midnight - now + 500);
+      const n = new Date();
+      const m = new Date(n.getFullYear(), n.getMonth(), n.getDate()+1);
+      setTimeout(() => { load(); scheduleMidnight(); }, m-n+500);
     }
 
-    // ── Init ─────────────────────────────────────────────────────
-    switchTab(currentTab);
-    loadData();
-    connectSSE();
+    /* Tip overlay */
+    function toggleTip() {
+      const t = document.getElementById('tip');
+      t.style.display = t.style.display==='flex' ? 'none' : 'flex';
+    }
+
+    /* Init */
+    switchTab(tab);
+    load();
+    connect();
     scheduleMidnight();
   </script>
 </body>

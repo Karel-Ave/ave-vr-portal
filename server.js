@@ -590,7 +590,8 @@ app.get('/api/widget-today', requireLogin, async (req, res) => {
     HOTELS.forEach(h => { hotelMap[h] = { day: null, night: null }; });
 
     if (rows.length) {
-      const data     = rows[0].data;
+      const raw      = rows[0].data;
+      const data     = typeof raw === 'string' ? JSON.parse(raw) : raw;
       const staff    = data.staff    || [];
       const schedule = data.schedule || {};
       const ci_day   = (todayDay - 1) * 2;
