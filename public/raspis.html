@@ -3436,7 +3436,7 @@ table.staff-tbl td select:focus { background: var(--input-bg); color: var(--text
 // DATA
 // ═══════════════════════════════════════════════════════
 const HOTELS_BUILTIN = ['A','B','C','D','E','F','G','H','I','J','L','M','N','P','Q','S','T','U','W'];
-const DISPLAY_HOTELS_BUILTIN = ['A','B','C','D','E','G','H','I','J','L','M','N','S','T','U','W','P'];
+const DISPLAY_HOTELS_BUILTIN = ['A','B','C','D','E','G','H','I','J','L','M','N','Q','S','T','U','W','P'];
 const HOTEL_HOURS_BUILTIN = {F:10, J:10, S:10, P:0, Q:0};
 const DEFAULT_HOURS = 12;
 const DAY_ONLY_HOTELS_BUILTIN = ['F','J','L','N','S','U'];
@@ -4330,12 +4330,31 @@ let shiftTypeFilter = 'all';
 
 // ── "Dnes obsazené" today-busy filter ──────────────────────────────────────
 let todayBusyFilter = false;
-const TODAY_BUSY_HOTELS = new Set(['A','B','C','D','E','G','H','I','J','L','M','N','S','T','U','P','Q']);
+let _todayBusyActivatedCol = false; // tracks whether DO button activated today col
+const TODAY_BUSY_HOTELS = new Set(['A','B','C','D','E','G','H','I','J','L','M','N','Q','S','T','U','P']);
 const TODAY_BUSY_TYPES  = new Set(['Denní','Noční','Obojí','Vedoucí']);
 
 function filterByTodayBusy() {
   todayBusyFilter = !todayBusyFilter;
   document.getElementById('btn-filter-today').classList.toggle('selected', todayBusyFilter);
+  if (todayBusyFilter) {
+    // Auto-activate today column highlight if not already active
+    if (!todayColVisible) {
+      _todayBusyActivatedCol = true;
+      todayColVisible = true;
+      _setTodayColBtnStyle(true);
+      markTodayColumn(state.month, state.year);
+      scrollToToday();
+    }
+  } else {
+    // Deactivate today column only if we were the ones who activated it
+    if (_todayBusyActivatedCol) {
+      _todayBusyActivatedCol = false;
+      todayColVisible = false;
+      _setTodayColBtnStyle(false);
+      clearTodayMarks();
+    }
+  }
   applyShiftTypeFilter(); // applyTodayBusyFilter is called inside the chain
 }
 
@@ -4358,6 +4377,9 @@ function applyTodayBusyFilter() {
       const colYear = col.nextYear ? state.year + 1 : state.year;
       const colMon  = col.nextYear ? 1 : state.month;
       if (colYear !== todayYear || colMon !== todayMonth || col.day !== todayDay) continue;
+      // Respect shift type filter: only check D columns for "Jen denní", N for "Jen noční"
+      if (shiftTypeFilter === 'day'   && col.dn !== 'd') continue;
+      if (shiftTypeFilter === 'night' && col.dn !== 'n') continue;
       const val = getScheduleVal(si, ci);
       if (val && TODAY_BUSY_HOTELS.has(val.toUpperCase())) { hasBusy = true; break; }
     }
