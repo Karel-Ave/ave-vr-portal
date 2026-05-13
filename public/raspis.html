@@ -4331,6 +4331,7 @@ let shiftTypeFilter = 'all';
 // ── "Dnes obsazené" today-busy filter ──────────────────────────────────────
 let todayBusyFilter = false;
 let _todayBusyActivatedCol = false; // tracks whether DO button activated today col
+let _busyOriginalOrder = null;      // saved tbody row order before busy sort
 const TODAY_BUSY_HOTELS = new Set(['A','B','C','D','E','G','H','I','J','L','M','N','Q','S','T','U','P']);
 const TODAY_BUSY_TYPES  = new Set(['Denní','Noční','Obojí','Vedoucí']);
 
@@ -4385,6 +4386,74 @@ function applyTodayBusyFilter() {
     }
     tr.dataset.busyHidden = hasBusy ? '0' : '1';
   });
+}
+
+// Sort visible staff rows by today's hotel when DO filter is active.
+// Hotel separator rows are hidden during sort, restored when DO is off.
+const _BUSY_SORT_ORDER = 'ABCDEGHIJLMNSTU'; // P=9998, Q=9999 handled separately
+function _busyHotelKey(h) {
+  if (!h) return 9997;
+  if (h === 'P') return 9998;
+  if (h === 'Q') return 9999;
+  const i = _BUSY_SORT_ORDER.indexOf(h);
+  return i >= 0 ? i : 5000;
+}
+
+function applyTodayBusySort() {
+  const tbody = document.getElementById('sch-tbody');
+  if (!tbody) return;
+
+  if (!todayBusyFilter) {
+    // Restore original row order
+    if (_busyOriginalOrder) {
+      _busyOriginalOrder.forEach(tr => tbody.appendChild(tr));
+      _busyOriginalOrder = null;
+    }
+    return;
+  }
+
+  // Save original order before first sort
+  if (!_busyOriginalOrder) {
+    _busyOriginalOrder = [...tbody.children];
+  }
+
+  // Find today's D and N column indices
+  const now = new Date();
+  const todayDay   = now.getDate();
+  const todayMonth = now.getMonth() + 1;
+  const todayYear  = now.getFullYear();
+  let todayDCi = -1, todayNCi = -1;
+  calCols.forEach((col, ci) => {
+    const cy = col.nextYear ? state.year + 1 : state.year;
+    const cm = col.nextYear ? 1 : state.month;
+    if (cy === todayYear && cm === todayMonth && col.day === todayDay) {
+      if (col.dn === 'd') todayDCi = ci;
+      else todayNCi = ci;
+    }
+  });
+
+  function getTodayHotel(si) {
+    if (shiftTypeFilter === 'day'   && todayDCi >= 0) return (getScheduleVal(si, todayDCi) || '').toUpperCase();
+    if (shiftTypeFilter === 'night' && todayNCi >= 0) return (getScheduleVal(si, todayNCi) || '').toUpperCase();
+    // 'all': prefer D, fallback N
+    const dv = todayDCi >= 0 ? (getScheduleVal(si, todayDCi) || '').toUpperCase() : '';
+    const nv = todayNCi >= 0 ? (getScheduleVal(si, todayNCi) || '').toUpperCase() : '';
+    return dv || nv;
+  }
+
+  // Hide hotel separator rows (don't make sense in hotel-sorted view)
+  tbody.querySelectorAll('tr.hotel-row').forEach(tr => { tr.style.display = 'none'; });
+
+  // Sort staff rows by today's hotel
+  const staffRows = [...tbody.querySelectorAll('tr.sch-row')];
+  staffRows.sort((a, b) => {
+    const siA = parseInt(a.dataset.staffIdx);
+    const siB = parseInt(b.dataset.staffIdx);
+    const ka  = _busyHotelKey(getTodayHotel(siA));
+    const kb  = _busyHotelKey(getTodayHotel(siB));
+    return ka !== kb ? ka - kb : siA - siB; // tie-break: original order
+  });
+  staffRows.forEach(tr => tbody.appendChild(tr));
 }
 
 // ── "Jen dostupní" avail filter ────────────────────────────────────────────
@@ -4479,7 +4548,9 @@ function filterByShiftType(mode) {
 }
 
 function applyShiftTypeFilter() {
-  if (shiftTypeFilter === 'all') {
+  if (shiftTypeFilter === 'all' || todayBusyFilter) {
+    // When todayBusyFilter is active, type-based hiding is bypassed —
+    // applyTodayBusyFilter handles visibility via actual cell values.
     document.querySelectorAll('#sch-tbody tr.sch-row').forEach(tr => {
       tr.dataset.shiftHidden = '0';
     });
@@ -4561,6 +4632,7 @@ function buildSchedule() {
   const tbody = document.getElementById('sch-tbody');
   thead.innerHTML = '';
   tbody.innerHTML = '';
+  _busyOriginalOrder = null; // reset saved order on schedule rebuild
 
   const numCols = calCols.length;
   const SUM_LABELS = ['D všed','N všed','D vík','N vík','Σ smě','±hod','Σhod','Poznámka'];
@@ -5335,6 +5407,7 @@ function applyHotelFilter() {
     });
   }
 
+  applyTodayBusySort(); // sort by today's hotel when DO filter is active
   setTimeout(fixStickyTops, 30);
   recalcHotelStatus();
 }
