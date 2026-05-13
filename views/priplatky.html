@@ -112,6 +112,12 @@ body { min-height: 100vh; background: var(--bg); font-family: 'Segoe UI', system
   .btn-add-big { padding: 8px 16px; font-size: 13px; margin: 6px auto 0; }
 }
 
+/* Landscape mobil: overlay začíná pod topbarem, modal se vejde do zbývajícího prostoru */
+@media (pointer: coarse) and (orientation: landscape) {
+  .overlay { top: 58px; align-items: flex-start; padding: 8px 16px; }
+  .modal   { max-height: calc(100dvh - 58px - 16px); }
+}
+
 /* File-trigger label acts as button */
 label.btn { display: inline-flex; align-items: center; cursor: pointer; }
 
@@ -279,8 +285,9 @@ table.dtbl { width: 100%; border-collapse: collapse; font-size: 13px; }
 .icon-btn:hover { background: var(--surface-alt); }
 .icon-btn.danger { color: #e74c3c; border-color: #e74c3c44; }
 .icon-btn.danger:hover { background: #e74c3c18; }
-.recepni-row { display: grid; grid-template-columns: 80px 1fr auto; gap: 8px; align-items: center; padding: 6px 0; border-bottom: 1px solid var(--border); font-size: 13px; }
+.recepni-row { display: grid; grid-template-columns: 80px 1fr auto auto; gap: 8px; align-items: center; padding: 6px 8px; border-bottom: 1px solid var(--border); font-size: 13px; border-radius: 6px; transition: background .12s; }
 .recepni-row:last-child { border-bottom: none; }
+.recepni-row:hover { background: var(--surface-alt); }
 .empty { text-align: center; color: var(--text-muted); padding: 30px; font-size: 14px; }
 .add-row { display: flex; gap: 8px; margin-bottom: 14px; flex-wrap: wrap; }
 /* Sub-tabs v Nastavení */
@@ -1329,17 +1336,54 @@ async function deleteDuvod(id, typ) {
 }
 
 // ═══ Nastavení: Recepční ══════════════════════════════════════════════════════
+function rlRowHtml(r) {
+  const l = esc(r.login); const n = esc(r.full_name).replace(/'/g,"&#39;");
+  return `<div class="recepni-row" id="rl-row-${l}">
+    <code style="font-size:12px">${l}</code>
+    <span>${esc(r.full_name)}</span>
+    <button class="icon-btn" onclick="startEditRl('${l}','${n}')" title="Upravit">✏️</button>
+    <button class="icon-btn danger" onclick="deleteRecepni('${l}')" title="Smazat">🗑</button>
+  </div>`;
+}
+
 async function loadRecepniList() {
   const resp = await fetch('/api/priplatky/recepni');
   const list = await resp.json();
   const el   = document.getElementById('recepni-list');
   if (!list.length) { el.innerHTML = '<p class="empty">Žádní recepční.</p>'; return; }
-  el.innerHTML = list.map(r => `
-    <div class="recepni-row">
-      <code style="font-size:12px">${esc(r.login)}</code>
-      <span>${esc(r.full_name)}</span>
-      <button class="icon-btn danger" onclick="deleteRecepni('${esc(r.login)}')">🗑 Smazat</button>
-    </div>`).join('');
+  el.innerHTML = list.map(rlRowHtml).join('');
+}
+
+function startEditRl(login, currentName) {
+  const row = document.getElementById('rl-row-' + login);
+  if (!row) return;
+  const span    = row.querySelector('span');
+  const editBtn = row.querySelectorAll('.icon-btn')[0];
+  const delBtn  = row.querySelectorAll('.icon-btn')[1];
+  const inp = document.createElement('input');
+  inp.className = 'note-edit-inp'; inp.value = currentName;
+  row.replaceChild(inp, span);
+  inp.focus(); inp.select();
+  editBtn.textContent = '💾'; editBtn.title = 'Uložit';
+  editBtn.onclick = () => saveEditRl(login, inp);
+  delBtn.style.opacity = '.3'; delBtn.style.pointerEvents = 'none';
+  inp.addEventListener('keydown', e => {
+    if (e.key === 'Enter') saveEditRl(login, inp);
+    if (e.key === 'Escape') loadRecepniList();
+  });
+}
+
+async function saveEditRl(login, inp) {
+  const full_name = inp.value.trim();
+  if (!full_name) return;
+  const resp = await fetch(`/api/priplatky/recepni/${encodeURIComponent(login)}`, {
+    method: 'PATCH', headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ full_name }),
+  });
+  const j = await resp.json();
+  if (!j.ok) { alert('Chyba: ' + (j.msg || '?')); return; }
+  loadRecepniList();
+  loadRecepniDropdown();
 }
 document.getElementById('btn-add-rl').addEventListener('click', async () => {
   const login     = document.getElementById('inp-rl-login').value.trim();
