@@ -204,10 +204,8 @@ input[type=number].no-spin { -moz-appearance: textfield; appearance: textfield; 
 .date-pick-wrap:hover .date-pick-display { border-color: var(--accent); }
 .date-pick-display.has-date { color: var(--text); }
 
-/* Custom kalendář modal */
-#modal-datepicker { z-index: 3000; background: rgba(0,0,0,.82); } /* nad formulářovým modalem */
-.dp-modal { width: min(320px,95%); border-radius: 16px; overflow: hidden; }
-.dp-header { display:flex; align-items:center; padding:12px 14px 10px; border-bottom:1px solid var(--border); }
+/* Inline kalendář (uvnitř formulářového modalu) */
+.dp-header { display:flex; align-items:center; padding:0 0 10px 0; }
 .dp-header span { flex:1; text-align:center; font-weight:700; font-size:15px; }
 .dp-body { padding:10px 12px 6px; }
 .dp-weekdays { display:grid; grid-template-columns:repeat(7,1fr); margin-bottom:4px; }
@@ -389,9 +387,12 @@ table.dtbl { width: 100%; border-collapse: collapse; font-size: 13px; }
 <div class="modal">
   <div class="modal-header">
     <h3 id="modal-form-title">Přidat záznam</h3>
-    <button class="modal-close" data-close="modal-form">✕</button>
+    <button class="modal-close" id="modal-form-close">✕</button>
   </div>
-  <div class="modal-body">
+  <div class="modal-body" style="padding:0">
+
+    <!-- Stránka 1: Formulář -->
+    <div id="form-page" style="padding:20px">
     <form id="zaznam-form" autocomplete="off">
       <input type="hidden" name="editId">
 
@@ -566,33 +567,33 @@ table.dtbl { width: 100%; border-collapse: collapse; font-size: 13px; }
       </div>
 
     </form>
-  </div>
-  <div class="modal-footer">
-    <button class="btn btn-secondary" data-close="modal-form">Zrušit</button>
-    <button class="btn btn-primary" id="btn-zaznam-save">Uložit</button>
-  </div>
-</div>
-</div>
+    </div><!-- /form-page -->
 
-<!-- ═══ MODAL: VÝBĚR DATUMU ══════════════════════════════════════════════════ -->
-<div class="overlay" id="modal-datepicker">
-<div class="modal dp-modal">
-  <div class="dp-header">
-    <button type="button" class="nav-btn" id="dp-prev">◀</button>
-    <span id="dp-month-label"></span>
-    <button type="button" class="nav-btn" id="dp-next">▶</button>
-  </div>
-  <div class="dp-body">
-    <div class="dp-weekdays">
-      <div class="dp-weekday">Po</div><div class="dp-weekday">Út</div>
-      <div class="dp-weekday">St</div><div class="dp-weekday">Čt</div>
-      <div class="dp-weekday">Pá</div><div class="dp-weekday">So</div>
-      <div class="dp-weekday">Ne</div>
-    </div>
-    <div class="dp-days" id="dp-grid"></div>
-  </div>
-  <div class="dp-footer">
-    <button type="button" id="dp-confirm" class="btn btn-primary dp-confirm-btn">Potvrdit</button>
+    <!-- Stránka 2: Výběr data (inline uvnitř stejného modalu) -->
+    <div id="date-page" class="hidden" style="padding:16px 20px 20px">
+      <div class="dp-header">
+        <button type="button" class="nav-btn" id="dp-prev">◀</button>
+        <span id="dp-month-label"></span>
+        <button type="button" class="nav-btn" id="dp-next">▶</button>
+      </div>
+      <div class="dp-body">
+        <div class="dp-weekdays">
+          <div class="dp-weekday">Po</div><div class="dp-weekday">Út</div>
+          <div class="dp-weekday">St</div><div class="dp-weekday">Čt</div>
+          <div class="dp-weekday">Pá</div><div class="dp-weekday">So</div>
+          <div class="dp-weekday">Ne</div>
+        </div>
+        <div class="dp-days" id="dp-grid"></div>
+      </div>
+      <div class="dp-footer">
+        <button type="button" id="dp-confirm" class="btn btn-primary dp-confirm-btn">Potvrdit</button>
+      </div>
+    </div><!-- /date-page -->
+
+  </div><!-- /modal-body -->
+  <div class="modal-footer" id="form-modal-footer">
+    <button class="btn btn-secondary" id="btn-form-cancel">Zrušit</button>
+    <button class="btn btn-primary" id="btn-zaznam-save">Uložit</button>
   </div>
 </div>
 </div>
@@ -1023,6 +1024,12 @@ function resetForm() {
   document.getElementById('field-poznamka').classList.remove('hidden');
   // Zaúčtovat do jiného měsíce — vždy skrýt při resetu
   document.getElementById('field-mesic-platby').classList.add('hidden');
+  // Ujisti se, že date-page je skrytá a form-page viditelná
+  document.getElementById('date-page').classList.add('hidden');
+  document.getElementById('form-page').classList.remove('hidden');
+  document.getElementById('form-modal-footer').classList.remove('hidden');
+  const closeBtn = document.getElementById('modal-form-close');
+  if (closeBtn) { closeBtn.textContent = '✕'; closeBtn._dpBack = false; }
 }
 
 // ═══ Uložit záznam ═══════════════════════════════════════════════════════════
@@ -1347,6 +1354,17 @@ async function deleteRecepni(login) {
 // ═══ Overlay helpers ══════════════════════════════════════════════════════════
 function openOverlay(id)  { document.getElementById(id).classList.add('show'); }
 function closeOverlay(id) { document.getElementById(id).classList.remove('show'); }
+
+// Formulářový modal: ✕ a Zrušit — pokud jsme na date-page, jdi zpět; jinak zavři modal
+document.getElementById('modal-form-close').addEventListener('click', () => {
+  const btn = document.getElementById('modal-form-close');
+  if (btn._dpBack) { dpClose(); } else { closeOverlay('modal-form'); }
+});
+document.getElementById('btn-form-cancel').addEventListener('click', () => {
+  if (document.getElementById('modal-form-close')._dpBack) { dpClose(); }
+  else { closeOverlay('modal-form'); }
+});
+// Ostatní [data-close] tlačítka (detail modal, apod.)
 document.querySelectorAll('[data-close]').forEach(btn => {
   btn.addEventListener('click', () => closeOverlay(btn.dataset.close));
 });
@@ -1411,6 +1429,8 @@ const DP_MESICE_LONG = ['Leden','Únor','Březen','Duben','Květen','Červen',
                         'Červenec','Srpen','Září','Říjen','Listopad','Prosinec'];
 let dpYear = 0, dpMonth = 0, dpSelY = 0, dpSelM = 0, dpSelD = 0;
 
+let _savedModalTitle = '';
+
 function openDatePicker() {
   // Seed from current input value or today
   const cur = document.getElementById('inp-date').value;
@@ -1423,7 +1443,16 @@ function openDatePicker() {
     dpSelY = dpSelM = dpSelD = 0;
   }
   dpRenderGrid();
-  openOverlay('modal-datepicker');
+  // Přepnout stránky uvnitř modalu
+  document.getElementById('form-page').classList.add('hidden');
+  document.getElementById('date-page').classList.remove('hidden');
+  document.getElementById('form-modal-footer').classList.add('hidden');
+  _savedModalTitle = document.getElementById('modal-form-title').textContent;
+  document.getElementById('modal-form-title').textContent = 'Vyberte datum';
+  // ✕ → zpět na formulář
+  const closeBtn = document.getElementById('modal-form-close');
+  closeBtn.textContent = '◀';
+  closeBtn._dpBack = true;
 }
 
 function dpRenderGrid() {
@@ -1454,15 +1483,26 @@ function dpSelectDay(d) {
   dpRenderGrid();
 }
 
+function dpClose() {
+  document.getElementById('date-page').classList.add('hidden');
+  document.getElementById('form-page').classList.remove('hidden');
+  document.getElementById('form-modal-footer').classList.remove('hidden');
+  document.getElementById('modal-form-title').textContent = _savedModalTitle;
+  const closeBtn = document.getElementById('modal-form-close');
+  closeBtn.textContent = '✕';
+  closeBtn._dpBack = false;
+}
+
 function dpConfirm() {
-  if (!dpSelD) { closeOverlay('modal-datepicker'); return; }
-  const pad = n => String(n).padStart(2,'0');
-  const iso = `${dpSelY}-${pad(dpSelM)}-${pad(dpSelD)}`;
-  document.getElementById('inp-date').value = iso;
-  const display = document.getElementById('date-pick-display');
-  display.textContent = `${dpSelD}. ${dpSelM}. ${dpSelY}`;
-  display.classList.add('has-date');
-  closeOverlay('modal-datepicker');
+  if (dpSelD) {
+    const pad = n => String(n).padStart(2,'0');
+    const iso = `${dpSelY}-${pad(dpSelM)}-${pad(dpSelD)}`;
+    document.getElementById('inp-date').value = iso;
+    const display = document.getElementById('date-pick-display');
+    display.textContent = `${dpSelD}. ${dpSelM}. ${dpSelY}`;
+    display.classList.add('has-date');
+  }
+  dpClose();
 }
 
 document.getElementById('dp-prev').addEventListener('click', () => {
