@@ -571,13 +571,13 @@ app.get('/api/widget-events', requireLogin, (req, res) => {
   req.on('close', () => widgetSseClients.delete(res));
 });
 
-// Data dnešního rozpisu pro widget
+// Data rozpisu pro widget — volitelně ?day=X&month=Y&year=Z pro navigaci
 app.get('/api/widget-today', requireLogin, async (req, res) => {
   try {
     const now        = new Date();
-    const todayDay   = now.getDate();
-    const todayMonth = now.getMonth() + 1;
-    const todayYear  = now.getFullYear();
+    const todayDay   = parseInt(req.query.day)   || now.getDate();
+    const todayMonth = parseInt(req.query.month) || now.getMonth() + 1;
+    const todayYear  = parseInt(req.query.year)  || now.getFullYear();
     const key        = `${String(todayMonth).padStart(2, '0')}/${todayYear}`;
 
     const db = getPool();
