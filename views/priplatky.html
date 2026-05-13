@@ -436,8 +436,8 @@ table.dtbl { width: 100%; border-collapse: collapse; font-size: 13px; }
         <div class="field field-full" id="field-login-ac">
           <label>Recepční *</label>
           <div class="ac-wrap">
-            <input type="text" id="inp-ac" autocomplete="off"
-                   placeholder="Zadejte login nebo příjmení…"
+            <input type="text" id="inp-ac" autocomplete="off" autocorrect="off" autocapitalize="off"
+                   placeholder="Příjmení nebo jméno…"
                    oninput="acFilter(this.value)"
                    onfocus="acFilter(this.value)"
                    onblur="setTimeout(acClose, 200)">
