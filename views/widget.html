@@ -7,34 +7,35 @@
   <meta name="apple-mobile-web-app-capable" content="yes">
   <title>Mini Rozpis</title>
   <link rel="manifest" href="/static/widget-manifest.json">
-  <meta name="theme-color" content="#1E2228">
+  <meta name="theme-color" content="#0E1014">
   <style>
     *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
     ::-webkit-scrollbar { display: none; }
 
+    /* Dark portal theme (matches [data-theme="dark"] in theme.css) */
     :root {
-      --hdr-bg:      #1E2228;
-      --hdr-text:    #DDDDDD;
-      --page-bg:     #F5F4EE;
-      --day-bg:      #FFFFFF;
-      --night-bg:    #E8EDF6;
-      --chdr-day:    #2C3540;
-      --chdr-ngt:    #3A4A6A;
-      --border:      #D4D0C8;
-      --border-mid:  #B8B4AC;
-      --hotel-fg:    #2C3540;
-      --name-fg:     #1A1A18;
-      --dash-fg:     #b03030;
-      --p-day:       #ffe0e6;
-      --p-ngt:       #f4cad4;
-      --p-code:      #ffe0e6;
-      --q-day:       #fed7aa;
-      --q-ngt:       #f4c48a;
-      --q-code:      #fed7aa;
+      --bg:          #141618;
+      --topbar:      #0E1014;
+      --surface:     #1E2228;
+      --surface-alt: #1A2030;   /* noční sloupec – lehce modrý nádech */
+      --border:      #2E333A;
+      --border-mid:  #3C4450;
+      --text:        #E8E6DC;
+      --text-muted:  #8A8A82;
+      --accent:      #C4A96A;   /* zlatá */
+      --chdr-bg:     #252B32;
+      --hotel-fg:    #C4A96A;
+      --dash-fg:     #e05555;
+      --p-day:       #3D1E28;
+      --p-ngt:       #2E1820;
+      --p-code:      #3D1E28;
+      --q-day:       #3A2410;
+      --q-ngt:       #2E1C0C;
+      --q-code:      #3A2410;
       --online:      #4ade80;
       --offline:     #f87171;
-      --foot-fg:     #999890;
-      --nav-fg:      #888880;
+      --foot-fg:     #4A5060;
+      --nav-fg:      #555850;
     }
 
     html, body {
@@ -43,70 +44,74 @@
       overflow: hidden;
       scrollbar-width: none;
       font-family: 'Segoe UI', system-ui, sans-serif;
-      background: var(--page-bg);
-      color: var(--name-fg);
+      background: var(--bg);
+      color: var(--text);
     }
-
-    body {
-      display: flex;
-      flex-direction: column;
-    }
+    body { display: flex; flex-direction: column; }
 
     /* ── Header ── */
     .hdr {
-      background: var(--hdr-bg);
-      padding: 5px 10px 5px;
+      background: var(--topbar);
+      padding: 5px 10px;
       display: flex;
       align-items: center;
-      gap: 4px;
       flex-shrink: 0;
-      white-space: nowrap;
+      border-bottom: 1px solid var(--border);
+    }
+
+    /* Left: Dnes button */
+    .today-btn {
+      font-size: 9px; font-weight: 700;
+      padding: 2px 8px; border-radius: 3px; border: 1px solid var(--border-mid);
+      cursor: pointer; background: var(--surface); color: var(--text-muted);
+      flex-shrink: 0; transition: background .15s, color .15s;
+    }
+    .today-btn:hover { background: var(--border); color: var(--text); }
+    .today-btn.on-today { background: var(--accent); color: #141618; border-color: var(--accent); cursor: default; }
+
+    /* Centre: ‹ date › */
+    .hdr-center {
+      flex: 1;
+      display: flex; align-items: center; justify-content: center; gap: 6px;
     }
     .nav-btn {
       background: none; border: none; cursor: pointer;
-      color: var(--nav-fg); font-size: 16px; font-weight: 700;
-      padding: 0 3px; line-height: 1; border-radius: 2px;
+      color: var(--nav-fg); font-size: 18px; font-weight: 700;
+      padding: 0 2px; line-height: 1; border-radius: 2px;
       transition: color .12s; flex-shrink: 0;
     }
-    .nav-btn:hover { color: #fff; }
+    .nav-btn:hover { color: var(--accent); }
     .hdr-date {
-      font-size: 11px; font-weight: 700; color: var(--hdr-text);
-      flex: 1; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+      font-size: 11px; font-weight: 700; color: var(--text);
+      white-space: nowrap;
     }
-    .today-btn {
-      font-size: 9px; font-weight: 700;
-      padding: 2px 8px; border-radius: 3px; border: none; cursor: pointer;
-      background: #2C3540; color: #fff; flex-shrink: 0;
-    }
-    .today-btn.on-today { background: #3A4048; color: #666860; cursor: default; }
+
+    /* Right: dot */
     .dot {
       width: 6px; height: 6px; border-radius: 50%;
-      background: var(--online); margin-left: 4px; flex-shrink: 0;
+      background: var(--online); flex-shrink: 0;
       transition: background .4s;
     }
     .dot.off { background: var(--offline); }
 
-    /* ── Table fills remaining width ── */
+    /* ── Table ── */
     #content { flex: 0 0 auto; }
 
     table {
       border-collapse: collapse;
-      width: 100%;          /* fill window width */
-      table-layout: fixed;  /* stable columns */
+      width: 100%;
+      table-layout: fixed;
     }
-
-    /* Code col fixed, day/night split remaining equally */
     col.col-code { width: 30px; }
-    /* col-day and col-ngt get equal share of the rest automatically */
 
     thead th {
-      font-size: 10px; font-weight: 700; letter-spacing: .04em;
-      padding: 3px 6px; color: #fff;
+      font-size: 10px; font-weight: 700; letter-spacing: .05em;
+      padding: 3px 7px; color: var(--accent);
+      background: var(--chdr-bg);
       border-bottom: 2px solid var(--border-mid);
     }
-    thead th.th-code { background: var(--page-bg); color: transparent; }
-    thead th.th-day  { background: var(--chdr-day); border-right: 1px solid var(--border-mid); }
-    thead th.th-ngt  { background: var(--chdr-ngt); }
+    thead th.th-code { background: var(--topbar); color: transparent; }
+    thead th.th-day  { border-right: 1px solid var(--border-mid); }
 
     tbody tr         { border-bottom: 1px solid var(--border); }
     tbody tr:last-child { border-bottom: none; }
@@ -120,11 +125,11 @@
       font-size: 10px; font-weight: 800; color: var(--hotel-fg);
       padding-left: 9px; padding-right: 4px;
       border-right: 1px solid var(--border-mid);
-      background: var(--page-bg);
+      background: var(--topbar);
     }
-    td.day { background: var(--day-bg); border-right: 1px solid var(--border); color: var(--name-fg); }
-    td.ngt { background: var(--night-bg); color: var(--name-fg); }
-    td.empty { color: var(--dash-fg); font-weight: 700; }
+    td.day { background: var(--surface);     border-right: 1px solid var(--border); color: var(--text); }
+    td.ngt { background: var(--surface-alt); color: var(--text); }
+    td.empty { color: var(--dash-fg); font-weight: 600; }
 
     tr.p td.code { background: var(--p-code); }
     tr.p td.day  { background: var(--p-day); }
@@ -138,26 +143,39 @@
       font-size: 9px; color: var(--foot-fg);
       padding: 3px 10px 4px;
       border-top: 1px solid var(--border);
+      background: var(--topbar);
       white-space: nowrap; flex-shrink: 0;
+      display: flex; align-items: center; justify-content: space-between;
       cursor: default; user-select: none;
     }
+    .resize-btn {
+      font-size: 11px; background: none; border: none;
+      color: var(--nav-fg); cursor: pointer; padding: 0 2px; line-height: 1;
+      transition: color .12s;
+    }
+    .resize-btn:hover { color: var(--accent); }
 
-    .msg { padding: 14px 20px; font-size: 11px; color: var(--foot-fg); }
+    .msg { padding: 14px 20px; font-size: 11px; color: var(--text-muted); }
   </style>
 </head>
 <body>
 
   <div class="hdr">
-    <button class="nav-btn" onclick="navDay(-1)">&#8249;</button>
-    <div class="hdr-date" id="hdr-date">—</div>
-    <button class="nav-btn" onclick="navDay(1)">&#8250;</button>
     <button class="today-btn" id="btn-today" onclick="goToday()">Dnes</button>
+    <div class="hdr-center">
+      <button class="nav-btn" onclick="navDay(-1)">&#8249;</button>
+      <div class="hdr-date" id="hdr-date">—</div>
+      <button class="nav-btn" onclick="navDay(1)">&#8250;</button>
+    </div>
     <div class="dot" id="dot"></div>
   </div>
 
   <div id="content"><div class="msg">Načítání…</div></div>
 
-  <div class="foot" id="foot">AVE Hotels · Recepce</div>
+  <div class="foot">
+    <span id="foot-txt">AVE Hotels · Recepce</span>
+    <button class="resize-btn" onclick="fitWindow()" title="Přizpůsobit velikost okna obsahu">⛶</button>
+  </div>
 
   <script>
     const HOTELS = ['A','B','C','D','E','G','H','I','J','L','M','N','S','T','U','P','Q'];
@@ -176,6 +194,26 @@
       if(!s) return null;
       const c=s.trim().startsWith('z ')?s.trim().slice(2).trim():s.trim();
       return c||null;
+    }
+
+    function fitWindow(){
+      try {
+        const chromeW = window.outerWidth  - window.innerWidth;
+        const chromeH = window.outerHeight - window.innerHeight;
+        const safeH   = chromeH > 5 ? chromeH : 33;
+        const hdr  = document.querySelector('.hdr');
+        const tbl  = document.querySelector('table');
+        const foot = document.querySelector('.foot');
+        if (!tbl || !hdr || !foot) return;
+        const contentH =
+          hdr.getBoundingClientRect().height +
+          document.getElementById('content').getBoundingClientRect().height +
+          foot.getBoundingClientRect().height;
+        window.resizeTo(
+          window.outerWidth,          // keep current width (can't shrink horizontally)
+          Math.ceil(contentH) + safeH // snap height to content
+        );
+      } catch(e) {}
     }
 
     function goToday(){const n=new Date();viewDay=n.getDate();viewMonth=n.getMonth()+1;viewYear=n.getFullYear();load();}
@@ -220,8 +258,11 @@
       </table>`;
 
       if(updated)
-        document.getElementById('foot').textContent=
+        document.getElementById('foot-txt').textContent=
           `Aktualizováno ${fmt2(updated.getHours())}:${fmt2(updated.getMinutes())}`;
+
+      // Try to snap height to content
+      requestAnimationFrame(()=>requestAnimationFrame(fitWindow));
     }
 
     async function load(){
@@ -250,6 +291,7 @@
       setTimeout(()=>{goToday();scheduleMidnight();},m-n+500);
     }
 
+    window.addEventListener('load',()=>setTimeout(fitWindow,400));
     load(); connect(); scheduleMidnight();
   </script>
 </body>
