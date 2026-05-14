@@ -719,6 +719,9 @@ body {
 }
 .tab-action-sel { padding: 0 6px; }
 .tab-action-btn:hover  { background: #F0EFE8; border-color: #AAAAAA; }
+/* Uložit — modré */
+.tab-action-blue  { background: #1A56A0; border-color: #0F3D7A; color: #FFFFFF; }
+.tab-action-blue:hover  { background: #144485 !important; border-color: #0A2D60 !important; }
 /* Publikovat — zelené */
 .tab-action-green { background: #2E7D32; border-color: #1B5E20; color: #FFFFFF; }
 .tab-action-green:hover { background: #256427 !important; border-color: #164D19 !important; }
@@ -728,6 +731,8 @@ body {
   background: #252B32; border-color: #3E444C; color: #C8C6BC;
 }
 [data-theme="dark"] .tab-action-btn:hover  { background: #2E353E; border-color: #505860; }
+[data-theme="dark"] .tab-action-blue       { background: #1A56A0; border-color: #0F3D7A; color: #fff; }
+[data-theme="dark"] .tab-action-blue:hover  { background: #144485 !important; border-color: #0A2D60 !important; }
 [data-theme="dark"] .tab-action-green      { background: #2E7D32; border-color: #1B5E20; color: #fff; }
 [data-theme="dark"] .tab-action-green:hover { background: #256427 !important; border-color: #164D19 !important; }
 
@@ -892,7 +897,7 @@ body.portal-receptionist-mode #btn-toggle-hoursonly { display: none !important; 
   <div id="raspis-tab-actions">
     <span id="web-save-status" style="font-size:10px;opacity:0;transition:opacity .3s;margin-right:4px;color:var(--text-muted,#666);"></span>
     <select id="tvorba-drafts-sel" class="tab-action-sel" title="Načíst uložený draft" style="display:none;"></select>
-    <button class="tab-action-btn" id="btn-manual-save" onclick="manualSave()" style="display:none;" title="Uložit rozepsaný draft">Uložit</button>
+    <button class="tab-action-btn tab-action-blue" id="btn-manual-save" onclick="manualSave()" style="display:none;" title="Uložit rozepsaný draft">Uložit</button>
     <button class="tab-action-btn" id="btn-new-schedule" onclick="newSchedule()" style="display:none;" title="Začít nový prázdný rozpis">Nový</button>
     <button class="tab-action-btn tab-action-green" id="btn-publish" onclick="publishToWeb()" style="display:none;" title="Publikovat hotový rozpis">Publikovat</button>
   </div>
