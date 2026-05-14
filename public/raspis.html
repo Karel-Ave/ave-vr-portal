@@ -700,6 +700,37 @@ body {
   padding: 0 0 6px;
 }
 
+/* ── Tvorba tlačítka: Uložené / Uložit / Nový / Publikovat ────────────────── */
+.tab-action-btn, .tab-action-sel {
+  height: 26px;
+  padding: 0 11px;
+  font-size: 12px;
+  font-family: inherit;
+  font-weight: 600;
+  border-radius: 5px;
+  cursor: pointer;
+  border: 1px solid #BEBAB0;
+  background: #FFFFFF;
+  color: #1A1A18;
+  white-space: nowrap;
+  transition: background .15s, border-color .15s;
+  line-height: 1;
+  letter-spacing: 0.01em;
+}
+.tab-action-sel { padding: 0 6px; }
+.tab-action-btn:hover  { background: #F0EFE8; border-color: #AAAAAA; }
+/* Publikovat — zelené */
+.tab-action-green { background: #2E7D32; border-color: #1B5E20; color: #FFFFFF; }
+.tab-action-green:hover { background: #256427 !important; border-color: #164D19 !important; }
+/* Dark mode */
+[data-theme="dark"] .tab-action-btn,
+[data-theme="dark"] .tab-action-sel {
+  background: #252B32; border-color: #3E444C; color: #C8C6BC;
+}
+[data-theme="dark"] .tab-action-btn:hover  { background: #2E353E; border-color: #505860; }
+[data-theme="dark"] .tab-action-green      { background: #2E7D32; border-color: #1B5E20; color: #fff; }
+[data-theme="dark"] .tab-action-green:hover { background: #256427 !important; border-color: #164D19 !important; }
+
 /* Portálové ovládání (Rozpis tab) */
 #portal-controls-bar {
   align-items: center;
@@ -859,11 +890,11 @@ body.portal-receptionist-mode #btn-toggle-hoursonly { display: none !important; 
   <button class="rtab" id="rtab-tvorba" onclick="showAppTab('tvorba')">✏ Tvorba rozpisu</button>
   <button class="rtab" id="rtab-view" onclick="showAppTab('view')">📋 Rozpis</button>
   <div id="raspis-tab-actions">
-    <span id="web-save-status" style="font-size:10px;opacity:0;transition:opacity .3s;margin-right:4px;color:var(--text,#222);"></span>
-    <select id="tvorba-drafts-sel" title="Načíst uložený draft" style="display:none;height:26px;padding:0 6px;font-size:12px;font-family:inherit;border:1px solid var(--border);border-radius:5px;background:var(--surface);color:var(--text);cursor:pointer;max-width:160px;"></select>
-    <button class="btn btn-sm btn-primary" id="btn-manual-save" onclick="manualSave()" style="display:none;" title="Uložit rozepsaný rozpis">💾 Uložit</button>
-    <button class="btn btn-sm btn-danger" id="btn-new-schedule" onclick="newSchedule()" style="display:none;" title="Začít nový prázdný rozpis">🆕 Nový</button>
-    <button class="btn btn-sm btn-primary" id="btn-publish" onclick="publishToWeb()" style="display:none;" title="Publikovat hotový rozpis">📤 Publikovat</button>
+    <span id="web-save-status" style="font-size:10px;opacity:0;transition:opacity .3s;margin-right:4px;color:var(--text-muted,#666);"></span>
+    <select id="tvorba-drafts-sel" class="tab-action-sel" title="Načíst uložený draft" style="display:none;"></select>
+    <button class="tab-action-btn" id="btn-manual-save" onclick="manualSave()" style="display:none;" title="Uložit rozepsaný draft">Uložit</button>
+    <button class="tab-action-btn" id="btn-new-schedule" onclick="newSchedule()" style="display:none;" title="Začít nový prázdný rozpis">Nový</button>
+    <button class="tab-action-btn tab-action-green" id="btn-publish" onclick="publishToWeb()" style="display:none;" title="Publikovat hotový rozpis">Publikovat</button>
   </div>
 </div>
 
@@ -6689,7 +6720,7 @@ async function _loadDraftsList() {
     const raw = await r.json();
     // API může vrátit pole nebo {items:[...]} / {drafts:[...]}
     const list = Array.isArray(raw) ? raw : (raw.items || raw.drafts || []);
-    sel.innerHTML = '<option value="">📂 Drafty…</option>';
+    sel.innerHTML = '<option value="">Uložené</option>';
     if (!list || !list.length) return;
     list.forEach(d => {
       const opt = document.createElement('option');
