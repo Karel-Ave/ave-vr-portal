@@ -803,20 +803,13 @@ body.portal-view-mode td[data-sum-id="totHrs"] { background: var(--surface, #fff
 body.portal-view-mode .th-name { padding-left: 24px !important; }
 
 /* ── Pro recepční mode ───────────────────────────────────────────────────── */
-/* Neutralizuj POUZE: podbarvení jmen (sch-name tint), nemůže-dny (cell-cannot),
-   smazané buňky (cell-deleted-req). Noční/víkendové/sváteční podbarvení ZŮSTÁVÁ. */
-body.portal-receptionist-mode { --cell-cannot: var(--surface, #fff); }
-body.portal-receptionist-mode td.sch-name { background: var(--surface, #fff) !important; }
-body.portal-receptionist-mode .cell-deleted-req { background: var(--surface, #fff) !important; }
+/* Podbarvení sch-name buněk a oprava cell-cannot/deleted-req se řeší v JS
+   (viz _applyReceptionistStyles) — CSS tady řeší jen věci, co JS nezvládne lépe. */
 /* Skryj tooltip bubliny */
 body.portal-receptionist-mode #note-tooltip { display: none !important; }
-/* Skryj sloupec Poznámka */
-body.portal-receptionist-mode td[data-sum-id="note"],
-body.portal-receptionist-mode td[data-col="note"],
-body.portal-receptionist-mode .sch-note,
-body.portal-receptionist-mode .sch-note-wide,
-body.portal-receptionist-mode th.th-note,
-body.portal-receptionist-mode th.th-sum-wide[data-col="note"] { display: none !important; }
+/* Skryj sloupec Poznámka (th-sum-wide = Poznámka header; td[data-sum-id=note] = data buňky) */
+body.portal-receptionist-mode .th-sum-wide,
+body.portal-receptionist-mode td[data-sum-id="note"] { display: none !important; }
 /* Skryj tlačítka přepínání součtů */
 body.portal-receptionist-mode #btn-toggle-sums,
 body.portal-receptionist-mode #btn-toggle-hoursonly { display: none !important; }
@@ -7001,6 +6994,71 @@ function _hideLoadingOverlay() {
   setTimeout(() => { ov.style.display = 'none'; }, 420);
 }
 
+// ── Receptionist helper: den/noc/víkend background pro buňku ─────────────────
+const _RECEPTIONIST_GREEN = '#A8E05A'; // barva "Obojí" z buildSchedule
+
+function _getColDayTypeBg(ci) {
+  if (typeof calCols === 'undefined' || !calCols[ci]) return 'var(--cell-weekday-day)';
+  const col = calCols[ci];
+  const isWe = (typeof isWeekend === 'function' && typeof state !== 'undefined')
+    ? isWeekend(col, state.month, state.year) : false;
+  if (isWe && col.dn === 'n') return 'var(--cell-weekend-night)';
+  if (isWe && col.dn === 'd') return 'var(--cell-weekend-day)';
+  if (col.dn === 'n') return 'var(--cell-weekday-night)';
+  return 'var(--cell-weekday-day)';
+}
+
+// Aplikuje / obnovuje receptionist podbarvení buněk (volá se z _applyExtraFilters)
+function _applyReceptionistStyles() {
+  const tbody = document.getElementById('sch-tbody');
+  if (!tbody) return;
+
+  if (!_receptionistMode) {
+    // Obnov uložená podbarvení sch-name a cannot-work buněk
+    tbody.querySelectorAll('[data-recep-bg]').forEach(el => {
+      el.style.background = el.dataset.recepBg;
+      delete el.dataset.recepBg;
+    });
+    // Obnov třídu cell-deleted-req kde jsme ji odebrali
+    tbody.querySelectorAll('[data-recep-delreq]').forEach(el => {
+      el.classList.add('cell-deleted-req');
+      delete el.dataset.recepDelreq;
+    });
+    return;
+  }
+
+  // Projdi všechny řádky recepčních
+  tbody.querySelectorAll('tr.sch-row').forEach(tr => {
+    const si = parseInt(tr.dataset.staffIdx);
+    const s  = (typeof state !== 'undefined' && state.staff) ? state.staff[si] : null;
+    const type = s ? (s.type || '') : '';
+
+    // Jméno: Denní/Noční/Obojí → zelená (Vedoucí ponechá svou barvu)
+    const nameTd = tr.querySelector('td.sch-name');
+    if (nameTd && (type === 'Denní' || type === 'Noční' || type === 'Obojí')) {
+      if (!('recepBg' in nameTd.dataset)) nameTd.dataset.recepBg = nameTd.style.background;
+      nameTd.style.background = _RECEPTIONIST_GREEN;
+    }
+
+    // Buňky rozpisu: oprav cannot-work a deleted-req podbarvení
+    tr.querySelectorAll('td.sch-cell').forEach(td => {
+      const dayBg = _getColDayTypeBg(parseInt(td.dataset.ci));
+
+      // cell-deleted-req (fialová CSS třída) → odeber třídu, zůstane inline day-type
+      if (td.classList.contains('cell-deleted-req')) {
+        td.dataset.recepDelreq = '1';
+        td.classList.remove('cell-deleted-req');
+      }
+
+      // cannot-work (inline var(--cell-cannot) = růžová) → nahraď day-type barvou
+      if (td.style.background === 'var(--cell-cannot)') {
+        if (!('recepBg' in td.dataset)) td.dataset.recepBg = td.style.background;
+        td.style.background = dayBg;
+      }
+    });
+  });
+}
+
 // ── Pro recepční (Skryj P+S + neutralizuj barvy + skryj tooltip/poznámku/součty) ─
 function toggleReceptionistMode() {
   _receptionistMode = !_receptionistMode;
@@ -7019,6 +7077,7 @@ function toggleReceptionistMode() {
       else if (sumViewMode === 'hidden' && typeof toggleSums === 'function') toggleSums();
     }
   }
+  // applyHotelFilter → _applyExtraFilters → _applyReceptionistStyles
   if (typeof applyHotelFilter === 'function') applyHotelFilter();
 }
 
@@ -7609,6 +7668,9 @@ function _applyExtraFilters() {
       }
     }
   });
+
+  // Aplikuj receptionist podbarvení (green jméno, fix cannot/deleted buňky)
+  _applyReceptionistStyles();
 }
 
 // ── Hook buildSchedule: po přestavbě znovu zvýrazni aktuální den ───────────────
@@ -7645,9 +7707,9 @@ function _applyExtraFilters() {
     if (todayColVisible) {
       setTimeout(() => markTodayColumn(state.month, state.year), 0);
     }
-    // Znovu aplikuj extra filtry (Pro recepční, today-busy, avail) — přetrvají přes buildSchedule
+    // Znovu aplikuj extra filtry a receptionist styly — přetrvají přes buildSchedule
     if ((_receptionistMode || todayBusyFilter || availFilterMode) && typeof applyHotelFilter === 'function') {
-      setTimeout(() => applyHotelFilter(), 0);
+      setTimeout(() => applyHotelFilter(), 0);  // → _applyExtraFilters → _applyReceptionistStyles
     }
   };
 })();
