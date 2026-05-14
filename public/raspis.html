@@ -749,8 +749,9 @@ body {
   border-color: var(--accent, #2a5caa) !important;
 }
 
-/* sc-mid-grid: 2×2 tlačítková mřížka (Hover|AD / Zpět|Vpřed) */
-.sc-mid-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 3px; }
+/* sc-mid: flex layout (dva řádky) */
+.sc-mid-flex { display: flex; flex-direction: column; gap: 3px; }
+.sc-mid-row  { display: flex; gap: 3px; align-items: center; }
 
 /* Tlačítko "Dnes obsazené" */
 #btn-filter-today:hover { background:#e6c000 !important; border-color:#a88800 !important; color:#3a2a00 !important; }
@@ -798,11 +799,27 @@ body.portal-view-mode .fond-dot { visibility: hidden !important; }
 /* Podbarvení Celkem hodin (fond nad/pod) — skryté v Rozpis záložce.
    CSS !important přebije inline styl setovaný přes updateFondDot() */
 body.portal-view-mode td[data-sum-id="totHrs"] { background: var(--surface, #fff) !important; }
+/* Záhlaví "Recepční" a "Pokrytí" — odsaď doleva stejně jako jména (fond-dot 14px + 2px = 16px mezera) */
+body.portal-view-mode .th-name { padding-left: 24px !important; }
+
+/* ── Skryj barvy (tlačítko v Rozpis) ────────────────────────────────────── */
+/* Pokud je aktivní, neutralizuj podbarvení buněk (vždy přebije inline styly z buildSchedule) */
+body.portal-hide-colors .sch-cell  { background: var(--surface, #fff) !important; }
+body.portal-hide-colors td.sch-name { background: var(--surface, #fff) !important; }
 </style>
 </head>
 <body>
 
 
+
+<!-- Loading overlay — skryje přepínání záložek při startu -->
+<div id="portal-loading-overlay" style="position:fixed;inset:0;background:var(--bg,#f5f5f0);z-index:99999;display:flex;align-items:center;justify-content:center;transition:opacity .4s;">
+  <div style="text-align:center;font-family:inherit;">
+    <div style="font-size:13px;color:var(--text-muted,#888);margin-bottom:6px;">Načítám…</div>
+    <div style="width:32px;height:32px;border:3px solid var(--border,#ccc);border-top-color:var(--accent,#2a5caa);border-radius:50%;animation:spin .8s linear infinite;margin:0 auto;"></div>
+  </div>
+</div>
+<style>@keyframes spin{to{transform:rotate(360deg)}}</style>
 
 <div id="raspis-tabs-bar">
   <button class="rtab rtab-active" id="rtab-settings" onclick="showAppTab('settings')">⚙ Nastavení</button>
@@ -3239,16 +3256,22 @@ body.portal-view-mode td[data-sum-id="totHrs"] { background: var(--surface, #fff
             <button class="hb" id="btn-today-col-m" onclick="toggleTodayCol()" style="background:#ffcdd2;border-color:#ef9a9a;color:#c62828;display:none;">AD</button>
             <button class="hb" id="btn-select-mode" onclick="toggleSelectMode()" style="background:#cce0ff;border-color:#6699cc;color:#1a4a8a;">Označ vybrané</button>
             <button class="hb" id="btn-show-hidden" onclick="showAllHidden()" style="display:none">Zobraz skryté</button>
-            <button class="hb hb-ov" id="btn-show-selected" onclick="toggleShowSelected()" style="display:none;background:#FFA500;border-color:#cc7000;color:#fff;">Zobraz vybrané</button>
+            <button class="hb" id="btn-toggle-highlight" onclick="toggleRowHighlight()" style="background:#e0e0e0;border-color:#aaa;color:#333;">Hover on</button>
+            <button class="hb hb-ov" id="btn-show-selected" onclick="toggleShowSelected()" style="display:none;background:#FFA500;border-color:#cc7000;color:#fff;">Označ vybrané</button>
             <button class="hb hb-danger" id="btn-cancel-select" onclick="cancelSelectMode()" style="display:none">Zruš výběr</button>
           </div>
-          <!-- Střed: 2×2 grid (Hover|AD / Zpět|Vpřed) -->
+          <!-- Střed: flex (Aktuální den + Skryj P+S / Zpět + Vpřed + Skryj barvy) -->
           <div class="sc-mid">
-            <div class="sc-mid-grid">
-              <button class="hb" id="btn-toggle-highlight" onclick="toggleRowHighlight()" style="background:#e0e0e0;border-color:#aaa;color:#333;">Hover on</button>
-              <button class="hb" id="btn-today-col" onclick="toggleTodayCol()" style="background:#ffcdd2;border-color:#ef9a9a;color:#c62828;">Aktuální den</button>
-              <button class="hb" onclick="historyUndo()">↩ Zpět</button>
-              <button class="hb" onclick="historyRedo()">↪ Vpřed</button>
+            <div class="sc-mid-flex">
+              <div class="sc-mid-row">
+                <button class="hb" id="btn-today-col" onclick="toggleTodayCol()" style="background:#ffcdd2;border-color:#ef9a9a;color:#c62828;">Aktuální den</button>
+                <button class="hb" id="btn-hide-special" onclick="toggleHideSpecial()" style="display:none;margin-left:8px;background:#e0e0ff;border-color:#8888cc;color:#333;">Skryj P+S</button>
+              </div>
+              <div class="sc-mid-row">
+                <button class="hb" id="btn-sc-undo" onclick="historyUndo()">↩ Zpět</button>
+                <button class="hb" id="btn-sc-redo" onclick="historyRedo()">↪ Vpřed</button>
+                <button class="hb" id="btn-hide-colors" onclick="toggleHideColors()" style="display:none;margin-left:8px;background:#fff0e0;border-color:#ccaa44;color:#664400;">Skryj barvy</button>
+              </div>
             </div>
           </div>
           <!-- Pravá zóna řádek 2 — stejný grid -->
@@ -6538,7 +6561,7 @@ document.addEventListener('mouseup', (e) => {
 
 <script>
 /* ════════════════════════════════════════════════════════════════════════════
-   WEB OVERRIDE v5.1 — AVE VR Portál
+   WEB OVERRIDE v5.2 — AVE VR Portál
    Záložky: Nastavení | Tvorba rozpisu | Rozpis
    Tvorba = PC editor + auto-save draft + Publikovat
    Rozpis  = portal view (pouze hodiny, bez fond-dot, se zamykáním)
@@ -6568,6 +6591,8 @@ let _logSavedOnly    = false;
 let _raspisInited    = false;
 let _viewHoursOnlyActivated = false;  // true = my přepnuli do hoursonly při vstupu do Rozpis
 let _loadRozpisToTvorba = false;       // true = načíst aktuální Rozpis data do Tvorby
+let _hideSpecial = false;              // Skryj P+S (Pohotovost+Speciální řádky)
+let _hideColors  = false;              // Skryj barvy (neutralizovat podbarvení buněk)
 
 window.__raspisGetCurrentKey = () => _portalKey;
 window.__raspisIsEditMode    = () => _portalEditMode;
@@ -6835,13 +6860,14 @@ window.saveData = async function() { if (!_portalEditMode) return; await doSave(
 async function loadRozpisyList(selectKey) {
   try {
     const resp = await fetch('/api/rozpisy', { credentials: 'include' });
-    if (!resp.ok) return;
+    if (!resp.ok) { _hideLoadingOverlay(); return; }
     const { current, history } = await resp.json();
     const sel = document.getElementById('portal-rozpis-sel');
-    if (!sel) return;
+    if (!sel) { _hideLoadingOverlay(); return; }
     sel.innerHTML = '';
     if (!history || !history.length) {
       sel.innerHTML = '<option disabled>— žádný rozpis —</option>';
+      _hideLoadingOverlay();
       return;
     }
     history.forEach(r => {
@@ -6854,6 +6880,7 @@ async function loadRozpisyList(selectKey) {
     if (keyToSelect) sel.value = keyToSelect;
     if (sel.value) await loadRozpis(sel.value);
   } catch(e) { console.error('[Portal] loadRozpisyList:', e); }
+  _hideLoadingOverlay();  // vždy skryj overlay po dokončení (i při chybě)
 }
 
 async function loadRozpis(key) {
@@ -6935,7 +6962,7 @@ function _setElDisplay(id, visible) {
 }
 
 function _setTvorbaButtons(inTvorba) {
-  // Tlačítka relevantní jen pro Tvorba
+  // Tlačítka relevantní jen pro Tvorba tab
   _setElDisplay('btn-manual-save',  inTvorba);
   _setElDisplay('btn-new-schedule', inTvorba);
   _setElDisplay('btn-publish',      inTvorba);
@@ -6943,10 +6970,50 @@ function _setTvorbaButtons(inTvorba) {
   _setElDisplay('btn-export-xlsx',  inTvorba);
   // Tlačítka useless v Tvorba (aktuální den a dnes obsazené)
   _setElDisplay('btn-filter-today',  !inTvorba);
-  _setElDisplay('btn-today-col',     !inTvorba);
-  _setElDisplay('btn-today-col-m',   !inTvorba);
+  _setElDisplay('btn-today-col',     !inTvorba);  // v sc-mid
+  _setElDisplay('btn-today-col-m',   !inTvorba);  // mobilní verze
   // Zapamatuj požadavky: viditelný v Tvorba, skrytý v Raspis
   _setElDisplay('btn-remember-req',  inTvorba);
+  // Zpět/Vpřed (undo/redo): jen v Tvorba (v Raspis je readonly, undo nemá smysl)
+  _setElDisplay('btn-sc-undo',  inTvorba);
+  _setElDisplay('btn-sc-redo',  inTvorba);
+  // Nová tlačítka Raspis-only: Skryj P+S, Skryj barvy
+  _setElDisplay('btn-hide-special', !inTvorba);
+  _setElDisplay('btn-hide-colors',  !inTvorba);
+}
+
+// ── Loading overlay ────────────────────────────────────────────────────────────
+function _hideLoadingOverlay() {
+  const ov = document.getElementById('portal-loading-overlay');
+  if (!ov || ov.style.display === 'none') return;
+  ov.style.opacity = '0';
+  setTimeout(() => { ov.style.display = 'none'; }, 420);
+}
+
+// ── Skryj P+S (Pohotovost + Speciální řádky) ─────────────────────────────────
+function toggleHideSpecial() {
+  _hideSpecial = !_hideSpecial;
+  const btn = document.getElementById('btn-hide-special');
+  if (btn) {
+    btn.classList.toggle('selected', _hideSpecial);
+    btn.style.background   = _hideSpecial ? '#6666cc' : '#e0e0ff';
+    btn.style.borderColor  = _hideSpecial ? '#4444aa' : '#8888cc';
+    btn.style.color        = _hideSpecial ? '#fff'    : '#333';
+  }
+  if (typeof applyHotelFilter === 'function') applyHotelFilter();
+}
+
+// ── Skryj barvy (neutralizace podbarvení buněk) ───────────────────────────────
+function toggleHideColors() {
+  _hideColors = !_hideColors;
+  const btn = document.getElementById('btn-hide-colors');
+  if (btn) {
+    btn.style.background   = _hideColors ? '#cc8800' : '#fff0e0';
+    btn.style.borderColor  = _hideColors ? '#885500' : '#ccaa44';
+    btn.style.color        = _hideColors ? '#fff'    : '#664400';
+  }
+  // CSS třída na body přepíše všechna podbarvení přes !important
+  document.body.classList.toggle('portal-hide-colors', _hideColors);
 }
 
 // ── Záložkový systém ──────────────────────────────────────────────────────────
@@ -7485,6 +7552,12 @@ function _applyExtraFilters() {
 
     const si = parseInt(tr.dataset.staffIdx);
 
+    // Skryj P+S: Pohotovost a Speciální typy
+    if (_hideSpecial) {
+      const type = (typeof state !== 'undefined' && state.staff && state.staff[si]) ? state.staff[si].type : '';
+      if (type === 'Pohotovost' || type === 'Speciální') { tr.style.display = 'none'; return; }
+    }
+
     // Today-busy filtr
     if (todayBusyFilter) {
       const type = (typeof state !== 'undefined' && state.staff && state.staff[si]) ? state.staff[si].type : '';
@@ -7556,6 +7629,10 @@ function _applyExtraFilters() {
     if (todayColVisible) {
       setTimeout(() => markTodayColumn(state.month, state.year), 0);
     }
+    // Znovu aplikuj extra filtry (Skryj P+S, today-busy, avail) — přetrvají přes buildSchedule
+    if ((_hideSpecial || todayBusyFilter || availFilterMode) && typeof applyHotelFilter === 'function') {
+      setTimeout(() => applyHotelFilter(), 0);
+    }
   };
 })();
 
@@ -7578,13 +7655,16 @@ window.onload = async function() {
   // Načti oprávnění, spusť lock poll
   await initPortal();
 
-  // Výchozí záložka — Rozpis (view) pro všechny, Tvorba pro speciální URL
+  // Výchozí záložka — Rozpis (view) pro všechny; overlay se skryje až po načtení dat
   if (WEB_MODE === 'tvorba') {
     await loadLatestDraft();
     if (typeof buildSchedule === 'function') buildSchedule();
     showAppTab('tvorba');
+    _hideLoadingOverlay();  // v tvorba mode skryj overlay hned (data jsou z draftu)
   } else {
     showAppTab('view');
+    // overlay skryje loadRozpisyList() po načtení dat; timeout jako pojistka
+    setTimeout(_hideLoadingOverlay, 8000);
   }
 };
 </script>
