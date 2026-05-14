@@ -6594,9 +6594,10 @@ let _portalLockTimer = null;
 let _portalAutoTimer = null;
 let _portalLastAct   = Date.now();
 let _portalInactTimer= null;
-let _tvorbaSnapshot  = null;
-let _raspisData      = null;   // data naposledy načtená přes loadRozpis (pro obnovení po návratu z Tvorby)
-let _currentTab      = 'settings';
+let _tvorbaSnapshot   = null;
+let _raspisData       = null;   // data naposledy načtená přes loadRozpis (pro obnovení po návratu z Tvorby)
+let _currentTab       = 'settings';
+let _tvorbaAutoLoaded = false;  // true = automatický draft load při první návštěvě Tvorba proběhl
 let _saveTimer       = null;
 let _lastSavedJson   = null;
 let _logSavedOnly    = false;
@@ -6690,8 +6691,9 @@ async function _loadDraftsList() {
   if (!sel) return;
   try {
     const r = await fetch('/api/drafts', { credentials: 'include' });
-    const list = await r.json();
-    const currentKey = state.month + '-' + state.year;
+    const raw = await r.json();
+    // API může vrátit pole nebo {items:[...]} / {drafts:[...]}
+    const list = Array.isArray(raw) ? raw : (raw.items || raw.drafts || []);
     sel.innerHTML = '<option value="">📂 Drafty…</option>';
     if (!list || !list.length) return;
     list.forEach(d => {
@@ -6700,7 +6702,7 @@ async function _loadDraftsList() {
       opt.textContent = d.label || (d.month + '/' + d.year);
       sel.appendChild(opt);
     });
-  } catch(e) { /* no-op */ }
+  } catch(e) { console.warn('[Portal] _loadDraftsList error:', e); }
 }
 
 async function _onDraftSelChange() {
@@ -6716,17 +6718,45 @@ async function _onDraftSelChange() {
       if (typeof renderStaff === 'function') renderStaff();
       buildSchedule();
       _lastSavedJson = JSON.stringify(buildWebSaveObj());
+      // Obnov podbarvení a tooltípy požadavků (Zapamatuj požadavky)
+      _restoreReqDisplay();
       if (typeof showHint === 'function') showHint('Draft načten.');
     }
   } catch(e) { alert('Chyba načítání draftu.'); }
   sel.value = '';
 }
 
+// ── Obnoví vizuální zobrazení požadavků po načtení dat (draft / Tvorba) ──────
+function _restoreReqDisplay() {
+  const hasReqs = state && state.requirements && Object.keys(state.requirements).length > 0;
+  const reqBtn  = document.getElementById('btn-remember-req');
+  if (hasReqs) {
+    setTimeout(() => {
+      if (typeof updateAllDeletedCells === 'function') updateAllDeletedCells();
+      if (typeof updateReqSumTooltips  === 'function') updateReqSumTooltips();
+    }, 80);
+    if (reqBtn) {
+      reqBtn.textContent = 'Požadavky zapamatovány';
+      reqBtn.classList.add('remembered');
+      reqBtn.style.background   = '#f0e6ff';
+      reqBtn.style.borderColor  = '#7b3fa0';
+      reqBtn.style.color        = '#4a1a6b';
+    }
+  } else {
+    if (reqBtn) {
+      reqBtn.textContent = 'Zapamatuj požadavky';
+      reqBtn.classList.remove('remembered');
+      reqBtn.style.cssText = '';
+    }
+  }
+}
+
 // ── Load draft (Tvorba) ───────────────────────────────────────────────────────
 async function loadLatestDraft() {
   try {
     const r = await fetch('/api/drafts', { credentials: 'include' });
-    const list = await r.json();
+    const raw = await r.json();
+    const list = Array.isArray(raw) ? raw : (raw.items || raw.drafts || []);
     if (!list.length) return;
     const r2 = await fetch('/api/drafts/' + list[0].id, { credentials: 'include' });
     const j2  = await r2.json();
@@ -6737,6 +6767,27 @@ async function loadLatestDraft() {
       if (typeof showHint === 'function') showHint('Načten draft: ' + list[0].label);
     }
   } catch(e) { /* __app_data__ zůstane */ }
+}
+
+// ── Auto-načti poslední draft při první návštěvě záložky Tvorba ───────────────
+async function _autoLoadLatestDraftIfExists() {
+  try {
+    const r = await fetch('/api/drafts', { credentials: 'include' });
+    const raw = await r.json();
+    const list = Array.isArray(raw) ? raw : (raw.items || raw.drafts || []);
+    if (!list || !list.length) return;  // žádné drafty → nechej aktuální state
+    const r2 = await fetch('/api/drafts/' + list[0].id, { credentials: 'include' });
+    const j2  = await r2.json();
+    if (!j2.ok || !j2.data) return;
+    applyData(j2.data);
+    if (typeof renderStaff === 'function') renderStaff();
+    buildSchedule();
+    _lastSavedJson = JSON.stringify(buildWebSaveObj());
+    // Obnov dropdown + požadavky
+    await _loadDraftsList();
+    _restoreReqDisplay();
+    if (typeof showHint === 'function') showHint('Auto-načten draft: ' + (list[0].label || list[0].month + '/' + list[0].year));
+  } catch(e) { /* bez draftu se nic nestane */ }
 }
 
 // ── Readonly ──────────────────────────────────────────────────────────────────
@@ -7141,13 +7192,8 @@ function showAppTab(tabName) {
       _tvorbaSnapshot = null;
       setReadOnly(false);
       buildSchedule();
-      // Obnov zobrazení požadavků pokud existují
-      if (state && state.requirements && Object.keys(state.requirements).length > 0) {
-        setTimeout(() => {
-          if (typeof updateAllDeletedCells === 'function') updateAllDeletedCells();
-          if (typeof updateReqSumTooltips  === 'function') updateReqSumTooltips();
-        }, 80);
-      }
+      // Obnov zobrazení požadavků (Zapamatuj)
+      _restoreReqDisplay();
     } else if (_currentTab === 'view' && _tvorbaSnapshot) {
       // Vracíme se z Raspis/Rozpis do Tvorby — obnov snapshot
       if (_portalEditMode) {
@@ -7158,17 +7204,7 @@ function showAppTab(tabName) {
       setReadOnly(false);
       applyData(_tvorbaSnapshot);
       buildSchedule();
-      if (_tvorbaSnapshot.requirements && Object.keys(_tvorbaSnapshot.requirements).length > 0) {
-        setTimeout(() => {
-          if (typeof updateAllDeletedCells === 'function') updateAllDeletedCells();
-          const reqBtn = document.getElementById('btn-remember-req');
-          if (reqBtn) {
-            reqBtn.textContent = 'Požadavky zapamatovány';
-            reqBtn.classList.add('remembered');
-            reqBtn.style.background = '#f0e6ff'; reqBtn.style.borderColor = '#7b3fa0'; reqBtn.style.color = '#4a1a6b';
-          }
-        }, 80);
-      }
+      _restoreReqDisplay();
     } else if (_currentTab === 'settings') {
       // === PERF FIX: přicházíme z Nastavení → přečti aktuální měsíc/rok a přebuildi ===
       setReadOnly(false);
@@ -7181,6 +7217,11 @@ function showAppTab(tabName) {
         state.year = parseInt(inpYear.value) || state.year;
       }
       buildSchedule();
+      // Při první návštěvě Tvorba v sezení auto-načti poslední draft
+      if (!_tvorbaAutoLoaded) {
+        _tvorbaAutoLoaded = true;
+        _autoLoadLatestDraftIfExists();
+      }
     } else if (_currentTab !== 'tvorba') {
       setReadOnly(false);
     }
