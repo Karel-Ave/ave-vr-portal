@@ -799,8 +799,14 @@ body.portal-view-mode .fond-dot { visibility: hidden !important; }
 /* Podbarvení Celkem hodin (fond nad/pod) — skryté v Rozpis záložce.
    CSS !important přebije inline styl setovaný přes updateFondDot() */
 body.portal-view-mode td[data-sum-id="totHrs"] { background: var(--surface, #fff) !important; }
-/* Záhlaví "Recepční" a "Pokrytí" — odsaď doleva stejně jako jména (fond-dot 14px + 2px = 16px mezera) */
-body.portal-view-mode .th-name { padding-left: 24px !important; }
+
+/* Záhlaví "Recepční" a "Pokrytí" — vždy zarovnáno s jmény recepčních.
+   Jméno v sch-name začíná na: 8px (padding-left) + 14px (fond-dot) + 2px (margin) = 24px.
+   Platí v obou záložkách (Tvorba i Rozpis). */
+.th-name { padding-left: 24px !important; }
+
+/* ±hod buňky — text v INPUT elementu zarovnaný na střed (platí v Tvorba i Raspis) */
+td.sch-sum-extra input { text-align: center !important; }
 
 /* ── Pro recepční mode ───────────────────────────────────────────────────── */
 /* Podbarvení sch-name buněk a oprava cell-cannot/deleted-req se řeší v JS
@@ -819,11 +825,11 @@ body.portal-receptionist-mode #btn-toggle-hoursonly { display: none !important; 
 
 
 
-<!-- Loading overlay — skryje přepínání záložek při startu -->
-<div id="portal-loading-overlay" style="position:fixed;inset:0;background:var(--bg,#f5f5f0);z-index:99999;display:flex;align-items:center;justify-content:center;transition:opacity .4s;">
+<!-- Loading overlay — vždy tmavé pozadí (bez ohledu na téma) -->
+<div id="portal-loading-overlay" style="position:fixed;inset:0;background:#111;z-index:99999;display:flex;align-items:center;justify-content:center;transition:opacity .4s;">
   <div style="text-align:center;font-family:inherit;">
-    <div style="font-size:13px;color:var(--text-muted,#888);margin-bottom:6px;">Načítám…</div>
-    <div style="width:32px;height:32px;border:3px solid var(--border,#ccc);border-top-color:var(--accent,#2a5caa);border-radius:50%;animation:spin .8s linear infinite;margin:0 auto;"></div>
+    <div style="font-size:13px;color:rgba(255,255,255,0.45);margin-bottom:12px;">Načítám…</div>
+    <div style="width:32px;height:32px;border:3px solid rgba(255,255,255,0.15);border-top-color:var(--accent,#2a5caa);border-radius:50%;animation:spin .8s linear infinite;margin:0 auto;"></div>
   </div>
 </div>
 <style>@keyframes spin{to{transform:rotate(360deg)}}</style>
@@ -7703,6 +7709,10 @@ function _applyExtraFilters() {
         }
       });
     }
+    // Oprav zarovnání záhlaví "Recepční" a "Pokrytí" (padding-left musí být 24px)
+    // JS fallback vedle CSS !important — Pokrytí td má inline paddingLeft:'4px'
+    document.querySelectorAll('.th-name').forEach(el => { el.style.paddingLeft = '24px'; });
+
     // Znovu zvýrazni aktuální den
     if (todayColVisible) {
       setTimeout(() => markTodayColumn(state.month, state.year), 0);
