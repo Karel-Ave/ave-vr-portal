@@ -652,7 +652,7 @@ table.staff-tbl td select:focus { background: #fff; border-radius: 2px; }
 }
 
 /* ════════════════════════════════════════════════════════
-   PORTAL OVERRIDE v4 — AVE VR portál (iframe mode)
+   PORTAL OVERRIDE v5 — AVE VR portál (iframe mode)
    Stránka běží v iframe, portálový topbar je vně.
    #topbar je odstraněn; záložky nahrazují topbar.
    ════════════════════════════════════════════════════════ */
@@ -700,7 +700,7 @@ body {
   padding: 0 0 6px;
 }
 
-/* Portálové ovládání (Raspis tab) */
+/* Portálové ovládání (Rozpis tab) */
 #portal-controls-bar {
   align-items: center;
   gap: 6px;
@@ -722,7 +722,7 @@ body {
 #portal-controls-bar .btn { font-family: inherit; font-size: 12px; }
 #portal-rozpis-sel { height: 26px; padding: 0 8px; font-size: 12px; font-family: inherit; border: 1px solid var(--border); border-radius: 5px; background: var(--surface); color: var(--text); cursor: pointer; max-width: 180px; }
 
-/* Readonly ochrana (Raspis tab) */
+/* Readonly ochrana (Rozpis tab) */
 #schedule-wrap.portal-readonly button { pointer-events: none !important; }
 #schedule-wrap.portal-readonly input,
 #schedule-wrap.portal-readonly textarea,
@@ -790,6 +790,10 @@ table.staff-tbl td { border-color: var(--border, #ccc) !important; }
 #schedule-wrap::-webkit-scrollbar { width: 6px; height: 6px; }
 #schedule-wrap::-webkit-scrollbar-track { background: transparent; }
 #schedule-wrap::-webkit-scrollbar-thumb { background: var(--border, #ccc); border-radius: 3px; }
+
+/* ── Rozpis (view) mode ──────────────────────────────────────────────────── */
+/* Fond-dot skrytý v záložce Rozpis (není potřeba vidět přečerpání fondu) */
+body.portal-view-mode .fond-dot { display: none !important; }
 </style>
 </head>
 <body>
@@ -799,9 +803,10 @@ table.staff-tbl td { border-color: var(--border, #ccc) !important; }
 <div id="raspis-tabs-bar">
   <button class="rtab rtab-active" id="rtab-settings" onclick="showAppTab('settings')">⚙ Nastavení</button>
   <button class="rtab" id="rtab-tvorba" onclick="showAppTab('tvorba')">✏ Tvorba rozpisu</button>
-  <button class="rtab" id="rtab-view" onclick="showAppTab('view')">📋 Raspis</button>
+  <button class="rtab" id="rtab-view" onclick="showAppTab('view')">📋 Rozpis</button>
   <div id="raspis-tab-actions">
     <span id="web-save-status" style="font-size:10px;opacity:0;transition:opacity .3s;margin-right:4px;color:var(--text,#222);"></span>
+    <button class="btn btn-sm btn-primary" id="btn-manual-save" onclick="manualSave()" style="display:none;" title="Uložit rozepsaný rozpis">💾 Uložit</button>
     <button class="btn btn-sm btn-danger" id="btn-new-schedule" onclick="newSchedule()" style="display:none;" title="Začít nový prázdný rozpis">🆕 Nový</button>
     <button class="btn btn-sm btn-primary" id="btn-publish" onclick="publishToWeb()" style="display:none;" title="Publikovat hotový rozpis">📤 Publikovat</button>
   </div>
@@ -809,7 +814,7 @@ table.staff-tbl td { border-color: var(--border, #ccc) !important; }
 
 <div id="portal-controls-bar" style="display:none;">
   <div class="pcb-left">
-    <select id="portal-rozpis-sel" title="Vyberte měsíc raspisu"></select>
+    <select id="portal-rozpis-sel" title="Vyberte měsíc rozpisu"></select>
     <button id="portal-import-btn" class="btn btn-sm">📥 Nahrát</button>
     <input type="file" id="portal-import-input" accept=".json" style="display:none">
     <button id="portal-delete-btn" class="btn btn-sm btn-danger" style="display:none;">🗑 Smazat</button>
@@ -822,6 +827,7 @@ table.staff-tbl td { border-color: var(--border, #ccc) !important; }
     <button id="portal-save-btn" class="btn btn-sm btn-primary" style="display:none;">💾 Uložit</button>
   </div>
   <div class="pcb-right">
+    <button id="portal-load-to-tvorba-btn" class="btn btn-sm" onclick="loadIntoTvorba()" style="display:none;background:#e8f0ff;border-color:#6699cc;color:#1a4a8a;" title="Načíst tento rozpis do záložky Tvorba pro editaci">📋 Načíst do Tvorby</button>
     <button id="portal-export-btn" class="btn btn-sm" onclick="exportXlsx()" style="background:#4caf50;color:#fff;border-color:#388e3c;">📊 Export .xlsx</button>
   </div>
 </div>
@@ -865,7 +871,7 @@ table.staff-tbl td { border-color: var(--border, #ccc) !important; }
         </div>
         <div style="flex:1"></div>
         <div style="display:flex;flex-direction:column;gap:5px;min-width:180px;">
-          <button class="btn btn-sm btn-primary" onclick="showImportDialog()" style="width:100%;">📁 Nahraj požadavky</button>
+          <button class="btn btn-sm btn-primary" id="btn-nahraj-pozadavky" onclick="showImportDialog()" style="width:100%;display:none;">📁 Nahraj požadavky</button>
           <button class="btn btn-sm" onclick="downloadBothTemplates()" style="width:100%;">📥 Požadavky šablony</button>
         </div>
       </div>
@@ -6527,10 +6533,10 @@ document.addEventListener('mouseup', (e) => {
 
 <script>
 /* ════════════════════════════════════════════════════════════════════════════
-   WEB OVERRIDE v4 — AVE VR Portál
-   Záložky: Nastavení | Tvorba rozpisu | Raspis
+   WEB OVERRIDE v5 — AVE VR Portál
+   Záložky: Nastavení | Tvorba rozpisu | Rozpis
    Tvorba = PC editor + auto-save draft + Publikovat
-   Raspis  = portal view se všemi původními tlačítky
+   Rozpis  = portal view (pouze hodiny, bez fond-dot, se zamykáním)
    ════════════════════════════════════════════════════════════════════════════ */
 
 const WEB_MODE   = window.location.pathname.includes('tvorba') ? 'tvorba' : 'view';
@@ -6554,6 +6560,8 @@ let _saveTimer       = null;
 let _lastSavedJson   = null;
 let _logSavedOnly    = false;
 let _raspisInited    = false;
+let _viewHoursOnlyActivated = false;  // true = my přepnuli do hoursonly při vstupu do Rozpis
+let _loadRozpisToTvorba = false;       // true = načíst aktuální Rozpis data do Tvorby
 
 window.__raspisGetCurrentKey = () => _portalKey;
 window.__raspisIsEditMode    = () => _portalEditMode;
@@ -6611,6 +6619,26 @@ async function _doAutoSave() {
     });
     const j = await r.json();
     _setStatus(j.ok ? '✓ Uloženo' : '⚠ Chyba', j.ok);
+  } catch(e) { _setStatus('⚠ Offline', false); }
+}
+
+// ── Manuální uložení draftu (tlačítko 💾 Uložit v Tvorba) ────────────────────
+async function manualSave() {
+  if (_currentTab !== 'tvorba') return;
+  _setStatus('Ukládám…', true);
+  const data = buildWebSaveObj();
+  const json = JSON.stringify(data);
+  try {
+    const r = await fetch('/api/drafts/save', {
+      method:  'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body:    JSON.stringify({ month: data.month, year: data.year, data }),
+      credentials: 'include',
+    });
+    const j = await r.json();
+    if (j.ok) { _lastSavedJson = json; }
+    _setStatus(j.ok ? '✓ Uloženo' : '⚠ Chyba', j.ok);
+    if (j.ok && typeof showHint === 'function') showHint('✓ Rozpis uložen.');
   } catch(e) { _setStatus('⚠ Offline', false); }
 }
 
@@ -6734,7 +6762,7 @@ function startLockPoll() {
   }, POLL_INTERVAL);
 }
 
-// ── Save (Raspis edit mode) ───────────────────────────────────────────────────
+// ── Save (Rozpis edit mode) ───────────────────────────────────────────────────
 async function doSave(silent) {
   if (!_portalKey) { if (!silent) alert('Není vybrán žádný rozpis.'); return false; }
   try {
@@ -6797,21 +6825,22 @@ async function loadRozpis(key) {
     const thb = document.getElementById('toggle-hotels-btn');
     if (thb) thb.textContent = 'Zobrazit hotely';
     buildSchedule();
-    if (data.requirements && Object.keys(data.requirements).length > 0) {
-      setTimeout(() => {
-        if (typeof updateAllDeletedCells === 'function') updateAllDeletedCells();
-        if (typeof updateReqSumTooltips  === 'function') updateReqSumTooltips();
-        const reqBtn = document.getElementById('btn-remember-req');
-        if (reqBtn) {
-          reqBtn.textContent = 'Požadavky zapamatovány';
-          reqBtn.classList.add('remembered');
-          reqBtn.style.background = '#f0e6ff';
-          reqBtn.style.borderColor = '#7b3fa0';
-          reqBtn.style.color = '#4a1a6b';
-        }
-      }, 150);
-    }
+    // V Rozpis záložce NIKDY neaktualizuj btn-remember-req (je skrytý)
   } catch(e) { console.error('[Portal] loadRozpis:', e); }
+}
+
+// ── Načíst aktuální Rozpis do Tvorby pro editaci ─────────────────────────────
+async function loadIntoTvorba() {
+  if (!_portalKey) { alert('Není načten žádný rozpis.'); return; }
+  const sel = document.getElementById('portal-rozpis-sel');
+  const label = sel ? (sel.options[sel.selectedIndex]?.textContent || _portalKey) : _portalKey;
+  if (!confirm('Načíst rozpis "' + label + '" do záložky Tvorba pro editaci?\n\nPozor: neuložené změny v Tvorba budou přepsány.')) return;
+  // Data jsou již v state (načtena přes loadRozpis), jen přepneme záložku
+  // Nastavíme flag, aby showAppTab('tvorba') neobnovoval starý _tvorbaSnapshot
+  _loadRozpisToTvorba = true;
+  _tvorbaSnapshot = null;
+  showAppTab('tvorba');
+  if (typeof showHint === 'function') showHint('Načten rozpis "' + label + '" do Tvorby.');
 }
 
 // ── Portal init ───────────────────────────────────────────────────────────────
@@ -6835,7 +6864,11 @@ async function initPortal() {
     const showLog = btns.log !== undefined ? btns.log : _portalAdmin;
     show('portal-log-btn', showLog);
 
+    // Tlačítko "Načíst do Tvorby" jen pro uživatele s právem editace
     _portalEditPerm = btns.edit !== false;
+    const loadBtn = document.getElementById('portal-load-to-tvorba-btn');
+    if (loadBtn) loadBtn.style.display = _portalEditPerm ? '' : 'none';
+
     if (_portalEditPerm) {
       try {
         const lr = await fetch('/api/lock/' + LOCK_APP, { credentials: 'include' });
@@ -6850,6 +6883,27 @@ async function initPortal() {
   startLockPoll();
 }
 
+// ── Pomocné funkce pro správu viditelnosti tlačítek ───────────────────────────
+function _setElDisplay(id, visible) {
+  const el = document.getElementById(id);
+  if (el) el.style.display = visible ? '' : 'none';
+}
+
+function _setTvorbaButtons(inTvorba) {
+  // Tlačítka relevantní jen pro Tvorba
+  _setElDisplay('btn-manual-save',  inTvorba);
+  _setElDisplay('btn-new-schedule', inTvorba);
+  _setElDisplay('btn-publish',      inTvorba);
+  // Export .xlsx (sc-right-grid): viditelný v Tvorba, skrytý v Raspis (tam je portal-export-btn)
+  _setElDisplay('btn-export-xlsx',  inTvorba);
+  // Tlačítka useless v Tvorba (aktuální den a dnes obsazené)
+  _setElDisplay('btn-filter-today',  !inTvorba);
+  _setElDisplay('btn-today-col',     !inTvorba);
+  _setElDisplay('btn-today-col-m',   !inTvorba);
+  // Zapamatuj požadavky: viditelný v Tvorba, skrytý v Raspis
+  _setElDisplay('btn-remember-req',  inTvorba);
+}
+
 // ── Záložkový systém ──────────────────────────────────────────────────────────
 function showAppTab(tabName) {
   document.querySelectorAll('.rtab').forEach(b => b.classList.remove('rtab-active'));
@@ -6860,12 +6914,27 @@ function showAppTab(tabName) {
   const pc = document.getElementById('panel-schedule');
   const pb = document.getElementById('portal-controls-bar');
 
+  // ── Opuštění záložky Rozpis (view) ───────────────────────────────────────
+  if (_currentTab === 'view' && tabName !== 'view') {
+    // Odstraň portal-view-mode třídu (odkryje fond-dot atd.)
+    document.body.classList.remove('portal-view-mode');
+    // Pokud jsme my aktivovali hoursonly, vrať zpět na plné zobrazení
+    if (_viewHoursOnlyActivated) {
+      _viewHoursOnlyActivated = false;
+      if (typeof sumViewMode !== 'undefined' && sumViewMode === 'hoursonly' && typeof toggleHoursOnly === 'function') {
+        toggleHoursOnly();
+      }
+    }
+  }
+
   if (tabName === 'settings') {
     if (ps) { ps.classList.add('active');    ps.style.display = ''; }
     if (pc) { pc.classList.remove('active'); pc.style.display = 'none'; }
     if (pb) pb.style.display = 'none';
-    document.getElementById('btn-new-schedule')?.setAttribute('style', 'display:none');
-    document.getElementById('btn-publish')?.setAttribute('style', 'display:none');
+    _setTvorbaButtons(false);
+    // V settings panel-schedule není viditelný, takže btn-remember-req také ne
+    // Ale jistě skryjeme (pro případ, že by byl jinde)
+    _setElDisplay('btn-remember-req', false);
   }
 
   else if (tabName === 'tvorba') {
@@ -6873,7 +6942,24 @@ function showAppTab(tabName) {
     if (pc) { pc.classList.add('active');    pc.style.display = ''; }
     if (pb) pb.style.display = 'none';
 
-    if (_currentTab === 'view' && _tvorbaSnapshot) {
+    // Nastav správná tlačítka pro Tvorba záložku
+    _setTvorbaButtons(true);
+
+    if (_loadRozpisToTvorba) {
+      // Načítáme Rozpis data do Tvorby — data jsou již v state (z loadRozpis)
+      _loadRozpisToTvorba = false;
+      _tvorbaSnapshot = null;
+      setReadOnly(false);
+      buildSchedule();
+      // Obnov zobrazení požadavků pokud existují
+      if (state && state.requirements && Object.keys(state.requirements).length > 0) {
+        setTimeout(() => {
+          if (typeof updateAllDeletedCells === 'function') updateAllDeletedCells();
+          if (typeof updateReqSumTooltips  === 'function') updateReqSumTooltips();
+        }, 80);
+      }
+    } else if (_currentTab === 'view' && _tvorbaSnapshot) {
+      // Vracíme se z Raspis/Rozpis do Tvorby — obnov snapshot
       if (_portalEditMode) {
         fetch('/api/lock/' + LOCK_APP + '/release', { method: 'POST', credentials: 'include' }).catch(() => {});
         stopPortalAutosave();
@@ -6893,17 +6979,21 @@ function showAppTab(tabName) {
           }
         }, 80);
       }
+    } else if (_currentTab === 'settings') {
+      // === PERF FIX: přicházíme z Nastavení → přečti aktuální měsíc/rok a přebuildi ===
+      setReadOnly(false);
+      const selMonth = document.getElementById('sel-month');
+      const inpYear  = document.getElementById('inp-year');
+      if (selMonth && parseInt(selMonth.value) !== state.month) {
+        state.month = parseInt(selMonth.value) || state.month;
+      }
+      if (inpYear && parseInt(inpYear.value) !== state.year) {
+        state.year = parseInt(inpYear.value) || state.year;
+      }
+      buildSchedule();
     } else if (_currentTab !== 'tvorba') {
       setReadOnly(false);
     }
-
-    const btn_new = document.getElementById('btn-new-schedule');
-    const btn_pub = document.getElementById('btn-publish');
-    if (btn_new) btn_new.style.display = '';
-    if (btn_pub) btn_pub.style.display = '';
-
-    const xlsx = document.getElementById('btn-export-xlsx');
-    if (xlsx) xlsx.style.display = 'none';
   }
 
   else if (tabName === 'view') {
@@ -6911,15 +7001,24 @@ function showAppTab(tabName) {
     if (pc) { pc.classList.add('active');    pc.style.display = ''; }
     if (pb) pb.style.display = 'flex';
 
+    // Uložíme snapshot Tvorba dat (pro případný návrat)
     if (_currentTab === 'tvorba') {
       _tvorbaSnapshot = buildWebSaveObj();
     }
 
-    document.getElementById('btn-new-schedule')?.setAttribute('style', 'display:none');
-    document.getElementById('btn-publish')?.setAttribute('style', 'display:none');
+    // Nastav tlačítka pro Raspis/Rozpis záložku
+    _setTvorbaButtons(false);
 
-    const xlsx = document.getElementById('btn-export-xlsx');
-    if (xlsx) xlsx.style.display = '';
+    // Přidej portal-view-mode třídu (skryje fond-dot)
+    document.body.classList.add('portal-view-mode');
+
+    // Aktivuj "Pouze hodiny" (hoursonly) pokud ještě není
+    if (typeof sumViewMode !== 'undefined' && sumViewMode !== 'hoursonly' && typeof toggleHoursOnly === 'function') {
+      _viewHoursOnlyActivated = true;
+      toggleHoursOnly();
+    } else {
+      _viewHoursOnlyActivated = false;
+    }
 
     setReadOnly(true);
 
@@ -6937,10 +7036,10 @@ function showTab(name) {
   else if (name === 'schedule') showAppTab('tvorba');
 }
 
-// ── Publikovat (Tvorba → Raspis) ──────────────────────────────────────────────
+// ── Publikovat (Tvorba → Rozpis) ──────────────────────────────────────────────
 async function publishToWeb() {
   const data = buildWebSaveObj();
-  if (!confirm('Publikovat raspis ' + String(data.month).padStart(2,'0') + '/' + data.year + '?')) return;
+  if (!confirm('Publikovat rozpis ' + String(data.month).padStart(2,'0') + '/' + data.year + '?')) return;
   const pubData = Object.assign({}, data, {
     requirements: Object.assign({}, data.schedule),
     requirementSums: {},
@@ -6955,7 +7054,7 @@ async function publishToWeb() {
     });
     const j = await r.json();
     if (j.ok) {
-      if (typeof showHint === 'function') showHint('✓ Publikováno! Přepínám na záložku Raspis…');
+      if (typeof showHint === 'function') showHint('✓ Publikováno! Přepínám na záložku Rozpis…');
       _setStatus('✓ Publikováno', true);
       _raspisInited = false;
       setTimeout(() => showAppTab('view'), 600);
@@ -6968,13 +7067,13 @@ async function publishToWeb() {
 
 // ── Nový prázdný raspis ────────────────────────────────────────────────────────
 function newSchedule() {
-  if (!confirm('Začít nový raspis? Směny budou smazány (recepční a nastavení zůstanou).')) return;
+  if (!confirm('Začít nový rozpis? Směny budou smazány (recepční a nastavení zůstanou).')) return;
   state.schedule = {}; state.extras = {}; state.requirements = {}; state.requirementSums = {};
   buildSchedule();
   const btn = document.getElementById('btn-remember-req');
   if (btn) { btn.textContent = 'Zapamatuj požadavky'; btn.classList.remove('remembered'); btn.style.cssText = ''; }
   autoSave();
-  if (typeof showHint === 'function') showHint('Nový raspis připraven.');
+  if (typeof showHint === 'function') showHint('Nový rozpis připraven.');
 }
 
 function saveData()   { if (typeof showHint === 'function') showHint('Na webu se ukládá automaticky.'); }
@@ -7024,8 +7123,8 @@ function _onImportFile(e) {
 }
 
 async function _onDeleteBtn() {
-  if (!_portalKey) { alert('Není vybrán žádný raspis.'); return; }
-  if (!confirm('Smazat raspis "' + _portalKey + '"? Přesune se do koše.')) return;
+  if (!_portalKey) { alert('Není vybrán žádný rozpis.'); return; }
+  if (!confirm('Smazat rozpis "' + _portalKey + '"? Přesune se do koše.')) return;
   try {
     const r = await fetch('/api/rozpisy/' + encodeURIComponent(_portalKey), { method: 'DELETE', credentials: 'include' });
     const result = await r.json();
@@ -7078,7 +7177,7 @@ async function _onTrashBtn() {
 
 // ── Log změn ──────────────────────────────────────────────────────────────────
 async function openLogModal() {
-  if (!_portalKey) { alert('Není načten žádný raspis.'); return; }
+  if (!_portalKey) { alert('Není načten žádný rozpis.'); return; }
   document.getElementById('portal-log-overlay').style.display = 'flex';
   document.getElementById('portal-log-title').textContent = _portalKey;
   const cb = document.getElementById('log-saved-only');
@@ -7424,16 +7523,8 @@ window.onload = async function() {
     await loadLatestDraft();
     if (typeof buildSchedule === 'function') buildSchedule();
     showAppTab('tvorba');
-    if (state && state.requirements && Object.keys(state.requirements).length > 0) {
-      setTimeout(() => {
-        if (typeof updateAllDeletedCells === 'function') updateAllDeletedCells();
-        if (typeof updateReqSumTooltips  === 'function') updateReqSumTooltips();
-        const btn = document.getElementById('btn-remember-req');
-        if (btn) { btn.textContent = 'Požadavky zapamatovány'; btn.classList.add('remembered'); btn.style.background = '#f0e6ff'; btn.style.borderColor = '#7b3fa0'; btn.style.color = '#4a1a6b'; }
-      }, 100);
-    }
   } else {
-    showAppTab('view');
+    showAppTab('settings');
   }
 };
 </script>
