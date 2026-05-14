@@ -808,24 +808,24 @@ body.portal-view-mode td[data-sum-id="totHrs"] { background: var(--surface, #fff
 /* ±hod buňky — text v INPUT elementu zarovnaný na střed (platí v Tvorba i Raspis) */
 td.sch-sum-extra input { text-align: center !important; }
 
-/* ── Dark mode fix ───────────────────────────────────────────────────────── */
-/* Původní Rozpis směn.html definuje :root proměnné (--bg, --text, --accent…)
-   s identickou specificitou jako theme.css a přichází v kaskádě POZDĚJÍ →
-   přepisuje dark-mode hodnoty z theme.css. Znovu deklarujeme v [data-theme="dark"]
-   na konci (PORTAL_CSS_OVERRIDE), takže tento blok vždy vyhraje. */
-[data-theme="dark"] {
-  --bg:            #141618;
-  --surface:       #1E2228;
-  --surface-alt:   #252B32;
-  --border:        #2E333A;
-  --border-strong: #404850;
-  --text:          #E8E6DC;
-  --text-muted:    #8A8A82;
-  --accent:        #C4A96A;
-  --accent-h:      #D4B97A;
-  --accent-light:  #2E2820;
-  --input-bg:      #252B32;
-  --input-border:  #3E444C;
+/* ── Dark mode: POUZE portálová UI (tab lišta + controls) ───────────────── */
+/* Záměr: schedule tabulka zůstává vždy ve světlém provedení (komplexní
+   podbarvení buněk není navrženo pro dark mode). Ztmavíme jen vnější UI. */
+[data-theme="dark"] #raspis-tabs-bar {
+  background: #141618 !important;
+  border-bottom-color: #2E333A !important;
+}
+[data-theme="dark"] .rtab {
+  color: #8A8A82;
+}
+[data-theme="dark"] .rtab:hover {
+  color: #E8E6DC;
+  background: #252B32;
+}
+[data-theme="dark"] .rtab.rtab-active {
+  color: #C4A96A;
+  border-bottom-color: #C4A96A;
+  background: none;
 }
 
 /* ── Pro recepční mode ───────────────────────────────────────────────────── */
