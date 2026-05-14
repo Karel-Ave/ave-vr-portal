@@ -769,7 +769,8 @@ body {
 /* Malé overlay-tlačítko hb-ov */
 .hb.hb-ov { font-size: 10px; padding: 1px 5px; }
 
-/* Mobilní AD tlačítko */
+/* Mobilní AD tlačítko — skryté na desktopu, viditelné jen na mobilu */
+#btn-today-col-m { display: none; }
 @media (max-width: 600px), (orientation: landscape) and (max-height: 500px) {
   #btn-today-col-m { display: inline-flex !important; align-items: center; justify-content: center; }
 }
@@ -792,8 +793,11 @@ table.staff-tbl td { border-color: var(--border, #ccc) !important; }
 #schedule-wrap::-webkit-scrollbar-thumb { background: var(--border, #ccc); border-radius: 3px; }
 
 /* ── Rozpis (view) mode ──────────────────────────────────────────────────── */
-/* Fond-dot skrytý v záložce Rozpis (není potřeba vidět přečerpání fondu) */
-body.portal-view-mode .fond-dot { display: none !important; }
+/* Fond-dot skrytý v záložce Rozpis — visibility:hidden zachová šířku buňky (jméno se neposune) */
+body.portal-view-mode .fond-dot { visibility: hidden !important; }
+/* Podbarvení Celkem hodin (fond nad/pod) — skryté v Rozpis záložce.
+   CSS !important přebije inline styl setovaný přes updateFondDot() */
+body.portal-view-mode td[data-sum-id="totHrs"] { background: var(--surface, #fff) !important; }
 </style>
 </head>
 <body>
@@ -806,6 +810,7 @@ body.portal-view-mode .fond-dot { display: none !important; }
   <button class="rtab" id="rtab-view" onclick="showAppTab('view')">📋 Rozpis</button>
   <div id="raspis-tab-actions">
     <span id="web-save-status" style="font-size:10px;opacity:0;transition:opacity .3s;margin-right:4px;color:var(--text,#222);"></span>
+    <select id="tvorba-drafts-sel" title="Načíst uložený draft" style="display:none;height:26px;padding:0 6px;font-size:12px;font-family:inherit;border:1px solid var(--border);border-radius:5px;background:var(--surface);color:var(--text);cursor:pointer;max-width:160px;"></select>
     <button class="btn btn-sm btn-primary" id="btn-manual-save" onclick="manualSave()" style="display:none;" title="Uložit rozepsaný rozpis">💾 Uložit</button>
     <button class="btn btn-sm btn-danger" id="btn-new-schedule" onclick="newSchedule()" style="display:none;" title="Začít nový prázdný rozpis">🆕 Nový</button>
     <button class="btn btn-sm btn-primary" id="btn-publish" onclick="publishToWeb()" style="display:none;" title="Publikovat hotový rozpis">📤 Publikovat</button>
@@ -6533,7 +6538,7 @@ document.addEventListener('mouseup', (e) => {
 
 <script>
 /* ════════════════════════════════════════════════════════════════════════════
-   WEB OVERRIDE v5 — AVE VR Portál
+   WEB OVERRIDE v5.1 — AVE VR Portál
    Záložky: Nastavení | Tvorba rozpisu | Rozpis
    Tvorba = PC editor + auto-save draft + Publikovat
    Rozpis  = portal view (pouze hodiny, bez fond-dot, se zamykáním)
@@ -6555,6 +6560,7 @@ let _portalAutoTimer = null;
 let _portalLastAct   = Date.now();
 let _portalInactTimer= null;
 let _tvorbaSnapshot  = null;
+let _raspisData      = null;   // data naposledy načtená přes loadRozpis (pro obnovení po návratu z Tvorby)
 let _currentTab      = 'settings';
 let _saveTimer       = null;
 let _lastSavedJson   = null;
@@ -6640,6 +6646,44 @@ async function manualSave() {
     _setStatus(j.ok ? '✓ Uloženo' : '⚠ Chyba', j.ok);
     if (j.ok && typeof showHint === 'function') showHint('✓ Rozpis uložen.');
   } catch(e) { _setStatus('⚠ Offline', false); }
+}
+
+// ── Draft selector v Tvorba záložce ──────────────────────────────────────────
+async function _loadDraftsList() {
+  const sel = document.getElementById('tvorba-drafts-sel');
+  if (!sel) return;
+  try {
+    const r = await fetch('/api/drafts', { credentials: 'include' });
+    const list = await r.json();
+    const currentKey = state.month + '-' + state.year;
+    sel.innerHTML = '<option value="">📂 Drafty…</option>';
+    if (!list || !list.length) return;
+    list.forEach(d => {
+      const opt = document.createElement('option');
+      opt.value = d.id;
+      opt.textContent = d.label || (d.month + '/' + d.year);
+      sel.appendChild(opt);
+    });
+  } catch(e) { /* no-op */ }
+}
+
+async function _onDraftSelChange() {
+  const sel = document.getElementById('tvorba-drafts-sel');
+  if (!sel || !sel.value) return;
+  const id = sel.value;
+  if (!confirm('Načíst draft? Neuložené změny budou ztraceny.')) { sel.value = ''; return; }
+  try {
+    const r = await fetch('/api/drafts/' + id, { credentials: 'include' });
+    const j = await r.json();
+    if (j.ok && j.data) {
+      applyData(j.data);
+      if (typeof renderStaff === 'function') renderStaff();
+      buildSchedule();
+      _lastSavedJson = JSON.stringify(buildWebSaveObj());
+      if (typeof showHint === 'function') showHint('Draft načten.');
+    }
+  } catch(e) { alert('Chyba načítání draftu.'); }
+  sel.value = '';
 }
 
 // ── Load draft (Tvorba) ───────────────────────────────────────────────────────
@@ -6820,12 +6864,13 @@ async function loadRozpis(key) {
     if (!json.ok || !json.entry) return;
     const data = typeof json.entry.data === 'string' ? JSON.parse(json.entry.data) : json.entry.data;
     _portalKey = key;
+    _raspisData = data;  // cache pro obnovení při návratu z Tvorby
     applyData(data);
     if (state) state.hotelsVisible = false;
     const thb = document.getElementById('toggle-hotels-btn');
     if (thb) thb.textContent = 'Zobrazit hotely';
     buildSchedule();
-    // V Rozpis záložce NIKDY neaktualizuj btn-remember-req (je skrytý)
+    // btn-remember-req je v Rozpis záložce skrytý — neaktualizujeme ho zde
   } catch(e) { console.error('[Portal] loadRozpis:', e); }
 }
 
@@ -6932,9 +6977,13 @@ function showAppTab(tabName) {
     if (pc) { pc.classList.remove('active'); pc.style.display = 'none'; }
     if (pb) pb.style.display = 'none';
     _setTvorbaButtons(false);
-    // V settings panel-schedule není viditelný, takže btn-remember-req také ne
-    // Ale jistě skryjeme (pro případ, že by byl jinde)
+    _setElDisplay('tvorba-drafts-sel', false);
     _setElDisplay('btn-remember-req', false);
+    // Synchronizuj sel-month / inp-year se state (pro případ, že buildSchedule změnil state.month)
+    const _sm = document.getElementById('sel-month');
+    const _iy = document.getElementById('inp-year');
+    if (_sm && state.month) _sm.value = String(state.month);
+    if (_iy && state.year)  _iy.value = String(state.year);
   }
 
   else if (tabName === 'tvorba') {
@@ -6944,6 +6993,9 @@ function showAppTab(tabName) {
 
     // Nastav správná tlačítka pro Tvorba záložku
     _setTvorbaButtons(true);
+    _setElDisplay('tvorba-drafts-sel', true);
+    // Načti seznam dostupných draftů do selectu
+    _loadDraftsList();
 
     if (_loadRozpisToTvorba) {
       // Načítáme Rozpis data do Tvorby — data jsou již v state (z loadRozpis)
@@ -7008,8 +7060,9 @@ function showAppTab(tabName) {
 
     // Nastav tlačítka pro Raspis/Rozpis záložku
     _setTvorbaButtons(false);
+    _setElDisplay('tvorba-drafts-sel', false);
 
-    // Přidej portal-view-mode třídu (skryje fond-dot)
+    // Přidej portal-view-mode třídu (skryje fond-dot, neutralizuje Celkem barvení)
     document.body.classList.add('portal-view-mode');
 
     // Aktivuj "Pouze hodiny" (hoursonly) pokud ještě není
@@ -7025,6 +7078,11 @@ function showAppTab(tabName) {
     if (!_raspisInited) {
       _raspisInited = true;
       loadRozpisyList();
+    } else if (_raspisData) {
+      // Obnov Rozpis data — Tvorba mohla změnit state (applyData + buildSchedule)
+      applyData(_raspisData);
+      if (state) state.hotelsVisible = false;
+      buildSchedule();
     }
   }
 
@@ -7226,6 +7284,8 @@ async function loadLogEntries() {
 
 // ── Wire up events ────────────────────────────────────────────────────────────
 function _wirePortalEvents() {
+  const draftSel = document.getElementById('tvorba-drafts-sel');
+  if (draftSel) draftSel.addEventListener('change', _onDraftSelChange);
   const sel = document.getElementById('portal-rozpis-sel');
   if (sel) sel.addEventListener('change', _onSelChange);
   const importBtn = document.getElementById('portal-import-btn');
@@ -7518,13 +7578,13 @@ window.onload = async function() {
   // Načti oprávnění, spusť lock poll
   await initPortal();
 
-  // Výchozí záložka
+  // Výchozí záložka — Rozpis (view) pro všechny, Tvorba pro speciální URL
   if (WEB_MODE === 'tvorba') {
     await loadLatestDraft();
     if (typeof buildSchedule === 'function') buildSchedule();
     showAppTab('tvorba');
   } else {
-    showAppTab('settings');
+    showAppTab('view');
   }
 };
 </script>
