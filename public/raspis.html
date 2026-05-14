@@ -808,6 +808,26 @@ body.portal-view-mode td[data-sum-id="totHrs"] { background: var(--surface, #fff
 /* ±hod buňky — text v INPUT elementu zarovnaný na střed (platí v Tvorba i Raspis) */
 td.sch-sum-extra input { text-align: center !important; }
 
+/* ── Dark mode fix ───────────────────────────────────────────────────────── */
+/* Původní Rozpis směn.html definuje :root proměnné (--bg, --text, --accent…)
+   s identickou specificitou jako theme.css a přichází v kaskádě POZDĚJÍ →
+   přepisuje dark-mode hodnoty z theme.css. Znovu deklarujeme v [data-theme="dark"]
+   na konci (PORTAL_CSS_OVERRIDE), takže tento blok vždy vyhraje. */
+[data-theme="dark"] {
+  --bg:            #141618;
+  --surface:       #1E2228;
+  --surface-alt:   #252B32;
+  --border:        #2E333A;
+  --border-strong: #404850;
+  --text:          #E8E6DC;
+  --text-muted:    #8A8A82;
+  --accent:        #C4A96A;
+  --accent-h:      #D4B97A;
+  --accent-light:  #2E2820;
+  --input-bg:      #252B32;
+  --input-border:  #3E444C;
+}
+
 /* ── Pro recepční mode ───────────────────────────────────────────────────── */
 /* Podbarvení sch-name buněk a oprava cell-cannot/deleted-req se řeší v JS
    (viz _applyReceptionistStyles) — CSS tady řeší jen věci, co JS nezvládne lépe. */
@@ -3269,20 +3289,20 @@ body.portal-receptionist-mode #btn-toggle-hoursonly { display: none !important; 
             <button class="hb" id="btn-today-col-m" onclick="toggleTodayCol()" style="background:#ffcdd2;border-color:#ef9a9a;color:#c62828;display:none;">AD</button>
             <button class="hb" id="btn-select-mode" onclick="toggleSelectMode()" style="background:#cce0ff;border-color:#6699cc;color:#1a4a8a;">Označ vybrané</button>
             <button class="hb" id="btn-show-hidden" onclick="showAllHidden()" style="display:none">Zobraz skryté</button>
-            <button class="hb" id="btn-toggle-highlight" onclick="toggleRowHighlight()" style="background:#e0e0e0;border-color:#aaa;color:#333;">Hover on</button>
             <button class="hb hb-ov" id="btn-show-selected" onclick="toggleShowSelected()" style="display:none;background:#FFA500;border-color:#cc7000;color:#fff;">Označ vybrané</button>
             <button class="hb hb-danger" id="btn-cancel-select" onclick="cancelSelectMode()" style="display:none">Zruš výběr</button>
           </div>
-          <!-- Střed: flex (Aktuální den / Zpět + Vpřed + Pro recepční) -->
+          <!-- Střed: dvouřádkové flex (Tvorba: undo/redo; Raspis: Hover on + Pro recepční / Aktuální den) -->
           <div class="sc-mid">
             <div class="sc-mid-flex">
-              <div class="sc-mid-row">
-                <button class="hb" id="btn-today-col" onclick="toggleTodayCol()" style="background:#ffcdd2;border-color:#ef9a9a;color:#c62828;">Aktuální den</button>
-              </div>
-              <div class="sc-mid-row">
+              <div class="sc-mid-row sc-mid-row-top">
                 <button class="hb" id="btn-sc-undo" onclick="historyUndo()">↩ Zpět</button>
                 <button class="hb" id="btn-sc-redo" onclick="historyRedo()">↪ Vpřed</button>
-                <button class="hb" id="btn-receptionist" onclick="toggleReceptionistMode()" style="display:none;margin-left:8px;background:#e0e0ff;border-color:#8888cc;color:#333;">Pro recepční</button>
+                <button class="hb" id="btn-toggle-highlight" onclick="toggleRowHighlight()" style="display:none;background:#e0e0e0;border-color:#aaa;color:#333;">Hover on</button>
+                <button class="hb" id="btn-receptionist" onclick="toggleReceptionistMode()" style="display:none;background:#e0e0ff;border-color:#8888cc;color:#333;">Pro recepční</button>
+              </div>
+              <div class="sc-mid-row sc-mid-row-bot" style="justify-content:center;">
+                <button class="hb" id="btn-today-col" onclick="toggleTodayCol()" style="background:#ffcdd2;border-color:#ef9a9a;color:#c62828;">Aktuální den</button>
               </div>
             </div>
           </div>
@@ -7037,7 +7057,8 @@ function _setTvorbaButtons(inTvorba) {
   // Zpět/Vpřed (undo/redo): jen v Tvorba (v Raspis je readonly, undo nemá smysl)
   _setElDisplay('btn-sc-undo',  inTvorba);
   _setElDisplay('btn-sc-redo',  inTvorba);
-  // Tlačítko "Pro recepční": jen v Rozpis záložce
+  // Tlačítka jen v Raspis záložce
+  _setElDisplay('btn-toggle-highlight', !inTvorba);
   _setElDisplay('btn-receptionist', !inTvorba);
 }
 
