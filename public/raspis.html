@@ -6582,7 +6582,7 @@ document.addEventListener('mouseup', (e) => {
 const WEB_MODE   = window.location.pathname.includes('tvorba') ? 'tvorba' : 'view';
 const LOCK_APP   = 'raspis-view';
 const POLL_INTERVAL    = 10000;
-const AUTOSAVE_INTERVAL = 30000;
+const _INACT_TIMEOUT   = 10 * 60 * 1000; // 10 minut nečinnosti → ukončit editaci
 
 // ── Portálový stav ────────────────────────────────────────────────────────────
 let _portalKey       = null;
@@ -6638,31 +6638,6 @@ function buildWebSaveObj() {
     prevMonthData:   state.prevMonthData  || {},
     lockInfo:        state.lockInfo       || null,
   };
-}
-
-// ── Auto-save draft (Tvorba) ──────────────────────────────────────────────────
-function autoSave() {
-  clearTimeout(_saveTimer);
-  _saveTimer = setTimeout(_doAutoSave, 2000);
-}
-
-async function _doAutoSave() {
-  if (_currentTab !== 'tvorba') return;
-  const data = buildWebSaveObj();
-  const json = JSON.stringify(data);
-  if (json === _lastSavedJson) return;
-  _lastSavedJson = json;
-  _setStatus('Ukládám…', true);
-  try {
-    const r = await fetch('/api/drafts/save', {
-      method:  'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body:    JSON.stringify({ month: data.month, year: data.year, data }),
-      credentials: 'include',
-    });
-    const j = await r.json();
-    _setStatus(j.ok ? '✓ Uloženo' : '⚠ Chyba', j.ok);
-  } catch(e) { _setStatus('⚠ Offline', false); }
 }
 
 // ── Manuální uložení draftu (tlačítko 💾 Uložit v Tvorba) ────────────────────
@@ -6853,13 +6828,13 @@ async function acquireEdit() {
       _portalLastAct  = Date.now();
       setReadOnly(false);
       updateLockUI(true, json.lock);
-      startPortalAutosave();
+      _startInactTimer();
     } else { updateLockUI(false, json.lock); }
   } catch(e) {}
 }
 
 async function releaseEdit(save) {
-  stopPortalAutosave();
+  _stopInactTimer();
   if (save) await doSave(false);
   try { await fetch('/api/lock/' + LOCK_APP + '/release', { method: 'POST', credentials: 'include' }); } catch(e) {}
   _portalEditMode = false;
@@ -6867,12 +6842,35 @@ async function releaseEdit(save) {
   updateLockUI(false, null);
 }
 
-function startPortalAutosave() {
-  stopPortalAutosave();
-  _portalAutoTimer = setInterval(async () => { if (_portalEditMode) await doSave(true); }, AUTOSAVE_INTERVAL);
+// ── Inaktivita v Raspis edit módu (10 min → ukončit editaci BEZ uložení) ───────
+function _startInactTimer() {
+  _stopInactTimer();
+  _portalLastAct = Date.now();
+  _portalAutoTimer = setInterval(() => {
+    if (!_portalEditMode) { _stopInactTimer(); return; }
+    if (Date.now() - _portalLastAct >= _INACT_TIMEOUT) {
+      _stopInactTimer();
+      releaseEdit(false);
+      if (typeof showHint === 'function') showHint('⚠ Editace ukončena po 10 min. nečinnosti — změny nebyly uloženy.');
+    }
+  }, 30000);
+  const wrap = document.getElementById('schedule-wrap');
+  if (wrap && !wrap._inactListener) {
+    wrap._inactListener = () => { _portalLastAct = Date.now(); };
+    wrap.addEventListener('mousemove', wrap._inactListener, { passive: true });
+    wrap.addEventListener('keydown',   wrap._inactListener, { passive: true });
+    wrap.addEventListener('click',     wrap._inactListener, { passive: true });
+  }
 }
-function stopPortalAutosave() {
+function _stopInactTimer() {
   if (_portalAutoTimer) { clearInterval(_portalAutoTimer); _portalAutoTimer = null; }
+  const wrap = document.getElementById('schedule-wrap');
+  if (wrap && wrap._inactListener) {
+    wrap.removeEventListener('mousemove', wrap._inactListener);
+    wrap.removeEventListener('keydown',   wrap._inactListener);
+    wrap.removeEventListener('click',     wrap._inactListener);
+    delete wrap._inactListener;
+  }
 }
 
 function startLockPoll() {
@@ -6883,7 +6881,7 @@ function startLockPoll() {
       const json = await r.json();
       if (_portalEditMode) {
         if (!json.lock || json.lock.userId !== _portalUserId) {
-          stopPortalAutosave();
+          _stopInactTimer();
           _portalEditMode = false;
           setReadOnly(true);
           updateLockUI(false, json.lock);
@@ -7198,7 +7196,7 @@ function showAppTab(tabName) {
       // Vracíme se z Raspis/Rozpis do Tvorby — obnov snapshot
       if (_portalEditMode) {
         fetch('/api/lock/' + LOCK_APP + '/release', { method: 'POST', credentials: 'include' }).catch(() => {});
-        stopPortalAutosave();
+        _stopInactTimer();
         _portalEditMode = false;
       }
       setReadOnly(false);
@@ -7309,7 +7307,6 @@ function newSchedule() {
   buildSchedule();
   const btn = document.getElementById('btn-remember-req');
   if (btn) { btn.textContent = 'Zapamatuj požadavky'; btn.classList.remove('remembered'); btn.style.cssText = ''; }
-  autoSave();
   if (typeof showHint === 'function') showHint('Nový rozpis připraven.');
 }
 
@@ -7322,7 +7319,7 @@ function _onSelChange() {
   if (!sel || !sel.value) return;
   if (_portalEditMode) {
     fetch('/api/lock/' + LOCK_APP + '/release', { method: 'POST', credentials: 'include' }).catch(() => {});
-    stopPortalAutosave();
+    _stopInactTimer();
     _portalEditMode = false;
     setReadOnly(true);
     updateLockUI(false, null);
@@ -7796,6 +7793,9 @@ window.onload = async function() {
     setTimeout(_hideLoadingOverlay, 8000);
   }
 };
+
+// ── Zruš původní autoSave z Rozpis směn.html (portal ukládá jen manuálně) ───
+window.autoSave = function() { /* noop — autosave odstraněno */ };
 </script>
 
 </body></html>
