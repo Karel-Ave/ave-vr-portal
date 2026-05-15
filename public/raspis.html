@@ -6650,7 +6650,7 @@ document.addEventListener('mouseup', (e) => {
 
 <script>
 /* ════════════════════════════════════════════════════════════════════════════
-   WEB OVERRIDE v5.20 — AVE VR Portál
+   WEB OVERRIDE v5.21 — AVE VR Portál
    Záložky: Nastavení | Tvorba rozpisu | Rozpis
    Tvorba = PC editor + auto-save draft + Publikovat
    Rozpis  = portal view (pouze hodiny, bez fond-dot, se zamykáním)
@@ -7008,10 +7008,13 @@ async function loadRozpisyList(selectKey) {
     sel.innerHTML = '';
     if (!history || !history.length) {
       sel.innerHTML = '<option disabled>— žádný rozpis —</option>';
-      // Žádný rozpis — vymaž vše co autoLoad() mohl načíst
+      // Žádný raspis — vymaž jen rozpis/extras/požadavky, ALE NE staff.
+      // Staff pochází z __app_data__ (autoLoad) a patří do záložky Nastavení vždy.
+      // Přímé state.staff = [] by obešlo hook z v5.18 a rozbilo by Nastavení.
       _portalKey = null; _raspisData = null;
       if (typeof state !== 'undefined') {
-        state.staff = []; state.schedule = {}; state.extras = {};
+        // state.staff NESMÍ být vymazán — zachováme staff z autoLoad/__app_data__
+        state.schedule = {}; state.extras = {};
         state.requirements = {}; state.requirementSums = {};
       }
       if (typeof renderStaff   === 'function') renderStaff();
@@ -7335,6 +7338,11 @@ function showAppTab(tabName) {
     _setTvorbaButtons(false);
     _setElDisplay('tvorba-drafts-sel', false);
     _setElDisplay('btn-remember-req', false);
+    // Záchrana: pokud state.staff je prázdné (např. loadRozpisyList ho mohl vymazat
+    // nebo applyData ještě nedoběhla), obnov ze zálohy __app_data__ (autoLoad)
+    if (typeof state !== 'undefined' && (!state.staff || state.staff.length === 0)) {
+      if (typeof autoLoad === 'function') autoLoad();
+    }
     // Obnov seznam recepčních — při přepnutí z Raspis mohla applyData() změnit state.staff
     if (typeof renderStaff === 'function') renderStaff();
     // Pojistka: pokud renderStaff proběhl dřív než loadRozpis() skončil a staff bylo
@@ -7342,7 +7350,11 @@ function showAppTab(tabName) {
     setTimeout(function() {
       if (_currentTab === 'settings' && typeof renderStaff === 'function') {
         const _tb = document.getElementById('staff-tbody');
-        if (_tb && _tb.rows.length === 0 && state && state.staff && state.staff.length > 0) {
+        if (_tb && _tb.rows.length === 0) {
+          // Druhá záchrana: zkus autoLoad znovu
+          if (typeof state !== 'undefined' && (!state.staff || state.staff.length === 0)) {
+            if (typeof autoLoad === 'function') autoLoad();
+          }
           renderStaff();
         }
       }
