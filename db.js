@@ -389,6 +389,17 @@ async function init() {
     )
   `);
 
+  // ── Master staff (globální seznam recepčních sdílený přes všechny uživatele) ──
+  await db.query(`
+    CREATE TABLE IF NOT EXISTS master_staff (
+      id          INTEGER PRIMARY KEY DEFAULT 1,
+      data        JSONB NOT NULL DEFAULT '[]',
+      updated_at  TIMESTAMPTZ DEFAULT NOW(),
+      updated_by  INTEGER REFERENCES users(id) ON DELETE SET NULL,
+      CONSTRAINT  master_staff_single_row CHECK (id = 1)
+    )
+  `);
+
   // Seed: pokud nejsou žádní uživatelé, vytvoř admina
   const { rows } = await db.query('SELECT COUNT(*) AS cnt FROM users');
   if (parseInt(rows[0].cnt, 10) === 0) {

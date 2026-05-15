@@ -6686,6 +6686,7 @@ let _receptionistMode = false;         // Pro recepční (Skryj P+S + neutralizu
 let _receKey    = null;
 let _receData   = null;
 let _receInited = false;
+let _masterStaffPerm = false;   // true = uživatel smí ukládat master staff
 
 window.__raspisGetCurrentKey = () => _portalKey;
 window.__raspisIsEditMode    = () => _portalEditMode;
@@ -7153,8 +7154,61 @@ async function initPortal() {
       const eb = document.getElementById('portal-edit-btn');
       if (eb) eb.style.display = 'none';
     }
+
+    // Master staff oprávnění: admin nebo skupina s master_staff.edit
+    _masterStaffPerm = _portalAdmin
+      || !!(perms && perms.master_staff && perms.master_staff.edit);
+    _updateMasterStaffBtn();
   } catch(e) { /* not in portal, skip */ }
   startLockPoll();
+}
+
+// ── Master Staff: aktualizuj viditelnost tlačítka Uložit ─────────────────────
+function _updateMasterStaffBtn() {
+  const btn = document.getElementById('btn-master-staff-save');
+  if (btn) btn.style.display = _masterStaffPerm ? '' : 'none';
+}
+
+// ── Master Staff: ulož aktuální state.staff do DB ─────────────────────────────
+async function _saveMasterStaff() {
+  const btn = document.getElementById('btn-master-staff-save');
+  if (!_masterStaffPerm) return;
+  if (btn) { btn.disabled = true; btn.textContent = 'Ukládám…'; }
+  try {
+    const r = await fetch('/api/master-staff', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      credentials: 'include',
+      body: JSON.stringify({ staff: state.staff || [] })
+    });
+    const j = await r.json();
+    if (j.ok) {
+      if (typeof showHint === 'function') showHint('✓ Seznam recepčních uložen (' + (state.staff || []).length + ' osob).');
+      if (btn) { btn.textContent = '✓ Uloženo'; setTimeout(() => { if (btn) btn.textContent = 'Uložit seznam'; }, 2000); }
+    } else {
+      alert('Chyba uložení: ' + (j.msg || '?'));
+      if (btn) btn.textContent = 'Uložit seznam';
+    }
+  } catch(e) {
+    alert('Chyba spojení se serverem.');
+    if (btn) btn.textContent = 'Uložit seznam';
+  } finally {
+    if (btn) btn.disabled = false;
+  }
+}
+
+// ── Master Staff: načti ze serveru a aktualizuj state.staff ───────────────────
+async function _loadMasterStaff() {
+  try {
+    const r = await fetch('/api/master-staff', { credentials: 'include' });
+    const j = await r.json();
+    if (j.ok && Array.isArray(j.staff) && j.staff.length > 0) {
+      state.staff = j.staff;
+      if (typeof renderStaff   === 'function') renderStaff();
+      if (typeof buildSchedule === 'function') buildSchedule();
+    }
+    // Pokud DB je prázdná (j.staff.length === 0), zůstane staff z autoLoad/__app_data__
+  } catch(e) { /* offline nebo chyba — zůstane staff z autoLoad */ }
 }
 
 // ── Pomocné funkce pro správu viditelnosti tlačítek ───────────────────────────
@@ -8099,6 +8153,23 @@ window.onload = async function() {
 
   // Načti oprávnění, spusť lock poll
   await initPortal();
+
+  // Injektuj tlačítko "Uložit seznam" do záložky Nastavení
+  (function() {
+    const grid = document.querySelector('#panel-settings .settings-top div[style*="grid"]');
+    if (!grid) return;
+    const btn = document.createElement('button');
+    btn.id = 'btn-master-staff-save';
+    btn.className = 'btn btn-sm';
+    btn.style.cssText = 'font-size:10px;padding:3px 8px;background:#1A56A0;color:#fff;border-color:#0F3D7A;font-weight:600;display:none;grid-column:1/-1;margin-top:2px;';
+    btn.textContent = 'Uložit seznam';
+    btn.onclick = function() { _saveMasterStaff(); };
+    grid.appendChild(btn);
+    _updateMasterStaffBtn();
+  })();
+
+  // Načti master staff z DB (přepíše autoLoad data pokud DB má novější seznam)
+  _loadMasterStaff();
 
   // Výchozí záložka — Rozpis (view) pro všechny; overlay se skryje až po načtení dat
   if (WEB_MODE === 'tvorba') {

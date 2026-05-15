@@ -2959,6 +2959,66 @@ async function _disabledImportOnce(req, res) {
   res.json({ok:true,imported:imported2,errors:errors2.slice(0,20)});
 } // end _disabledImportOnce
 
+// ══════════════════════════════════════════════════════════════════════════════
+// MASTER STAFF — globální seznam recepčních sdílený přes všechny uživatele
+// ══════════════════════════════════════════════════════════════════════════════
+
+// GET /api/master-staff — načti seznam
+app.get('/api/master-staff', requireLogin, async (req, res) => {
+  try {
+    const db = getPool();
+    const { rows } = await db.query('SELECT data FROM master_staff WHERE id = 1');
+    if (!rows.length) return res.json({ ok: true, staff: [] });
+    const staff = typeof rows[0].data === 'string' ? JSON.parse(rows[0].data) : rows[0].data;
+    res.json({ ok: true, staff });
+  } catch (err) {
+    console.error('Chyba načtení master_staff:', err);
+    res.json({ ok: false, staff: [], msg: 'Chyba serveru.' });
+  }
+});
+
+// POST /api/master-staff — ulož seznam (zatím jen admin; v budoucnu konfigurovatelné skupinami)
+app.post('/api/master-staff', requireLogin, async (req, res) => {
+  const user = req.session.user;
+  // Oprávnění: admin nebo skupina s master_staff.edit = true
+  const isAdmin = user.role === 'admin';
+  if (!isAdmin) {
+    // Zkontroluj skupinová oprávnění
+    try {
+      const db = getPool();
+      const { rows: grpRows } = await db.query(
+        'SELECT perms FROM permission_groups WHERE name = $1', [user.role]
+      );
+      const grpPerms = grpRows[0]?.perms || {};
+      if (!grpPerms.master_staff?.edit) {
+        return res.json({ ok: false, msg: 'Nemáte oprávnění upravovat seznam recepčních.' });
+      }
+    } catch (e) {
+      return res.json({ ok: false, msg: 'Chyba ověření oprávnění.' });
+    }
+  }
+  const { staff } = req.body;
+  if (!Array.isArray(staff)) return res.json({ ok: false, msg: 'Neplatná data.' });
+  try {
+    const db = getPool();
+    await db.query(
+      `INSERT INTO master_staff (id, data, updated_at, updated_by)
+       VALUES (1, $1, NOW(), $2)
+       ON CONFLICT (id) DO UPDATE SET data = $1, updated_at = NOW(), updated_by = $2`,
+      [JSON.stringify(staff), user.id]
+    );
+    // Log akce
+    await db.query(
+      'INSERT INTO logs (user_id, user_name, action, details) VALUES ($1, $2, $3, $4)',
+      [user.id, user.name, 'master_staff_save', JSON.stringify({ count: staff.length })]
+    );
+    res.json({ ok: true });
+  } catch (err) {
+    console.error('Chyba uložení master_staff:', err);
+    res.json({ ok: false, msg: 'Chyba serveru.' });
+  }
+});
+
 // ── Start ─────────────────────────────────────────────────────────────────────
 init()
   .then(() => {
