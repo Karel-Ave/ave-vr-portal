@@ -8094,6 +8094,11 @@ function _applyExtraFilters() {
     // JS fallback vedle CSS !important — Pokrytí td má inline paddingLeft:'4px'
     document.querySelectorAll('.th-name').forEach(el => { el.style.paddingLeft = '24px'; });
 
+    // Pokud jsou hotely skryté, okamžitě aplikuj — buildSchedule defer applyHotelFilter 50ms → flash
+    // Musí být PŘED setTimeout(markTodayColumn) aby prohlížeč netlačil hotel řádky na 50ms
+    if (typeof state !== 'undefined' && !state.hotelsVisible && typeof applyHotelFilter === 'function') {
+      applyHotelFilter();
+    }
     // Znovu zvýrazni aktuální den
     if (todayColVisible) {
       setTimeout(() => markTodayColumn(state.month, state.year), 0);
