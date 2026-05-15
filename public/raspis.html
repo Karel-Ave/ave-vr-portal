@@ -7044,12 +7044,17 @@ async function loadRozpis(key) {
     _portalKey = key;
     _raspisData = data;  // cache pro obnovení při návratu z Tvorby
     applyData(data);
-    // Obnov staff tabulku v Nastavení — applyData() aktualizuje state.staff
+    // Obnov staff tabulku okamžitě (applyData() aktualizuje state.staff)
     if (typeof renderStaff === 'function') renderStaff();
     if (state) state.hotelsVisible = false;
     const thb = document.getElementById('toggle-hotels-btn');
     if (thb) thb.textContent = 'Zobrazit hotely';
-    buildSchedule();
+    // Defer buildSchedule — aby browser stihl vykreslit staff tabulku před těžkou operací.
+    // buildSchedule() může interně přepsat DOM staff tabulky → renderStaff() po dokončení.
+    setTimeout(() => {
+      buildSchedule();
+      if (_currentTab === 'settings' && typeof renderStaff === 'function') renderStaff();
+    }, 0);
     // btn-remember-req je v Rozpis záložce skrytý — neaktualizujeme ho zde
   } catch(e) { console.error('[Portal] loadRozpis:', e); }
 }
