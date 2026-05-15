@@ -835,6 +835,9 @@ body.portal-view-mode .fond-dot { visibility: hidden !important; }
 /* Podbarvení Celkem hodin (fond nad/pod) — skryté v Rozpis záložce.
    CSS !important přebije inline styl setovaný přes updateFondDot() */
 body.portal-view-mode td[data-sum-id="totHrs"] { background: var(--surface, #fff) !important; }
+/* Kliknutí na jméno recepčního v záložce Rozpis by skrylo řádek — to nechceme.
+   Zakázáme pointer-events na .sch-name pouze v Rozpis záložce. */
+body.portal-view-mode .sch-name { pointer-events: none !important; cursor: default !important; }
 
 /* Záhlaví "Recepční" a "Pokrytí" — vždy zarovnáno s jmény recepčních.
    Jméno v sch-name začíná na: 8px (padding-left) + 14px (fond-dot) + 2px (margin) = 24px.
@@ -6983,6 +6986,14 @@ async function loadRozpisyList(selectKey) {
     sel.innerHTML = '';
     if (!history || !history.length) {
       sel.innerHTML = '<option disabled>— žádný rozpis —</option>';
+      // Žádný rozpis — vymaž vše co autoLoad() mohl načíst
+      _portalKey = null; _raspisData = null;
+      if (typeof state !== 'undefined') {
+        state.staff = []; state.schedule = {}; state.extras = {};
+        state.requirements = {}; state.requirementSums = {};
+      }
+      if (typeof renderStaff   === 'function') renderStaff();
+      if (typeof buildSchedule === 'function') buildSchedule();
       _hideLoadingOverlay();
       return;
     }
@@ -7825,6 +7836,21 @@ function _applyExtraFilters() {
     if ((_receptionistMode || todayBusyFilter || availFilterMode) && typeof applyHotelFilter === 'function') {
       setTimeout(() => applyHotelFilter(), 0);  // → _applyExtraFilters → _applyReceptionistStyles
     }
+  };
+})();
+
+// ── Hook recalcHotelStatus — nezaplněné hotelové buňky: bílá → růžová ─────────
+// Původní kód hardcoduje '#ffffff' pro n===0 (hotel bez obsazené směny).
+// Přepíšeme na '#ffcccc' (stejná růžová jako cell-cannot) pro lepší přehlednost.
+(function() {
+  var _origRecalcHotel = window.recalcHotelStatus;
+  if (typeof _origRecalcHotel !== 'function') return;
+  window.recalcHotelStatus = function() {
+    _origRecalcHotel.apply(this, arguments);
+    // Po původní funkci: buňky nastavené na '#ffffff' → '#ffcccc' (nezaplněno)
+    document.querySelectorAll('tr.hotel-row td').forEach(function(td) {
+      if (td.style.background === '#ffffff') td.style.background = '#ffcccc';
+    });
   };
 })();
 
