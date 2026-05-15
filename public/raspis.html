@@ -897,8 +897,8 @@ body.portal-receptionist-mode #btn-toggle-hoursonly { display: none !important; 
 <!-- Loading overlay — vždy tmavé pozadí (bez ohledu na téma) -->
 <div id="portal-loading-overlay" style="position:fixed;inset:0;background:#111;z-index:99999;display:flex;align-items:center;justify-content:center;transition:opacity .4s;">
   <div style="text-align:center;font-family:inherit;">
-    <div style="font-size:13px;color:rgba(255,255,255,0.45);margin-bottom:12px;">Načítám…</div>
-    <div style="width:32px;height:32px;border:3px solid rgba(255,255,255,0.15);border-top-color:var(--accent,#2a5caa);border-radius:50%;animation:spin .8s linear infinite;margin:0 auto;"></div>
+    <div style="width:40px;height:40px;border:3px solid rgba(255,255,255,0.12);border-top-color:#C4A96A;border-radius:50%;animation:spin .8s linear infinite;margin:0 auto 14px;"></div>
+    <div style="font-size:13px;color:rgba(255,255,255,0.45);">Načítám…</div>
   </div>
 </div>
 <style>@keyframes spin{to{transform:rotate(360deg)}}</style>
@@ -7028,6 +7028,8 @@ async function loadRozpis(key) {
     _portalKey = key;
     _raspisData = data;  // cache pro obnovení při návratu z Tvorby
     applyData(data);
+    // Obnov staff tabulku v Nastavení — applyData() aktualizuje state.staff
+    if (typeof renderStaff === 'function') renderStaff();
     if (state) state.hotelsVisible = false;
     const thb = document.getElementById('toggle-hotels-btn');
     if (thb) thb.textContent = 'Zobrazit hotely';
@@ -7243,6 +7245,8 @@ function showAppTab(tabName) {
     _setTvorbaButtons(false);
     _setElDisplay('tvorba-drafts-sel', false);
     _setElDisplay('btn-remember-req', false);
+    // Obnov seznam recepčních — při přepnutí z Raspis mohla applyData() změnit state.staff
+    if (typeof renderStaff === 'function') renderStaff();
     // Synchronizuj sel-month / inp-year se state (pro případ, že buildSchedule změnil state.month)
     const _sm = document.getElementById('sel-month');
     const _iy = document.getElementById('inp-year');
@@ -7266,9 +7270,7 @@ function showAppTab(tabName) {
       _loadRozpisToTvorba = false;
       _tvorbaSnapshot = null;
       setReadOnly(false);
-      buildSchedule();
-      // Obnov zobrazení požadavků (Zapamatuj)
-      _restoreReqDisplay();
+      setTimeout(() => { buildSchedule(); _restoreReqDisplay(); }, 0);
     } else if (_currentTab === 'view' && _tvorbaSnapshot) {
       // Vracíme se z Raspis/Rozpis do Tvorby — obnov snapshot
       if (_portalEditMode) {
@@ -7278,10 +7280,10 @@ function showAppTab(tabName) {
       }
       setReadOnly(false);
       applyData(_tvorbaSnapshot);
-      buildSchedule();
-      _restoreReqDisplay();
+      // Defer buildSchedule — prohlížeč stihne vykreslit záložku před těžkou operací
+      setTimeout(() => { buildSchedule(); _restoreReqDisplay(); }, 0);
     } else if (_currentTab === 'settings') {
-      // === PERF FIX: přicházíme z Nastavení → přečti aktuální měsíc/rok a přebuildi ===
+      // Přicházíme z Nastavení → přečti aktuální měsíc/rok a přebuildi
       setReadOnly(false);
       const selMonth = document.getElementById('sel-month');
       const inpYear  = document.getElementById('inp-year');
@@ -7291,12 +7293,14 @@ function showAppTab(tabName) {
       if (inpYear && parseInt(inpYear.value) !== state.year) {
         state.year = parseInt(inpYear.value) || state.year;
       }
-      buildSchedule();
-      // Při první návštěvě Tvorba v sezení auto-načti poslední draft
-      if (!_tvorbaAutoLoaded) {
-        _tvorbaAutoLoaded = true;
-        _autoLoadLatestDraftIfExists();
-      }
+      // Defer buildSchedule + auto-load draftu — záložka se zobrazí okamžitě
+      setTimeout(() => {
+        buildSchedule();
+        if (!_tvorbaAutoLoaded) {
+          _tvorbaAutoLoaded = true;
+          _autoLoadLatestDraftIfExists();
+        }
+      }, 0);
     } else if (_currentTab !== 'tvorba') {
       setReadOnly(false);
     }
@@ -7335,8 +7339,10 @@ function showAppTab(tabName) {
     } else if (_raspisData) {
       // Obnov Rozpis data — Tvorba mohla změnit state (applyData + buildSchedule)
       applyData(_raspisData);
+      if (typeof renderStaff === 'function') renderStaff();
       if (state) state.hotelsVisible = false;
-      buildSchedule();
+      // Defer buildSchedule — záložka se zobrazí okamžitě, pak přijde těžká operace
+      setTimeout(() => buildSchedule(), 0);
     }
   }
 
