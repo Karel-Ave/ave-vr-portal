@@ -6650,7 +6650,7 @@ document.addEventListener('mouseup', (e) => {
 
 <script>
 /* ════════════════════════════════════════════════════════════════════════════
-   WEB OVERRIDE v5.3 — AVE VR Portál
+   WEB OVERRIDE v5.18 — AVE VR Portál
    Záložky: Nastavení | Tvorba rozpisu | Rozpis
    Tvorba = PC editor + auto-save draft + Publikovat
    Rozpis  = portal view (pouze hodiny, bez fond-dot, se zamykáním)
@@ -7329,6 +7329,16 @@ function showAppTab(tabName) {
     _setElDisplay('btn-remember-req', false);
     // Obnov seznam recepčních — při přepnutí z Raspis mohla applyData() změnit state.staff
     if (typeof renderStaff === 'function') renderStaff();
+    // Pojistka: pokud renderStaff proběhl dřív než loadRozpis() skončil a staff bylo
+    // ještě prázdné, obnov za 200 ms (loadRozpis async — může doběhnout po přepnutí záložky)
+    setTimeout(function() {
+      if (_currentTab === 'settings' && typeof renderStaff === 'function') {
+        const _tb = document.getElementById('staff-tbody');
+        if (_tb && _tb.rows.length === 0 && state && state.staff && state.staff.length > 0) {
+          renderStaff();
+        }
+      }
+    }, 200);
     // Synchronizuj sel-month / inp-year se state (pro případ, že buildSchedule změnil state.month)
     const _sm = document.getElementById('sel-month');
     const _iy = document.getElementById('inp-year');
@@ -8011,6 +8021,24 @@ function _applyExtraFilters() {
         td.style.background = '#ffcccc';
       }
     });
+  };
+})();
+
+// ── Fix applyData: prázdné staff[] ze serveru by nemělo mazat state.staff ──────
+// applyData() z raspis.html dělá: state.staff = data.staff || state.staff
+// Jenže [] je truthy → prázdné pole ze serveru smaže staff načtený z __app_data__.
+// Hoookujeme applyData a pokud data.staff = [], prostě ho odstraníme —
+// pak fallback "|| state.staff" zachová stávající seznam recepčních.
+(function() {
+  if (typeof window.applyData !== 'function') return;
+  var _origApplyData = window.applyData;
+  window.applyData = function(data) {
+    if (data && Array.isArray(data.staff) && data.staff.length === 0) {
+      var fixed = Object.assign({}, data);
+      delete fixed.staff;   // prázdné staff[] → přeskoč, zachovej state.staff
+      return _origApplyData.call(this, fixed);
+    }
+    return _origApplyData.call(this, data);
   };
 })();
 
