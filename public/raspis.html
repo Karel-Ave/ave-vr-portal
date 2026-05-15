@@ -785,9 +785,19 @@ body {
   border-color: var(--accent, #2a5caa) !important;
 }
 
-/* sc-mid: flex layout (dva řádky) */
+/* sc-mid: 2×2 mřížka (Aktuální den / Pro recepční | Zpět / Vpřed) */
+.sc-mid-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 3px;
+}
+.sc-mid-grid .hb { width: 100%; box-sizing: border-box; }
+/* Zachováme staré třídy pro případ, že je používá original */
 .sc-mid-flex { display: flex; flex-direction: column; gap: 3px; }
 .sc-mid-row  { display: flex; gap: 3px; align-items: center; }
+
+/* Hover on + Označ vybrané — svislý stack v sc-left2 */
+#hb-highlights-wrap { flex-direction: column; gap: 2px; align-items: stretch; }
 
 /* Tlačítko "Dnes obsazené" */
 #btn-filter-today:hover { background:#e6c000 !important; border-color:#a88800 !important; color:#3a2a00 !important; }
@@ -3328,21 +3338,19 @@ body.portal-receptionist-mode #btn-toggle-hoursonly { display: none !important; 
             <button class="hb" id="btn-today-col-m" onclick="toggleTodayCol()" style="background:#ffcdd2;border-color:#ef9a9a;color:#c62828;display:none;">AD</button>
             <button class="hb" id="btn-select-mode" onclick="toggleSelectMode()" style="background:#cce0ff;border-color:#6699cc;color:#1a4a8a;">Označ vybrané</button>
             <button class="hb" id="btn-show-hidden" onclick="showAllHidden()" style="display:none">Zobraz skryté</button>
-            <button class="hb hb-ov" id="btn-show-selected" onclick="toggleShowSelected()" style="display:none;background:#FFA500;border-color:#cc7000;color:#fff;">Označ vybrané</button>
+            <div id="hb-highlights-wrap" style="display:none;">
+              <button class="hb" id="btn-toggle-highlight" onclick="toggleRowHighlight()" style="background:#e0e0e0;border-color:#aaa;color:#333;">Hover on</button>
+              <button class="hb" id="btn-show-selected" onclick="toggleShowSelected()" style="background:#FFA500;border-color:#cc7000;color:#fff;">Označ vybrané</button>
+            </div>
             <button class="hb hb-danger" id="btn-cancel-select" onclick="cancelSelectMode()" style="display:none">Zruš výběr</button>
           </div>
-          <!-- Střed: dvouřádkové flex (Tvorba: undo/redo; Raspis: Hover on + Pro recepční / Aktuální den) -->
+          <!-- Střed: 2×2 grid — řádek 1: Aktuální den + Pro recepční (Raspis); řádek 2: Zpět + Vpřed (obojí) -->
           <div class="sc-mid">
-            <div class="sc-mid-flex">
-              <div class="sc-mid-row sc-mid-row-top">
-                <button class="hb" id="btn-sc-undo" onclick="historyUndo()">↩ Zpět</button>
-                <button class="hb" id="btn-sc-redo" onclick="historyRedo()">↪ Vpřed</button>
-                <button class="hb" id="btn-toggle-highlight" onclick="toggleRowHighlight()" style="display:none;background:#e0e0e0;border-color:#aaa;color:#333;">Hover on</button>
-                <button class="hb" id="btn-receptionist" onclick="toggleReceptionistMode()" style="display:none;background:#e0e0ff;border-color:#8888cc;color:#333;">Pro recepční</button>
-              </div>
-              <div class="sc-mid-row sc-mid-row-bot" style="justify-content:center;">
-                <button class="hb" id="btn-today-col" onclick="toggleTodayCol()" style="background:#ffcdd2;border-color:#ef9a9a;color:#c62828;">Aktuální den</button>
-              </div>
+            <div class="sc-mid-grid">
+              <button class="hb" id="btn-today-col" onclick="toggleTodayCol()" style="display:none;background:#ffcdd2;border-color:#ef9a9a;color:#c62828;">Aktuální den</button>
+              <button class="hb" id="btn-receptionist" onclick="toggleReceptionistMode()" style="display:none;background:#e0e0ff;border-color:#8888cc;color:#333;">Pro recepční</button>
+              <button class="hb" id="btn-sc-undo" onclick="historyUndo()">↩ Zpět</button>
+              <button class="hb" id="btn-sc-redo" onclick="historyRedo()">↪ Vpřed</button>
             </div>
           </div>
           <!-- Pravá zóna řádek 2 — stejný grid -->
@@ -7097,15 +7105,16 @@ function _setTvorbaButtons(inTvorba) {
   _setElDisplay('btn-export-xlsx',  inTvorba);
   // Tlačítka useless v Tvorba (aktuální den a dnes obsazené)
   _setElDisplay('btn-filter-today',  !inTvorba);
-  _setElDisplay('btn-today-col',     !inTvorba);  // v sc-mid
-  _setElDisplay('btn-today-col-m',   !inTvorba);  // mobilní verze
+  _setElDisplay('btn-today-col',     !inTvorba);  // v sc-mid řádek 1
+  _setElDisplay('btn-today-col-m',   !inTvorba);  // mobilní verze v sc-left2
   // Zapamatuj požadavky: viditelný v Tvorba, skrytý v Raspis
   _setElDisplay('btn-remember-req',  inTvorba);
-  // Zpět/Vpřed (undo/redo): jen v Tvorba (v Raspis je readonly, undo nemá smysl)
-  _setElDisplay('btn-sc-undo',  inTvorba);
-  _setElDisplay('btn-sc-redo',  inTvorba);
-  // Tlačítka jen v Raspis záložce
-  _setElDisplay('btn-toggle-highlight', !inTvorba);
+  // Zpět/Vpřed (undo/redo): viditelné v OBOU záložkách (v Raspis po editaci má smysl)
+  // btn-sc-undo a btn-sc-redo jsou vždy zobrazeny — neřídíme zde
+  // Highlights wrap (Hover on + Označ vybrané): jen v Raspis záložce
+  var hstack = document.getElementById('hb-highlights-wrap');
+  if (hstack) hstack.style.display = !inTvorba ? 'flex' : 'none';
+  // Pro recepční: jen v Raspis záložce (v sc-mid řádek 1)
   _setElDisplay('btn-receptionist', !inTvorba);
 }
 
@@ -7848,8 +7857,12 @@ function _applyExtraFilters() {
   window.recalcHotelStatus = function() {
     _origRecalcHotel.apply(this, arguments);
     // Po původní funkci: buňky nastavené na '#ffffff' → '#ffcccc' (nezaplněno)
+    // Browsers mohou vracet barvu jako 'rgb(255, 255, 255)' místo '#ffffff'
     document.querySelectorAll('tr.hotel-row td').forEach(function(td) {
-      if (td.style.background === '#ffffff') td.style.background = '#ffcccc';
+      var bg = td.style.background || td.style.backgroundColor || '';
+      if (bg === '#ffffff' || bg === 'rgb(255, 255, 255)' || bg === 'rgba(255, 255, 255, 1)') {
+        td.style.background = '#ffcccc';
+      }
     });
   };
 })();
@@ -7912,7 +7925,7 @@ window.showImportDialog = function() {
         'Soubor' + (curLabel ? ' — ' + curLabel : '') +
       '</label>' +
       '<div style="display:flex;align-items:center;gap:8px;">' +
-        '<button id="_imp2_btn" style="padding:6px 12px;border:1px solid var(--border,#ccc);border-radius:5px;background:var(--surface-alt,#f5f5f0);font-size:12px;cursor:pointer;font-family:inherit;">Vybrat soubor…</button>' +
+        '<button id="_imp2_btn" style="padding:6px 12px;border:1px solid var(--border,#ccc);border-radius:5px;background:var(--surface-alt,#f5f5f0);font-size:12px;cursor:pointer;font-family:inherit;color:var(--text,#1a1a18);">Vybrat soubor…</button>' +
         '<span id="_imp2_nm" style="font-size:11px;color:var(--text-muted,#888);">žádný soubor</span>' +
         '<input type="file" id="_imp2_f" accept=".xlsm,.xlsx,.xls" style="display:none">' +
       '</div>' +
@@ -7920,13 +7933,13 @@ window.showImportDialog = function() {
     '<div style="margin-bottom:18px;padding:10px 12px;background:var(--surface-alt,#f5f5f0);border-radius:6px;">' +
       '<div style="font-size:11px;font-weight:600;color:var(--text-muted,#666);text-transform:uppercase;letter-spacing:.04em;margin-bottom:8px;">Doplnit automaticky:</div>' +
       '<div style="display:flex;gap:16px;">' +
-        '<label style="display:flex;align-items:center;gap:5px;font-size:12px;cursor:pointer;"><input type="checkbox" id="_imp2_W" checked> W (Waldstein)</label>' +
-        '<label style="display:flex;align-items:center;gap:5px;font-size:12px;cursor:pointer;"><input type="checkbox" id="_imp2_F" checked> F (Essence)</label>' +
+        '<label style="display:flex;align-items:center;gap:5px;font-size:12px;cursor:pointer;color:var(--text,#1a1a18);"><input type="checkbox" id="_imp2_W" checked> W (Waldstein)</label>' +
+        '<label style="display:flex;align-items:center;gap:5px;font-size:12px;cursor:pointer;color:var(--text,#1a1a18);"><input type="checkbox" id="_imp2_F" checked> F (Essence)</label>' +
       '</div>' +
     '</div>' +
     '<div style="display:flex;gap:8px;justify-content:flex-end;align-items:center;">' +
       '<span id="_imp2_st" style="font-size:12px;flex:1;"></span>' +
-      '<button id="_imp2_can" style="padding:7px 14px;border:1px solid var(--border,#ccc);border-radius:5px;background:transparent;cursor:pointer;font-size:12px;font-family:inherit;">Zrušit</button>' +
+      '<button id="_imp2_can" style="padding:7px 14px;border:1px solid var(--border,#ccc);border-radius:5px;background:transparent;cursor:pointer;font-size:12px;font-family:inherit;color:var(--text,#1a1a18);">Zrušit</button>' +
       '<button id="_imp2_go" style="padding:7px 16px;border:none;border-radius:5px;background:#2E7D32;color:#fff;cursor:pointer;font-size:12px;font-weight:600;font-family:inherit;">Nahrát</button>' +
     '</div>';
   ov.appendChild(box);
