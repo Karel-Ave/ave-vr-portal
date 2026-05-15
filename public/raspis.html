@@ -6687,6 +6687,7 @@ let _receKey    = null;
 let _receData   = null;
 let _receInited = false;
 let _masterStaffPerm = false;   // true = uživatel smí ukládat master staff
+let _visibleTabs = ['settings', 'tvorba', 'view', 'recep']; // listy viditelné dle oprávnění
 
 window.__raspisGetCurrentKey = () => _portalKey;
 window.__raspisIsEditMode    = () => _portalEditMode;
@@ -7159,6 +7160,21 @@ async function initPortal() {
     _masterStaffPerm = _portalAdmin
       || !!(perms && perms.master_staff && perms.master_staff.edit);
     _updateMasterStaffBtn();
+
+    // Viditelnost listů (záložek) dle oprávnění skupiny / individuálních výjimek
+    const _tabDefs = [
+      { rtab: 'rtab-settings', name: 'settings', perm: btns.tab_nastaveni },
+      { rtab: 'rtab-tvorba',   name: 'tvorba',   perm: btns.tab_tvorba    },
+      { rtab: 'rtab-view',     name: 'view',      perm: btns.tab_rozpis_vr },
+      { rtab: 'rtab-recep',    name: 'recep',     perm: btns.tab_rozpis    },
+    ];
+    _visibleTabs = [];
+    _tabDefs.forEach(function(t) {
+      const visible = t.perm !== false;
+      const el = document.getElementById(t.rtab);
+      if (el) el.style.display = visible ? '' : 'none';
+      if (visible) _visibleTabs.push(t.name);
+    });
   } catch(e) { /* not in portal, skip */ }
   startLockPoll();
 }
@@ -8192,14 +8208,18 @@ window.onload = async function() {
   // Načti master staff z DB (přepíše autoLoad data pokud DB má novější seznam)
   _loadMasterStaff();
 
-  // Výchozí záložka — Rozpis (view) pro všechny; overlay se skryje až po načtení dat
+  // Výchozí záložka — 'view' preferováno; pokud není viditelné, první dostupné
   if (WEB_MODE === 'tvorba') {
+    const startTab = _visibleTabs.includes('tvorba') ? 'tvorba'
+                   : (_visibleTabs[0] || 'tvorba');
     await loadLatestDraft();
     if (typeof buildSchedule === 'function') buildSchedule();
-    showAppTab('tvorba');
+    showAppTab(startTab);
     _hideLoadingOverlay();  // v tvorba mode skryj overlay hned (data jsou z draftu)
   } else {
-    showAppTab('view');
+    const startTab = _visibleTabs.includes('view') ? 'view'
+                   : (_visibleTabs[0] || 'view');
+    showAppTab(startTab);
     // overlay skryje loadRozpisyList() po načtení dat; timeout jako pojistka
     setTimeout(_hideLoadingOverlay, 8000);
   }

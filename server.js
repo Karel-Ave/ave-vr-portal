@@ -87,6 +87,50 @@ async function logEvent(userId, userName, action, details = {}) {
   }
 }
 
+// ── Pomocné funkce oprávnění ──────────────────────────────────────────────────
+
+function _parseJson(val) {
+  if (!val) return {};
+  if (typeof val === 'object') return val;
+  try { return JSON.parse(val); } catch { return {}; }
+}
+
+async function getUserEffectivePerms(user) {
+  const db = getPool();
+  const [gr, ur] = await Promise.all([
+    db.query('SELECT perms FROM permission_groups WHERE name = $1', [user.role]),
+    db.query('SELECT perm_overrides FROM users WHERE id = $1', [user.id])
+  ]);
+  const groupPerms = gr.rows.length ? _parseJson(gr.rows[0].perms) : {};
+  const userOv     = (ur.rows.length && ur.rows[0].perm_overrides) ? _parseJson(ur.rows[0].perm_overrides) : {};
+  return { groupPerms, userOv };
+}
+
+function getEffectiveBtnPerm(groupPerms, userOv, appKey, btnKey) {
+  const gp = groupPerms[appKey] || {};
+  const uo = userOv[appKey]     || {};
+  const gb = (gp.buttons || {})[btnKey];
+  const ub = (uo.buttons || {})[btnKey];
+  const val = (ub != null) ? ub : (gb != null ? gb : true);
+  return val !== false;
+}
+
+// Middleware: vyžaduje oprávnění pro danou aplikaci a tlačítko
+function requirePerm(appKey, btnKey) {
+  return async (req, res, next) => {
+    const user = req.session.user;
+    if (user.role === 'admin') return next();
+    try {
+      const { groupPerms, userOv } = await getUserEffectivePerms(user);
+      if (getEffectiveBtnPerm(groupPerms, userOv, appKey, btnKey)) return next();
+      return res.json({ ok: false, msg: 'Nemáte oprávnění pro tuto akci.' });
+    } catch (e) {
+      console.error('Chyba ověření oprávnění:', e);
+      return res.json({ ok: false, msg: 'Chyba ověření oprávnění.' });
+    }
+  };
+}
+
 // ── Stránky ───────────────────────────────────────────────────────────────────
 
 app.get('/', (req, res) => {
@@ -229,11 +273,12 @@ app.post('/api/users', requireLogin, requireAdmin, async (req, res) => {
   if (password.length < 6) {
     return res.json({ ok: false, msg: 'Heslo musí mít alespoň 6 znaků.' });
   }
-  if (!['admin', 'vedoucí', 'widget'].includes(role)) {
-    return res.json({ ok: false, msg: 'Neplatná role.' });
-  }
   try {
     const db = getPool();
+    const { rows: validRoles } = await db.query('SELECT name FROM permission_groups');
+    if (!validRoles.some(r => r.name === role)) {
+      return res.json({ ok: false, msg: 'Neplatná skupina.' });
+    }
     await db.query(
       'INSERT INTO users (name, username, password_hash, role) VALUES ($1, $2, $3, $4)',
       [name.trim(), username.trim(), bcrypt.hashSync(password, 10), role]
@@ -391,7 +436,11 @@ app.get('/api/my-permissions', requireLogin, async (req, res) => {
     const { rows: ur } = await db.query('SELECT perm_overrides FROM users WHERE id = $1', [user.id]);
     const userOv       = (ur.length && ur[0].perm_overrides) ? JSON.parse(ur[0].perm_overrides) : {};
     const result = {};
-    const DEFAULTS = { raspis: { enabled: true, buttons: { import: user.role === 'admin', delete: user.role === 'admin', trash: user.role === 'admin', edit: true, export: true } } };
+    const isAdm = user.role === 'admin';
+    const DEFAULTS = { raspis: { enabled: true, buttons: {
+      tab_nastaveni: isAdm, tab_tvorba: isAdm, tab_rozpis_vr: true, tab_rozpis: true,
+      import: isAdm, delete: isAdm, trash: isAdm, edit: true, export: true, log: isAdm
+    } } };
     const allApps = new Set([...Object.keys(DEFAULTS), ...Object.keys(groupPerms), ...Object.keys(userOv)]);
     for (const appKey of allApps) {
       const gp   = groupPerms[appKey] || DEFAULTS[appKey] || { enabled: true, buttons: {} };
@@ -416,9 +465,18 @@ app.get('/api/lock/:app', requireLogin, (req, res) =>
   res.json({ lock: locks[req.params.app] || null })
 );
 
-app.post('/api/lock/:app/acquire', requireLogin, (req, res) => {
+app.post('/api/lock/:app/acquire', requireLogin, async (req, res) => {
   const key  = req.params.app;
   const user = req.session.user;
+  // Pro raspis zámek ověř edit oprávnění (non-admin)
+  if (key === 'raspis-view' && user.role !== 'admin') {
+    try {
+      const { groupPerms, userOv } = await getUserEffectivePerms(user);
+      if (!getEffectiveBtnPerm(groupPerms, userOv, 'raspis', 'edit')) {
+        return res.json({ ok: false, msg: 'Nemáte oprávnění editovat rozpis.' });
+      }
+    } catch(e) { return res.json({ ok: false, msg: 'Chyba ověření oprávnění.' }); }
+  }
   if (locks[key] && locks[key].userId !== user.id) {
     return res.json({ ok: false, lock: locks[key] });
   }
@@ -703,7 +761,7 @@ app.get('/api/drafts/:id', requireLogin, async (req, res) => {
   }
 });
 
-app.post('/api/drafts/save', requireLogin, async (req, res) => {
+app.post('/api/drafts/save', requireLogin, requirePerm('raspis', 'edit'), async (req, res) => {
   const { month, year, data } = req.body;
   if (!month || !year || !data) return res.json({ ok: false, msg: 'Chybí data.' });
   try {
@@ -722,7 +780,7 @@ app.post('/api/drafts/save', requireLogin, async (req, res) => {
   }
 });
 
-app.delete('/api/drafts/:id', requireLogin, async (req, res) => {
+app.delete('/api/drafts/:id', requireLogin, requirePerm('raspis', 'edit'), async (req, res) => {
   const id = parseInt(req.params.id, 10);
   try {
     const db = getPool();
@@ -744,7 +802,7 @@ app.delete('/api/drafts/:id', requireLogin, async (req, res) => {
   }
 });
 
-app.post('/api/drafts/restore/:id', requireLogin, async (req, res) => {
+app.post('/api/drafts/restore/:id', requireLogin, requirePerm('raspis', 'edit'), async (req, res) => {
   const id = parseInt(req.params.id, 10);
   try {
     const db = getPool();
