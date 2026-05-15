@@ -6650,7 +6650,7 @@ document.addEventListener('mouseup', (e) => {
 
 <script>
 /* ════════════════════════════════════════════════════════════════════════════
-   WEB OVERRIDE v5.18 — AVE VR Portál
+   WEB OVERRIDE v5.19 — AVE VR Portál
    Záložky: Nastavení | Tvorba rozpisu | Rozpis
    Tvorba = PC editor + auto-save draft + Publikovat
    Rozpis  = portal view (pouze hodiny, bez fond-dot, se zamykáním)
@@ -7285,40 +7285,44 @@ function showAppTab(tabName) {
   const pb = document.getElementById('portal-controls-bar');
 
   // ── Opuštění záložky Rozpis VR (view) ────────────────────────────────────
-  if (_currentTab === 'view' && tabName !== 'view') {
-    document.body.classList.remove('portal-view-mode');
-    // Revertuj hoursonly, jen pokud nejdeme do recep (recep také hoursonly chce)
-    if (_viewHoursOnlyActivated && tabName !== 'recep') {
-      _viewHoursOnlyActivated = false;
-      if (typeof sumViewMode !== 'undefined' && sumViewMode === 'hoursonly' && typeof toggleHoursOnly === 'function') {
-        toggleHoursOnly();
+  try {
+    if (_currentTab === 'view' && tabName !== 'view') {
+      document.body.classList.remove('portal-view-mode');
+      // Revertuj hoursonly, jen pokud nejdeme do recep (recep také hoursonly chce)
+      if (_viewHoursOnlyActivated && tabName !== 'recep') {
+        _viewHoursOnlyActivated = false;
+        if (typeof sumViewMode !== 'undefined' && sumViewMode === 'hoursonly' && typeof toggleHoursOnly === 'function') {
+          toggleHoursOnly();
+        }
       }
     }
-  }
+  } catch(_leaveViewErr) { console.warn('[Portal] leave-view error:', _leaveViewErr); }
 
   // ── Opuštění záložky Rozpis (recep) ──────────────────────────────────────
-  if (_currentTab === 'recep' && tabName !== 'recep') {
-    document.body.classList.remove('portal-recep-mode');
-    document.body.classList.remove('portal-view-mode');
-    // Vypni recepční mode + obnov btn-receptionist
-    if (_receptionistMode) {
-      _receptionistMode = false;
-      document.body.classList.remove('portal-receptionist-mode');
-      var _btnR = document.getElementById('btn-receptionist');
-      if (_btnR) { _btnR.style.background='#e0e0ff'; _btnR.style.borderColor='#8888cc'; _btnR.style.color='#333'; _btnR.textContent='Pro recepční'; }
-      if (typeof applyHotelFilter === 'function') applyHotelFilter();
-    }
-    // Skryj portal-recep-bar
-    var _prb = document.getElementById('portal-recep-bar');
-    if (_prb) _prb.style.display = 'none';
-    // Revertuj hoursonly, jen pokud nejdeme do view (view také hoursonly chce)
-    if (_viewHoursOnlyActivated && tabName !== 'view') {
-      _viewHoursOnlyActivated = false;
-      if (typeof sumViewMode !== 'undefined' && sumViewMode === 'hoursonly' && typeof toggleHoursOnly === 'function') {
-        toggleHoursOnly();
+  try {
+    if (_currentTab === 'recep' && tabName !== 'recep') {
+      document.body.classList.remove('portal-recep-mode');
+      document.body.classList.remove('portal-view-mode');
+      // Vypni recepční mode + obnov btn-receptionist
+      if (_receptionistMode) {
+        _receptionistMode = false;
+        document.body.classList.remove('portal-receptionist-mode');
+        var _btnR = document.getElementById('btn-receptionist');
+        if (_btnR) { _btnR.style.background='#e0e0ff'; _btnR.style.borderColor='#8888cc'; _btnR.style.color='#333'; _btnR.textContent='Pro recepční'; }
+        if (typeof applyHotelFilter === 'function') applyHotelFilter();
+      }
+      // Skryj portal-recep-bar
+      var _prb = document.getElementById('portal-recep-bar');
+      if (_prb) _prb.style.display = 'none';
+      // Revertuj hoursonly, jen pokud nejdeme do view (view také hoursonly chce)
+      if (_viewHoursOnlyActivated && tabName !== 'view') {
+        _viewHoursOnlyActivated = false;
+        if (typeof sumViewMode !== 'undefined' && sumViewMode === 'hoursonly' && typeof toggleHoursOnly === 'function') {
+          toggleHoursOnly();
+        }
       }
     }
-  }
+  } catch(_leaveRecepErr) { console.warn('[Portal] leave-recep error:', _leaveRecepErr); }
 
   if (tabName === 'settings') {
     if (ps) { ps.classList.add('active');    ps.style.display = ''; }
@@ -7491,6 +7495,25 @@ function showAppTab(tabName) {
       }, 0);
     }
   }
+
+  // ── Bezpečnostní pojistka: vždy zajisti správnou viditelnost panelů ──────
+  // Pokud výše došlo k chybě a panel-settings nebyl aktivován, oprav to zde.
+  try {
+    var _ps3 = document.getElementById('panel-settings');
+    var _pc3 = document.getElementById('panel-schedule');
+    if (tabName === 'settings') {
+      if (_ps3) { _ps3.classList.add('active'); _ps3.style.display = ''; }
+      if (_pc3) { _pc3.classList.remove('active'); _pc3.style.display = 'none'; }
+      // Pokud je staff-tbody prázdný ale state.staff má data, obnov renderStaff
+      if (typeof renderStaff === 'function' && state && state.staff && state.staff.length > 0) {
+        var _tb3 = document.getElementById('staff-tbody');
+        if (_tb3 && _tb3.rows.length === 0) renderStaff();
+      }
+    } else if (tabName === 'tvorba' || tabName === 'view' || tabName === 'recep') {
+      if (_ps3) { _ps3.classList.remove('active'); _ps3.style.display = 'none'; }
+      if (_pc3) { _pc3.classList.add('active'); _pc3.style.display = ''; }
+    }
+  } catch(_safetyErr) { console.warn('[Portal] panel-safety error:', _safetyErr); }
 
   _currentTab = tabName;
 }
