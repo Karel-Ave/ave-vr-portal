@@ -6650,7 +6650,7 @@ document.addEventListener('mouseup', (e) => {
 
 <script>
 /* ════════════════════════════════════════════════════════════════════════════
-   WEB OVERRIDE v5.19 — AVE VR Portál
+   WEB OVERRIDE v5.20 — AVE VR Portál
    Záložky: Nastavení | Tvorba rozpisu | Rozpis
    Tvorba = PC editor + auto-save draft + Publikovat
    Rozpis  = portal view (pouze hodiny, bez fond-dot, se zamykáním)
@@ -7279,6 +7279,10 @@ function showAppTab(tabName) {
   document.querySelectorAll('.rtab').forEach(b => b.classList.remove('rtab-active'));
   const activeBtn = document.getElementById('rtab-' + tabName);
   if (activeBtn) activeBtn.classList.add('rtab-active');
+
+  // Kliknutí na záložku = uživatel chce vidět obsah → skryj overlay okamžitě
+  // (overlay se jinak skryje až po načtení dat z API, což může trvat déle)
+  _hideLoadingOverlay();
 
   const ps = document.getElementById('panel-settings');
   const pc = document.getElementById('panel-schedule');
