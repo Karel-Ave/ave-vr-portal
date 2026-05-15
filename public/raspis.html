@@ -888,6 +888,14 @@ body.portal-receptionist-mode td[data-sum-id="note"] { display: none !important;
 /* Skryj tlačítka přepínání součtů */
 body.portal-receptionist-mode #btn-toggle-sums,
 body.portal-receptionist-mode #btn-toggle-hoursonly { display: none !important; }
+
+/* ── Záložka "Rozpis" (pro recepční) ─────────────────────────────────────── */
+/* Skryj Pokrytí + hotelové řádky + tlačítko Zobrazit hotely */
+body.portal-recep-mode .hotel-row { display: none !important; }
+body.portal-recep-mode #toggle-hotels-btn { display: none !important; }
+/* schedule-controls se zužuje — skryj i levý blok sc-left (hotel filtry) */
+body.portal-recep-mode .sc-left { display: none !important; }
+body.portal-recep-mode .sc-left2 { display: none !important; }
 </style>
 </head>
 <body>
@@ -906,7 +914,8 @@ body.portal-receptionist-mode #btn-toggle-hoursonly { display: none !important; 
 <div id="raspis-tabs-bar">
   <button class="rtab rtab-active" id="rtab-settings" onclick="showAppTab('settings')">⚙ Nastavení</button>
   <button class="rtab" id="rtab-tvorba" onclick="showAppTab('tvorba')">✏ Tvorba rozpisu</button>
-  <button class="rtab" id="rtab-view" onclick="showAppTab('view')">📋 Rozpis</button>
+  <button class="rtab" id="rtab-view" onclick="showAppTab('view')">📋 Rozpis VR</button>
+  <button class="rtab" id="rtab-recep" onclick="showAppTab('recep')">📋 Rozpis</button>
   <div id="raspis-tab-actions">
     <span id="web-save-status" style="font-size:10px;opacity:0;transition:opacity .3s;margin-right:4px;color:var(--text-muted,#666);"></span>
     <select id="tvorba-drafts-sel" class="tab-action-sel" title="Načíst uložený draft" style="display:none;"></select>
@@ -934,6 +943,11 @@ body.portal-receptionist-mode #btn-toggle-hoursonly { display: none !important; 
     <button id="portal-load-to-tvorba-btn" class="btn btn-sm" onclick="loadIntoTvorba()" style="display:none;background:#e8f0ff;border-color:#6699cc;color:#1a4a8a;" title="Načíst tento rozpis do záložky Tvorba pro editaci">📋 Načíst do Tvorby</button>
     <button id="portal-export-btn" class="btn btn-sm" onclick="exportXlsx()" style="background:#4caf50;color:#fff;border-color:#388e3c;">📊 Export .xlsx</button>
   </div>
+</div>
+
+<div id="portal-recep-bar" style="display:none;align-items:center;gap:6px;background:var(--bg-controls,#ECEAE2);border-bottom:1px solid var(--bg-controls-border,#D8D5CC);padding:5px 12px;flex-shrink:0;min-height:38px;">
+  <select id="portal-recep-sel" title="Vyberte měsíc rozpisu" style="height:26px;padding:0 8px;font-size:12px;font-family:inherit;border:1px solid var(--border);border-radius:5px;background:var(--surface);color:var(--text);cursor:pointer;max-width:220px;"></select>
+  <span style="font-size:11px;color:var(--text-muted,#888);">— zobrazení pro recepční</span>
 </div>
 
 <div id="content">
@@ -6665,9 +6679,13 @@ let _saveTimer       = null;
 let _lastSavedJson   = null;
 let _logSavedOnly    = false;
 let _raspisInited    = false;
-let _viewHoursOnlyActivated = false;  // true = my přepnuli do hoursonly při vstupu do Rozpis
+let _viewHoursOnlyActivated = false;  // true = my přepnuli do hoursonly při vstupu do Rozpis/Recep
 let _loadRozpisToTvorba = false;       // true = načíst aktuální Rozpis data do Tvorby
 let _receptionistMode = false;         // Pro recepční (Skryj P+S + neutralizuj barvy + skryj tooltip/poznámku/součty)
+// ── Záložka "Rozpis" (recepční view) ─────────────────────────────────────────
+let _receKey    = null;
+let _receData   = null;
+let _receInited = false;
 
 window.__raspisGetCurrentKey = () => _portalKey;
 window.__raspisIsEditMode    = () => _portalEditMode;
@@ -7036,6 +7054,50 @@ async function loadRozpis(key) {
   } catch(e) { console.error('[Portal] loadRozpis:', e); }
 }
 
+// ── Záložka Rozpis (recepční): načti seznam měsíců + vyber aktuální ──────────
+async function _loadReceList(selectKey) {
+  try {
+    const resp = await fetch('/api/rozpisy', { credentials: 'include' });
+    if (!resp.ok) return;
+    const { current, history } = await resp.json();
+    const sel = document.getElementById('portal-recep-sel');
+    if (!sel) return;
+    sel.innerHTML = '';
+    if (!history || !history.length) {
+      sel.innerHTML = '<option disabled>— žádný rozpis —</option>';
+      return;
+    }
+    history.forEach(r => {
+      const opt = document.createElement('option');
+      opt.value = r.key;
+      opt.textContent = r.label;
+      sel.appendChild(opt);
+    });
+    const keyToSelect = selectKey || current;
+    if (keyToSelect) sel.value = keyToSelect;
+    if (sel.value) await _loadRecep(sel.value);
+  } catch(e) { console.error('[Portal] _loadReceList:', e); }
+}
+
+async function _loadRecep(key) {
+  if (!key) return;
+  try {
+    const resp = await fetch('/api/rozpisy/' + encodeURIComponent(key), { credentials: 'include' });
+    const json = await resp.json();
+    if (!json.ok || !json.entry) return;
+    const data = typeof json.entry.data === 'string' ? JSON.parse(json.entry.data) : json.entry.data;
+    _receKey  = key;
+    _receData = data;
+    applyData(data);
+    if (typeof renderStaff === 'function') renderStaff();
+    if (state) state.hotelsVisible = false;
+    setTimeout(() => {
+      buildSchedule();
+      if (typeof applyHotelFilter === 'function') applyHotelFilter();
+    }, 0);
+  } catch(e) { console.error('[Portal] _loadRecep:', e); }
+}
+
 // ── Načíst aktuální Rozpis do Tvorby pro editaci ─────────────────────────────
 async function loadIntoTvorba() {
   if (!_portalKey) { alert('Není načten žádný rozpis.'); return; }
@@ -7220,12 +7282,35 @@ function showAppTab(tabName) {
   const pc = document.getElementById('panel-schedule');
   const pb = document.getElementById('portal-controls-bar');
 
-  // ── Opuštění záložky Rozpis (view) ───────────────────────────────────────
+  // ── Opuštění záložky Rozpis VR (view) ────────────────────────────────────
   if (_currentTab === 'view' && tabName !== 'view') {
-    // Odstraň portal-view-mode třídu (odkryje fond-dot atd.)
     document.body.classList.remove('portal-view-mode');
-    // Pokud jsme my aktivovali hoursonly, vrať zpět na plné zobrazení
-    if (_viewHoursOnlyActivated) {
+    // Revertuj hoursonly, jen pokud nejdeme do recep (recep také hoursonly chce)
+    if (_viewHoursOnlyActivated && tabName !== 'recep') {
+      _viewHoursOnlyActivated = false;
+      if (typeof sumViewMode !== 'undefined' && sumViewMode === 'hoursonly' && typeof toggleHoursOnly === 'function') {
+        toggleHoursOnly();
+      }
+    }
+  }
+
+  // ── Opuštění záložky Rozpis (recep) ──────────────────────────────────────
+  if (_currentTab === 'recep' && tabName !== 'recep') {
+    document.body.classList.remove('portal-recep-mode');
+    document.body.classList.remove('portal-view-mode');
+    // Vypni recepční mode + obnov btn-receptionist
+    if (_receptionistMode) {
+      _receptionistMode = false;
+      document.body.classList.remove('portal-receptionist-mode');
+      var _btnR = document.getElementById('btn-receptionist');
+      if (_btnR) { _btnR.style.background='#e0e0ff'; _btnR.style.borderColor='#8888cc'; _btnR.style.color='#333'; _btnR.textContent='Pro recepční'; }
+      if (typeof applyHotelFilter === 'function') applyHotelFilter();
+    }
+    // Skryj portal-recep-bar
+    var _prb = document.getElementById('portal-recep-bar');
+    if (_prb) _prb.style.display = 'none';
+    // Revertuj hoursonly, jen pokud nejdeme do view (view také hoursonly chce)
+    if (_viewHoursOnlyActivated && tabName !== 'view') {
       _viewHoursOnlyActivated = false;
       if (typeof sumViewMode !== 'undefined' && sumViewMode === 'hoursonly' && typeof toggleHoursOnly === 'function') {
         toggleHoursOnly();
@@ -7266,8 +7351,8 @@ function showAppTab(tabName) {
       _tvorbaSnapshot = null;
       setReadOnly(false);
       setTimeout(() => { buildSchedule(); _restoreReqDisplay(); }, 0);
-    } else if (_currentTab === 'view' && _tvorbaSnapshot) {
-      // Vracíme se z Raspis/Rozpis do Tvorby — obnov snapshot
+    } else if ((_currentTab === 'view' || _currentTab === 'recep') && _tvorbaSnapshot) {
+      // Vracíme se z Raspis VR nebo Recep záložky do Tvorby — obnov snapshot
       if (_portalEditMode) {
         fetch('/api/lock/' + LOCK_APP + '/release', { method: 'POST', credentials: 'include' }).catch(() => {});
         _stopInactTimer();
@@ -7338,6 +7423,60 @@ function showAppTab(tabName) {
       if (state) state.hotelsVisible = false;
       // Defer buildSchedule — záložka se zobrazí okamžitě, pak přijde těžká operace
       setTimeout(() => buildSchedule(), 0);
+    }
+  }
+
+  else if (tabName === 'recep') {
+    if (ps) { ps.classList.remove('active'); ps.style.display = 'none'; }
+    if (pc) { pc.classList.add('active');    pc.style.display = ''; }
+    if (pb) pb.style.display = 'none';
+    var _prb2 = document.getElementById('portal-recep-bar');
+    if (_prb2) _prb2.style.display = 'flex';
+
+    // Snapshot Tvorba dat (pro případný návrat)
+    if (_currentTab === 'tvorba') _tvorbaSnapshot = buildWebSaveObj();
+
+    // Skryj všechna tlačítka (Tvorba i Raspis VR)
+    _setElDisplay('btn-manual-save',  false);
+    _setElDisplay('btn-new-schedule', false);
+    _setElDisplay('btn-publish',      false);
+    _setElDisplay('btn-export-xlsx',  false);
+    _setElDisplay('btn-filter-today', false);
+    _setElDisplay('btn-today-col',    false);
+    _setElDisplay('btn-today-col-m',  false);
+    _setElDisplay('btn-remember-req', false);
+    _setElDisplay('btn-receptionist', false);
+    _setElDisplay('tvorba-drafts-sel',false);
+
+    // Přidej CSS třídy pro recep tab
+    document.body.classList.add('portal-view-mode');
+    document.body.classList.add('portal-recep-mode');
+
+    // Aktivuj "Pouze hodiny" (hoursonly) pokud ještě není
+    if (typeof sumViewMode !== 'undefined' && sumViewMode !== 'hoursonly' && typeof toggleHoursOnly === 'function') {
+      _viewHoursOnlyActivated = true;
+      toggleHoursOnly();
+    }
+
+    // Vždy zapni receptionist mode
+    if (!_receptionistMode) {
+      _receptionistMode = true;
+      document.body.classList.add('portal-receptionist-mode');
+    }
+
+    setReadOnly(true);
+
+    if (!_receInited) {
+      _receInited = true;
+      _loadReceList();
+    } else if (_receData) {
+      applyData(_receData);
+      if (typeof renderStaff === 'function') renderStaff();
+      if (state) state.hotelsVisible = false;
+      setTimeout(() => {
+        buildSchedule();
+        if (typeof applyHotelFilter === 'function') applyHotelFilter();
+      }, 0);
     }
   }
 
@@ -7551,6 +7690,11 @@ function _wirePortalEvents() {
   if (draftSel) draftSel.addEventListener('change', _onDraftSelChange);
   const sel = document.getElementById('portal-rozpis-sel');
   if (sel) sel.addEventListener('change', _onSelChange);
+  const recepSel = document.getElementById('portal-recep-sel');
+  if (recepSel) recepSel.addEventListener('change', function() {
+    if (!this.value) return;
+    _loadRecep(this.value);
+  });
   const importBtn = document.getElementById('portal-import-btn');
   if (importBtn) importBtn.addEventListener('click', _onImportBtn);
   const importInp = document.getElementById('portal-import-input');
