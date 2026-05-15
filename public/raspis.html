@@ -846,8 +846,8 @@ body.portal-view-mode .fond-dot { visibility: hidden !important; }
    CSS !important přebije inline styl setovaný přes updateFondDot() */
 body.portal-view-mode td[data-sum-id="totHrs"] { background: var(--surface, #fff) !important; }
 /* Kliknutí na jméno recepčního v záložce Rozpis by skrylo řádek — to nechceme.
-   Zakázáme pointer-events na .sch-name pouze v Rozpis záložce. */
-body.portal-view-mode .sch-name { pointer-events: none !important; cursor: default !important; }
+   pointer-events necháme zapnuté (tooltip potřebuje mouseenter), ale click blokujeme přes JS. */
+body.portal-view-mode .sch-name { cursor: default !important; }
 
 /* Záhlaví "Recepční" a "Pokrytí" — vždy zarovnáno s jmény recepčních.
    Jméno v sch-name začíná na: 8px (padding-left) + 14px (fond-dot) + 2px (margin) = 24px.
@@ -7582,6 +7582,13 @@ function showAppTab(tabName) {
     } else if (tabName === 'tvorba' || tabName === 'view' || tabName === 'recep') {
       if (_ps3) { _ps3.classList.remove('active'); _ps3.style.display = 'none'; }
       if (_pc3) { _pc3.classList.add('active'); _pc3.style.display = ''; }
+      // Ihned skryj hotelové řádky — zabrání flashnutí před deferred buildSchedule
+      try {
+        document.querySelectorAll('tr.hotel-row').forEach(function(r) { r.style.display = 'none'; });
+        if (typeof state !== 'undefined') state.hotelsVisible = false;
+        var _thbFlash = document.getElementById('toggle-hotels-btn');
+        if (_thbFlash) _thbFlash.textContent = 'Zobrazit hotely';
+      } catch(_hf) {}
     }
   } catch(_safetyErr) { console.warn('[Portal] panel-safety error:', _safetyErr); }
 
@@ -8134,6 +8141,15 @@ function _applyExtraFilters() {
     return _origApplyData.call(this, data);
   };
 })();
+
+// ── Blokuj klik na sch-name v portal-view-mode (hover/tooltip zachován) ────────
+// Původní click handler skryje řádek recepčního — v záložce Rozpis VR to nechceme.
+// pointer-events nejsou zakázány (mouseenter potřebujeme pro tooltip), click blokujeme zde.
+document.addEventListener('click', function(e) {
+  if (!document.body.classList.contains('portal-view-mode')) return;
+  var td = e.target && e.target.closest && e.target.closest('td.sch-name');
+  if (td) { e.stopImmediatePropagation(); }
+}, true); // capture phase — interceptuje před original handlerem
 
 // ── Window onload override ────────────────────────────────────────────────────
 window.onload = async function() {
