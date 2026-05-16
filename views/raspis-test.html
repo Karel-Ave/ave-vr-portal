@@ -106,11 +106,12 @@ table.staff-tbl {
 .staff-tbl input:focus, .staff-tbl select:focus { outline: 1px solid var(--accent); border-radius: 3px; }
 .staff-tbl .col-num { width: 30px; text-align: center; color: var(--text-muted); }
 .staff-tbl .col-name { min-width: 130px; }
+.staff-tbl .col-login { min-width: 90px; }
 .staff-tbl .col-type { width: 110px; }
 .staff-tbl .col-contract { width: 70px; }
 .staff-tbl .col-maxhrs { width: 70px; }
-.staff-tbl .col-regular { min-width: 140px; }
-.staff-tbl .col-dates { min-width: 120px; }
+.staff-tbl .col-regular { min-width: 70px; width: 70px; }
+.staff-tbl .col-dates { min-width: 40px; width: 40px; }
 .staff-tbl .col-note { min-width: 110px; }
 .staff-tbl .col-note textarea {
   width: 100%; min-height: 28px; border: none; background: transparent;
@@ -363,6 +364,17 @@ tbody tr.row-filtered { display: none; }
 [data-theme="dark"] .cov-3plus { background: var(--col-cov3-bg,#4a1500); color: var(--col-cov3-tx,#ff8a65); }
 [data-theme="dark"] .cov-dayonly-night { background: var(--col-covdn-bg,#1a1a1a) !important; color: var(--col-covdn-tx,#555) !important; }
 .cov-row .col-name-td { font-size: 10px; font-weight: 700; padding: 2px 5px; background: var(--surface); }
+.cov-tbody { position: sticky; z-index: 3; }
+.cov-tbody td, .cov-tbody th { background-color: var(--surface, #fff); }
+.cov-tbody td.cov-empty { background-color: var(--col-cov0-bg, #ffebeb) !important; }
+.cov-tbody td.cov-1 { background-color: var(--col-cov1-bg, #c8f5c8) !important; }
+.cov-tbody td.cov-2 { background-color: var(--col-cov2-bg, #ffe082) !important; }
+.cov-tbody td.cov-3plus { background-color: var(--col-cov3-bg, #ff8a65) !important; }
+.cov-tbody td.cov-dayonly-night { background-color: var(--col-covdn-bg, #e8e8e8) !important; }
+.cov-tbody td.cell-wd { background-color: var(--col-wd-bg, #fff) !important; }
+.cov-tbody td.cell-wn { background-color: var(--col-wn-bg, #c8c8c8) !important; }
+.cov-tbody td.cell-kd { background-color: var(--col-kd-bg, #a8d8f0) !important; }
+.cov-tbody td.cell-kn { background-color: var(--col-kn-bg, #5b9dc9) !important; }
 
 /* Cell state coloring */
 .sched-cell.cell-empty { background: var(--col-empty-bg,#fff5f5) !important; }
@@ -397,6 +409,15 @@ tbody tr.row-filtered { display: none; }
   background: var(--surface-alt); color: var(--text-muted); font-size: 10px; cursor: pointer;
   font-family: inherit; flex-shrink: 0; }
 .btn-regular-pick:hover { background: var(--accent); color: #fff; border-color: transparent; }
+
+/* ── Dates picker popup (same style as #regular-picker) ── */
+#dates-picker {
+  position: fixed; z-index: 3000; background: var(--surface);
+  border: 1px solid var(--border); border-radius: 8px;
+  padding: 10px 12px; box-shadow: 0 6px 24px rgba(0,0,0,.25);
+  min-width: 240px; display: none;
+}
+#dates-picker.show { display: block; }
 .col-regular { min-width: 130px; }
 .col-regular-wrap { display: flex; align-items: center; gap: 4px; }
 .col-regular-text { font-size: 11px; color: var(--text-muted); flex: 1; overflow: hidden;
@@ -409,18 +430,7 @@ tbody tr.row-filtered { display: none; }
   font-size: 10px; white-space: nowrap; pointer-events: none; z-index: 100;
 }
 .sched-cell { position: relative; }
-/* Tooltip – jméno pracovníka v tabulce */
-.col-name-td[data-tip] { overflow: visible; }
-.col-name-td[data-tip]:hover::after {
-  content: attr(data-tip);
-  position: absolute; top: 0; left: calc(100% + 4px);
-  background: rgba(30,30,30,.96); color: #fff;
-  padding: 5px 10px; border-radius: 6px;
-  font-size: 11px; line-height: 1.55; white-space: pre-line;
-  pointer-events: none; z-index: 500;
-  min-width: 120px; max-width: 240px;
-  box-shadow: 0 3px 12px rgba(0,0,0,.35);
-}
+/* Tooltip – jméno pracovníka v tabulce — replaced by JS floating tooltip (#sched-name-tip) */
 
 /* ── Buttons ── */
 .btn { padding: 6px 13px; border: none; border-radius: 7px; font-size: 13px;
@@ -537,7 +547,6 @@ tbody tr.row-filtered { display: none; }
   <!-- Nastavení actions -->
   <div class="tb-actions" id="tb-act-nastaveni">
     <button class="tb-btn" id="btn-add-staff">+ Přidat</button>
-    <button class="tb-btn" id="btn-sort-staff">↕ Seřadit</button>
     <button class="tb-btn" id="btn-clear-actual">Smazat aktuální</button>
     <button class="tb-btn" id="btn-hotel-manager">🏨 Hotely</button>
     <button class="tb-btn" id="btn-save-settings">Uložit nastavení</button>
@@ -599,15 +608,15 @@ tbody tr.row-filtered { display: none; }
     </div>
     <div>
       <label>Fond HPP (hod)</label>
-      <input type="text" id="inp-fond-hpp" style="width:70px" placeholder="160">
+      <input type="text" id="inp-fond-hpp" style="width:70px">
     </div>
     <div>
       <label>Fond ZPP (hod)</label>
-      <input type="text" id="inp-fond-zpp" style="width:70px" placeholder="160">
+      <input type="text" id="inp-fond-zpp" style="width:70px">
     </div>
     <div>
       <label>Svátky (čísla dnů, čárkou)</label>
-      <input type="text" id="inp-holidays" style="width:200px" placeholder="8,29">
+      <input type="text" id="inp-holidays" style="width:200px">
     </div>
   </div>
   <div class="wrap">
@@ -617,6 +626,7 @@ tbody tr.row-filtered { display: none; }
           <tr>
             <th class="col-num">#</th>
             <th class="col-name">Jméno</th>
+            <th class="col-login">Login</th>
             <th class="col-type">Typ</th>
             <th class="col-contract">Smlouva</th>
             <th class="col-maxhrs">Max.hod</th>
@@ -686,6 +696,20 @@ tbody tr.row-filtered { display: none; }
     <div class="modal-body">
       <div class="fields-2">
         <div class="field"><label>Jméno</label><input type="text" id="ns-name" placeholder="Jméno příjmení"></div>
+        <div class="field"><label>Login</label><input type="text" id="ns-login" placeholder="login..."></div>
+        <div class="field" style="grid-column:1/-1"><label>Zobrazit v rozpisu od</label>
+          <div style="display:flex;gap:6px">
+            <select id="ns-active-month" style="flex:1">
+              <option value="1">Leden</option><option value="2">Únor</option>
+              <option value="3">Březen</option><option value="4">Duben</option>
+              <option value="5">Květen</option><option value="6">Červen</option>
+              <option value="7">Červenec</option><option value="8">Srpen</option>
+              <option value="9">Září</option><option value="10">Říjen</option>
+              <option value="11">Listopad</option><option value="12">Prosinec</option>
+            </select>
+            <input type="number" id="ns-active-year" style="width:74px" min="2020" max="2099">
+          </div>
+        </div>
         <div class="field"><label>Typ směn</label>
           <select id="ns-type">
             <option value="">— žádný —</option>
@@ -699,7 +723,7 @@ tbody tr.row-filtered { display: none; }
             <option>HPP</option><option>ZPP</option><option>DPČ</option><option>DPP</option>
           </select>
         </div>
-        <div class="field"><label>Max. hodin</label><input type="text" id="ns-maxhrs" placeholder="160"></div>
+        <div class="field"><label>Max. hodin</label><input type="text" id="ns-maxhrs"></div>
         <div class="field"><label>Stálé volno</label><input type="text" id="ns-regular" placeholder="po-d,út-n,sv"></div>
         <div class="field"><label>Nemůže aktuálně</label><input type="text" id="ns-dates" placeholder="1, 3. 5 nebo 1-6, 20-22"></div>
       </div>
@@ -709,6 +733,44 @@ tbody tr.row-filtered { display: none; }
     <div class="modal-footer">
       <button class="btn btn-secondary" id="add-staff-cancel">Zrušit</button>
       <button class="btn btn-primary" id="add-staff-confirm">Přidat</button>
+    </div>
+  </div>
+</div>
+
+<!-- ═══════════════════════════ MODAL: Upravit pracovníka ════════════════════════════════ -->
+<div class="overlay" id="overlay-edit-staff">
+  <div class="modal" style="width:min(520px,100%)">
+    <div class="modal-header">
+      <h3>✏ Upravit pracovníka</h3>
+      <button class="modal-close" id="edit-staff-close">✕</button>
+    </div>
+    <div class="modal-body">
+      <div class="fields-2">
+        <div class="field"><label>Jméno</label><input type="text" id="es-name" placeholder="Jméno příjmení"></div>
+        <div class="field"><label>Login</label><input type="text" id="es-login" placeholder="login..."></div>
+        <div class="field"><label>Typ směn</label>
+          <select id="es-type">
+            <option value="">— žádný —</option>
+            <option>Denní</option><option>Noční</option><option>Obojí</option>
+            <option>Vedoucí</option><option>Pohotovost</option><option>Speciální</option>
+          </select>
+        </div>
+        <div class="field"><label>Smlouva</label>
+          <select id="es-contract">
+            <option value="">—</option>
+            <option>HPP</option><option>ZPP</option><option>DPČ</option><option>DPP</option>
+          </select>
+        </div>
+        <div class="field"><label>Max. hodin</label><input type="text" id="es-maxhrs"></div>
+        <div class="field"><label>Stálé volno</label><input type="text" id="es-regular" placeholder="po-d,út-n,sv"></div>
+        <div class="field"><label>Nemůže aktuálně</label><input type="text" id="es-dates" placeholder="1, 3-5, 20"></div>
+      </div>
+      <div class="field"><label>Poznámka aktuální</label><textarea id="es-notem" rows="2" style="resize:vertical"></textarea></div>
+      <div class="field"><label>Poznámka trvalá</label><textarea id="es-notep" rows="2" style="resize:vertical"></textarea></div>
+    </div>
+    <div class="modal-footer">
+      <button class="btn btn-secondary" id="edit-staff-cancel">Zrušit</button>
+      <button class="btn btn-primary" id="edit-staff-confirm">Uložit</button>
     </div>
   </div>
 </div>
@@ -1135,11 +1197,37 @@ tbody tr.row-filtered { display: none; }
   </div>
 </div>
 
+<!-- Dates picker popup -->
+<div id="dates-picker">
+  <div class="rp-title">Nemůže aktuálně</div>
+  <div style="font-size:11px;color:var(--text-muted);margin-bottom:6px">Dny, čísla oddělená čárkou nebo rozsahy (1, 3-5, 20)</div>
+  <input type="text" id="dp-input" style="width:100%;padding:5px 8px;border:1px solid var(--border);border-radius:5px;background:var(--input-bg,var(--bg));color:var(--text);font-size:13px;font-family:inherit">
+  <div class="rp-footer" style="margin-top:8px">
+    <div style="flex:1"></div>
+    <button class="btn-rp btn-rp-ok" id="dp-apply">OK</button>
+    <button class="btn-rp btn-rp-cancel" id="dp-cancel">✕</button>
+  </div>
+</div>
+
 <!-- ═══════════════════════════ TOAST ═════════════════════════════════════════════════════ -->
 <div id="toast"></div>
 
+<div id="sched-name-tip" style="position:fixed;z-index:9998;display:none;pointer-events:none;background:rgba(28,28,28,.97);color:#fff;padding:6px 11px;border-radius:7px;font-size:11px;line-height:1.6;white-space:pre-line;max-width:260px;box-shadow:0 3px 14px rgba(0,0,0,.4)"></div>
+
 <script>
 'use strict';
+
+/* ── Floating name tooltip ── */
+const _schedTip = document.getElementById('sched-name-tip');
+function showSchedTip(text, x, y) {
+  _schedTip.textContent = text;
+  _schedTip.style.display = 'block';
+  const w = _schedTip.offsetWidth || 200;
+  const left = Math.min(x + 12, window.innerWidth - w - 8);
+  _schedTip.style.left = left + 'px';
+  _schedTip.style.top = (y + 6) + 'px';
+}
+function hideSchedTip() { _schedTip.style.display = 'none'; }
 
 /* ══════════════════════════════════════════════════════════════════════════════
    CONSTANTS & STATE
@@ -1624,8 +1712,11 @@ function renderScheduleTable(tableId, editable) {
   thead.appendChild(tr2);
   tbl.appendChild(thead);
 
-  // ── TBODY ──
-  const tbody = document.createElement('tbody');
+  // ── TBODY (two separate tbodies: covTbody for coverage, staffTbody for staff) ──
+  const covTbody = document.createElement('tbody');
+  covTbody.className = 'cov-tbody';
+  const staffTbody = document.createElement('tbody');
+  staffTbody.className = 'staff-tbody';
 
   // ── Pokrytí (coverage) rows ──
   if (state.staff.length > 0) {
@@ -1639,7 +1730,7 @@ function renderScheduleTable(tableId, editable) {
       th0.colSpan = calCols.length + SUM_HEADS.length + 1;
       th0.textContent = 'Pokrytí';
       covHdr.appendChild(th0);
-      tbody.appendChild(covHdr);
+      covTbody.appendChild(covHdr);
 
       hotelLetters.forEach(letter => {
         const tr = document.createElement('tr');
@@ -1675,7 +1766,7 @@ function renderScheduleTable(tableId, editable) {
           td.className = 'sum-cell' + (idx === 6 ? ' sum-hrs' : '');
           tr.appendChild(td);
         });
-        tbody.appendChild(tr);
+        covTbody.appendChild(tr);
       });
     }
   }
@@ -1684,6 +1775,12 @@ function renderScheduleTable(tableId, editable) {
   const _dupeKeys = computeDuplicateCells(calCols, state.staff, state.schedule);
 
   state.staff.forEach((s, si) => {
+    // Skip if not yet active in this month
+    if (s.activeFrom) {
+      const af = s.activeFrom;
+      if (af.year > state.year || (af.year === state.year && af.month > state.month)) return;
+    }
+
     const tr = document.createElement('tr');
     tr.dataset.si = si;
 
@@ -1693,12 +1790,17 @@ function renderScheduleTable(tableId, editable) {
     nameTd.textContent = s.name || `(pracovník ${si+1})`;
     const tc = TYPE_COLORS[s.type] || '';
     if (tc) { nameTd.style.background = tc; nameTd.style.color = '#222'; }
-    // Tooltip: nemůže + poznámky
+    // Tooltip: nemůže + poznámky (JS-based floating tooltip)
     const _tipParts = [];
     if (s.dates) _tipParts.push(`Nemůže: ${s.dates}`);
     if (editable && s.noteM) _tipParts.push(`Pozn.: ${s.noteM}`);
     if (s.noteP) _tipParts.push(editable ? `Trvalá: ${s.noteP}` : s.noteP);
-    if (_tipParts.length) nameTd.dataset.tip = _tipParts.join('\n');
+    if (_tipParts.length) {
+      const _tip = _tipParts.join('\n');
+      nameTd.addEventListener('mouseenter', e => showSchedTip(_tip, e.clientX, e.clientY));
+      nameTd.addEventListener('mousemove', e => showSchedTip(_tip, e.clientX, e.clientY));
+      nameTd.addEventListener('mouseleave', hideSchedTip);
+    }
     tr.appendChild(nameTd);
 
     // Schedule cells
@@ -1780,9 +1882,14 @@ function renderScheduleTable(tableId, editable) {
     noteTd.textContent = (editable ? s.noteM : s.noteP) || '';
     tr.appendChild(noteTd);
 
-    tbody.appendChild(tr);
+    staffTbody.appendChild(tr);
   });
-  tbl.appendChild(tbody);
+  tbl.appendChild(covTbody);
+  tbl.appendChild(staffTbody);
+
+  // Make coverage sticky
+  const stickyTopPx = 'calc(var(--sched-row-h) * 2)';
+  covTbody.style.cssText = `position:sticky;top:${stickyTopPx};z-index:3;`;
 
   if (editable) {
     setupKeyboardNav(tbl);
@@ -1984,10 +2091,19 @@ function renderStaffTable() {
     if (tc) { nameTd.style.background = tc; }
     const nameInp = document.createElement('input');
     nameInp.type = 'text'; nameInp.value = s.name || '';
-    nameInp.placeholder = 'Jméno...';
+    nameInp.placeholder = '';
     nameInp.addEventListener('input', () => { s.name = nameInp.value; });
     nameTd.appendChild(nameInp);
     tr.appendChild(nameTd);
+
+    // Login
+    const loginTd = document.createElement('td');
+    loginTd.className = 'col-login';
+    const loginInp = document.createElement('input');
+    loginInp.type = 'text'; loginInp.value = s.login || '';
+    loginInp.addEventListener('input', () => { s.login = loginInp.value; });
+    loginTd.appendChild(loginInp);
+    tr.appendChild(loginTd);
 
     // Type
     const typeTd = document.createElement('td');
@@ -2026,7 +2142,7 @@ function renderStaffTable() {
     maxTd.className = 'col-maxhrs';
     const maxInp = document.createElement('input');
     maxInp.type = 'text'; maxInp.value = s.maxHrs || '';
-    maxInp.placeholder = '160';
+    maxInp.placeholder = '';
     maxInp.addEventListener('input', () => { s.maxHrs = maxInp.value; });
     maxTd.appendChild(maxInp);
     tr.appendChild(maxTd);
@@ -2053,14 +2169,19 @@ function renderStaffTable() {
     regTd.appendChild(regWrap);
     tr.appendChild(regTd);
 
-    // Dates
+    // Dates (nemůže aktuálně) — indicator button + popup
     const datesTd = document.createElement('td');
     datesTd.className = 'col-dates';
-    const datesInp = document.createElement('input');
-    datesInp.type = 'text'; datesInp.value = s.dates || '';
-    datesInp.placeholder = '1, 3. 5 nebo 1-6, 20-22';
-    datesInp.addEventListener('input', () => { s.dates = datesInp.value; });
-    datesTd.appendChild(datesInp);
+    const datesBtn = document.createElement('button');
+    datesBtn.className = 'btn-regular-pick';
+    datesBtn.title = 'Nemůže aktuálně';
+    datesBtn.textContent = s.dates ? '●' : '○';
+    datesBtn.style.width = '100%';
+    datesBtn.addEventListener('click', e => {
+      e.stopPropagation();
+      openDatesPicker(si, datesBtn);
+    });
+    datesTd.appendChild(datesBtn);
     tr.appendChild(datesTd);
 
     // Note actual (noteM)
@@ -2068,7 +2189,7 @@ function renderStaffTable() {
     noteMTd.className = 'col-note';
     const noteMArea = document.createElement('textarea');
     noteMArea.rows = 1; noteMArea.value = s.noteM || '';
-    noteMArea.placeholder = 'Aktuální poznámka…';
+    noteMArea.placeholder = '';
     noteMArea.addEventListener('input', () => {
       s.noteM = noteMArea.value;
       noteMArea.style.height = 'auto';
@@ -2082,7 +2203,7 @@ function renderStaffTable() {
     notePTd.className = 'col-note';
     const notePArea = document.createElement('textarea');
     notePArea.rows = 1; notePArea.value = s.noteP || '';
-    notePArea.placeholder = 'Trvalá poznámka…';
+    notePArea.placeholder = '';
     notePArea.addEventListener('input', () => {
       s.noteP = notePArea.value;
       notePArea.style.height = 'auto';
@@ -2091,12 +2212,18 @@ function renderStaffTable() {
     notePTd.appendChild(notePArea);
     tr.appendChild(notePTd);
 
-    // Save / delete row
+    // Save / delete / edit row
     const saveTd = document.createElement('td');
     saveTd.className = 'col-save';
+    const editBtn = document.createElement('button');
+    editBtn.textContent = '✏'; editBtn.className = 'btn btn-sm btn-secondary';
+    editBtn.title = 'Upravit pracovníka';
+    editBtn.addEventListener('click', () => showEditStaffModal(si));
+    saveTd.appendChild(editBtn);
     const delBtn = document.createElement('button');
     delBtn.textContent = '✕'; delBtn.className = 'btn btn-sm btn-danger';
     delBtn.title = 'Odebrat pracovníka';
+    delBtn.style.marginLeft = '4px';
     delBtn.addEventListener('click', () => {
       if (!confirm(`Odebrat pracovníka "${s.name || si+1}"?`)) return;
       state.staff.splice(si, 1);
@@ -2660,14 +2787,21 @@ function applyRowFilters() {
       tr.classList.toggle('row-filtered', hide);
     });
     // Coverage rows follow hotel filter
-    tbl.querySelectorAll('tbody tr.cov-row').forEach(tr => {
-      const letter = tr.dataset.covLetter;
-      const hide = !showHotels || (filterHotel && filterHotel !== letter);
-      tr.classList.toggle('row-filtered', hide);
-    });
-    tbl.querySelectorAll('tbody tr.cov-header-row').forEach(tr => {
-      tr.classList.toggle('row-filtered', !showHotels);
-    });
+    const covTbodyEl = tbl.querySelector('tbody.cov-tbody');
+    if (covTbodyEl) {
+      covTbodyEl.style.display = !showHotels ? 'none' : '';
+      // When showing, also filter individual hotel rows
+      if (showHotels) {
+        covTbodyEl.querySelectorAll('tr.cov-row').forEach(tr => {
+          const letter = tr.dataset.covLetter;
+          const hide = filterHotel && filterHotel !== letter;
+          tr.classList.toggle('row-filtered', hide);
+        });
+        covTbodyEl.querySelectorAll('tr.cov-header-row').forEach(tr => {
+          tr.classList.remove('row-filtered');
+        });
+      }
+    }
   });
 }
 
@@ -2767,6 +2901,87 @@ function applyRegularPicker() {
   picker.classList.remove('show');
   _rpSi = null;
   // Re-apply coloring in all rendered schedule tables
+  updateRequirementClasses();
+}
+
+/* ══════════════════════════════════════════════════════════════════════════════
+   EDIT STAFF MODAL
+══════════════════════════════════════════════════════════════════════════════ */
+
+let _editSi = null;
+
+function showEditStaffModal(si) {
+  _editSi = si;
+  const s = state.staff[si];
+  document.getElementById('es-name').value = s.name || '';
+  document.getElementById('es-login').value = s.login || '';
+  document.getElementById('es-type').value = s.type || '';
+  document.getElementById('es-contract').value = s.contract || '';
+  document.getElementById('es-maxhrs').value = s.maxHrs || '';
+  document.getElementById('es-regular').value = s.regular || '';
+  document.getElementById('es-dates').value = s.dates || '';
+  document.getElementById('es-notem').value = s.noteM || '';
+  document.getElementById('es-notep').value = s.noteP || '';
+  document.getElementById('overlay-edit-staff').classList.add('show');
+  setTimeout(() => document.getElementById('es-name').focus(), 100);
+}
+
+function confirmEditStaff() {
+  if (_editSi === null) return;
+  const name = document.getElementById('es-name').value.trim();
+  if (!name) { toast('Zadejte jméno', true); return; }
+  const s = state.staff[_editSi];
+  s.name     = name;
+  s.login    = document.getElementById('es-login').value;
+  s.type     = document.getElementById('es-type').value;
+  s.contract = document.getElementById('es-contract').value;
+  s.maxHrs   = document.getElementById('es-maxhrs').value;
+  s.regular  = document.getElementById('es-regular').value;
+  s.dates    = document.getElementById('es-dates').value;
+  s.noteM    = document.getElementById('es-notem').value;
+  s.noteP    = document.getElementById('es-notep').value;
+  document.getElementById('overlay-edit-staff').classList.remove('show');
+  sortStaffAlpha();
+  renderStaffTable();
+  renderScheduleTable('tvorba-tbl', true);
+  toast(`Uloženo: ${name}`);
+}
+
+/* ══════════════════════════════════════════════════════════════════════════════
+   DATES PICKER
+══════════════════════════════════════════════════════════════════════════════ */
+
+let _dpSi = null;
+let _dpBtn = null;
+
+function openDatesPicker(si, btnEl) {
+  _dpSi = si;
+  _dpBtn = btnEl;
+  const s = state.staff[si];
+  document.getElementById('dp-input').value = s.dates || '';
+  const picker = document.getElementById('dates-picker');
+  const rect = btnEl.getBoundingClientRect();
+  picker.style.top = (rect.bottom + 4) + 'px';
+  picker.style.left = Math.min(rect.left, window.innerWidth - 260) + 'px';
+  picker.classList.add('show');
+  setTimeout(() => { document.getElementById('dp-input').focus(); }, 50);
+  setTimeout(() => {
+    document.addEventListener('click', _closeDatesPickerOnOutside, {once: true});
+  }, 10);
+}
+
+function _closeDatesPickerOnOutside(e) {
+  const picker = document.getElementById('dates-picker');
+  if (!picker.contains(e.target)) picker.classList.remove('show');
+}
+
+function applyDatesPicker() {
+  if (_dpSi === null) return;
+  const val = document.getElementById('dp-input').value.trim();
+  state.staff[_dpSi].dates = val;
+  if (_dpBtn) _dpBtn.textContent = val ? '●' : '○';
+  document.getElementById('dates-picker').classList.remove('show');
+  _dpSi = null;
   updateRequirementClasses();
 }
 
@@ -3005,11 +3220,13 @@ function initColorEditorListeners() {
 ══════════════════════════════════════════════════════════════════════════════ */
 
 function showAddStaffModal() {
-  ['ns-name','ns-maxhrs','ns-regular','ns-dates','ns-notem','ns-notep'].forEach(id => {
+  ['ns-name','ns-login','ns-maxhrs','ns-regular','ns-dates','ns-notem','ns-notep'].forEach(id => {
     document.getElementById(id).value = '';
   });
   document.getElementById('ns-type').value = '';
   document.getElementById('ns-contract').value = '';
+  document.getElementById('ns-active-month').value = state.month;
+  document.getElementById('ns-active-year').value = state.year;
   document.getElementById('overlay-add-staff').classList.add('show');
   setTimeout(() => document.getElementById('ns-name').focus(), 100);
 }
@@ -3019,6 +3236,7 @@ function confirmAddStaff() {
   if (!name) { toast('Zadejte jméno', true); return; }
   state.staff.push({
     name,
+    login:    document.getElementById('ns-login').value,
     type:     document.getElementById('ns-type').value,
     contract: document.getElementById('ns-contract').value,
     maxHrs:   document.getElementById('ns-maxhrs').value,
@@ -3026,8 +3244,13 @@ function confirmAddStaff() {
     dates:    document.getElementById('ns-dates').value,
     noteM:    document.getElementById('ns-notem').value,
     noteP:    document.getElementById('ns-notep').value,
+    activeFrom: {
+      month: +document.getElementById('ns-active-month').value,
+      year: +document.getElementById('ns-active-year').value
+    },
   });
   document.getElementById('overlay-add-staff').classList.remove('show');
+  sortStaffAlpha();
   renderStaffTable();
   toast(`Přidán: ${name}`);
 }
@@ -3036,19 +3259,48 @@ function confirmAddStaff() {
    NASTAVENÍ — extra akce
 ══════════════════════════════════════════════════════════════════════════════ */
 
+function sortStaffAlpha() {
+  if (!state.staff.length) return false;
+  // Create indexed array
+  const indexed = state.staff.map((s, i) => ({ s, oldIdx: i }));
+  indexed.sort((a, b) => (a.s.name || '').localeCompare(b.s.name || '', 'cs'));
+  // Check if already sorted
+  if (indexed.every((item, i) => item.oldIdx === i)) return false;
+  // Build old→new index mapping
+  const oldToNew = {};
+  indexed.forEach((item, newIdx) => { oldToNew[item.oldIdx] = newIdx; });
+  // Remap schedule
+  const newSchedule = {};
+  Object.entries(state.schedule).forEach(([key, val]) => {
+    const parts = key.split('_');
+    const oldSi = +parts[0], ci = parts[1];
+    const newSi = oldToNew[oldSi];
+    if (newSi !== undefined) newSchedule[`${newSi}_${ci}`] = val;
+  });
+  // Remap extras
+  const newExtras = {};
+  Object.entries(state.extras).forEach(([siStr, val]) => {
+    const newSi = oldToNew[+siStr];
+    if (newSi !== undefined) newExtras[String(newSi)] = val;
+  });
+  state.staff = indexed.map(item => item.s);
+  state.schedule = newSchedule;
+  state.extras = newExtras;
+  return true;
+}
+
 function sortStaff() {
-  if (!state.staff.length) return;
-  state.staff.sort((a, b) => (a.name || '').localeCompare(b.name || '', 'cs'));
+  sortStaffAlpha();
   renderStaffTable();
   toast('Seřazeno abecedně');
 }
 
 function clearActual() {
-  if (!state.staff.some(s => s.noteM)) { toast('Žádné aktuální poznámky', false); return; }
-  if (!confirm('Smazat aktuální poznámky všech pracovníků?')) return;
-  state.staff.forEach(s => { s.noteM = ''; });
+  if (!state.staff.some(s => s.noteM || s.dates)) { toast('Žádné aktuální údaje', false); return; }
+  if (!confirm('Smazat Nemůže aktuálně a Pozn. aktuální všech pracovníků?')) return;
+  state.staff.forEach(s => { s.noteM = ''; s.dates = ''; });
   renderStaffTable();
-  toast('Aktuální poznámky smazány');
+  toast('Aktuální údaje smazány');
 }
 
 /* ── Hotel manager ─────────────────────────────────────────────────────────── */
@@ -3448,7 +3700,7 @@ async function loadMasterStaff() {
     if (!list || !list.length) { toast('Master nemá žádné pracovníky', true); return; }
     if (!confirm(`Načíst ${list.length} pracovníků z master? Stávající seznam bude nahrazen.`)) return;
     state.staff = list.map(s => ({
-      name: s.name || '', type: s.type || '', contract: s.contract || '',
+      name: s.name || '', login: s.login || '', type: s.type || '', contract: s.contract || '',
       maxHrs: s.maxHrs || '', regular: s.regular || '',
       dates: s.dates || '', noteM: s.noteM || '', noteP: s.noteP || ''
     }));
@@ -3579,9 +3831,19 @@ document.addEventListener('DOMContentLoaded', async () => {
     if (e.key === 'Enter') confirmAddStaff();
   });
 
+  // ── Edit staff modal ──
+  document.getElementById('edit-staff-confirm').addEventListener('click', confirmEditStaff);
+  ['edit-staff-close','edit-staff-cancel'].forEach(id => {
+    document.getElementById(id).addEventListener('click', () => {
+      document.getElementById('overlay-edit-staff').classList.remove('show');
+    });
+  });
+  document.getElementById('overlay-edit-staff').addEventListener('click', e => {
+    if (e.target === e.currentTarget) e.currentTarget.classList.remove('show');
+  });
+
   // ── Nastavení actions ──
   document.getElementById('btn-add-staff').addEventListener('click', addStaff);
-  document.getElementById('btn-sort-staff').addEventListener('click', sortStaff);
   document.getElementById('btn-clear-actual').addEventListener('click', clearActual);
   document.getElementById('btn-hotel-manager').addEventListener('click', showHotelManager);
   document.getElementById('btn-save-settings').addEventListener('click', saveSettings);
@@ -3597,6 +3859,12 @@ document.addEventListener('DOMContentLoaded', async () => {
       state.fondZpp = document.getElementById('inp-fond-zpp').value;
       state.holidays = document.getElementById('inp-holidays').value;
     });
+  });
+  // Holidays change → immediately re-render schedule table
+  document.getElementById('inp-holidays').addEventListener('change', () => {
+    state.holidays = document.getElementById('inp-holidays').value;
+    renderScheduleTable('tvorba-tbl', true);
+    buildHotelFilterButtons();
   });
 
   // ── Tvorba actions ──
@@ -3743,6 +4011,12 @@ document.addEventListener('DOMContentLoaded', async () => {
   document.getElementById('rp-apply').addEventListener('click', applyRegularPicker);
   document.getElementById('rp-cancel').addEventListener('click', () => {
     document.getElementById('regular-picker').classList.remove('show');
+  });
+
+  // ── Dates picker ──
+  document.getElementById('dp-apply').addEventListener('click', applyDatesPicker);
+  document.getElementById('dp-cancel').addEventListener('click', () => {
+    document.getElementById('dates-picker').classList.remove('show');
   });
 
   // Initialize color editor
