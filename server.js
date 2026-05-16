@@ -443,7 +443,7 @@ app.get('/api/my-permissions', requireLogin, async (req, res) => {
     const result = {};
     const isAdm = user.role === 'admin';
     const DEFAULTS = { raspis: { enabled: true, buttons: {
-      tab_nastaveni: isAdm, tab_tvorba: isAdm, tab_rozpis_vr: true, tab_rozpis: true,
+      tab_nastaveni: isAdm, tab_tvorba: isAdm, tab_rozpis_vr: true, tab_rozpis: false,
       import: isAdm, delete: isAdm, trash: isAdm, edit: true, export: true, log: isAdm
     } } };
     const allApps = new Set([...Object.keys(DEFAULTS), ...Object.keys(groupPerms), ...Object.keys(userOv)]);

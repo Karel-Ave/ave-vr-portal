@@ -896,6 +896,11 @@ body.portal-recep-mode #toggle-hotels-btn { display: none !important; }
 /* schedule-controls se zužuje — skryj i levý blok sc-left (hotel filtry) */
 body.portal-recep-mode .sc-left { display: none !important; }
 body.portal-recep-mode .sc-left2 { display: none !important; }
+
+/* ── Samostatná karta Rozpis (/rozpis) ───────────────────────────────────── */
+/* Skryj řádek Pokrytí (data i sticky záhlaví) */
+body.portal-standalone-recep #cover-row { display: none !important; }
+body.portal-standalone-recep .th-cover  { display: none !important; }
 </style>
 </head>
 <body>
@@ -8220,6 +8225,7 @@ window.onload = async function() {
     _hideLoadingOverlay();  // v tvorba mode skryj overlay hned (data jsou z draftu)
   } else if (WEB_MODE === 'recep') {
     // Samostatná karta Rozpis — skryj tab lištu, zobraz pouze recep záložku
+    document.body.classList.add('portal-standalone-recep');
     const tabsBar = document.getElementById('raspis-tabs-bar');
     if (tabsBar) tabsBar.style.display = 'none';
     showAppTab('recep');
