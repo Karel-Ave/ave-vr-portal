@@ -213,8 +213,8 @@ table.sched-tbl {
 /* Sum header */
 .sched-tbl .th-sum {
   background: var(--thead-bg); color: var(--thead-text);
-  text-align: center; font-size: 10px; padding: 2px 3px; white-space: nowrap;
-  min-width: 36px;
+  text-align: center; font-size: 9px; padding: 2px 1px; white-space: nowrap;
+  min-width: 27px; max-width: 27px; width: 27px;
 }
 
 /* Day/header width via variable */
@@ -292,7 +292,7 @@ table.sched-tbl {
 
 /* Sum cells */
 .sched-tbl .sum-cell {
-  text-align: center; min-width: 36px; padding: 1px 3px; font-size: 11px;
+  text-align: center; min-width: 27px; max-width: 32px; width: 27px; padding: 1px 2px; font-size: 11px;
   background: var(--surface);
 }
 .sched-tbl .sum-bold { font-weight: 700; }
@@ -302,13 +302,15 @@ table.sched-tbl {
 .col-hrs-red   { color: #e74c3c; font-weight: 700; }
 .col-hrs-orange{ color: #e67e22; font-weight: 700; }
 
-/* Sticky header rows — keep above coverage (z-index 20+) */
-.sched-tbl thead tr:nth-child(1) th { position: sticky; top: 0; z-index: 20; }
-.sched-tbl thead tr:nth-child(2) th { position: sticky; top: var(--sched-row-h); z-index: 20; }
-.sched-tbl thead tr:nth-child(2) th { border-bottom: 2px solid var(--thead-border,#3a3a3a) !important; }
-/* Name header sticky corner */
-.sched-tbl thead tr:nth-child(1) th.col-name-th { z-index: 22; }
-.sched-tbl thead tr:nth-child(2) th.col-name-th { z-index: 22; display: none; }
+/* Sticky single header row */
+.sched-tbl thead th { position: sticky; top: 0; z-index: 20; border-bottom: 2px solid var(--thead-border,#3a3a3a) !important; }
+.sched-tbl thead th.col-name-th { z-index: 22; }
+/* Single header row — allow auto height for day-info stacking */
+.sched-tbl thead th { height: auto; min-height: var(--sched-row-h); }
+/* Day info inside d-column th-dn cells */
+.th-dn-day { line-height: 1.1; margin-bottom: 1px; overflow: hidden; }
+.th-day-num { display: block; font-size: 8px; font-weight: 700; }
+.th-day-dow { display: block; font-size: 7px; opacity: 0.75; }
 /* Row hover highlight (schedule cells + sum cells up to Σhod, not name or note) */
 .staff-tbody tr:hover td.sched-cell { filter: brightness(0.88); }
 .staff-tbody tr:hover td.sched-cell.focused { filter: none; }
@@ -351,47 +353,7 @@ tbody tr.row-hidden { display: none !important; }
 /* row filter */
 tbody tr.row-filtered { display: none; }
 .staff-tbody tr.row-marked .col-name-td { outline: 2px solid var(--accent); outline-offset: -2px; }
-/* coverage rows */
-.cov-header-row th {
-  background: #2a2a2a; color: #999; font-size: 10px; font-weight: 700;
-  padding: 2px 5px; text-align: left;
-}
-[data-theme="dark"] .cov-header-row th { background: #1a1a1a; }
-.cov-row td.cov-cell { font-size: 9px; text-align: center; padding: 0; }
-.cov-empty { background: var(--col-cov0-bg,#ffebeb); color: var(--col-cov0-tx,#c0392b); }
-.cov-1 { background: var(--col-cov1-bg,#c8f5c8); color: var(--col-cov1-tx,#1a6b1a); font-weight: 700; }
-.cov-2 { background: var(--col-cov2-bg,#ffe082); color: var(--col-cov2-tx,#7a5000); font-weight: 700; }
-.cov-3plus { background: var(--col-cov3-bg,#ff8a65); color: var(--col-cov3-tx,#5d1a00); font-weight: 700; }
-.cov-dayonly-night { background: var(--col-covdn-bg,#e8e8e8) !important; color: var(--col-covdn-tx,#999) !important; }
-[data-theme="dark"] .cov-empty { background: var(--col-cov0-bg,#4a0000); color: var(--col-cov0-tx,#ff8a65); }
-[data-theme="dark"] .cov-1 { background: var(--col-cov1-bg,#1a4a1a); color: var(--col-cov1-tx,#7fff7f); }
-[data-theme="dark"] .cov-2 { background: var(--col-cov2-bg,#4a3a00); color: var(--col-cov2-tx,#ffe082); }
-[data-theme="dark"] .cov-3plus { background: var(--col-cov3-bg,#4a1500); color: var(--col-cov3-tx,#ff8a65); }
-[data-theme="dark"] .cov-dayonly-night { background: var(--col-covdn-bg,#1a1a1a) !important; color: var(--col-covdn-tx,#555) !important; }
-.cov-row .col-name-td { font-size: 10px; font-weight: 700; padding: 2px 5px; background: var(--surface); }
-.cov-dot-wrap { float: right; display: flex; gap: 2px; align-items: center; margin-left: 4px; }
-.cov-dot { width: 7px; height: 7px; border-radius: 50%; display: inline-block; flex-shrink: 0; }
-.cov-dot-ok  { background: #27ae60; }
-.cov-dot-mis { background: #e74c3c; }
-/* cov-tbody — sticky is now applied per-TR in JS, not on tbody */
-.cov-tbody td { background: var(--surface); }
-.cov-tbody th { background: #2a2a2a; color: #ccc; }
-[data-theme="dark"] .cov-tbody th { background: #111; }
-.cov-tbody tr { background: var(--surface); }
-.cov-tbody .col-name-td {
-  position: sticky; left: 0; z-index: 12 !important;
-  background: var(--surface) !important;
-}
-.cov-tbody td.cov-empty { background: var(--col-cov0-bg) !important; color: var(--col-cov0-tx) !important; }
-.cov-tbody td.cov-1 { background: var(--col-cov1-bg) !important; color: var(--col-cov1-tx) !important; }
-.cov-tbody td.cov-2 { background: var(--col-cov2-bg) !important; color: var(--col-cov2-tx) !important; }
-.cov-tbody td.cov-3plus { background: var(--col-cov3-bg) !important; color: var(--col-cov3-tx) !important; }
-.cov-tbody td.cov-dayonly-night { background: var(--col-covdn-bg) !important; color: var(--col-covdn-tx) !important; }
-/* Override cell-wd/wn/kd/kn for cov cells to just be surface */
-.cov-tbody td.cell-wd:not(.cov-1):not(.cov-2):not(.cov-3plus):not(.cov-empty):not(.cov-dayonly-night) { background: var(--col-wd-bg); }
-.cov-tbody td.cell-wn:not(.cov-1):not(.cov-2):not(.cov-3plus):not(.cov-empty):not(.cov-dayonly-night) { background: var(--col-wn-bg); }
-.cov-tbody td.cell-kd:not(.cov-1):not(.cov-2):not(.cov-3plus):not(.cov-empty):not(.cov-dayonly-night) { background: var(--col-kd-bg); }
-.cov-tbody td.cell-kn:not(.cov-1):not(.cov-2):not(.cov-3plus):not(.cov-empty):not(.cov-dayonly-night) { background: var(--col-kn-bg); }
+/* (coverage panel rows removed) */
 
 /* Cell state coloring */
 /* .cell-empty removed (CHANGE 7a) */
@@ -682,8 +644,6 @@ tbody tr.row-filtered { display: none; }
     <button class="stb-btn" id="stb-save-req">Zapamatuj požadavky</button>
   </div>
   <div class="stb-row">
-    <button class="stb-btn" id="stb-hide-hotels">Skrýt hotely</button>
-    <div class="stb-sep"></div>
     <button class="stb-btn" id="stb-day-only">Jen denní</button>
     <button class="stb-btn" id="stb-night-only">Jen noční</button>
     <button class="stb-btn" id="stb-available">Jen dostupní</button>
@@ -1274,6 +1234,13 @@ function hideSchedTip() {
 
 /* ── ±hod popup ── */
 let _extraPopSi = null;
+function _fmtAdjDate(d) {
+  if (!d) return '';
+  // d is 'YYYY-MM-DD' → format as 'D.M.'
+  const p = d.split('-');
+  if (p.length < 3) return d;
+  return parseInt(p[2]) + '.' + parseInt(p[1]) + '.';
+}
 function showExtraPopup(si) {
   _extraPopSi = si;
   const pop = document.getElementById('extra-popup');
@@ -1281,6 +1248,11 @@ function showExtraPopup(si) {
   const valInp = document.getElementById('extra-pop-val');
   valInp.value = '';
   document.getElementById('extra-pop-note').value = '';
+  // Default date = today
+  const today = new Date();
+  const pad = n => String(n).padStart(2,'0');
+  document.getElementById('extra-pop-date').value =
+    `${today.getFullYear()}-${pad(today.getMonth()+1)}-${pad(today.getDate())}`;
   // History
   const adjs = getExtraAdjustments(si);
   const hist = document.getElementById('extra-pop-history');
@@ -1288,11 +1260,17 @@ function showExtraPopup(si) {
     const total = getExtraTotal(si);
     hist.style.display = '';
     hist.innerHTML = '<b>Celkem: ' + (total > 0 ? '+' : '') + total + ' hod</b>\n' +
-      adjs.map(a => (a.val > 0 ? '+' : '') + a.val + ' hod' + (a.note ? ' — ' + a.note : '') + (a.login ? ' (' + a.login + ')' : '')).join('\n');
+      adjs.map(a => {
+        let line = (a.val > 0 ? '+' : '') + a.val + ' hod';
+        if (a.date) line = _fmtAdjDate(a.date) + ' ' + line;
+        if (a.note) line += ' — ' + a.note;
+        if (a.login) line += ' (' + a.login + ')';
+        return line;
+      }).join('\n');
   } else { hist.style.display = 'none'; }
   // Center popup
   pop.style.left = Math.round(window.innerWidth / 2 - 130) + 'px';
-  pop.style.top = Math.round(window.innerHeight / 2 - 120) + 'px';
+  pop.style.top = Math.round(window.innerHeight / 2 - 130) + 'px';
   setTimeout(() => valInp.focus(), 30);
 }
 function applyExtraAdj() {
@@ -1311,7 +1289,8 @@ function applyExtraAdj() {
     }
   }
   const login = (typeof CURRENT_LOGIN !== 'undefined' ? CURRENT_LOGIN : '') || '';
-  state.extras[si].adjustments.push({val, note, login});
+  const date = document.getElementById('extra-pop-date').value || '';
+  state.extras[si].adjustments.push({val, note, login, date});
   document.getElementById('extra-popup').style.display = 'none';
   updateSumRow(si);
   scheduleAutoSave();
@@ -1322,7 +1301,13 @@ function showExtraTip(si, x, y) {
   const total = getExtraTotal(si);
   const tip = document.getElementById('extra-tip');
   tip.textContent = 'Celkem: ' + (total > 0 ? '+' : '') + total + ' hod\n' +
-    adjs.map(a => (a.val > 0 ? '+' : '') + a.val + ' hod' + (a.note ? ' — ' + a.note : '') + (a.login ? ' (' + a.login + ')' : '')).join('\n');
+    adjs.map(a => {
+      let line = (a.val > 0 ? '+' : '') + a.val + ' hod';
+      if (a.date) line = _fmtAdjDate(a.date) + ' ' + line;
+      if (a.note) line += ' — ' + a.note;
+      if (a.login) line += ' (' + a.login + ')';
+      return line;
+    }).join('\n');
   tip.style.display = 'block';
   const w = tip.offsetWidth || 200, h = tip.offsetHeight || 80;
   tip.style.left = Math.min(x + 14, window.innerWidth - w - 8) + 'px';
@@ -1698,58 +1683,7 @@ function updateRequirementClasses() {
 ══════════════════════════════════════════════════════════════════════════════ */
 
 function updateCoverageRows() {
-  const calCols = getCalCols(state.month, state.year);
-  const holidaysList = parseHolidays(state.holidays);
-  ['tvorba-tbl','rozpis-tbl'].forEach(tblId => {
-    const tbl = document.getElementById(tblId);
-    if (!tbl) return;
-    tbl.querySelectorAll('tbody tr.cov-row').forEach(tr => {
-      const letter = tr.dataset.covLetter;
-      const hotelData = (state.hotels||[]).find(h => h.letter === letter);
-      const isDayOnly = hotelData && hotelData.dayOnly;
-      tr.querySelectorAll('td.cov-cell[data-ci]').forEach(td => {
-        const ci = +td.dataset.ci;
-        const col = calCols[ci];
-        if (!col) return;
-        // DayOnly hotel + night col = N/A
-        if (isDayOnly && col.dn === 'n') {
-          td.className = 'sched-cell cov-cell cov-dayonly-night';
-          td.dataset.dn = 'n';
-          td.textContent = '–';
-          return;
-        }
-        const count = state.staff.filter((_, si) => state.schedule[`${si}_${ci}`] === letter).length;
-        // Rebuild class
-        const base = cellClass(col, state.month, state.year, holidaysList);
-        td.className = `sched-cell cov-cell ${base}`;
-        td.dataset.dn = col.dn;
-        if (count === 0) td.classList.add('cov-empty');
-        else if (count === 1) td.classList.add('cov-1');
-        else if (count === 2) td.classList.add('cov-2');
-        else td.classList.add('cov-3plus');
-        td.textContent = count > 0 ? count : '';
-      });
-    });
-  });
-  // Refresh colored dots in coverage name cells
-  ['tvorba-tbl','rozpis-tbl'].forEach(tblId => {
-    const tbl2 = document.getElementById(tblId);
-    if (!tbl2) return;
-    const cc = getCalCols(state.month, state.year);
-    tbl2.querySelectorAll('tr.cov-row').forEach(tr => {
-      const l = tr.dataset.covLetter;
-      const hd = (state.hotels||[]).find(h => h.letter === l);
-      const isDO = hd && hd.dayOnly;
-      const dT = cc.filter(c => c.dn === 'd').length;
-      const nT = isDO ? 0 : cc.filter(c => c.dn === 'n').length;
-      const dC = cc.filter((c, ci) => c.dn === 'd' && state.staff.some((_, si) => state.schedule[`${si}_${ci}`] === l)).length;
-      const nC = isDO ? 0 : cc.filter((c, ci) => c.dn === 'n' && state.staff.some((_, si) => state.schedule[`${si}_${ci}`] === l)).length;
-      const dots = tr.querySelectorAll('.col-name-td .cov-dot');
-      let di = 0;
-      if (dots[di]) { dots[di].className = 'cov-dot ' + (dC >= dT ? 'cov-dot-ok' : 'cov-dot-mis'); dots[di].title = `Denní: ${dC}/${dT}`; di++; }
-      if (nT > 0 && dots[di]) { dots[di].className = 'cov-dot ' + (nC >= nT ? 'cov-dot-ok' : 'cov-dot-mis'); dots[di].title = `Noční: ${nC}/${nT}`; }
-    });
-  });
+  // Coverage panel removed — just refresh d/n header coloring
   updateDnCoverageColors();
 }
 
@@ -1778,64 +1712,28 @@ function renderScheduleTable(tableId, editable) {
   }
 
   const calCols = getCalCols(state.month, state.year);
-  const _rowH = Math.round(parseFloat(getComputedStyle(document.documentElement).getPropertyValue('--sched-row-h'))) || 22;
   const holidaysList = parseHolidays(state.holidays);
-  const SUM_HEADS = ['D všed','N všed','D vík','N vík','Σ smě','±hod','Σhod'];
+  // Short labels with full names as tooltips
+  const SUM_HEADS = ['Dv','Nv','Dk','Nk','Σ','±','Σh'];
+  const SUM_TITLES = ['Denní všední','Noční všední','Denní víkend','Noční víkend','Σ směny','± hodiny','Σ hodin'];
 
-  // ── THEAD ──
+  // ── THEAD (single row — merges day numbers + d/n into one sticky row) ──
   const thead = document.createElement('thead');
-
-  // Row 1: name (rowspan=2) + day numbers (colspan=2) + sum headers (rowspan=2)
   const tr1 = document.createElement('tr');
+
+  // Name header
   const nameTh = document.createElement('th');
-  nameTh.rowSpan = 2;
   nameTh.className = 'col-name-th';
   nameTh.textContent = 'Jméno';
   tr1.appendChild(nameTh);
 
-  // Group day cols by day — use composite key to handle Dec 31 + Jan 1 next year
-  let prevDayKey = null;
-  calCols.forEach(col => {
-    const dayKey = `${col.day}-${!!col.nextYear}`;
-    if (dayKey !== prevDayKey) {
-      prevDayKey = dayKey;
-      // emit colspan=2 for this day
-      const th = document.createElement('th');
-      th.colSpan = 2;
-      th.className = 'th-day';
-      th.dataset.dayNum = col.day;
-      const hol = isHoliday(col, state.month, state.year, holidaysList);
-      const wknd = isWeekend(col, state.month, state.year);
-      if (hol) th.classList.add('cell-hol-header');
-      else if (wknd) th.classList.add('is-weekend');
-      const dayLabel = col.nextYear ? `1.1.` : String(col.day);
-      const m = col.nextYear ? 1 : state.month;
-      const y = col.nextYear ? state.year + 1 : state.year;
-      const dow = new Date(y, m - 1, col.day).getDay();
-      const dayName = DAY_NAMES[dow];
-      th.innerHTML = `<div>${dayLabel}</div><div style="font-size:9px;opacity:.75">${dayName}</div>`;
-      tr1.appendChild(th);
-    }
-  });
-
-  // Sum headers
-  SUM_HEADS.forEach((h, idx) => {
-    const th = document.createElement('th');
-    th.rowSpan = 2; th.className = 'th-sum';
-    if (idx === 6) th.classList.add('th-sum-hrs');
-    th.textContent = h; tr1.appendChild(th);
-  });
-  thead.appendChild(tr1);
-
-  // Row 2: d/n sub-headers (with data-dn for CSS filter)
-  const tr2 = document.createElement('tr');
+  // d/n cells — for 'd' columns embed day number + day name above the 'd' label
   calCols.forEach(col => {
     const th = document.createElement('th');
     th.className = 'th-dn';
     th.dataset.dn = col.dn;
     const hol = isHoliday(col, state.month, state.year, holidaysList);
     const cls = cellClass(col, state.month, state.year, holidaysList);
-    // Use CSS vars so dark mode and color editor are respected
     const bgVar = cls === 'cell-kn' ? 'var(--col-kn-bg)'
       : cls === 'cell-kd' ? 'var(--col-kd-bg)'
       : cls === 'cell-wn' ? 'var(--col-wn-bg)'
@@ -1846,117 +1744,54 @@ function renderScheduleTable(tableId, editable) {
       : 'var(--col-wd-tx)';
     th.style.background = bgVar;
     th.style.color = hol ? '#e53030' : txVar;
-    th.textContent = col.dn;
-    tr2.appendChild(th);
+    if (col.dn === 'd') {
+      const m2 = col.nextYear ? 1 : state.month;
+      const y2 = col.nextYear ? state.year + 1 : state.year;
+      const dow = new Date(y2, m2 - 1, col.day).getDay();
+      const dayLabel = col.nextYear ? '1.1.' : String(col.day);
+      const dayName = DAY_NAMES[dow];
+      const wknd = isWeekend(col, state.month, state.year);
+      const dayDiv = document.createElement('div');
+      dayDiv.className = 'th-dn-day';
+      const numSpan = document.createElement('span');
+      numSpan.className = 'th-day-num';
+      numSpan.textContent = dayLabel;
+      if (wknd && !hol) numSpan.style.color = '#7ec8f0';
+      if (hol) numSpan.style.color = '#e53030';
+      const dowSpan = document.createElement('span');
+      dowSpan.className = 'th-day-dow';
+      dowSpan.textContent = dayName;
+      dayDiv.appendChild(numSpan);
+      dayDiv.appendChild(dowSpan);
+      th.appendChild(dayDiv);
+    }
+    th.appendChild(document.createTextNode(col.dn));
+    tr1.appendChild(th);
   });
-  thead.appendChild(tr2);
+
+  // Sum headers
+  SUM_HEADS.forEach((h, idx) => {
+    const th = document.createElement('th');
+    th.className = 'th-sum';
+    if (idx === 6) th.classList.add('th-sum-hrs');
+    th.textContent = h;
+    th.title = SUM_TITLES[idx];
+    tr1.appendChild(th);
+  });
+
+  thead.appendChild(tr1);
   tbl.appendChild(thead);
 
-  // Force explicit px sticky on header rows (CSS var resolution can fail in some browsers)
-  tbl.querySelectorAll('thead tr:nth-child(1) th').forEach(th => {
-    th.style.position = 'sticky'; th.style.top = '0px';
-    if (!th.style.zIndex) th.style.zIndex = '20';
-  });
-  tbl.querySelectorAll('thead tr:nth-child(2) th').forEach(th => {
-    th.style.position = 'sticky'; th.style.top = _rowH + 'px';
-    if (!th.style.zIndex) th.style.zIndex = '20';
+  // Force explicit sticky on single header row
+  tbl.querySelectorAll('thead th').forEach(th => {
+    th.style.position = 'sticky';
+    th.style.top = '0px';
+    th.style.zIndex = th.classList.contains('col-name-th') ? '22' : '20';
   });
 
-  // ── TBODY (two separate tbodies: covTbody for coverage, staffTbody for staff) ──
-  const covTbody = document.createElement('tbody');
-  covTbody.className = 'cov-tbody';
+  // ── TBODY (single tbody for staff) ──
   const staffTbody = document.createElement('tbody');
   staffTbody.className = 'staff-tbody';
-
-  // ── Pokrytí (coverage) rows ──
-  if (state.staff.length > 0) {
-    // Show all active hotels so "Skrýt hotely" always has something to toggle
-    const hotelLetters = getUsedHotelLetters();
-      // Exclude special/non-coverage hotels; P always last
-      const EXCL_HOTELS = new Set(['F','Q','W']);
-      const filteredLetters = hotelLetters.filter(l => !EXCL_HOTELS.has(l));
-      const pIdx = filteredLetters.indexOf('P');
-      if (pIdx > -1) { filteredLetters.splice(pIdx, 1); filteredLetters.push('P'); }
-      const hotelLettersForCov = filteredLetters;
-    if (hotelLettersForCov.length > 0) {
-      // header row
-      const covHdr = document.createElement('tr');
-      covHdr.className = 'cov-header-row';
-      const th0 = document.createElement('th');
-      th0.colSpan = calCols.length + SUM_HEADS.length + 1;
-      th0.textContent = 'Pokrytí';
-      covHdr.appendChild(th0);
-      covTbody.appendChild(covHdr);
-
-      hotelLettersForCov.forEach(letter => {
-        const tr = document.createElement('tr');
-        tr.className = 'cov-row';
-        tr.dataset.covLetter = letter;
-        const nameTd = document.createElement('td');
-        nameTd.className = 'col-name-td cov-label';
-        const hotelInfo = (state.hotels || []).find(h => h.letter === letter);
-        const hotelName = hotelInfo && hotelInfo.name ? hotelInfo.name : '';
-        nameTd.innerHTML = '';
-        const letterSpan = document.createElement('strong');
-        letterSpan.textContent = letter;
-        tr.appendChild(nameTd);
-        // Coverage count summary as colored dots
-        const _isDayOnly2 = hotelInfo && hotelInfo.dayOnly;
-        const dayT = calCols.filter(c => c.dn === 'd').length;
-        const nightT = _isDayOnly2 ? 0 : calCols.filter(c => c.dn === 'n').length;
-        const dayC = calCols.filter((c, ci) => c.dn === 'd' && state.staff.some((_, si) => state.schedule[`${si}_${ci}`] === letter)).length;
-        const nightC = _isDayOnly2 ? 0 : calCols.filter((c, ci) => c.dn === 'n' && state.staff.some((_, si) => state.schedule[`${si}_${ci}`] === letter)).length;
-        // Two colored dots for day/night coverage
-        const dotWrap = document.createElement('span');
-        dotWrap.className = 'cov-dot-wrap';
-        const dDot = document.createElement('span');
-        dDot.className = 'cov-dot ' + (dayC >= dayT ? 'cov-dot-ok' : 'cov-dot-mis');
-        dDot.title = `Denní: ${dayC}/${dayT}`;
-        dotWrap.appendChild(dDot);
-        if (nightT > 0) {
-          const nDot = document.createElement('span');
-          nDot.className = 'cov-dot ' + (nightC >= nightT ? 'cov-dot-ok' : 'cov-dot-mis');
-          nDot.title = `Noční: ${nightC}/${nightT}`;
-          dotWrap.appendChild(nDot);
-        }
-        letterSpan.prepend(dotWrap); // float:right, so prepend to appear on the right
-        nameTd.appendChild(letterSpan);
-        if (hotelName) {
-          const nameSpan = document.createElement('span');
-          nameSpan.textContent = ' ' + hotelName;
-          nameSpan.style.cssText = 'font-size:9px;opacity:.65;font-weight:400;';
-          nameTd.appendChild(nameSpan);
-        }
-        const _hotelData = (state.hotels||[]).find(h => h.letter === letter);
-        const _isDayOnly = _hotelData && _hotelData.dayOnly;
-        calCols.forEach((col, ci) => {
-          const td = document.createElement('td');
-          td.className = 'sched-cell cov-cell ' + cellClass(col, state.month, state.year, holidaysList);
-          td.dataset.dn = col.dn;
-          td.dataset.ci = ci;
-          if (_isDayOnly && col.dn === 'n') {
-            td.classList.add('cov-dayonly-night');
-            td.textContent = '–';
-          } else {
-            const count = state.staff.filter((_, si) => state.schedule[`${si}_${ci}`] === letter).length;
-            if (count === 0) td.classList.add('cov-empty');
-            else if (count === 1) td.classList.add('cov-1');
-            else if (count === 2) td.classList.add('cov-2');
-            else td.classList.add('cov-3plus');
-            td.textContent = count > 0 ? count : '';
-          }
-          tr.appendChild(td);
-        });
-        // empty sum cells
-        SUM_HEADS.forEach((_, idx) => {
-          const td = document.createElement('td');
-          td.className = 'sum-cell' + (idx === 6 ? ' sum-hrs' : '');
-          tr.appendChild(td);
-        });
-        covTbody.appendChild(tr);
-      });
-    }
-  }
 
   // Pre-compute duplicate cells and P-many cells for coloring
   const _dupeKeys = computeDuplicateCells(calCols, state.staff, state.schedule);
@@ -2036,7 +1871,6 @@ function renderScheduleTable(tableId, editable) {
         const total = getExtraTotal(si);
         td.textContent = total !== 0 ? (total > 0 ? '+' + total : String(total)) : '';
         td.style.cursor = 'pointer';
-        td.title = 'Klikni pro přidání/odebrání hodin';
         td.addEventListener('click', () => showExtraPopup(si));
         td.addEventListener('mouseenter', e => showExtraTip(si, e.clientX, e.clientY));
         td.addEventListener('mouseleave', hideExtraTip);
@@ -2063,20 +1897,7 @@ function renderScheduleTable(tableId, editable) {
 
     staffTbody.appendChild(tr);
   });
-  tbl.appendChild(covTbody);
   tbl.appendChild(staffTbody);
-
-  // Make coverage cells sticky at cell level — explicit px avoids CSS-var resolution issues
-  Array.from(covTbody.querySelectorAll('tr')).forEach((tr, rowIdx) => {
-    const topPx = ((rowIdx + 2) * _rowH) + 'px';
-    tr.querySelectorAll('td, th').forEach(cell => {
-      cell.style.top = topPx;
-      if (!cell.classList.contains('col-name-td')) {
-        cell.style.position = 'sticky';
-      }
-      cell.style.zIndex = cell.classList.contains('col-name-td') ? '12' : '10';
-    });
-  });
 
   if (editable) {
     setupKeyboardNav(tbl);
@@ -2838,7 +2659,6 @@ function exportXlsx() {
 let filterHotels = new Set();  // empty = VSE, else set of letter strings
 let markedWorkers = new Set();  // Set of si indices that remain visible across hotel filters
 let filterShift  = null;  // null | 'day' | 'night' | 'available'
-let showHotels   = true;
 let sumsMode     = 'all'; // 'all' | 'hidden' | 'hoursonly'
 
 function updateSubtoolbar() {
@@ -2975,52 +2795,41 @@ function filterByShift(mode) {
   applyRowFilters();
 }
 
+// Coverage panel removed — d/n headers colored red for any uncovered shift
+const _COV_EXCL = new Set(['F','Q','W']);
 function updateDnCoverageColors() {
   const calCols = getCalCols(state.month, state.year);
+  // Hotels to check: filterHotels if active, else all active non-excluded hotels with hours>0
+  let hotelsToCheck;
+  if (filterHotels.size > 0) {
+    hotelsToCheck = Array.from(filterHotels).filter(l => !_COV_EXCL.has(l));
+  } else {
+    hotelsToCheck = (state.hotels || [])
+      .filter(h => h.active && !_COV_EXCL.has(h.letter) && h.hours > 0)
+      .map(h => h.letter);
+  }
   ['tvorba-tbl','rozpis-tbl'].forEach(tblId => {
     const tbl = document.getElementById(tblId);
     if (!tbl) return;
     const thDns = Array.from(tbl.querySelectorAll('thead th.th-dn'));
     thDns.forEach((th, ci) => {
-      if (filterHotels.size === 0) {
-        th.style.background = ''; th.style.color = '';
-        return;
-      }
+      if (hotelsToCheck.length === 0) { th.style.background = ''; th.style.color = ''; return; }
       const col = calCols[ci];
       if (!col) return;
-      let allCovered = true;
-      for (const letter of filterHotels) {
+      let uncovered = false;
+      for (const letter of hotelsToCheck) {
         const hd = (state.hotels||[]).find(h => h.letter === letter);
-        if (hd && hd.dayOnly && col.dn === 'n') continue; // dayOnly hotel has no night
-        const covered = state.staff.some((_, si) => state.schedule[`${si}_${ci}`] === letter);
-        if (!covered) { allCovered = false; break; }
+        if (hd && hd.dayOnly && col.dn === 'n') continue; // dayOnly has no night shift
+        const hasCover = state.staff.some((_, si) => state.schedule[`${si}_${ci}`] === letter);
+        if (!hasCover) { uncovered = true; break; }
       }
-      th.style.background = allCovered ? '#27ae60' : '#e74c3c';
-      th.style.color = '#fff';
-    });
-  });
-}
-
-function refreshCoverageSticky() {
-  const rowH = Math.round(parseFloat(getComputedStyle(document.documentElement).getPropertyValue('--sched-row-h'))) || 22;
-  ['tvorba-tbl','rozpis-tbl'].forEach(tblId => {
-    const tbl = document.getElementById(tblId);
-    if (!tbl) return;
-    const covTbody = tbl.querySelector('tbody.cov-tbody');
-    if (!covTbody || covTbody.style.display === 'none') return;
-    let visRow = 0;
-    Array.from(covTbody.querySelectorAll('tr')).forEach(tr => {
-      const hidden = tr.classList.contains('row-filtered');
-      tr.querySelectorAll('td, th').forEach(cell => {
-        if (hidden) {
-          cell.style.top = '-9999px'; // pull hidden rows off-screen so they don't interfere
-        } else {
-          cell.style.top = ((visRow + 2) * rowH) + 'px';
-          if (!cell.classList.contains('col-name-td')) cell.style.position = 'sticky';
-          cell.style.zIndex = cell.classList.contains('col-name-td') ? '12' : '10';
-        }
-      });
-      if (!hidden) visRow++;
+      if (uncovered) {
+        th.style.background = '#e74c3c';
+        th.style.color = '#fff';
+      } else {
+        th.style.background = '';
+        th.style.color = '';
+      }
     });
   });
 }
@@ -3053,34 +2862,8 @@ function applyRowFilters() {
       }
       tr.classList.toggle('row-filtered', hide);
     });
-    // Coverage rows follow hotel filter
-    const covTbodyEl = tbl.querySelector('tbody.cov-tbody');
-    if (covTbodyEl) {
-      covTbodyEl.style.display = !showHotels ? 'none' : '';
-      // When showing, also filter individual hotel rows
-      if (showHotels) {
-        covTbodyEl.querySelectorAll('tr.cov-row').forEach(tr => {
-          const letter = tr.dataset.covLetter;
-          const hide = filterHotels.size > 0 && !filterHotels.has(letter);
-          tr.classList.toggle('row-filtered', hide);
-        });
-        covTbodyEl.querySelectorAll('tr.cov-header-row').forEach(tr => {
-          tr.classList.remove('row-filtered');
-        });
-      }
-    }
   });
-  refreshCoverageSticky();
   updateDnCoverageColors();
-}
-
-function toggleHotelRows() {
-  showHotels = !showHotels;
-  const btn = document.getElementById('stb-hide-hotels');
-  btn.classList.toggle('active', !showHotels);
-  btn.textContent = showHotels ? 'Skrýt hotely' : 'Zobrazit hotely';
-  applyRowFilters();
-  refreshCoverageSticky();
 }
 
 function setSumsMode(mode) {
@@ -3815,14 +3598,7 @@ function applySizes() {
   document.documentElement.style.setProperty('--sched-row-h', h + 'px');
   document.documentElement.style.setProperty('--sched-col-w', w + 'px');
   document.documentElement.style.setProperty('--sched-name-w', n + 'px');
-  // update sticky top of dn sub-header row (was hardcoded to 22px in CSS)
-  document.querySelectorAll('.sched-tbl thead tr:nth-child(2) th')
-    .forEach(th => { th.style.top = h + 'px'; });
-  // update sticky top of each coverage cell
-  document.querySelectorAll('.sched-tbl .cov-tbody tr').forEach((tr, rowIdx) => {
-    const topPx = ((rowIdx + 2) * parseInt(h)) + 'px';
-    tr.querySelectorAll('td, th').forEach(cell => { cell.style.top = topPx; });
-  });
+  // Single header row — all ths stay at top: 0; nothing extra needed
   document.getElementById('size-row-h-val').textContent = h + 'px';
   document.getElementById('size-col-w-val').textContent = w + 'px';
   document.getElementById('size-name-w-val').textContent = n + 'px';
@@ -4089,7 +3865,6 @@ document.addEventListener('DOMContentLoaded', async () => {
   document.getElementById('stb-day-only').addEventListener('click', () => filterByShift('day'));
   document.getElementById('stb-night-only').addEventListener('click', () => filterByShift('night'));
   document.getElementById('stb-available').addEventListener('click', () => filterByShift('available'));
-  document.getElementById('stb-hide-hotels').addEventListener('click', toggleHotelRows);
   document.getElementById('stb-hide-sums').addEventListener('click', () => setSumsMode('hidden'));
   document.getElementById('stb-hours-only').addEventListener('click', () => setSumsMode('hoursonly'));
   document.getElementById('stb-mark-sel').addEventListener('click', markSelected);
@@ -4374,7 +4149,11 @@ document.addEventListener('DOMContentLoaded', async () => {
     <input id="extra-pop-val" type="text" inputmode="decimal" placeholder="±hod (např. 2 nebo -3)" style="flex:1;padding:5px 8px;border:1px solid var(--border);border-radius:5px;font-family:inherit;font-size:13px;text-align:center;background:var(--input-bg,var(--bg));color:var(--text)">
     <button id="extra-pop-plus" style="padding:4px 12px;border:1px solid var(--border);border-radius:5px;cursor:pointer;background:var(--surface-alt);color:var(--text);font-size:18px;line-height:1">+</button>
   </div>
-  <input id="extra-pop-note" type="text" placeholder="Poznámka..." style="width:100%;padding:5px 8px;border:1px solid var(--border);border-radius:5px;font-family:inherit;font-size:12px;margin-bottom:8px;background:var(--input-bg,var(--bg));color:var(--text)">
+  <input id="extra-pop-note" type="text" placeholder="Poznámka..." style="width:100%;padding:5px 8px;border:1px solid var(--border);border-radius:5px;font-family:inherit;font-size:12px;margin-bottom:6px;background:var(--input-bg,var(--bg));color:var(--text)">
+  <div style="display:flex;align-items:center;gap:6px;margin-bottom:8px">
+    <label style="font-size:11px;color:var(--text-muted);white-space:nowrap;flex-shrink:0">Datum:</label>
+    <input id="extra-pop-date" type="date" style="flex:1;padding:4px 6px;border:1px solid var(--border);border-radius:5px;font-family:inherit;font-size:12px;background:var(--input-bg,var(--bg));color:var(--text)">
+  </div>
   <div style="display:flex;gap:6px;justify-content:flex-end;margin-bottom:8px">
     <button id="extra-pop-cancel" style="padding:4px 10px;border:1px solid var(--border);border-radius:5px;cursor:pointer;background:var(--surface-alt);color:var(--text);font-size:12px">Zrušit</button>
     <button id="extra-pop-apply" style="padding:4px 14px;border:none;border-radius:5px;cursor:pointer;background:var(--accent);color:#fff;font-size:12px;font-weight:700">Přidat</button>
