@@ -157,6 +157,11 @@ app.get('/rozpis-view', requireLogin, (req, res) =>
   res.sendFile(path.join(__dirname, 'public', 'raspis.html'))
 );
 
+// Samostatná karta Rozpis (recepční pohled)
+app.get('/rozpis', requireLogin, (req, res) =>
+  res.sendFile(path.join(__dirname, 'public', 'raspis.html'))
+);
+
 // Desktop widget — dnešní rozpis
 app.get('/widget', requireLoginWidget, (req, res) =>
   res.sendFile(path.join(__dirname, 'views', 'widget.html'))

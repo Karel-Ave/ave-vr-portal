@@ -6656,7 +6656,9 @@ document.addEventListener('mouseup', (e) => {
    Rozpis  = portal view (pouze hodiny, bez fond-dot, se zamykáním)
    ════════════════════════════════════════════════════════════════════════════ */
 
-const WEB_MODE   = window.location.pathname.includes('tvorba') ? 'tvorba' : 'view';
+const WEB_MODE   = window.location.pathname.includes('tvorba') ? 'tvorba'
+                 : window.location.pathname === '/rozpis' ? 'recep'
+                 : 'view';
 const LOCK_APP   = 'raspis-view';
 const POLL_INTERVAL    = 10000;
 const _INACT_TIMEOUT   = 10 * 60 * 1000; // 10 minut nečinnosti → ukončit editaci
@@ -8208,7 +8210,7 @@ window.onload = async function() {
   // Načti master staff z DB (přepíše autoLoad data pokud DB má novější seznam)
   _loadMasterStaff();
 
-  // Výchozí záložka — 'view' preferováno; pokud není viditelné, první dostupné
+  // Výchozí záložka — dle WEB_MODE; pokud cílová záložka není viditelná, první dostupná
   if (WEB_MODE === 'tvorba') {
     const startTab = _visibleTabs.includes('tvorba') ? 'tvorba'
                    : (_visibleTabs[0] || 'tvorba');
@@ -8216,6 +8218,13 @@ window.onload = async function() {
     if (typeof buildSchedule === 'function') buildSchedule();
     showAppTab(startTab);
     _hideLoadingOverlay();  // v tvorba mode skryj overlay hned (data jsou z draftu)
+  } else if (WEB_MODE === 'recep') {
+    // Samostatná karta Rozpis — skryj tab lištu, zobraz pouze recep záložku
+    const tabsBar = document.getElementById('raspis-tabs-bar');
+    if (tabsBar) tabsBar.style.display = 'none';
+    showAppTab('recep');
+    // overlay skryje _loadReceList() po načtení dat; timeout jako pojistka
+    setTimeout(_hideLoadingOverlay, 8000);
   } else {
     const startTab = _visibleTabs.includes('view') ? 'view'
                    : (_visibleTabs[0] || 'view');

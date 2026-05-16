@@ -607,8 +607,9 @@
   // ── Card definitions ──────────────────────────────────────────────────────
   // ── Všechny karty aplikací (jednotný seznam) ─────────────────────────────
   const ALL_CARDS = [
-    { id: 'raspis',   icon: calendarIcon(), title: 'Rozpis',             href: '/rozpis-view', permKey: 'raspis'   },
-    { id: 'priplatky',icon: '💵',          title: 'Příplatky a pokuty', href: '/priplatky',   permKey: 'priplatky'},
+    { id: 'raspis',   icon: calendarIcon(), title: 'Rozpis VR',          href: '/rozpis-view', permKey: 'raspis'   },
+    { id: 'rozpis',   icon: '📋',           title: 'Rozpis',             href: '/rozpis',      permKey: 'rozpis'   },
+    { id: 'priplatky',icon: '💵',           title: 'Příplatky a pokuty', href: '/priplatky',   permKey: 'priplatky'},
     { id: 'blacklist',icon: blacklistIcon(), title: 'Blacklist',          href: '/blacklist',   permKey: 'blacklist'},
     { id: 'admin',    icon: '👥',           title: 'Správa uživatelů',   href: '/admin',       permKey: 'admin', adminOnly: true }
   ];
