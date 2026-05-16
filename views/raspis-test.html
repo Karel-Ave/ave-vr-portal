@@ -50,11 +50,11 @@ body { min-height: 100vh; background: var(--bg); font-family: 'Segoe UI', system
 .tb-btn.primary:hover { opacity: .88; }
 .tb-btn:disabled { opacity: .4; cursor: not-allowed; }
 
-#btn-theme {
-  padding: 5px 8px; border: 1px solid var(--btn-top-border,#3E3E3E);
-  border-radius: 6px; background: none; cursor: pointer; font-size: 14px; flex-shrink: 0;
+/* Size editor badge */
+.edit-mode-badge {
+  font-size: 11px; color: #f39c12; padding: 3px 7px;
+  background: var(--surface-alt); border-radius: 5px; flex-shrink: 0; font-weight: 700;
 }
-#btn-theme:hover { background: var(--btn-top-hover-bg,#2A2A2A); }
 
 /* Auto-save indicator */
 #autosave-ind {
@@ -110,7 +110,40 @@ table.staff-tbl {
 .staff-tbl .col-maxhrs { width: 70px; }
 .staff-tbl .col-regular { min-width: 140px; }
 .staff-tbl .col-dates { min-width: 120px; }
+.staff-tbl .col-note { min-width: 110px; }
+.staff-tbl .col-note textarea {
+  width: 100%; min-height: 28px; border: none; background: transparent;
+  color: var(--text); font-size: 12px; font-family: inherit; padding: 2px 4px;
+  resize: none; overflow: hidden;
+}
+.staff-tbl .col-note textarea:focus { outline: 1px solid var(--accent); border-radius: 3px; resize: vertical; }
 .staff-tbl .col-save { width: 60px; text-align: center; }
+
+/* Size editor panel */
+.size-panel {
+  position: fixed; top: 54px; right: 12px; z-index: 800;
+  background: var(--modal-bg,var(--surface)); border: 1px solid var(--border);
+  border-radius: 10px; padding: 14px 16px; box-shadow: 0 4px 20px rgba(0,0,0,.2);
+  display: none; flex-direction: column; gap: 10px; min-width: 220px;
+}
+.size-panel.show { display: flex; }
+.size-panel h4 { font-size: 12px; font-weight: 700; text-transform: uppercase;
+  letter-spacing: .05em; color: var(--text-muted); margin-bottom: 2px; }
+.size-row { display: flex; align-items: center; gap: 8px; }
+.size-row label { font-size: 12px; width: 110px; flex-shrink: 0; }
+.size-row input[type=range] { flex: 1; }
+.size-row span { font-size: 11px; color: var(--text-muted); width: 32px; text-align: right; }
+
+/* Hotel manager grid */
+.hotel-grid { display: grid; grid-template-columns: repeat(auto-fill,minmax(140px,1fr)); gap: 8px; }
+.hotel-row { display: flex; align-items: center; gap: 6px; }
+.hotel-row label { font-size: 12px; font-weight: 700; width: 24px; text-align: center;
+  padding: 3px; border-radius: 4px; background: var(--accent); color: #fff; flex-shrink: 0; }
+.hotel-row input { flex: 1; padding: 4px 7px; border: 1px solid var(--border); border-radius: 5px;
+  background: var(--input-bg,var(--bg)); color: var(--text); font-size: 12px; font-family: inherit; }
+.hotel-row .hotel-del { background: none; border: none; color: var(--text-muted); cursor: pointer;
+  font-size: 14px; padding: 0 2px; }
+.hotel-row .hotel-del:hover { color: #e74c3c; }
 
 /* ── Schedule table ── */
 .schedule-wrap {
@@ -124,24 +157,27 @@ table.staff-tbl {
   height: calc(100dvh - 48px - 12px);
 }
 
+/* CSS variables for live resizing */
+:root { --sched-row-h: 22px; --sched-col-w: 18px; --sched-name-w: 150px; }
+
 table.sched-tbl {
   border-collapse: collapse; font-size: 11px;
   white-space: nowrap;
 }
 .sched-tbl th, .sched-tbl td {
-  border: 1px solid var(--border); padding: 0; height: 22px;
+  border: 1px solid var(--border); padding: 0; height: var(--sched-row-h);
 }
 /* Name column sticky */
 .sched-tbl .col-name-th {
   position: sticky; left: 0; z-index: 6;
   background: var(--thead-bg); color: var(--thead-text);
-  min-width: 150px; max-width: 150px; width: 150px;
+  min-width: var(--sched-name-w); max-width: var(--sched-name-w); width: var(--sched-name-w);
   padding: 4px 6px; text-align: left; font-size: 11px; font-weight: 700;
   border-right: 2px solid var(--border);
 }
 .sched-tbl .col-name-td {
   position: sticky; left: 0; z-index: 4;
-  min-width: 150px; max-width: 150px; width: 150px;
+  min-width: var(--sched-name-w); max-width: var(--sched-name-w); width: var(--sched-name-w);
   padding: 2px 5px; font-weight: 600; font-size: 11px;
   border-right: 2px solid var(--border);
   background: var(--surface);
@@ -166,6 +202,11 @@ table.sched-tbl {
   min-width: 36px;
 }
 
+/* Day/header width via variable */
+.sched-tbl .th-day { min-width: calc(var(--sched-col-w) * 2); }
+.sched-tbl .th-dn  { width: var(--sched-col-w); }
+.sched-tbl td.sched-cell { width: var(--sched-col-w); min-width: var(--sched-col-w); max-width: var(--sched-col-w); }
+
 /* Schedule cells */
 .cell-wd { background: #ffffff; }
 .cell-wn { background: #c8c8c8; }
@@ -181,7 +222,7 @@ table.sched-tbl {
 
 /* Cell content */
 .sched-tbl td.sched-cell {
-  text-align: center; width: 18px; min-width: 18px; max-width: 18px;
+  text-align: center;
   padding: 0; cursor: pointer; position: relative;
 }
 .sched-tbl td.sched-cell input {
@@ -215,7 +256,7 @@ table.sched-tbl {
 
 /* Sticky header rows */
 .sched-tbl thead tr:nth-child(1) th { position: sticky; top: 0; z-index: 5; }
-.sched-tbl thead tr:nth-child(2) th { position: sticky; top: 22px; z-index: 5; }
+.sched-tbl thead tr:nth-child(2) th { position: sticky; top: var(--sched-row-h); z-index: 5; }
 /* Name header sticky corner */
 .sched-tbl thead tr:nth-child(1) th.col-name-th { z-index: 7; }
 .sched-tbl thead tr:nth-child(2) th.col-name-th { z-index: 7; display: none; }
@@ -331,8 +372,12 @@ table.sched-tbl {
   <!-- Nastavení actions -->
   <div class="tb-actions" id="tb-act-nastaveni">
     <button class="tb-btn" id="btn-add-staff">+ Přidat</button>
+    <button class="tb-btn" id="btn-sort-staff">↕ Seřadit</button>
+    <button class="tb-btn" id="btn-clear-actual">Smazat aktuální</button>
+    <button class="tb-btn" id="btn-hotel-manager">🏨 Hotely</button>
     <button class="tb-btn" id="btn-save-settings">Uložit nastavení</button>
     <button class="tb-btn" id="btn-load-master">Načíst z master</button>
+    <button class="tb-btn" id="btn-size-nastaveni" title="Nastavení velikosti tabulky">⊞ Velikost</button>
   </div>
 
   <!-- Tvorba actions -->
@@ -345,20 +390,26 @@ table.sched-tbl {
     <button class="tb-btn" id="btn-draft-trash">Koš</button>
     <span id="autosave-ind"></span>
     <input type="file" id="xls-file-input" accept=".xls,.xlsx" style="display:none">
+    <button class="tb-btn" id="btn-size-tvorba" title="Nastavení velikosti tabulky">⊞ Velikost</button>
   </div>
 
   <!-- Rozpis VR actions -->
   <div class="tb-actions hidden" id="tb-act-rozpis">
     <select id="pub-sel" class="tb-btn" style="padding:4px 6px;font-size:12px;"></select>
-    <button class="tb-btn" id="btn-pub-to-tvorba">Publikovat do Tvorby</button>
+    <button class="tb-btn" id="btn-pub-to-tvorba">Načíst do Tvorby</button>
+    <button class="tb-btn" id="btn-delete-schedule">🗑 Smazat</button>
+    <button class="tb-btn" id="btn-schedule-archive">📦 Archiv</button>
+    <button class="tb-btn" id="btn-schedule-log">📋 Log</button>
+    <button class="tb-btn" id="btn-view-edit">✏ Editovat</button>
+    <button class="tb-btn primary" id="btn-view-save" style="display:none">💾 Uložit</button>
+    <span id="view-edit-badge" class="edit-mode-badge" style="display:none">EDITACE</span>
     <button class="tb-btn" id="btn-lock">🔒 Zamknout</button>
     <span id="lock-info"></span>
     <button class="tb-btn" id="btn-export-xlsx">Export .xlsx</button>
+    <button class="tb-btn" id="btn-size-rozpis" title="Nastavení velikosti tabulky">⊞ Velikost</button>
   </div>
 
   <div class="tb-spacer"></div>
-  <div class="tb-sep"></div>
-  <button id="btn-theme">🌙</button>
 </div>
 
 <!-- ═══════════════════════════ TAB: NASTAVENÍ ════════════════════════════════════════════ -->
@@ -404,7 +455,9 @@ table.sched-tbl {
             <th class="col-maxhrs">Max.hod</th>
             <th class="col-regular">Stálé volno</th>
             <th class="col-dates">Spec.data</th>
-            <th class="col-save">Uložit</th>
+            <th class="col-note">Pozn. aktuální</th>
+            <th class="col-note">Pozn. trvalá</th>
+            <th class="col-save"></th>
           </tr>
         </thead>
         <tbody id="staff-tbody"></tbody>
@@ -444,6 +497,100 @@ table.sched-tbl {
     <div class="modal-footer">
       <button class="btn btn-secondary" id="trash-close2">Zavřít</button>
     </div>
+  </div>
+</div>
+
+<!-- ═══════════════════════ MODAL: Archiv rozpisů VR ══════════════════════════════════════ -->
+<div class="overlay" id="overlay-sched-archive">
+  <div class="modal" style="width:min(520px,100%)">
+    <div class="modal-header">
+      <h3>📦 Archiv rozpisů VR</h3>
+      <button class="modal-close" id="sched-archive-close">✕</button>
+    </div>
+    <div class="modal-body">
+      <ul class="trash-list" id="sched-archive-list"></ul>
+      <div class="empty-state" id="sched-archive-empty" style="display:none">Archiv je prázdný</div>
+    </div>
+    <div class="modal-footer">
+      <button class="btn btn-secondary" id="sched-archive-close2">Zavřít</button>
+    </div>
+  </div>
+</div>
+
+<!-- ═══════════════════════ MODAL: Log změn ═══════════════════════════════════════════════ -->
+<div class="overlay" id="overlay-log">
+  <div class="modal" style="width:min(680px,100%)">
+    <div class="modal-header">
+      <h3>📋 Log změn</h3>
+      <button class="modal-close" id="log-close">✕</button>
+    </div>
+    <div class="modal-body">
+      <table style="width:100%;border-collapse:collapse;font-size:12px" id="log-table">
+        <thead style="position:sticky;top:0;background:var(--thead-bg)">
+          <tr>
+            <th style="padding:5px 8px;text-align:left;border-bottom:1px solid var(--border)">Čas</th>
+            <th style="padding:5px 8px;text-align:left;border-bottom:1px solid var(--border)">Uživatel</th>
+            <th style="padding:5px 8px;text-align:left;border-bottom:1px solid var(--border)">Pracovník</th>
+            <th style="padding:5px 8px;text-align:left;border-bottom:1px solid var(--border)">Změna</th>
+          </tr>
+        </thead>
+        <tbody id="log-tbody"></tbody>
+      </table>
+      <div class="empty-state" id="log-empty" style="display:none">Žádné záznamy</div>
+    </div>
+    <div class="modal-footer">
+      <button class="btn btn-secondary" id="log-close2">Zavřít</button>
+    </div>
+  </div>
+</div>
+
+<!-- ═══════════════════════ MODAL: Hotel manager ══════════════════════════════════════════ -->
+<div class="overlay" id="overlay-hotels">
+  <div class="modal" style="width:min(560px,100%)">
+    <div class="modal-header">
+      <h3>🏨 Správa hotelů</h3>
+      <button class="modal-close" id="hotels-close">✕</button>
+    </div>
+    <div class="modal-body">
+      <p style="font-size:12px;color:var(--text-muted);margin-bottom:12px">
+        Nastavte počet hodin za směnu pro jednotlivé hotely (písmeno → hodiny).
+        Výchozí hodnoty: F=10h, J=10h, S=10h, P=0h, Q=0h, ostatní=12h.
+      </p>
+      <div class="hotel-grid" id="hotel-grid"></div>
+      <div style="margin-top:12px;display:flex;gap:8px;align-items:center">
+        <input type="text" id="hotel-new-letter" placeholder="Písmeno" style="width:80px;padding:5px 8px;border:1px solid var(--border);border-radius:6px;background:var(--input-bg,var(--bg));color:var(--text);font-size:13px;font-family:inherit">
+        <input type="number" id="hotel-new-hours" placeholder="Hod." min="0" max="24" style="width:80px;padding:5px 8px;border:1px solid var(--border);border-radius:6px;background:var(--input-bg,var(--bg));color:var(--text);font-size:13px;font-family:inherit">
+        <button class="btn btn-secondary btn-sm" id="btn-hotel-add">+ Přidat</button>
+      </div>
+    </div>
+    <div class="modal-footer">
+      <button class="btn btn-secondary" id="hotels-close2">Zrušit</button>
+      <button class="btn btn-primary" id="btn-hotels-save">Uložit</button>
+    </div>
+  </div>
+</div>
+
+<!-- ═══════════════════════ PANEL: Nastavení velikosti ════════════════════════════════════ -->
+<div class="size-panel" id="size-panel">
+  <h4>Nastavení velikosti</h4>
+  <div class="size-row">
+    <label>Výška řádku</label>
+    <input type="range" id="size-row-h" min="16" max="60" value="22" step="1">
+    <span id="size-row-h-val">22px</span>
+  </div>
+  <div class="size-row">
+    <label>Šířka buněk</label>
+    <input type="range" id="size-col-w" min="14" max="50" value="18" step="1">
+    <span id="size-col-w-val">18px</span>
+  </div>
+  <div class="size-row">
+    <label>Šířka jmen</label>
+    <input type="range" id="size-name-w" min="80" max="300" value="150" step="5">
+    <span id="size-name-w-val">150px</span>
+  </div>
+  <div style="display:flex;gap:6px;justify-content:flex-end;margin-top:4px">
+    <button class="btn btn-sm btn-secondary" id="btn-size-reset">Reset</button>
+    <button class="btn btn-sm btn-secondary" id="btn-size-close">Zavřít</button>
   </div>
 </div>
 
@@ -1087,6 +1234,34 @@ function renderStaffTable() {
     datesTd.appendChild(datesInp);
     tr.appendChild(datesTd);
 
+    // Note actual (noteM)
+    const noteMTd = document.createElement('td');
+    noteMTd.className = 'col-note';
+    const noteMArea = document.createElement('textarea');
+    noteMArea.rows = 1; noteMArea.value = s.noteM || '';
+    noteMArea.placeholder = 'Aktuální poznámka…';
+    noteMArea.addEventListener('input', () => {
+      s.noteM = noteMArea.value;
+      noteMArea.style.height = 'auto';
+      noteMArea.style.height = noteMArea.scrollHeight + 'px';
+    });
+    noteMTd.appendChild(noteMArea);
+    tr.appendChild(noteMTd);
+
+    // Note permanent (noteP)
+    const notePTd = document.createElement('td');
+    notePTd.className = 'col-note';
+    const notePArea = document.createElement('textarea');
+    notePArea.rows = 1; notePArea.value = s.noteP || '';
+    notePArea.placeholder = 'Trvalá poznámka…';
+    notePArea.addEventListener('input', () => {
+      s.noteP = notePArea.value;
+      notePArea.style.height = 'auto';
+      notePArea.style.height = notePArea.scrollHeight + 'px';
+    });
+    notePTd.appendChild(notePArea);
+    tr.appendChild(notePTd);
+
     // Save / delete row
     const saveTd = document.createElement('td');
     saveTd.className = 'col-save';
@@ -1314,19 +1489,12 @@ async function loadScheduleList() {
     if (!r.ok) throw new Error();
     const data = await r.json();
     const items = data.history || [];
-    if (data.current) {
-      const cur = data.current;
-      const opt = document.createElement('option');
-      opt.value = cur.key || 'current';
-      const mn = MONTH_NAMES[(cur.month||1)-1];
-      opt.textContent = `${mn} ${cur.year} (aktuální)`;
-      sel.appendChild(opt);
-    }
-    items.forEach(it => {
+    const currentKey = data.current; // string key of most recent
+    items.forEach((it, idx) => {
       const opt = document.createElement('option');
       opt.value = it.key;
       const mn = MONTH_NAMES[(it.month||1)-1];
-      opt.textContent = it.label || `${mn} ${it.year}`;
+      opt.textContent = (it.key === currentKey ? '★ ' : '') + (it.label || `${mn} ${it.year}`);
       sel.appendChild(opt);
     });
     if (!sel.options.length) {
@@ -1501,6 +1669,253 @@ function exportXlsx() {
 }
 
 /* ══════════════════════════════════════════════════════════════════════════════
+   NASTAVENÍ — extra akce
+══════════════════════════════════════════════════════════════════════════════ */
+
+function sortStaff() {
+  if (!state.staff.length) return;
+  state.staff.sort((a, b) => (a.name || '').localeCompare(b.name || '', 'cs'));
+  renderStaffTable();
+  toast('Seřazeno abecedně');
+}
+
+function clearActual() {
+  if (!state.staff.some(s => s.noteM)) { toast('Žádné aktuální poznámky', false); return; }
+  if (!confirm('Smazat aktuální poznámky všech pracovníků?')) return;
+  state.staff.forEach(s => { s.noteM = ''; });
+  renderStaffTable();
+  toast('Aktuální poznámky smazány');
+}
+
+/* ── Hotel manager ─────────────────────────────────────────────────────────── */
+
+function showHotelManager() {
+  const grid = document.getElementById('hotel-grid');
+  grid.innerHTML = '';
+  // Merge builtin + overrides + custom
+  const all = {};
+  Object.entries(HOTEL_HOURS_BUILTIN).forEach(([k, v]) => { all[k] = v; });
+  (state.customHotels || []).forEach(h => { all[h.letter] = Number(h.hours); });
+  Object.entries(state.hotelOverrides || {}).forEach(([k, v]) => { all[k] = Number(v); });
+
+  function addRow(letter, hours) {
+    const row = document.createElement('div');
+    row.className = 'hotel-row';
+    row.dataset.letter = letter;
+    row.innerHTML = `
+      <label>${letter}</label>
+      <input type="number" min="0" max="24" step="0.5" value="${hours}" data-letter="${letter}">
+      <button class="hotel-del" title="Odebrat" data-letter="${letter}">✕</button>
+    `;
+    row.querySelector('.hotel-del').addEventListener('click', () => row.remove());
+    grid.appendChild(row);
+  }
+
+  Object.entries(all).sort((a,b)=>a[0].localeCompare(b[0])).forEach(([k,v]) => addRow(k, v));
+  document.getElementById('overlay-hotels').classList.add('show');
+}
+
+function saveHotelManager() {
+  const grid = document.getElementById('hotel-grid');
+  const newOverrides = {};
+  const newCustom = [];
+  grid.querySelectorAll('.hotel-row').forEach(row => {
+    const letter = row.dataset.letter.toUpperCase();
+    const inp = row.querySelector('input[type=number]');
+    const hours = parseFloat(inp ? inp.value : 0);
+    if (HOTEL_HOURS_BUILTIN[letter] !== undefined) {
+      // builtin — store as override
+      newOverrides[letter] = hours;
+    } else {
+      newCustom.push({ letter, hours });
+    }
+  });
+  state.hotelOverrides = newOverrides;
+  state.customHotels = newCustom;
+  document.getElementById('overlay-hotels').classList.remove('show');
+  toast('Hotely uloženy');
+  updateAllSums();
+}
+
+/* ══════════════════════════════════════════════════════════════════════════════
+   ROZPIS VR — delete / archive / log / edit mode
+══════════════════════════════════════════════════════════════════════════════ */
+
+async function deleteSchedule() {
+  const key = currentPubKey;
+  if (!key) { toast('Žádný rozpis vybrán', true); return; }
+  if (!confirm(`Přesunout rozpis "${key}" do archivu?`)) return;
+  try {
+    const r = await fetch(`/api/rt/schedules/${encodeURIComponent(key)}`,
+      { method: 'DELETE', credentials: 'include' });
+    const d = await r.json();
+    if (d.ok) {
+      toast('Přesunuto do archivu');
+      currentPubKey = null;
+      loadScheduleList();
+    } else toast('Chyba smazání', true);
+  } catch(e) { toast('Chyba smazání', true); }
+}
+
+async function showScheduleArchive() {
+  const overlay = document.getElementById('overlay-sched-archive');
+  const list = document.getElementById('sched-archive-list');
+  const empty = document.getElementById('sched-archive-empty');
+  list.innerHTML = ''; empty.style.display = 'none';
+  overlay.classList.add('show');
+  try {
+    const r = await fetch('/api/rt/schedules/trash/list', { credentials: 'include' });
+    if (!r.ok) throw new Error();
+    const items = await r.json();
+    if (!items || !items.length) { empty.style.display = ''; return; }
+    items.forEach(it => {
+      const li = document.createElement('li');
+      const id = it.id;
+      const dateStr = it.deleted_at ? new Date(it.deleted_at).toLocaleDateString('cs') : '';
+      li.innerHTML = `
+        <span class="trash-name">${it.label || it.key}</span>
+        <span class="trash-date">${dateStr}</span>
+        <button class="btn btn-sm btn-secondary" data-restore="${id}">Obnovit</button>
+        <button class="btn btn-sm btn-danger" data-perma="${id}">✕</button>
+      `;
+      li.querySelector('[data-restore]').addEventListener('click', async () => {
+        await fetch(`/api/rt/schedules/restore/${id}`, { method: 'POST', credentials: 'include' });
+        overlay.classList.remove('show');
+        loadScheduleList();
+        toast('Rozpis obnoven');
+      });
+      li.querySelector('[data-perma]').addEventListener('click', async () => {
+        if (!confirm('Trvale smazat?')) return;
+        await fetch(`/api/rt/schedules/perma/${id}`, { method: 'DELETE', credentials: 'include' });
+        li.remove();
+        toast('Trvale smazáno');
+      });
+      list.appendChild(li);
+    });
+  } catch(e) {
+    list.innerHTML = '<li style="color:var(--text-muted)">Chyba načtení archivu</li>';
+  }
+}
+
+async function showScheduleLog() {
+  const key = currentPubKey;
+  if (!key) { toast('Žádný rozpis vybrán', true); return; }
+  const overlay = document.getElementById('overlay-log');
+  const tbody = document.getElementById('log-tbody');
+  const empty = document.getElementById('log-empty');
+  tbody.innerHTML = ''; empty.style.display = 'none';
+  overlay.classList.add('show');
+  try {
+    const r = await fetch(`/api/rt/log/${encodeURIComponent(key)}`, { credentials: 'include' });
+    if (!r.ok) throw new Error();
+    const rows = await r.json();
+    if (!rows || !rows.length) { empty.style.display = ''; return; }
+    rows.forEach(row => {
+      const tr = document.createElement('tr');
+      const ts = row.timestamp ? new Date(row.timestamp).toLocaleString('cs',{dateStyle:'short',timeStyle:'short'}) : '';
+      const change = row.change_type === 'cell'
+        ? `${row.staff_name}: den ${row.day}${row.dn||''} ${row.old_value||'—'} → ${row.new_value||'—'}`
+        : `${row.change_type}: ${row.staff_name}`;
+      tr.innerHTML = `
+        <td style="padding:4px 8px;border-bottom:1px solid var(--border);white-space:nowrap">${ts}</td>
+        <td style="padding:4px 8px;border-bottom:1px solid var(--border)">${row.user_name||''}</td>
+        <td style="padding:4px 8px;border-bottom:1px solid var(--border)">${row.staff_name||''}</td>
+        <td style="padding:4px 8px;border-bottom:1px solid var(--border)">${change}</td>
+      `;
+      tbody.appendChild(tr);
+    });
+  } catch(e) {
+    tbody.innerHTML = '<tr><td colspan="4" style="padding:12px;color:var(--text-muted)">Chyba načtení logu</td></tr>';
+  }
+}
+
+/* ── Edit mode ─────────────────────────────────────────────────────────────── */
+
+let viewEditMode = false;
+let viewEditSnapshot = null; // store state before editing to allow cancel
+
+function toggleViewEdit() {
+  if (!currentPubKey) { toast('Žádný rozpis vybrán', true); return; }
+  viewEditMode = !viewEditMode;
+  if (viewEditMode) {
+    viewEditSnapshot = JSON.parse(JSON.stringify({ schedule: state.schedule, staff: state.staff, extras: state.extras }));
+    renderScheduleTable('rozpis-tbl', true);
+    document.getElementById('btn-view-edit').textContent = '✕ Zrušit';
+    document.getElementById('btn-view-save').style.display = '';
+    document.getElementById('view-edit-badge').style.display = '';
+    toast('Editace aktivována');
+  } else {
+    // restore snapshot
+    if (viewEditSnapshot) {
+      state.schedule = viewEditSnapshot.schedule;
+      state.staff    = viewEditSnapshot.staff;
+      state.extras   = viewEditSnapshot.extras;
+      viewEditSnapshot = null;
+    }
+    renderScheduleTable('rozpis-tbl', false);
+    document.getElementById('btn-view-edit').textContent = '✏ Editovat';
+    document.getElementById('btn-view-save').style.display = 'none';
+    document.getElementById('view-edit-badge').style.display = 'none';
+    toast('Editace zrušena');
+  }
+}
+
+async function saveViewEdits() {
+  if (!currentPubKey || !viewEditMode) return;
+  if (!confirm('Uložit změny do publikovaného rozpisu?')) return;
+  try {
+    const r = await fetch('/api/rt/schedules/save-edits', {
+      method: 'POST', credentials: 'include',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ key: currentPubKey, data: buildSaveData() })
+    });
+    const d = await r.json();
+    if (d.ok) {
+      viewEditMode = false; viewEditSnapshot = null;
+      renderScheduleTable('rozpis-tbl', false);
+      document.getElementById('btn-view-edit').textContent = '✏ Editovat';
+      document.getElementById('btn-view-save').style.display = 'none';
+      document.getElementById('view-edit-badge').style.display = 'none';
+      toast('Uloženo do rozpisu VR');
+    } else toast('Chyba uložení', true);
+  } catch(e) { toast('Chyba uložení', true); }
+}
+
+/* ══════════════════════════════════════════════════════════════════════════════
+   SIZE EDITOR
+══════════════════════════════════════════════════════════════════════════════ */
+
+let sizePanelOpen = false;
+
+function showSizeEditor() {
+  const panel = document.getElementById('size-panel');
+  sizePanelOpen = !sizePanelOpen;
+  panel.classList.toggle('show', sizePanelOpen);
+}
+
+function applySizes() {
+  const h = document.getElementById('size-row-h').value;
+  const w = document.getElementById('size-col-w').value;
+  const n = document.getElementById('size-name-w').value;
+  document.documentElement.style.setProperty('--sched-row-h', h + 'px');
+  document.documentElement.style.setProperty('--sched-col-w', w + 'px');
+  document.documentElement.style.setProperty('--sched-name-w', n + 'px');
+  // update sticky top of dn sub-header row (was hardcoded to 22px in CSS)
+  document.querySelectorAll('.sched-tbl thead tr:nth-child(2) th')
+    .forEach(th => { th.style.top = h + 'px'; });
+  document.getElementById('size-row-h-val').textContent = h + 'px';
+  document.getElementById('size-col-w-val').textContent = w + 'px';
+  document.getElementById('size-name-w-val').textContent = n + 'px';
+}
+
+function resetSizes() {
+  document.getElementById('size-row-h').value = 22;
+  document.getElementById('size-col-w').value = 18;
+  document.getElementById('size-name-w').value = 150;
+  applySizes();
+}
+
+/* ══════════════════════════════════════════════════════════════════════════════
    IMPORT XLS
 ══════════════════════════════════════════════════════════════════════════════ */
 
@@ -1672,8 +2087,12 @@ document.addEventListener('DOMContentLoaded', async () => {
 
   // ── Nastavení actions ──
   document.getElementById('btn-add-staff').addEventListener('click', addStaff);
+  document.getElementById('btn-sort-staff').addEventListener('click', sortStaff);
+  document.getElementById('btn-clear-actual').addEventListener('click', clearActual);
+  document.getElementById('btn-hotel-manager').addEventListener('click', showHotelManager);
   document.getElementById('btn-save-settings').addEventListener('click', saveSettings);
   document.getElementById('btn-load-master').addEventListener('click', loadMasterStaff);
+  document.getElementById('btn-size-nastaveni').addEventListener('click', showSizeEditor);
 
   // Settings field changes → mark dirty
   ['sel-month','inp-year','inp-fond-hpp','inp-fond-zpp','inp-holidays'].forEach(id => {
@@ -1696,18 +2115,25 @@ document.addEventListener('DOMContentLoaded', async () => {
   document.getElementById('btn-draft-trash').addEventListener('click', showTrash);
   document.getElementById('btn-import-xls').addEventListener('click', importXls);
   document.getElementById('xls-file-input').addEventListener('change', handleXlsImport);
+  document.getElementById('btn-size-tvorba').addEventListener('click', showSizeEditor);
 
   // ── Rozpis VR actions ──
   document.getElementById('pub-sel').addEventListener('change', e => {
     if (e.target.value) loadSchedule(e.target.value);
   });
   document.getElementById('btn-pub-to-tvorba').addEventListener('click', pubToTvorba);
+  document.getElementById('btn-delete-schedule').addEventListener('click', deleteSchedule);
+  document.getElementById('btn-schedule-archive').addEventListener('click', showScheduleArchive);
+  document.getElementById('btn-schedule-log').addEventListener('click', showScheduleLog);
+  document.getElementById('btn-view-edit').addEventListener('click', toggleViewEdit);
+  document.getElementById('btn-view-save').addEventListener('click', saveViewEdits);
   document.getElementById('btn-lock').addEventListener('click', () => {
     if (lockOwned) releaseLock(); else acquireLock();
   });
   document.getElementById('btn-export-xlsx').addEventListener('click', exportXlsx);
+  document.getElementById('btn-size-rozpis').addEventListener('click', showSizeEditor);
 
-  // ── Trash modal ──
+  // ── Trash modal (drafts) ──
   document.getElementById('trash-close').addEventListener('click', () => {
     document.getElementById('overlay-trash').classList.remove('show');
   });
@@ -1716,6 +2142,75 @@ document.addEventListener('DOMContentLoaded', async () => {
   });
   document.getElementById('overlay-trash').addEventListener('click', e => {
     if (e.target === e.currentTarget) e.currentTarget.classList.remove('show');
+  });
+
+  // ── Archive modal (schedules) ──
+  ['sched-archive-close','sched-archive-close2'].forEach(id => {
+    document.getElementById(id).addEventListener('click', () => {
+      document.getElementById('overlay-sched-archive').classList.remove('show');
+    });
+  });
+  document.getElementById('overlay-sched-archive').addEventListener('click', e => {
+    if (e.target === e.currentTarget) e.currentTarget.classList.remove('show');
+  });
+
+  // ── Log modal ──
+  ['log-close','log-close2'].forEach(id => {
+    document.getElementById(id).addEventListener('click', () => {
+      document.getElementById('overlay-log').classList.remove('show');
+    });
+  });
+  document.getElementById('overlay-log').addEventListener('click', e => {
+    if (e.target === e.currentTarget) e.currentTarget.classList.remove('show');
+  });
+
+  // ── Hotel manager modal ──
+  ['hotels-close','hotels-close2'].forEach(id => {
+    document.getElementById(id).addEventListener('click', () => {
+      document.getElementById('overlay-hotels').classList.remove('show');
+    });
+  });
+  document.getElementById('overlay-hotels').addEventListener('click', e => {
+    if (e.target === e.currentTarget) e.currentTarget.classList.remove('show');
+  });
+  document.getElementById('btn-hotels-save').addEventListener('click', saveHotelManager);
+  document.getElementById('btn-hotel-add').addEventListener('click', () => {
+    const letter = document.getElementById('hotel-new-letter').value.toUpperCase().trim();
+    const hours  = document.getElementById('hotel-new-hours').value;
+    if (!letter || letter.length !== 1) { toast('Zadejte jedno písmeno', true); return; }
+    document.getElementById('hotel-new-letter').value = '';
+    document.getElementById('hotel-new-hours').value = '';
+    // add to grid dynamically
+    const grid = document.getElementById('hotel-grid');
+    const row = document.createElement('div');
+    row.className = 'hotel-row'; row.dataset.letter = letter;
+    row.innerHTML = `
+      <label>${letter}</label>
+      <input type="number" min="0" max="24" step="0.5" value="${hours||12}" data-letter="${letter}">
+      <button class="hotel-del" title="Odebrat" data-letter="${letter}">✕</button>
+    `;
+    row.querySelector('.hotel-del').addEventListener('click', () => row.remove());
+    grid.appendChild(row);
+  });
+
+  // ── Size panel ──
+  ['size-row-h','size-col-w','size-name-w'].forEach(id => {
+    document.getElementById(id).addEventListener('input', applySizes);
+  });
+  document.getElementById('btn-size-reset').addEventListener('click', resetSizes);
+  document.getElementById('btn-size-close').addEventListener('click', () => {
+    document.getElementById('size-panel').classList.remove('show');
+    sizePanelOpen = false;
+  });
+  // Close size panel on click outside
+  document.addEventListener('click', e => {
+    if (!sizePanelOpen) return;
+    const panel = document.getElementById('size-panel');
+    if (!panel.contains(e.target) &&
+        !e.target.matches('#btn-size-nastaveni,#btn-size-tvorba,#btn-size-rozpis')) {
+      panel.classList.remove('show');
+      sizePanelOpen = false;
+    }
   });
 
   // ── Global keyboard shortcuts ──
