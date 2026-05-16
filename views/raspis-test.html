@@ -11,6 +11,7 @@
 <style>
 * { box-sizing: border-box; margin: 0; padding: 0; }
 body { min-height: 100vh; background: var(--bg); font-family: 'Segoe UI', system-ui, sans-serif; color: var(--text); padding-top: 48px; }
+body.with-subtoolbar { padding-top: calc(48px + var(--stb-h,68px)); }
 
 /* ── Topbar ── */
 #topbar {
@@ -151,10 +152,10 @@ table.staff-tbl {
   -webkit-overflow-scrolling: touch;
 }
 .schedule-wrap.tvorba-wrap {
-  height: calc(100dvh - 48px - 12px);
+  height: calc(100dvh - 48px - var(--stb-h,0px) - 12px);
 }
 .schedule-wrap.view-wrap {
-  height: calc(100dvh - 48px - 12px);
+  height: calc(100dvh - 48px - var(--stb-h,0px) - 12px);
 }
 
 /* CSS variables for live resizing */
@@ -261,19 +262,55 @@ table.sched-tbl {
 .sched-tbl thead tr:nth-child(1) th.col-name-th { z-index: 7; }
 .sched-tbl thead tr:nth-child(2) th.col-name-th { z-index: 7; display: none; }
 
-/* ── Tab-specific controls ── */
-.tab-controls {
-  padding: 8px 12px; border-bottom: 1px solid var(--border);
-  display: flex; align-items: center; gap: 8px; flex-wrap: wrap;
-  background: var(--bg); position: sticky; top: 48px; z-index: 80;
+/* ── Sub-toolbar (Tvorba & Rozpis) ── */
+#subtoolbar {
+  position: fixed; top: 48px; left: 0; right: 0; z-index: 85;
+  background: var(--bg-topbar); border-bottom: 2px solid var(--border);
+  display: none; flex-direction: column; padding: 4px 10px 4px;
 }
-.tab-controls label { font-size: 12px; color: var(--text-muted); }
-.tab-controls select, .tab-controls input {
-  padding: 5px 8px; border: 1px solid var(--border); border-radius: 6px;
-  background: var(--input-bg,var(--bg)); color: var(--text); font-size: 12px;
-  font-family: inherit;
+#subtoolbar.show { display: flex; }
+.stb-row { display: flex; align-items: center; gap: 4px; flex-wrap: wrap; min-height: 30px; }
+.stb-sep { width: 1px; height: 20px; background: var(--btn-top-border,#3E3E3E); flex-shrink: 0; margin: 0 2px; }
+.stb-spacer { flex: 1; }
+.stb-btn {
+  padding: 3px 9px; border: 1px solid var(--btn-top-border,#3E3E3E);
+  border-radius: 5px; background: none; color: var(--btn-top-color,#BBBBBB);
+  cursor: pointer; font-size: 11px; font-weight: 600; font-family: inherit;
+  white-space: nowrap; flex-shrink: 0; transition: background .12s;
 }
-.tab-controls select:focus, .tab-controls input:focus { outline: none; border-color: var(--accent); }
+.stb-btn:hover { background: var(--btn-top-hover-bg,#2A2A2A); color: var(--text-topbar,#DDD); }
+.stb-btn.active { background: var(--accent,#C4A96A); color: #fff; border-color: transparent; }
+.stb-btn.active:hover { opacity: .88; }
+.stb-hotel-lbl { font-size: 10px; color: var(--text-muted); margin-right: 2px; }
+/* schedule filters */
+.sched-tbl.hide-night td[data-dn="n"],
+.sched-tbl.hide-night th[data-dn="n"] { display: none; }
+.sched-tbl.hide-day td[data-dn="d"],
+.sched-tbl.hide-day th[data-dn="d"] { display: none; }
+.sched-tbl.hide-sums .sum-cell,
+.sched-tbl.hide-sums .th-sum { display: none; }
+.sched-tbl.hours-only .sum-cell:not(.sum-hrs),
+.sched-tbl.hours-only .th-sum:not(.th-sum-hrs) { display: none; }
+/* selected cells highlight */
+.sched-cell.cell-selected { outline: 2px solid #f39c12; outline-offset: -1px; background: #fff3cd !important; }
+[data-theme="dark"] .sched-cell.cell-selected { background: #4a3000 !important; }
+/* row filter */
+tbody tr.row-filtered { display: none; }
+/* coverage rows */
+.cov-header-row th {
+  background: #2a2a2a; color: #999; font-size: 10px; font-weight: 700;
+  padding: 2px 5px; text-align: left;
+}
+[data-theme="dark"] .cov-header-row th { background: #1a1a1a; }
+.cov-row td.cov-cell { font-size: 9px; text-align: center; padding: 0; }
+.cov-empty { background: transparent; }
+.cov-1 { background: #c8f5c8; color: #1a6b1a; font-weight: 700; }
+.cov-2 { background: #ffe082; color: #7a5000; font-weight: 700; }
+.cov-3plus { background: #ff8a65; color: #5d1a00; font-weight: 700; }
+[data-theme="dark"] .cov-1 { background: #1a4a1a; color: #7fff7f; }
+[data-theme="dark"] .cov-2 { background: #4a3a00; color: #ffe082; }
+[data-theme="dark"] .cov-3plus { background: #4a1500; color: #ff8a65; }
+.cov-row .col-name-td { font-size: 10px; font-weight: 700; padding: 2px 5px; background: var(--surface); }
 
 /* ── Buttons ── */
 .btn { padding: 6px 13px; border: none; border-radius: 7px; font-size: 13px;
@@ -466,6 +503,32 @@ table.sched-tbl {
   </div>
 </div>
 
+<!-- ═══════════════════════ SUB-TOOLBAR (Tvorba + Rozpis VR) ════════════════════════════ -->
+<div id="subtoolbar">
+  <div class="stb-row" id="stb-row-hotels">
+    <span class="stb-hotel-lbl">Hotel:</span>
+    <button class="stb-btn active" id="stb-vse">VSE</button>
+    <div id="stb-hotel-btns" style="display:contents"></div>
+    <div class="stb-spacer"></div>
+    <button class="stb-btn" id="stb-hide-sums">Skrýt součty</button>
+    <button class="stb-btn" id="stb-save-req">Zapamatuj požadavky</button>
+  </div>
+  <div class="stb-row">
+    <button class="stb-btn" id="stb-hide-hotels">Skrýt hotely</button>
+    <div class="stb-sep"></div>
+    <button class="stb-btn" id="stb-day-only">Jen denní</button>
+    <button class="stb-btn" id="stb-night-only">Jen noční</button>
+    <button class="stb-btn" id="stb-available">Jen dostupní</button>
+    <button class="stb-btn" id="stb-mark-sel">Označ vybrané</button>
+    <div class="stb-sep"></div>
+    <button class="stb-btn" id="stb-undo">⇐ Zpět</button>
+    <button class="stb-btn" id="stb-redo">⇒ Vpřed</button>
+    <div class="stb-spacer"></div>
+    <button class="stb-btn" id="stb-hours-only">Pouze hodiny</button>
+    <button class="stb-btn" id="stb-export2">Export .xlsx</button>
+  </div>
+</div>
+
 <!-- ═══════════════════════════ TAB: TVORBA ══════════════════════════════════════════════ -->
 <div class="tab-panel" id="tab-tvorba">
   <div class="schedule-wrap tvorba-wrap" id="tvorba-wrap">
@@ -480,6 +543,43 @@ table.sched-tbl {
     <div class="spinner-wrap" id="rozpis-spinner"><div class="spinner"></div></div>
     <table class="sched-tbl" id="rozpis-tbl" style="display:none"></table>
     <div class="empty-state" id="rozpis-empty" style="display:none">Žádný publikovaný rozpis</div>
+  </div>
+</div>
+
+<!-- ═══════════════════════════ MODAL: Přidat pracovníka ═════════════════════════════════ -->
+<div class="overlay" id="overlay-add-staff">
+  <div class="modal" style="width:min(520px,100%)">
+    <div class="modal-header">
+      <h3>+ Přidat pracovníka</h3>
+      <button class="modal-close" id="add-staff-close">✕</button>
+    </div>
+    <div class="modal-body">
+      <div class="fields-2">
+        <div class="field"><label>Jméno</label><input type="text" id="ns-name" placeholder="Jméno příjmení"></div>
+        <div class="field"><label>Typ směn</label>
+          <select id="ns-type">
+            <option value="">— žádný —</option>
+            <option>Denní</option><option>Noční</option><option>Obojí</option>
+            <option>Vedoucí</option><option>Pohotovost</option><option>Speciální</option>
+          </select>
+        </div>
+        <div class="field"><label>Smlouva</label>
+          <select id="ns-contract">
+            <option value="">—</option>
+            <option>HPP</option><option>ZPP</option><option>DPČ</option><option>DPP</option>
+          </select>
+        </div>
+        <div class="field"><label>Max. hodin</label><input type="text" id="ns-maxhrs" placeholder="160"></div>
+        <div class="field"><label>Stálé volno</label><input type="text" id="ns-regular" placeholder="po-d,út-n,sv"></div>
+        <div class="field"><label>Spec. data</label><input type="text" id="ns-dates" placeholder="spec.data..."></div>
+      </div>
+      <div class="field"><label>Poznámka aktuální</label><textarea id="ns-notem" rows="2" style="resize:vertical"></textarea></div>
+      <div class="field"><label>Poznámka trvalá</label><textarea id="ns-notep" rows="2" style="resize:vertical"></textarea></div>
+    </div>
+    <div class="modal-footer">
+      <button class="btn btn-secondary" id="add-staff-cancel">Zrušit</button>
+      <button class="btn btn-primary" id="add-staff-confirm">Přidat</button>
+    </div>
   </div>
 </div>
 
@@ -847,10 +947,12 @@ function renderScheduleTable(tableId, editable) {
   nameTh.textContent = 'Jméno';
   tr1.appendChild(nameTh);
 
-  // Group day cols by day
-  let prevDay = null;
+  // Group day cols by day — use composite key to handle Dec 31 + Jan 1 next year
+  let prevDayKey = null;
   calCols.forEach(col => {
-    if (col.day !== prevDay || col.nextYear !== (prevDay === null)) {
+    const dayKey = `${col.day}-${!!col.nextYear}`;
+    if (dayKey !== prevDayKey) {
+      prevDayKey = dayKey;
       // emit colspan=2 for this day
       const th = document.createElement('th');
       th.colSpan = 2;
@@ -867,23 +969,24 @@ function renderScheduleTable(tableId, editable) {
       const dayName = DAY_NAMES[dow];
       th.innerHTML = `<div>${dayLabel}</div><div style="font-size:9px;opacity:.75">${dayName}</div>`;
       tr1.appendChild(th);
-      prevDay = col.day;
     }
   });
 
   // Sum headers
-  SUM_HEADS.forEach(h => {
+  SUM_HEADS.forEach((h, idx) => {
     const th = document.createElement('th');
     th.rowSpan = 2; th.className = 'th-sum';
+    if (idx === 6) th.classList.add('th-sum-hrs');
     th.textContent = h; tr1.appendChild(th);
   });
   thead.appendChild(tr1);
 
-  // Row 2: d/n sub-headers
+  // Row 2: d/n sub-headers (with data-dn for CSS filter)
   const tr2 = document.createElement('tr');
   calCols.forEach(col => {
     const th = document.createElement('th');
     th.className = 'th-dn';
+    th.dataset.dn = col.dn;
     const hol = isHoliday(col, state.month, state.year, holidaysList);
     const cls = cellClass(col, state.month, state.year, holidaysList);
     th.style.background = cls === 'cell-kn' ? '#5b9dc9'
@@ -899,6 +1002,52 @@ function renderScheduleTable(tableId, editable) {
 
   // ── TBODY ──
   const tbody = document.createElement('tbody');
+
+  // ── Pokrytí (coverage) rows ──
+  if (state.staff.length > 0) {
+    // Get all hotel letters present in schedule
+    const hotelLetters = getUsedHotelLetters();
+    if (hotelLetters.length > 0) {
+      // header row
+      const covHdr = document.createElement('tr');
+      covHdr.className = 'cov-header-row';
+      const th0 = document.createElement('th');
+      th0.colSpan = calCols.length + SUM_HEADS.length + 1;
+      th0.textContent = 'Pokrytí';
+      covHdr.appendChild(th0);
+      tbody.appendChild(covHdr);
+
+      hotelLetters.forEach(letter => {
+        const tr = document.createElement('tr');
+        tr.className = 'cov-row';
+        tr.dataset.covLetter = letter;
+        const nameTd = document.createElement('td');
+        nameTd.className = 'col-name-td cov-label';
+        nameTd.textContent = letter;
+        tr.appendChild(nameTd);
+        calCols.forEach((col, ci) => {
+          const count = state.staff.filter((_, si) => state.schedule[`${si}_${ci}`] === letter).length;
+          const td = document.createElement('td');
+          td.className = 'sched-cell cov-cell ' + cellClass(col, state.month, state.year, holidaysList);
+          td.dataset.dn = col.dn;
+          if (count === 0) td.classList.add('cov-empty');
+          else if (count === 1) td.classList.add('cov-1');
+          else if (count === 2) td.classList.add('cov-2');
+          else td.classList.add('cov-3plus');
+          td.textContent = count > 0 ? count : '';
+          tr.appendChild(td);
+        });
+        // empty sum cells
+        SUM_HEADS.forEach((_, idx) => {
+          const td = document.createElement('td');
+          td.className = 'sum-cell' + (idx === 6 ? ' sum-hrs' : '');
+          tr.appendChild(td);
+        });
+        tbody.appendChild(tr);
+      });
+    }
+  }
+
   state.staff.forEach((s, si) => {
     const tr = document.createElement('tr');
     tr.dataset.si = si;
@@ -915,7 +1064,7 @@ function renderScheduleTable(tableId, editable) {
     calCols.forEach((col, ci) => {
       const td = document.createElement('td');
       td.className = 'sched-cell ' + cellClass(col, state.month, state.year, holidaysList);
-      td.dataset.si = si; td.dataset.ci = ci;
+      td.dataset.si = si; td.dataset.ci = ci; td.dataset.dn = col.dn;
       const val = state.schedule[`${si}_${ci}`] || '';
 
       if (editable) {
@@ -944,6 +1093,7 @@ function renderScheduleTable(tableId, editable) {
       const td = document.createElement('td');
       td.className = 'sum-cell';
       td.dataset.si = si; td.dataset.sumIdx = idx;
+      if (idx === 6) td.classList.add('sum-hrs');
       if (idx === 4 || idx === 6) td.classList.add('sum-bold');
       if (idx === 5) {
         // ±hod editable
@@ -1669,6 +1819,190 @@ function exportXlsx() {
 }
 
 /* ══════════════════════════════════════════════════════════════════════════════
+   SUB-TOOLBAR STATE & FUNCTIONS
+══════════════════════════════════════════════════════════════════════════════ */
+
+let filterHotel  = null;  // null = VSE, else letter string
+let filterShift  = null;  // null | 'day' | 'night' | 'available'
+let showHotels   = true;
+let sumsMode     = 'all'; // 'all' | 'hidden' | 'hoursonly'
+
+function updateSubtoolbar() {
+  const tab = document.querySelector('.tb-tab.active');
+  const active = tab ? tab.dataset.tab : null;
+  const stb = document.getElementById('subtoolbar');
+  const showStb = active === 'tvorba' || active === 'rozpis';
+  stb.classList.toggle('show', showStb);
+  if (showStb) {
+    const h = stb.offsetHeight;
+    document.documentElement.style.setProperty('--stb-h', h + 'px');
+    document.body.classList.add('with-subtoolbar');
+  } else {
+    document.documentElement.style.setProperty('--stb-h', '0px');
+    document.body.classList.remove('with-subtoolbar');
+  }
+}
+
+function getUsedHotelLetters() {
+  const letters = new Set();
+  Object.values(state.schedule).forEach(v => {
+    if (v && v.length === 1 && /[A-Z]/i.test(v)) letters.add(v.toUpperCase());
+  });
+  // Also include all defined hotels (builtin + custom)
+  Object.keys(HOTEL_HOURS_BUILTIN).forEach(k => letters.add(k));
+  (state.customHotels||[]).forEach(h => letters.add(h.letter));
+  Object.keys(state.hotelOverrides||{}).forEach(k => letters.add(k));
+  return Array.from(letters).sort();
+}
+
+function buildHotelFilterButtons() {
+  const container = document.getElementById('stb-hotel-btns');
+  container.innerHTML = '';
+  getUsedHotelLetters().forEach(letter => {
+    const btn = document.createElement('button');
+    btn.className = 'stb-btn' + (filterHotel === letter ? ' active' : '');
+    btn.textContent = letter;
+    btn.dataset.hotel = letter;
+    btn.addEventListener('click', () => filterByHotel(letter));
+    container.appendChild(btn);
+  });
+}
+
+function filterByHotel(letter) {
+  if (filterHotel === letter) {
+    filterHotel = null;
+  } else {
+    filterHotel = letter;
+  }
+  document.getElementById('stb-vse').classList.toggle('active', !filterHotel);
+  document.querySelectorAll('#stb-hotel-btns .stb-btn').forEach(b => {
+    b.classList.toggle('active', b.dataset.hotel === filterHotel);
+  });
+  applyRowFilters();
+}
+
+function filterByShift(mode) {
+  filterShift = filterShift === mode ? null : mode;
+  ['stb-day-only','stb-night-only','stb-available'].forEach(id => {
+    const el = document.getElementById(id);
+    if (!el) return;
+    const m = id === 'stb-day-only' ? 'day' : id === 'stb-night-only' ? 'night' : 'available';
+    el.classList.toggle('active', filterShift === m);
+  });
+  applyRowFilters();
+}
+
+function applyRowFilters() {
+  ['tvorba-tbl','rozpis-tbl'].forEach(tblId => {
+    const tbl = document.getElementById(tblId);
+    if (!tbl) return;
+    tbl.querySelectorAll('tbody tr[data-si]').forEach(tr => {
+      const si = +tr.dataset.si;
+      const s = state.staff[si];
+      if (!s) return;
+      let hide = false;
+      // Hotel filter: show only rows where at least one cell matches
+      if (filterHotel) {
+        const calCols = getCalCols(state.month, state.year);
+        const hasHotel = calCols.some((_, ci) => state.schedule[`${si}_${ci}`] === filterHotel);
+        if (!hasHotel) hide = true;
+      }
+      // Shift filter
+      if (!hide && filterShift === 'day') {
+        hide = s.type === 'Noční';
+      } else if (!hide && filterShift === 'night') {
+        hide = s.type === 'Denní';
+      } else if (!hide && filterShift === 'available') {
+        // available = has at least one empty cell (not fully assigned)
+        const calCols = getCalCols(state.month, state.year);
+        const allFilled = calCols.every((_, ci) => !!state.schedule[`${si}_${ci}`]);
+        hide = allFilled;
+      }
+      tr.classList.toggle('row-filtered', hide);
+    });
+    // Coverage rows follow hotel filter
+    tbl.querySelectorAll('tbody tr.cov-row').forEach(tr => {
+      const letter = tr.dataset.covLetter;
+      const hide = !showHotels || (filterHotel && filterHotel !== letter);
+      tr.classList.toggle('row-filtered', hide);
+    });
+    tbl.querySelectorAll('tbody tr.cov-header-row').forEach(tr => {
+      tr.classList.toggle('row-filtered', !showHotels);
+    });
+  });
+}
+
+function toggleHotelRows() {
+  showHotels = !showHotels;
+  document.getElementById('stb-hide-hotels').classList.toggle('active', !showHotels);
+  applyRowFilters();
+}
+
+function setSumsMode(mode) {
+  sumsMode = sumsMode === mode ? 'all' : mode;
+  ['tvorba-tbl','rozpis-tbl'].forEach(tblId => {
+    const tbl = document.getElementById(tblId);
+    if (!tbl) return;
+    tbl.classList.toggle('hide-sums', sumsMode === 'hidden');
+    tbl.classList.toggle('hours-only', sumsMode === 'hoursonly');
+  });
+  document.getElementById('stb-hide-sums').classList.toggle('active', sumsMode === 'hidden');
+  document.getElementById('stb-hours-only').classList.toggle('active', sumsMode === 'hoursonly');
+}
+
+function markSelected() {
+  // Toggle 'selected' highlight on hotel-filtered cells
+  if (!filterHotel) { toast('Nejdřív vyber hotel filtrem', false); return; }
+  ['tvorba-tbl','rozpis-tbl'].forEach(tblId => {
+    const tbl = document.getElementById(tblId);
+    if (!tbl) return;
+    tbl.querySelectorAll('.sched-cell').forEach(td => {
+      const si = +td.dataset.si, ci = +td.dataset.ci;
+      if (state.schedule[`${si}_${ci}`] === filterHotel) {
+        td.classList.toggle('cell-selected');
+      }
+    });
+  });
+}
+
+function saveRequirements() {
+  state.requirements = JSON.parse(JSON.stringify(state.schedule));
+  toast('Požadavky zapamatovány');
+}
+
+/* ══════════════════════════════════════════════════════════════════════════════
+   STAFF MODAL
+══════════════════════════════════════════════════════════════════════════════ */
+
+function showAddStaffModal() {
+  ['ns-name','ns-maxhrs','ns-regular','ns-dates','ns-notem','ns-notep'].forEach(id => {
+    document.getElementById(id).value = '';
+  });
+  document.getElementById('ns-type').value = '';
+  document.getElementById('ns-contract').value = '';
+  document.getElementById('overlay-add-staff').classList.add('show');
+  setTimeout(() => document.getElementById('ns-name').focus(), 100);
+}
+
+function confirmAddStaff() {
+  const name = document.getElementById('ns-name').value.trim();
+  if (!name) { toast('Zadejte jméno', true); return; }
+  state.staff.push({
+    name,
+    type:     document.getElementById('ns-type').value,
+    contract: document.getElementById('ns-contract').value,
+    maxHrs:   document.getElementById('ns-maxhrs').value,
+    regular:  document.getElementById('ns-regular').value,
+    dates:    document.getElementById('ns-dates').value,
+    noteM:    document.getElementById('ns-notem').value,
+    noteP:    document.getElementById('ns-notep').value,
+  });
+  document.getElementById('overlay-add-staff').classList.remove('show');
+  renderStaffTable();
+  toast(`Přidán: ${name}`);
+}
+
+/* ══════════════════════════════════════════════════════════════════════════════
    NASTAVENÍ — extra akce
 ══════════════════════════════════════════════════════════════════════════════ */
 
@@ -1997,7 +2331,8 @@ async function loadMasterStaff() {
   try {
     const r = await fetch('/api/master-staff', {credentials:'include'});
     if (!r.ok) throw new Error(r.status);
-    const list = await r.json();
+    const result = await r.json();
+    const list = result.staff || result || [];
     if (!list || !list.length) { toast('Master nemá žádné pracovníky', true); return; }
     if (!confirm(`Načíst ${list.length} pracovníků z master? Stávající seznam bude nahrazen.`)) return;
     state.staff = list.map(s => ({
@@ -2013,15 +2348,7 @@ async function loadMasterStaff() {
 }
 
 function addStaff() {
-  state.staff.push({name:'', type:'', contract:'', maxHrs:'', regular:'', dates:'', noteM:'', noteP:''});
-  renderStaffTable();
-  // focus last name input
-  const tbody = document.getElementById('staff-tbody');
-  const rows = tbody.querySelectorAll('tr');
-  if (rows.length) {
-    const inp = rows[rows.length - 1].querySelector('input[type=text]');
-    if (inp) inp.focus();
-  }
+  showAddStaffModal();
 }
 
 /* ══════════════════════════════════════════════════════════════════════════════
@@ -2039,6 +2366,19 @@ function switchTab(name) {
   const act = document.getElementById(`tb-act-${name}`);
   if (act) act.classList.remove('hidden');
 
+  // Show/hide subtoolbar
+  updateSubtoolbar();
+  if (name === 'tvorba' || name === 'rozpis') {
+    buildHotelFilterButtons();
+    // Re-apply active sums mode to tables
+    ['tvorba-tbl','rozpis-tbl'].forEach(tblId => {
+      const tbl = document.getElementById(tblId);
+      if (!tbl) return;
+      tbl.classList.toggle('hide-sums', sumsMode === 'hidden');
+      tbl.classList.toggle('hours-only', sumsMode === 'hoursonly');
+    });
+  }
+
   if (name === 'tvorba') {
     const tbl = document.getElementById('tvorba-tbl');
     const spinner = document.getElementById('tvorba-spinner');
@@ -2046,6 +2386,7 @@ function switchTab(name) {
       spinner.style.display = '';
       setTimeout(() => {
         renderScheduleTable('tvorba-tbl', true);
+        buildHotelFilterButtons();
         spinner.style.display = 'none';
       }, 10);
     }
@@ -2083,6 +2424,40 @@ document.addEventListener('DOMContentLoaded', async () => {
   // ── Topbar tab buttons ──
   document.querySelectorAll('.tb-tab[data-tab]').forEach(b => {
     b.addEventListener('click', () => switchTab(b.dataset.tab));
+  });
+
+  // ── Sub-toolbar ──
+  document.getElementById('stb-vse').addEventListener('click', () => {
+    filterHotel = null;
+    document.getElementById('stb-vse').classList.add('active');
+    document.querySelectorAll('#stb-hotel-btns .stb-btn').forEach(b => b.classList.remove('active'));
+    applyRowFilters();
+  });
+  document.getElementById('stb-day-only').addEventListener('click', () => filterByShift('day'));
+  document.getElementById('stb-night-only').addEventListener('click', () => filterByShift('night'));
+  document.getElementById('stb-available').addEventListener('click', () => filterByShift('available'));
+  document.getElementById('stb-hide-hotels').addEventListener('click', toggleHotelRows);
+  document.getElementById('stb-hide-sums').addEventListener('click', () => setSumsMode('hidden'));
+  document.getElementById('stb-hours-only').addEventListener('click', () => setSumsMode('hoursonly'));
+  document.getElementById('stb-mark-sel').addEventListener('click', markSelected);
+  document.getElementById('stb-save-req').addEventListener('click', saveRequirements);
+  document.getElementById('stb-undo').addEventListener('click', historyUndo);
+  document.getElementById('stb-redo').addEventListener('click', historyRedo);
+  document.getElementById('stb-export2').addEventListener('click', exportXlsx);
+
+  // ── Staff modal ──
+  document.getElementById('add-staff-close').addEventListener('click', () => {
+    document.getElementById('overlay-add-staff').classList.remove('show');
+  });
+  document.getElementById('add-staff-cancel').addEventListener('click', () => {
+    document.getElementById('overlay-add-staff').classList.remove('show');
+  });
+  document.getElementById('add-staff-confirm').addEventListener('click', confirmAddStaff);
+  document.getElementById('overlay-add-staff').addEventListener('click', e => {
+    if (e.target === e.currentTarget) e.currentTarget.classList.remove('show');
+  });
+  document.getElementById('ns-name').addEventListener('keydown', e => {
+    if (e.key === 'Enter') confirmAddStaff();
   });
 
   // ── Nastavení actions ──
