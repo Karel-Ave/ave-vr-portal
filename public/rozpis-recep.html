@@ -1,0 +1,602 @@
+<!DOCTYPE html>
+<html lang="cs">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Rozpis — AVE Hotels</title>
+<link rel="icon" type="image/png" href="/static/logo.png">
+<script src="/static/theme.js"></script>
+<link rel="stylesheet" href="/static/theme.css">
+<style>
+/* ── Reset & Layout ─────────────────────────────────────────────────────── */
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+body {
+  font-family: 'Segoe UI', system-ui, sans-serif;
+  background: var(--bg);
+  color: var(--text);
+  display: flex;
+  flex-direction: column;
+  height: 100vh;
+  overflow: hidden;
+}
+
+/* ── Loading overlay ────────────────────────────────────────────────────── */
+#loading-overlay {
+  position: fixed;
+  inset: 0;
+  background: var(--bg);
+  z-index: 900;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 14px;
+  transition: opacity .2s;
+}
+#loading-overlay.hidden { opacity: 0; pointer-events: none; }
+.spinner {
+  width: 34px; height: 34px;
+  border: 3px solid var(--border, #ccc);
+  border-top-color: var(--accent, #2a5caa);
+  border-radius: 50%;
+  animation: spin .75s linear infinite;
+}
+@keyframes spin { to { transform: rotate(360deg); } }
+.loading-text { font-size: 13px; color: var(--text-muted); }
+
+/* ── Topbar ─────────────────────────────────────────────────────────────── */
+#topbar {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  background: var(--bg-controls, #ECEAE2);
+  border-bottom: 1px solid var(--bg-controls-border, #D8D5CC);
+  padding: 5px 14px;
+  flex-shrink: 0;
+  min-height: 40px;
+}
+[data-theme="dark"] #topbar {
+  background: var(--bg-controls, #1A1E24);
+  border-bottom-color: var(--bg-controls-border, #272D36);
+}
+#topbar-logo {
+  height: 26px;
+  object-fit: contain;
+  filter: brightness(0);
+}
+[data-theme="dark"] #topbar-logo { filter: brightness(0) invert(1); }
+#sel-month {
+  height: 26px;
+  padding: 0 8px;
+  font-size: 12px;
+  font-family: inherit;
+  border: 1px solid var(--border, #ccc);
+  border-radius: 5px;
+  background: var(--surface, #fff);
+  color: var(--text);
+  cursor: pointer;
+  max-width: 220px;
+}
+#month-label {
+  font-size: 11px;
+  color: var(--text-muted, #777);
+  font-weight: 500;
+}
+#btn-theme {
+  margin-left: auto;
+  padding: 4px 10px;
+  border: 1px solid var(--border, #ccc);
+  border-radius: 5px;
+  background: var(--modal-bg, #fff);
+  color: var(--text-muted, #777);
+  font-size: 14px;
+  cursor: pointer;
+  line-height: 1;
+  box-shadow: 0 1px 4px rgba(0,0,0,.1);
+}
+#btn-theme:hover { background: var(--surface-alt, #f5f5f5); }
+
+/* ── Table wrap ─────────────────────────────────────────────────────────── */
+#schedule-wrap {
+  flex: 1;
+  overflow: auto;
+  position: relative;
+}
+
+/* ── Schedule table ─────────────────────────────────────────────────────── */
+#sch-table {
+  border-collapse: collapse;
+  font-size: 11px;
+  position: relative;
+  /* Custom props */
+  --cell-w: 18px;
+  --name-w: 150px;
+  --sum-w:  36px;
+  --row-h:  22px;
+  /* Cell colors */
+  --cell-weekday-day:    #ffffff;
+  --cell-weekday-night:  #c8c8c8;
+  --cell-weekend-day:    #a8d8f0;
+  --cell-weekend-night:  #5b9dc9;
+  --cell-holiday-header: #e53030;
+}
+
+/* Sticky header rows */
+#sch-table thead th {
+  position: sticky;
+  background: var(--surface, #f0efe8);
+  z-index: 5;
+  border: 1px solid var(--border, #ccc);
+  white-space: nowrap;
+  user-select: none;
+  font-weight: 600;
+}
+/* Row 1 sits at top=0, row 2 sits just below */
+#sch-table thead tr:nth-child(1) th { top: 0; }
+#sch-table thead tr:nth-child(2) th { top: var(--row1-h, 21px); }
+
+/* Sticky name column */
+.th-name, .td-name {
+  position: sticky;
+  left: 0;
+  background: var(--surface, #f0efe8);
+  min-width: var(--name-w);
+  max-width: var(--name-w);
+  width: var(--name-w);
+  text-align: left;
+  padding: 2px 6px;
+  border: 1px solid var(--border, #ccc);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  font-weight: 500;
+}
+.th-name { z-index: 15; font-size: 10px; }
+.td-name { z-index: 2; }
+
+/* Day header (grouped, colSpan=2) */
+.th-day {
+  min-width: calc(var(--cell-w) * 2);
+  text-align: center;
+  font-size: 10px;
+  padding: 2px 1px;
+  border: 1px solid var(--border, #ccc);
+}
+/* d/n sub-header */
+.th-dn {
+  min-width: var(--cell-w);
+  width: var(--cell-w);
+  text-align: center;
+  font-size: 9px;
+  padding: 1px 0;
+  border: 1px solid var(--border, #ccc);
+  color: var(--text-muted, #888);
+}
+
+/* Sum headers */
+.th-sum {
+  min-width: var(--sum-w);
+  width: var(--sum-w);
+  text-align: center;
+  font-size: 9px;
+  padding: 2px 2px;
+  border: 1px solid var(--border, #ccc);
+}
+
+/* Schedule cells */
+.sch-cell {
+  width: var(--cell-w);
+  min-width: var(--cell-w);
+  max-width: var(--cell-w);
+  height: var(--row-h);
+  text-align: center;
+  padding: 0;
+  border: 1px solid var(--border, #ccc);
+  font-size: 11px;
+  font-weight: 700;
+  cursor: default;
+}
+
+/* Sum cells */
+.sch-sum {
+  text-align: center;
+  padding: 1px 2px;
+  border: 1px solid var(--border, #ccc);
+  font-size: 10px;
+  min-width: var(--sum-w);
+  height: var(--row-h);
+}
+.sch-sum-bold { font-weight: 700; }
+.sch-sum-over  { color: #cc0000 !important; font-weight: 700; }
+.sch-sum-ok    { color: #1a5c1a !important; font-weight: 700; }
+.sch-sum-under { color: #cc6600 !important; }
+
+/* Cell background classes */
+.cell-wd-d  { background: var(--cell-weekday-day); }
+.cell-wd-n  { background: var(--cell-weekday-night); }
+.cell-we-d  { background: var(--cell-weekend-day); }
+.cell-we-n  { background: var(--cell-weekend-night); color: #fff; }
+.cell-hol-d { background: var(--cell-weekend-day); }
+.cell-hol-n { background: var(--cell-weekend-night); color: #fff; }
+
+/* Header coloring */
+.th-hol    { background: var(--cell-holiday-header) !important; color: #fff !important; }
+.th-we-d   { background: var(--cell-weekend-day)    !important; }
+.th-we-n   { background: var(--cell-weekend-night)  !important; color: #fff !important; }
+.th-wn     { background: var(--cell-weekday-night)  !important; }
+
+/* Dark mode cell overrides */
+[data-theme="dark"] #sch-table {
+  --cell-weekday-day:    #2a2a2a;
+  --cell-weekday-night:  #1a1a1a;
+  --cell-weekend-day:    #1e3a50;
+  --cell-weekend-night:  #14304a;
+}
+[data-theme="dark"] .th-name,
+[data-theme="dark"] .td-name,
+[data-theme="dark"] #sch-table thead th {
+  background: var(--surface, #1e2228);
+}
+
+/* ── Empty state ────────────────────────────────────────────────────────── */
+#empty-state {
+  flex: 1;
+  display: none;
+  align-items: center;
+  justify-content: center;
+  font-size: 14px;
+  color: var(--text-muted, #888);
+  flex-direction: column;
+  gap: 8px;
+}
+</style>
+</head>
+<body>
+
+<!-- Loading overlay -->
+<div id="loading-overlay">
+  <div class="spinner"></div>
+  <div class="loading-text">Načítám rozpis…</div>
+</div>
+
+<!-- Topbar -->
+<div id="topbar">
+  <img src="/static/logo.png" alt="AVE" id="topbar-logo">
+  <select id="sel-month" title="Vyberte měsíc rozpisu"></select>
+  <span id="month-label">Vyber měsíc</span>
+  <button id="btn-theme" title="Přepnout světlé / tmavé téma">🌙</button>
+</div>
+
+<!-- Schedule table -->
+<div id="schedule-wrap" style="display:none">
+  <table id="sch-table"></table>
+</div>
+
+<!-- Empty state -->
+<div id="empty-state">
+  <span style="font-size:32px">📋</span>
+  <span>Žádný publikovaný rozpis.</span>
+</div>
+
+<script>
+// ═══════════════════════════════════════════════════════════════════════════
+// Konstanty
+// ═══════════════════════════════════════════════════════════════════════════
+const STATIC_HOLIDAYS = {
+  1:[1], 5:[1,8], 7:[5,6], 9:[28], 10:[28], 11:[17], 12:[24,25,26,31]
+};
+const HOTEL_HOURS_BUILTIN = { F:10, J:10, S:10, P:0, Q:0 };
+const DEFAULT_HOURS = 12;
+const SKIP_VALS = new Set(['X','x','Y','y','Z','z','Ž','ž']);
+
+const SUM_LABELS = ['D všed','N všed','D vík','N vík','Σ smě','±hod','Σhod'];
+const SUM_IDS    = ['dw','nw','dk','nk','total','extra','totHrs'];
+
+// ═══════════════════════════════════════════════════════════════════════════
+// Helpery
+// ═══════════════════════════════════════════════════════════════════════════
+function getDaysInMonth(m, y) { return new Date(y, m, 0).getDate(); }
+
+function getCalCols(month, year) {
+  const cols = [];
+  for (let d = 1; d <= getDaysInMonth(month, year); d++) {
+    cols.push({ day:d, dn:'d' });
+    cols.push({ day:d, dn:'n' });
+  }
+  // Prosinec: přidej 1.1. příštího roku
+  if (month === 12) {
+    cols.push({ day:1, dn:'d', nextYear:true });
+    cols.push({ day:1, dn:'n', nextYear:true });
+  }
+  return cols;
+}
+
+function isWeekend(col, month, year) {
+  const y = col.nextYear ? year + 1 : year;
+  const m = col.nextYear ? 1 : month;
+  const dow = new Date(y, m - 1, col.day).getDay();
+  return dow === 0 || dow === 6;
+}
+
+function isHoliday(col, month, year, hols) {
+  if (col.nextYear) return true; // 1.1. = svátek
+  if ((STATIC_HOLIDAYS[month] || []).includes(col.day)) return true;
+  return hols.includes(col.day);
+}
+
+function parseHolidays(raw) {
+  return (raw || '').split(',').map(s => parseInt(s.trim())).filter(n => !isNaN(n));
+}
+
+function getHotelHours(letter, data) {
+  const custom = (data.customHotels || []).find(h => h.letter === letter);
+  if (custom && custom.hours !== undefined) return custom.hours;
+  const ov = (data.hotelOverrides || {})[letter];
+  if (ov && ov.hours !== undefined) return ov.hours;
+  return HOTEL_HOURS_BUILTIN[letter] !== undefined ? HOTEL_HOURS_BUILTIN[letter] : DEFAULT_HOURS;
+}
+
+function calcSums(si, calCols, data) {
+  const schedule = data.schedule || {};
+  const extras   = data.extras   || {};
+  const hols     = parseHolidays(data.holidays);
+  const month    = data.month;
+  const year     = data.year;
+  let dw = 0, nw = 0, dk = 0, nk = 0, totalHrs = 0;
+
+  calCols.forEach((col, ci) => {
+    if (col.nextYear) return; // 1.1. se nepočítá
+    const val = schedule[si + '_' + ci] || '';
+    if (!val || SKIP_VALS.has(val)) return;
+    const we = isWeekend(col, month, year);
+    if (col.dn === 'd') { if (we) dk++; else dw++; }
+    else                { if (we) nk++; else nw++; }
+    totalHrs += getHotelHours(val.toUpperCase(), data);
+  });
+
+  const extraRaw = (extras[si] || extras[String(si)] || {}).hours;
+  const extra    = parseFloat(extraRaw) || 0;
+  totalHrs += extra;
+
+  return {
+    dw, nw, dk, nk,
+    total: dw + nw + dk + nk,
+    extraText: extraRaw || '',
+    totalHrs: totalHrs || 0
+  };
+}
+
+// ═══════════════════════════════════════════════════════════════════════════
+// Renderer
+// ═══════════════════════════════════════════════════════════════════════════
+function renderTable(data) {
+  const staff  = data.staff  || [];
+  const month  = data.month;
+  const year   = data.year;
+  const hols   = parseHolidays(data.holidays);
+  const fondHpp = parseFloat(data.fondHpp) || 0;
+  const fondZpp = parseFloat(data.fondZpp) || 0;
+  const calCols = getCalCols(month, year);
+
+  const table = document.getElementById('sch-table');
+  table.innerHTML = '';
+
+  // ── THEAD ────────────────────────────────────────────────────────────────
+  const thead = table.createTHead();
+
+  // Řádek 1: čísla dní
+  const r1 = thead.insertRow();
+
+  const thName = document.createElement('th');
+  thName.textContent = 'Recepční';
+  thName.rowSpan = 2;
+  thName.className = 'th-name';
+  r1.appendChild(thName);
+
+  let prevDay = null;
+  let prevNextYear = undefined;
+  calCols.forEach((col) => {
+    if (col.day !== prevDay || col.nextYear !== prevNextYear) {
+      prevDay = col.day;
+      prevNextYear = col.nextYear;
+      const th = document.createElement('th');
+      th.colSpan = 2;
+      th.className = 'th-day';
+      th.textContent = col.nextYear ? '1.1.' : col.day;
+      const hol = isHoliday(col, month, year, hols);
+      const we  = isWeekend(col, month, year);
+      if (hol)      th.classList.add('th-hol');
+      else if (we)  th.classList.add(col.dn === 'n' ? 'th-we-n' : 'th-we-d');
+      r1.appendChild(th);
+    }
+  });
+
+  SUM_LABELS.forEach(lbl => {
+    const th = document.createElement('th');
+    th.textContent = lbl;
+    th.rowSpan = 2;
+    th.className = 'th-sum';
+    r1.appendChild(th);
+  });
+
+  // Řádek 2: d / n
+  const r2 = thead.insertRow();
+  calCols.forEach(col => {
+    const th = document.createElement('th');
+    th.textContent = col.dn;
+    th.className   = 'th-dn';
+    const hol = isHoliday(col, month, year, hols);
+    const we  = isWeekend(col, month, year);
+    if (hol || we)          th.classList.add(col.dn === 'n' ? 'th-we-n' : 'th-we-d');
+    else if (col.dn === 'n') th.classList.add('th-wn');
+    r2.appendChild(th);
+  });
+
+  // ── TBODY ────────────────────────────────────────────────────────────────
+  const tbody = table.createTBody();
+
+  staff.forEach((s, si) => {
+    const tr = tbody.insertRow();
+
+    // Jméno
+    const tdName = document.createElement('td');
+    tdName.className   = 'td-name';
+    tdName.textContent = s.name || '—';
+    tdName.title       = s.name || '';
+    tr.appendChild(tdName);
+
+    // Buňky rozpisu
+    calCols.forEach((col, ci) => {
+      const td  = document.createElement('td');
+      const val = (data.schedule || {})[si + '_' + ci] || '';
+      td.className   = 'sch-cell';
+      td.textContent = val;
+
+      const hol = isHoliday(col, month, year, hols);
+      const we  = isWeekend(col, month, year);
+
+      if (hol || we) {
+        td.classList.add(col.dn === 'n' ? 'cell-we-n' : 'cell-we-d');
+      } else if (col.dn === 'n') {
+        td.classList.add('cell-wd-n');
+      } else {
+        td.classList.add('cell-wd-d');
+      }
+
+      tr.appendChild(td);
+    });
+
+    // Součty
+    const sums = calcSums(si, calCols, data);
+    const sumVals = [
+      sums.dw     || '',
+      sums.nw     || '',
+      sums.dk     || '',
+      sums.nk     || '',
+      sums.total  || '',
+      sums.extraText,
+      sums.totalHrs === 0 ? '0' : (sums.totalHrs || '')
+    ];
+
+    sumVals.forEach((v, i) => {
+      const td = document.createElement('td');
+      td.className   = 'sch-sum' + (SUM_IDS[i] === 'total' || SUM_IDS[i] === 'totHrs' ? ' sch-sum-bold' : '');
+      td.textContent = v;
+
+      // Barvení Σhod dle smlouvy + fond
+      if (SUM_IDS[i] === 'totHrs' && (s.contract === 'HPP' || s.contract === 'ZPP')) {
+        const fond  = s.contract === 'HPP' ? fondHpp : fondZpp;
+        const maxH  = parseFloat(s.maxHrs) || 0;
+        const limit = maxH || fond;
+        const hrs   = sums.totalHrs;
+        if (limit > 0) {
+          if      (hrs > limit + 0.5) td.classList.add('sch-sum-over');
+          else if (hrs < limit - 0.5) td.classList.add('sch-sum-under');
+          else                        td.classList.add('sch-sum-ok');
+        }
+      }
+
+      tr.appendChild(td);
+    });
+  });
+
+  // Nastav top pro 2. řádek hlavičky
+  requestAnimationFrame(() => {
+    const r1th = table.querySelector('thead tr:first-child th');
+    if (r1th) {
+      const h = r1th.getBoundingClientRect().height;
+      table.style.setProperty('--row1-h', Math.round(h) + 'px');
+    }
+  });
+}
+
+// ═══════════════════════════════════════════════════════════════════════════
+// API
+// ═══════════════════════════════════════════════════════════════════════════
+async function loadList() {
+  try {
+    const resp = await fetch('/api/rozpisy', { credentials: 'include' });
+    if (!resp.ok) { showEmpty(); return; }
+    const { current, history } = await resp.json();
+
+    const sel = document.getElementById('sel-month');
+    sel.innerHTML = '';
+
+    if (!history || !history.length) { showEmpty(); return; }
+
+    history.forEach(r => {
+      const opt = document.createElement('option');
+      opt.value       = r.key;
+      opt.textContent = r.label;
+      sel.appendChild(opt);
+    });
+
+    sel.addEventListener('change', () => { if (sel.value) loadMonth(sel.value); });
+
+    const keyToSelect = current || history[0]?.key;
+    if (keyToSelect) { sel.value = keyToSelect; await loadMonth(keyToSelect); }
+    else showEmpty();
+
+  } catch (e) {
+    console.error('[Rozpis] loadList:', e);
+    showEmpty();
+  }
+}
+
+async function loadMonth(key) {
+  try {
+    const resp = await fetch('/api/rozpisy/' + encodeURIComponent(key), { credentials: 'include' });
+    const json = await resp.json();
+    if (!json.ok || !json.entry) { showEmpty(); return; }
+    const data = typeof json.entry.data === 'string' ? JSON.parse(json.entry.data) : json.entry.data;
+    renderTable(data);
+    document.getElementById('schedule-wrap').style.display = '';
+    document.getElementById('empty-state').style.display = 'none';
+    hideLoading();
+  } catch (e) {
+    console.error('[Rozpis] loadMonth:', e);
+    showEmpty();
+  }
+}
+
+function showEmpty() {
+  document.getElementById('schedule-wrap').style.display = 'none';
+  document.getElementById('empty-state').style.display = 'flex';
+  hideLoading();
+}
+
+function hideLoading() {
+  document.getElementById('loading-overlay').classList.add('hidden');
+  // Odstraň z DOMu po fade-out
+  setTimeout(() => {
+    const ov = document.getElementById('loading-overlay');
+    if (ov) ov.style.display = 'none';
+  }, 250);
+}
+
+// ═══════════════════════════════════════════════════════════════════════════
+// Init
+// ═══════════════════════════════════════════════════════════════════════════
+
+// Theme toggle
+(function () {
+  const btn = document.getElementById('btn-theme');
+  const cur = document.documentElement.getAttribute('data-theme');
+  btn.textContent = cur === 'dark' ? '☀️' : '🌙';
+  btn.addEventListener('click', function () {
+    const isDark = document.documentElement.getAttribute('data-theme') === 'dark';
+    const next   = isDark ? 'light' : 'dark';
+    document.documentElement.setAttribute('data-theme', next);
+    localStorage.setItem('theme', next);
+    this.textContent = next === 'dark' ? '☀️' : '🌙';
+  });
+})();
+
+// Pojistka — pokud data nenačte do 15s, zobraz prázdný stav
+setTimeout(() => { hideLoading(); }, 15000);
+
+loadList();
+</script>
+</body>
+</html>
