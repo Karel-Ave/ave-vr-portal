@@ -400,6 +400,72 @@ async function init() {
     )
   `);
 
+  // ── Raspis Test: separátní tabulky (nezávislá data) ────────────────────────
+  await db.query(`
+    CREATE TABLE IF NOT EXISTS rt_drafts (
+      id       SERIAL PRIMARY KEY,
+      user_id  INTEGER NOT NULL,
+      month    INTEGER NOT NULL,
+      year     INTEGER NOT NULL,
+      data     TEXT NOT NULL,
+      saved_at TIMESTAMPTZ DEFAULT NOW(),
+      UNIQUE(user_id, month, year)
+    )
+  `);
+  await db.query(`
+    CREATE TABLE IF NOT EXISTS rt_drafts_trash (
+      id          SERIAL PRIMARY KEY,
+      user_id     INTEGER NOT NULL,
+      original_id INTEGER,
+      month       INTEGER NOT NULL,
+      year        INTEGER NOT NULL,
+      data        TEXT NOT NULL,
+      deleted_at  TIMESTAMPTZ DEFAULT NOW()
+    )
+  `);
+  await db.query(`
+    CREATE TABLE IF NOT EXISTS rt_schedules (
+      key          VARCHAR(20) PRIMARY KEY,
+      month        INTEGER NOT NULL,
+      year         INTEGER NOT NULL,
+      label        VARCHAR(100) NOT NULL,
+      data         TEXT NOT NULL,
+      published_at TIMESTAMPTZ DEFAULT NOW(),
+      published_by VARCHAR(100) NOT NULL
+    )
+  `);
+  await db.query(`
+    CREATE TABLE IF NOT EXISTS rt_schedules_trash (
+      id           SERIAL PRIMARY KEY,
+      key          VARCHAR(20) NOT NULL,
+      month        INTEGER NOT NULL,
+      year         INTEGER NOT NULL,
+      label        VARCHAR(100) NOT NULL,
+      data         TEXT NOT NULL,
+      published_at TIMESTAMPTZ,
+      published_by VARCHAR(100),
+      deleted_at   TIMESTAMPTZ DEFAULT NOW(),
+      deleted_by   VARCHAR(100) NOT NULL
+    )
+  `);
+  await db.query(`
+    CREATE TABLE IF NOT EXISTS rt_change_log (
+      id           BIGSERIAL PRIMARY KEY,
+      schedule_key VARCHAR(20) NOT NULL,
+      timestamp    TIMESTAMPTZ DEFAULT NOW(),
+      user_id      INTEGER REFERENCES users(id) ON DELETE SET NULL,
+      user_name    VARCHAR(100) NOT NULL,
+      is_saved     BOOLEAN NOT NULL DEFAULT FALSE,
+      change_type  VARCHAR(10) NOT NULL DEFAULT 'cell',
+      staff_name   VARCHAR(100) NOT NULL,
+      day          INTEGER,
+      dn           VARCHAR(1),
+      old_value    TEXT,
+      new_value    TEXT
+    )
+  `);
+  await db.query(`CREATE INDEX IF NOT EXISTS idx_rtcl_key ON rt_change_log (schedule_key, timestamp DESC)`);
+
   // Seed: pokud nejsou žádní uživatelé, vytvoř admina
   const { rows } = await db.query('SELECT COUNT(*) AS cnt FROM users');
   if (parseInt(rows[0].cnt, 10) === 0) {

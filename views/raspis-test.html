@@ -1,0 +1,1711 @@
+<!DOCTYPE html>
+<html lang="cs">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, viewport-fit=cover">
+<title>📋 Rozpis – VR AVE</title>
+<link rel="icon" type="image/png" href="/static/logo.png">
+<script src="/static/theme.js"></script>
+<link rel="stylesheet" href="/static/theme.css">
+<script src="https://cdn.sheetjs.com/xlsx-0.20.3/package/dist/xlsx.full.min.js"></script>
+<style>
+* { box-sizing: border-box; margin: 0; padding: 0; }
+body { min-height: 100vh; background: var(--bg); font-family: 'Segoe UI', system-ui, sans-serif; color: var(--text); padding-top: 48px; }
+
+/* ── Topbar ── */
+#topbar {
+  position: fixed; top: 0; left: 0; right: 0; z-index: 900;
+  height: 48px; background: var(--bg-topbar); border-bottom: 1px solid var(--border);
+  display: flex; align-items: center; gap: 6px; padding: 0 10px;
+  overflow-x: auto; overflow-y: hidden; scrollbar-width: none;
+}
+#topbar::-webkit-scrollbar { display: none; }
+#topbar-logo { width: 28px; height: 28px; object-fit: contain; filter: brightness(0) invert(1); flex-shrink: 0; }
+[data-theme="dark"] #topbar-logo { filter: brightness(0) invert(1); }
+
+/* Tab buttons in topbar */
+.tb-tab {
+  padding: 5px 12px; border: none; border-radius: 6px;
+  background: none; color: var(--btn-top-color,#9A9890); cursor: pointer;
+  font-size: 13px; font-weight: 600; font-family: inherit;
+  border-bottom: 2px solid transparent; white-space: nowrap; flex-shrink: 0;
+  transition: color .15s, border-color .15s;
+}
+.tb-tab:hover { color: var(--text-topbar); }
+.tb-tab.active { color: #fff; border-bottom-color: var(--accent,#C4A96A); }
+[data-theme] .tb-tab.active { color: var(--accent,#C4A96A); }
+
+.tb-sep { width: 1px; height: 24px; background: var(--btn-top-border,#3E3E3E); flex-shrink: 0; margin: 0 2px; }
+.tb-spacer { flex: 1; min-width: 4px; }
+
+/* Topbar action buttons */
+.tb-btn {
+  padding: 5px 10px; border: 1px solid var(--btn-top-border,#3E3E3E);
+  border-radius: 6px; background: none; color: var(--btn-top-color,#BBBBBB);
+  cursor: pointer; font-size: 12px; font-weight: 600; font-family: inherit;
+  white-space: nowrap; flex-shrink: 0; transition: background .15s;
+}
+.tb-btn:hover { background: var(--btn-top-hover-bg,#2A2A2A); color: var(--text-topbar,#DDD); }
+.tb-btn.primary { background: var(--accent,#C4A96A); color: #fff; border-color: transparent; }
+.tb-btn.primary:hover { opacity: .88; }
+.tb-btn:disabled { opacity: .4; cursor: not-allowed; }
+
+#btn-theme {
+  padding: 5px 8px; border: 1px solid var(--btn-top-border,#3E3E3E);
+  border-radius: 6px; background: none; cursor: pointer; font-size: 14px; flex-shrink: 0;
+}
+#btn-theme:hover { background: var(--btn-top-hover-bg,#2A2A2A); }
+
+/* Auto-save indicator */
+#autosave-ind {
+  font-size: 11px; color: var(--text-muted,#8A8A82); white-space: nowrap; flex-shrink: 0;
+}
+
+/* Tab actions groups */
+.tb-actions { display: flex; align-items: center; gap: 5px; }
+.tb-actions.hidden { display: none; }
+
+/* ── Tab content ── */
+#tabs-bar {
+  display: flex; gap: 2px; padding: 0 12px;
+  border-bottom: 1px solid var(--border); background: var(--bg);
+  position: sticky; top: 48px; z-index: 100;
+}
+.tab-btn {
+  padding: 8px 16px; border: none; border-radius: 6px 6px 0 0;
+  background: none; color: var(--text-muted); cursor: pointer;
+  font-size: 13px; font-weight: 600; font-family: inherit;
+  border-bottom: 3px solid transparent;
+  transition: color .15s, border-color .15s, background .15s;
+}
+.tab-btn:hover { color: var(--text); background: var(--surface-alt); }
+.tab-btn.active { color: var(--accent); border-bottom-color: var(--accent); background: none; }
+
+.tab-panel { display: none; }
+.tab-panel.active { display: block; }
+
+/* ── Nastavení tab ── */
+.wrap { max-width: 1400px; margin: 0 auto; padding: 16px 14px 80px; }
+
+.settings-top {
+  display: flex; gap: 12px; flex-wrap: wrap; align-items: flex-end;
+  padding: 12px 14px; border-bottom: 1px solid var(--border);
+  background: var(--bg); position: sticky; top: 82px; z-index: 80;
+}
+.settings-top label { font-size: 11px; font-weight: 700; text-transform: uppercase;
+  letter-spacing: .05em; color: var(--text-muted); display: block; margin-bottom: 3px; }
+.settings-top select, .settings-top input[type="number"], .settings-top input[type="text"] {
+  padding: 5px 8px; border: 1px solid var(--border); border-radius: 6px;
+  background: var(--input-bg,var(--bg)); color: var(--text); font-size: 13px; font-family: inherit;
+}
+.settings-top select:focus, .settings-top input:focus { outline: none; border-color: var(--accent); }
+
+/* Staff table */
+.staff-table-wrap { overflow-x: auto; margin-top: 12px; }
+table.staff-tbl {
+  border-collapse: collapse; font-size: 13px; min-width: 900px; width: 100%;
+}
+.staff-tbl th {
+  background: var(--thead-bg); color: var(--thead-text); padding: 7px 8px;
+  font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: .04em;
+  border: 1px solid var(--thead-border); white-space: nowrap; position: sticky; top: 0;
+}
+.staff-tbl td {
+  padding: 4px 5px; border: 1px solid var(--border); vertical-align: middle;
+}
+.staff-tbl tr:hover td { background: var(--surface-alt); }
+.staff-tbl input, .staff-tbl select {
+  width: 100%; border: none; background: transparent; color: var(--text);
+  font-size: 13px; font-family: inherit; padding: 2px 4px;
+}
+.staff-tbl input:focus, .staff-tbl select:focus { outline: 1px solid var(--accent); border-radius: 3px; }
+.staff-tbl .col-num { width: 30px; text-align: center; color: var(--text-muted); }
+.staff-tbl .col-name { min-width: 130px; }
+.staff-tbl .col-type { width: 110px; }
+.staff-tbl .col-contract { width: 70px; }
+.staff-tbl .col-maxhrs { width: 70px; }
+.staff-tbl .col-regular { min-width: 140px; }
+.staff-tbl .col-dates { min-width: 120px; }
+.staff-tbl .col-save { width: 60px; text-align: center; }
+
+/* ── Schedule table ── */
+.schedule-wrap {
+  overflow-x: auto; overflow-y: auto;
+  -webkit-overflow-scrolling: touch;
+}
+.schedule-wrap.tvorba-wrap {
+  height: calc(100dvh - 48px - 36px - 12px);
+}
+.schedule-wrap.view-wrap {
+  height: calc(100dvh - 48px - 36px - 12px);
+}
+
+table.sched-tbl {
+  border-collapse: collapse; font-size: 11px;
+  white-space: nowrap;
+}
+.sched-tbl th, .sched-tbl td {
+  border: 1px solid var(--border); padding: 0; height: 22px;
+}
+/* Name column sticky */
+.sched-tbl .col-name-th {
+  position: sticky; left: 0; z-index: 6;
+  background: var(--thead-bg); color: var(--thead-text);
+  min-width: 150px; max-width: 150px; width: 150px;
+  padding: 4px 6px; text-align: left; font-size: 11px; font-weight: 700;
+  border-right: 2px solid var(--border);
+}
+.sched-tbl .col-name-td {
+  position: sticky; left: 0; z-index: 4;
+  min-width: 150px; max-width: 150px; width: 150px;
+  padding: 2px 5px; font-weight: 600; font-size: 11px;
+  border-right: 2px solid var(--border);
+  background: var(--surface);
+}
+
+/* Day/header cells */
+.sched-tbl .th-day {
+  background: var(--thead-bg); color: var(--thead-text);
+  text-align: center; font-weight: 700; min-width: 36px;
+  padding: 2px 0; font-size: 11px; border-bottom: 1px solid var(--thead-border);
+}
+.sched-tbl .th-day.is-weekend { color: #7ec8f0; }
+.sched-tbl .th-day.is-holiday { color: #f08080; }
+.sched-tbl .th-dn {
+  background: var(--thead-bg); color: var(--thead-text);
+  text-align: center; font-size: 10px; padding: 1px 0; width: 18px;
+}
+/* Sum header */
+.sched-tbl .th-sum {
+  background: var(--thead-bg); color: var(--thead-text);
+  text-align: center; font-size: 10px; padding: 2px 3px; white-space: nowrap;
+  min-width: 36px;
+}
+
+/* Schedule cells */
+.cell-wd { background: #ffffff; }
+.cell-wn { background: #c8c8c8; }
+.cell-kd { background: #a8d8f0; }
+.cell-kn { background: #5b9dc9; color: #fff; }
+
+[data-theme="dark"] .cell-wd { background: #2a2e36; }
+[data-theme="dark"] .cell-wn { background: #1e2228; }
+[data-theme="dark"] .cell-kd { background: #1a3a52; }
+[data-theme="dark"] .cell-kn { background: #0f2840; color: #9cd4f0; }
+
+.cell-hol-header { color: #e53030 !important; }
+
+/* Cell content */
+.sched-tbl td.sched-cell {
+  text-align: center; width: 18px; min-width: 18px; max-width: 18px;
+  padding: 0; cursor: pointer; position: relative;
+}
+.sched-tbl td.sched-cell input {
+  width: 100%; height: 100%; border: none; background: transparent;
+  text-align: center; font-size: 10px; font-family: inherit;
+  color: inherit; padding: 0; cursor: pointer;
+  caret-color: transparent; outline: none;
+}
+.sched-tbl td.sched-cell.focused {
+  outline: 2px solid var(--accent); outline-offset: -1px; z-index: 3;
+}
+.sched-tbl td.sched-cell .cell-val {
+  display: block; text-align: center; font-size: 10px; line-height: 22px;
+  user-select: none;
+}
+
+/* Sum cells */
+.sched-tbl .sum-cell {
+  text-align: center; min-width: 36px; padding: 1px 3px; font-size: 11px;
+  background: var(--surface);
+}
+.sched-tbl .sum-bold { font-weight: 700; }
+.sched-tbl .sum-extra input {
+  width: 100%; border: none; background: transparent; text-align: center;
+  font-size: 11px; font-family: inherit; color: inherit; padding: 0; outline: none;
+}
+.sched-tbl .sum-extra input:focus { outline: 1px solid var(--accent); border-radius: 2px; }
+.col-hrs-green { color: #27ae60; font-weight: 700; }
+.col-hrs-red   { color: #e74c3c; font-weight: 700; }
+.col-hrs-orange{ color: #e67e22; font-weight: 700; }
+
+/* Sticky header rows */
+.sched-tbl thead tr:nth-child(1) th { position: sticky; top: 0; z-index: 5; }
+.sched-tbl thead tr:nth-child(2) th { position: sticky; top: 22px; z-index: 5; }
+/* Name header sticky corner */
+.sched-tbl thead tr:nth-child(1) th.col-name-th { z-index: 7; }
+.sched-tbl thead tr:nth-child(2) th.col-name-th { z-index: 7; display: none; }
+
+/* ── Tab-specific controls ── */
+.tab-controls {
+  padding: 8px 12px; border-bottom: 1px solid var(--border);
+  display: flex; align-items: center; gap: 8px; flex-wrap: wrap;
+  background: var(--bg); position: sticky; top: 82px; z-index: 80;
+}
+.tab-controls label { font-size: 12px; color: var(--text-muted); }
+.tab-controls select, .tab-controls input {
+  padding: 5px 8px; border: 1px solid var(--border); border-radius: 6px;
+  background: var(--input-bg,var(--bg)); color: var(--text); font-size: 12px;
+  font-family: inherit;
+}
+.tab-controls select:focus, .tab-controls input:focus { outline: none; border-color: var(--accent); }
+
+/* ── Buttons ── */
+.btn { padding: 6px 13px; border: none; border-radius: 7px; font-size: 13px;
+  font-weight: 600; font-family: inherit; cursor: pointer; transition: opacity .15s; }
+.btn:hover { opacity: .85; }
+.btn-primary { background: var(--accent); color: #fff; }
+.btn-secondary { background: var(--surface-alt); color: var(--text); border: 1px solid var(--border); }
+.btn-danger { background: #e74c3c; color: #fff; }
+.btn-sm { padding: 4px 9px; font-size: 12px; }
+.btn:disabled { opacity: .4; cursor: not-allowed; }
+
+/* ── Modal / overlay ── */
+.overlay {
+  display: none; position: fixed; inset: 0;
+  background: var(--overlay-bg,rgba(0,0,0,.55));
+  z-index: 2000; align-items: center; justify-content: center; padding: 16px;
+}
+.overlay.show { display: flex; }
+.modal {
+  background: var(--modal-bg,var(--surface)); border: 1px solid var(--modal-border,var(--border));
+  border-radius: 14px; width: min(600px,100%); max-height: 90vh;
+  overflow: hidden; display: flex; flex-direction: column;
+  box-shadow: var(--modal-shadow,0 8px 32px rgba(0,0,0,.2));
+}
+.modal-header { display: flex; align-items: center; padding: 16px 20px 12px;
+  border-bottom: 1px solid var(--border); flex-shrink: 0; }
+.modal-header h3 { font-size: 15px; font-weight: 700; flex: 1; }
+.modal-close { background: none; border: none; font-size: 20px; cursor: pointer;
+  color: var(--text-muted); padding: 0 4px; }
+.modal-body { padding: 18px 20px; flex: 1; min-height: 0; overflow-y: auto; }
+.modal-footer { padding: 12px 20px 16px; display: flex; gap: 8px; justify-content: flex-end;
+  border-top: 1px solid var(--border); flex-shrink: 0; }
+
+/* ── Toast ── */
+#toast {
+  position: fixed; bottom: 20px; left: 50%; transform: translateX(-50%);
+  background: #222; color: #fff; padding: 9px 20px; border-radius: 8px;
+  font-size: 13px; font-weight: 600; z-index: 9999; pointer-events: none;
+  opacity: 0; transition: opacity .25s; white-space: nowrap;
+}
+#toast.show { opacity: 1; }
+#toast.err { background: #c0392b; }
+
+/* ── Loading spinner ── */
+.spinner-wrap { display: flex; align-items: center; justify-content: center; padding: 40px; }
+.spinner {
+  width: 32px; height: 32px; border: 3px solid var(--spinner-border,#DDD);
+  border-top-color: var(--spinner-top,#555); border-radius: 50%;
+  animation: spin .7s linear infinite;
+}
+@keyframes spin { to { transform: rotate(360deg); } }
+
+/* ── Lock indicator ── */
+#lock-info {
+  font-size: 11px; color: var(--text-muted); padding: 4px 8px;
+  background: var(--surface-alt); border-radius: 5px; flex-shrink: 0;
+}
+#lock-info.locked-by-other { color: #e74c3c; }
+#lock-info.lock-owned { color: #27ae60; }
+
+/* ── Trash modal list ── */
+.trash-list { list-style: none; }
+.trash-list li {
+  display: flex; align-items: center; gap: 8px; padding: 8px 0;
+  border-bottom: 1px solid var(--border);
+}
+.trash-list li:last-child { border-bottom: none; }
+.trash-list .trash-name { flex: 1; font-size: 13px; }
+.trash-list .trash-date { font-size: 11px; color: var(--text-muted); }
+
+/* Field */
+.field { margin-bottom: 10px; }
+.field label { display: block; font-size: 11px; font-weight: 700; text-transform: uppercase;
+  letter-spacing: .05em; color: var(--text-muted); margin-bottom: 4px; }
+.field input, .field select, .field textarea {
+  width: 100%; padding: 7px 10px; border: 1px solid var(--border); border-radius: 6px;
+  background: var(--input-bg,var(--bg)); color: var(--text); font-size: 13px; font-family: inherit;
+}
+.field input:focus, .field select:focus, .field textarea:focus { outline: none; border-color: var(--accent); }
+.fields-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 8px 12px; }
+
+/* Empty state */
+.empty-state { text-align: center; padding: 40px 20px; color: var(--text-muted); font-size: 14px; }
+</style>
+</head>
+<body>
+
+<!-- ════════════════════════════════════════ TOPBAR ════════════════════════════════════════ -->
+<div id="topbar">
+  <img id="topbar-logo" src="/static/logo.png" alt="AVE">
+
+  <button class="tb-tab active" data-tab="nastaveni">⚙ Nastavení</button>
+  <button class="tb-tab" data-tab="tvorba">✏ Tvorba</button>
+  <button class="tb-tab" data-tab="rozpis">📋 Rozpis VR</button>
+
+  <div class="tb-sep"></div>
+
+  <!-- Nastavení actions -->
+  <div class="tb-actions" id="tb-act-nastaveni">
+    <button class="tb-btn" id="btn-add-staff">+ Přidat</button>
+    <button class="tb-btn" id="btn-save-settings">Uložit nastavení</button>
+    <button class="tb-btn" id="btn-load-master">Načíst z master</button>
+  </div>
+
+  <!-- Tvorba actions -->
+  <div class="tb-actions hidden" id="tb-act-tvorba">
+    <select id="rt-draft-sel" class="tb-btn" style="padding:4px 6px;font-size:12px;"></select>
+    <button class="tb-btn" id="btn-draft-save">Uložit</button>
+    <button class="tb-btn" id="btn-draft-new">Nový</button>
+    <button class="tb-btn primary" id="btn-publish" style="display:none">Publikovat</button>
+    <button class="tb-btn" id="btn-draft-trash">Koš</button>
+    <span id="autosave-ind"></span>
+  </div>
+
+  <!-- Rozpis VR actions -->
+  <div class="tb-actions hidden" id="tb-act-rozpis">
+    <select id="pub-sel" class="tb-btn" style="padding:4px 6px;font-size:12px;"></select>
+    <button class="tb-btn" id="btn-pub-to-tvorba">Publikovat do Tvorby</button>
+    <button class="tb-btn" id="btn-lock">🔒 Zamknout</button>
+    <span id="lock-info"></span>
+    <button class="tb-btn" id="btn-export-xlsx">Export .xlsx</button>
+  </div>
+
+  <div class="tb-spacer"></div>
+  <div class="tb-sep"></div>
+  <button id="btn-theme">🌙</button>
+</div>
+
+<!-- ═══════════════════════════════════════ TAB BAR ════════════════════════════════════════ -->
+<div id="tabs-bar">
+  <button class="tab-btn active" data-tab="nastaveni">Nastavení</button>
+  <button class="tab-btn" data-tab="tvorba">Tvorba</button>
+  <button class="tab-btn" data-tab="rozpis">Rozpis VR</button>
+</div>
+
+<!-- ═══════════════════════════ TAB: NASTAVENÍ ════════════════════════════════════════════ -->
+<div class="tab-panel active" id="tab-nastaveni">
+  <div class="settings-top" id="settings-top">
+    <div>
+      <label>Měsíc</label>
+      <select id="sel-month">
+        <option value="1">Leden</option><option value="2">Únor</option>
+        <option value="3">Březen</option><option value="4">Duben</option>
+        <option value="5">Květen</option><option value="6">Červen</option>
+        <option value="7">Červenec</option><option value="8">Srpen</option>
+        <option value="9">Září</option><option value="10">Říjen</option>
+        <option value="11">Listopad</option><option value="12">Prosinec</option>
+      </select>
+    </div>
+    <div>
+      <label>Rok</label>
+      <input type="number" id="inp-year" style="width:80px" min="2020" max="2050">
+    </div>
+    <div>
+      <label>Fond HPP (hod)</label>
+      <input type="text" id="inp-fond-hpp" style="width:70px" placeholder="160">
+    </div>
+    <div>
+      <label>Fond ZPP (hod)</label>
+      <input type="text" id="inp-fond-zpp" style="width:70px" placeholder="160">
+    </div>
+    <div>
+      <label>Svátky (čísla dnů, čárkou)</label>
+      <input type="text" id="inp-holidays" style="width:200px" placeholder="8,29">
+    </div>
+  </div>
+  <div class="wrap">
+    <div class="staff-table-wrap">
+      <table class="staff-tbl" id="staff-tbl">
+        <thead>
+          <tr>
+            <th class="col-num">#</th>
+            <th class="col-name">Jméno</th>
+            <th class="col-type">Typ</th>
+            <th class="col-contract">Smlouva</th>
+            <th class="col-maxhrs">Max.hod</th>
+            <th class="col-regular">Stálé volno</th>
+            <th class="col-dates">Spec.data</th>
+            <th class="col-save">Uložit</th>
+          </tr>
+        </thead>
+        <tbody id="staff-tbody"></tbody>
+      </table>
+    </div>
+  </div>
+</div>
+
+<!-- ═══════════════════════════ TAB: TVORBA ══════════════════════════════════════════════ -->
+<div class="tab-panel" id="tab-tvorba">
+  <div class="schedule-wrap tvorba-wrap" id="tvorba-wrap">
+    <div class="spinner-wrap" id="tvorba-spinner"><div class="spinner"></div></div>
+    <table class="sched-tbl" id="tvorba-tbl" style="display:none"></table>
+  </div>
+</div>
+
+<!-- ═══════════════════════════ TAB: ROZPIS VR ══════════════════════════════════════════ -->
+<div class="tab-panel" id="tab-rozpis">
+  <div class="schedule-wrap view-wrap" id="rozpis-wrap">
+    <div class="spinner-wrap" id="rozpis-spinner"><div class="spinner"></div></div>
+    <table class="sched-tbl" id="rozpis-tbl" style="display:none"></table>
+    <div class="empty-state" id="rozpis-empty" style="display:none">Žádný publikovaný rozpis</div>
+  </div>
+</div>
+
+<!-- ═══════════════════════════ MODAL: Trash ══════════════════════════════════════════════ -->
+<div class="overlay" id="overlay-trash">
+  <div class="modal" style="width:min(480px,100%)">
+    <div class="modal-header">
+      <h3>🗑 Koš konceptů</h3>
+      <button class="modal-close" id="trash-close">✕</button>
+    </div>
+    <div class="modal-body">
+      <ul class="trash-list" id="trash-list"></ul>
+      <div class="empty-state" id="trash-empty" style="display:none">Koš je prázdný</div>
+    </div>
+    <div class="modal-footer">
+      <button class="btn btn-secondary" id="trash-close2">Zavřít</button>
+    </div>
+  </div>
+</div>
+
+<!-- ═══════════════════════════ TOAST ═════════════════════════════════════════════════════ -->
+<div id="toast"></div>
+
+<script>
+'use strict';
+
+/* ══════════════════════════════════════════════════════════════════════════════
+   CONSTANTS & STATE
+══════════════════════════════════════════════════════════════════════════════ */
+
+const MONTH_NAMES = ['Leden','Únor','Březen','Duben','Květen','Červen',
+  'Červenec','Srpen','Září','Říjen','Listopad','Prosinec'];
+const DAY_NAMES = ['ne','po','út','st','čt','pá','so'];
+
+const STAFF_TYPES = ['','Denní','Noční','Obojí','Vedoucí','Pohotovost','Speciální'];
+const CONTRACTS   = ['','HPP','ZPP','DPČ','DPP'];
+
+const TYPE_COLORS = {
+  'Denní':'#F8FF35','Noční':'#4DC3F5','Obojí':'#A8E05A',
+  'Vedoucí':'#FFB347','Speciální':'#FF8585'
+};
+
+const STATIC_HOLIDAYS = {
+  1:[1], 5:[1,8], 7:[5,6], 9:[28], 10:[28], 11:[17], 12:[24,25,26,31]
+};
+
+const HOTEL_HOURS_BUILTIN = {F:10,J:10,S:10,P:0,Q:0};
+const DEFAULT_HOURS = 12;
+const SKIP_VALS = new Set(['X','x','Y','y','Z','z','Ž','ž']);
+
+const state = {
+  staff: [],
+  schedule: {},   // key: `${si}_${ci}` → string (cell value)
+  extras: {},     // key: si → {hours: string}
+  requirements: {},
+  month: new Date().getMonth() + 1,
+  year:  new Date().getFullYear(),
+  fondHpp: '',
+  fondZpp: '',
+  holidays: '',
+  hotelOverrides: {},
+  customHotels: []
+};
+
+/* ══════════════════════════════════════════════════════════════════════════════
+   CALENDAR UTILS
+══════════════════════════════════════════════════════════════════════════════ */
+
+function getDaysInMonth(m, y) {
+  return new Date(y, m, 0).getDate();
+}
+
+function getCalCols(month, year) {
+  const days = getDaysInMonth(month, year);
+  const cols = [];
+  for (let d = 1; d <= days; d++) {
+    cols.push({day: d, dn: 'd'});
+    cols.push({day: d, dn: 'n'});
+  }
+  if (month === 12) {
+    cols.push({day: 1, dn: 'd', nextYear: true});
+    cols.push({day: 1, dn: 'n', nextYear: true});
+  }
+  return cols;
+}
+
+function isWeekend(col, month, year) {
+  const m = col.nextYear ? 1 : month;
+  const y = col.nextYear ? year + 1 : year;
+  const dow = new Date(y, m - 1, col.day).getDay(); // 0=Sun,6=Sat
+  return dow === 0 || dow === 6;
+}
+
+function parseHolidays(raw) {
+  if (!raw || !raw.trim()) return [];
+  return raw.split(',').map(s => parseInt(s.trim(), 10)).filter(n => !isNaN(n));
+}
+
+function isHoliday(col, month, year, holidaysList) {
+  if (col.nextYear) {
+    const static1 = (STATIC_HOLIDAYS[1] || []);
+    return static1.includes(col.day);
+  }
+  const staticH = STATIC_HOLIDAYS[month] || [];
+  if (staticH.includes(col.day)) return true;
+  return (holidaysList || []).includes(col.day);
+}
+
+function isDayOff(col, month, year, holidaysList) {
+  return isWeekend(col, month, year) || isHoliday(col, month, year, holidaysList);
+}
+
+/* ══════════════════════════════════════════════════════════════════════════════
+   HOTEL HOURS
+══════════════════════════════════════════════════════════════════════════════ */
+
+function getHotelHours(letter, st) {
+  const up = letter ? letter.toUpperCase() : '';
+  if (st && st.hotelOverrides && st.hotelOverrides[up] !== undefined) {
+    return Number(st.hotelOverrides[up]);
+  }
+  if (HOTEL_HOURS_BUILTIN[up] !== undefined) return HOTEL_HOURS_BUILTIN[up];
+  if (st && st.customHotels) {
+    const c = st.customHotels.find(h => h.letter === up);
+    if (c) return Number(c.hours);
+  }
+  return DEFAULT_HOURS;
+}
+
+/* ══════════════════════════════════════════════════════════════════════════════
+   SMART CASE
+══════════════════════════════════════════════════════════════════════════════ */
+
+function smartCase(val) {
+  if (!val) return '';
+  const lo = new Set(['x','y','z','ž']);
+  if (lo.has(val.toLowerCase()) && val === val.toLowerCase()) return val.toLowerCase();
+  return val.toUpperCase();
+}
+
+/* ══════════════════════════════════════════════════════════════════════════════
+   SUMS
+══════════════════════════════════════════════════════════════════════════════ */
+
+function calcSums(si, calCols, st) {
+  const s = st.staff[si];
+  const holidaysList = parseHolidays(st.holidays);
+  let dw = 0, nw = 0, dk = 0, nk = 0, total = 0, totalHrs = 0;
+
+  // Parse regular days off
+  const regularOff = s.regular ? s.regular.split(',').map(t => t.trim()).filter(Boolean) : [];
+
+  calCols.forEach((col, ci) => {
+    const key = `${si}_${ci}`;
+    const val = st.schedule[key] || '';
+    if (!val || SKIP_VALS.has(val)) return;
+
+    const weekend = isDayOff(col, st.month, st.year, holidaysList);
+    const isNight = col.dn === 'n';
+
+    if (weekend) {
+      if (isNight) nk++; else dk++;
+    } else {
+      if (isNight) nw++; else dw++;
+    }
+    total++;
+    totalHrs += getHotelHours(val, st);
+  });
+
+  const extraText = (st.extras[si] && st.extras[si].hours) || '';
+  const extraNum = parseFloat(extraText) || 0;
+  const finalHrs = totalHrs + extraNum;
+
+  return {dw, nw, dk, nk, total, extraText, totalHrs: finalHrs};
+}
+
+/* ══════════════════════════════════════════════════════════════════════════════
+   USER
+══════════════════════════════════════════════════════════════════════════════ */
+
+let _user = null;
+async function fetchUser() {
+  try {
+    const r = await fetch('/api/me', {credentials:'include'});
+    if (r.ok) _user = await r.json();
+  } catch(e) {}
+}
+
+function isAdmin() {
+  return _user && (_user.role === 'admin' || _user.admin === true);
+}
+
+/* ══════════════════════════════════════════════════════════════════════════════
+   TOAST
+══════════════════════════════════════════════════════════════════════════════ */
+
+let _toastTimer = null;
+function toast(msg, isErr, dur) {
+  const el = document.getElementById('toast');
+  el.textContent = msg;
+  el.classList.toggle('err', !!isErr);
+  el.classList.add('show');
+  clearTimeout(_toastTimer);
+  _toastTimer = setTimeout(() => el.classList.remove('show'), dur || 2800);
+}
+
+/* ══════════════════════════════════════════════════════════════════════════════
+   UNDO / REDO
+══════════════════════════════════════════════════════════════════════════════ */
+
+let history = [];
+let historyIndex = -1;
+const HISTORY_MAX = 60;
+
+function historySave() {
+  const snap = JSON.stringify(state.schedule);
+  if (historyIndex >= 0 && history[historyIndex] === snap) return;
+  history = history.slice(0, historyIndex + 1);
+  history.push(snap);
+  if (history.length > HISTORY_MAX) history.shift();
+  historyIndex = history.length - 1;
+}
+
+function historyUndo() {
+  if (historyIndex <= 0) return;
+  historyIndex--;
+  state.schedule = JSON.parse(history[historyIndex]);
+  updateAllSums();
+  renderCells('tvorba-tbl', true);
+}
+
+function historyRedo() {
+  if (historyIndex >= history.length - 1) return;
+  historyIndex++;
+  state.schedule = JSON.parse(history[historyIndex]);
+  updateAllSums();
+  renderCells('tvorba-tbl', true);
+}
+
+/* ══════════════════════════════════════════════════════════════════════════════
+   RENDER SCHEDULE TABLE
+══════════════════════════════════════════════════════════════════════════════ */
+
+function cellClass(col, month, year, holidaysList) {
+  const weekend = isDayOff(col, month, year, holidaysList);
+  const isNight = col.dn === 'n';
+  if (weekend && isNight) return 'cell-kn';
+  if (weekend) return 'cell-kd';
+  if (isNight) return 'cell-wn';
+  return 'cell-wd';
+}
+
+function renderScheduleTable(tableId, editable) {
+  const tbl = document.getElementById(tableId);
+  if (!tbl) return;
+  tbl.innerHTML = '';
+  tbl.style.display = '';
+
+  const calCols = getCalCols(state.month, state.year);
+  const holidaysList = parseHolidays(state.holidays);
+  const SUM_HEADS = ['D všed','N všed','D vík','N vík','Σ smě','±hod','Σhod','Poznámka'];
+
+  // ── THEAD ──
+  const thead = document.createElement('thead');
+
+  // Row 1: name (rowspan=2) + day numbers (colspan=2) + sum headers (rowspan=2)
+  const tr1 = document.createElement('tr');
+  const nameTh = document.createElement('th');
+  nameTh.rowSpan = 2;
+  nameTh.className = 'col-name-th';
+  nameTh.textContent = 'Jméno';
+  tr1.appendChild(nameTh);
+
+  // Group day cols by day
+  let prevDay = null;
+  calCols.forEach(col => {
+    if (col.day !== prevDay || col.nextYear !== (prevDay === null)) {
+      // emit colspan=2 for this day
+      const th = document.createElement('th');
+      th.colSpan = 2;
+      th.className = 'th-day';
+      th.dataset.dayNum = col.day;
+      const hol = isHoliday(col, state.month, state.year, holidaysList);
+      const wknd = isWeekend(col, state.month, state.year);
+      if (hol) th.classList.add('cell-hol-header');
+      else if (wknd) th.classList.add('is-weekend');
+      const dayLabel = col.nextYear ? `1.1.` : String(col.day);
+      const m = col.nextYear ? 1 : state.month;
+      const y = col.nextYear ? state.year + 1 : state.year;
+      const dow = new Date(y, m - 1, col.day).getDay();
+      const dayName = DAY_NAMES[dow];
+      th.innerHTML = `<div>${dayLabel}</div><div style="font-size:9px;opacity:.75">${dayName}</div>`;
+      tr1.appendChild(th);
+      prevDay = col.day;
+    }
+  });
+
+  // Sum headers
+  SUM_HEADS.forEach(h => {
+    const th = document.createElement('th');
+    th.rowSpan = 2; th.className = 'th-sum';
+    th.textContent = h; tr1.appendChild(th);
+  });
+  thead.appendChild(tr1);
+
+  // Row 2: d/n sub-headers
+  const tr2 = document.createElement('tr');
+  calCols.forEach(col => {
+    const th = document.createElement('th');
+    th.className = 'th-dn';
+    const hol = isHoliday(col, state.month, state.year, holidaysList);
+    const cls = cellClass(col, state.month, state.year, holidaysList);
+    th.style.background = cls === 'cell-kn' ? '#5b9dc9'
+      : cls === 'cell-kd' ? '#a8d8f0'
+      : cls === 'cell-wn' ? '#c8c8c8' : '';
+    if (cls === 'cell-kn') th.style.color = '#fff';
+    if (hol) th.style.color = '#e53030';
+    th.textContent = col.dn;
+    tr2.appendChild(th);
+  });
+  thead.appendChild(tr2);
+  tbl.appendChild(thead);
+
+  // ── TBODY ──
+  const tbody = document.createElement('tbody');
+  state.staff.forEach((s, si) => {
+    const tr = document.createElement('tr');
+    tr.dataset.si = si;
+
+    // Name cell
+    const nameTd = document.createElement('td');
+    nameTd.className = 'col-name-td';
+    nameTd.textContent = s.name || `(pracovník ${si+1})`;
+    const tc = TYPE_COLORS[s.type] || '';
+    if (tc) { nameTd.style.background = tc; nameTd.style.color = '#222'; }
+    tr.appendChild(nameTd);
+
+    // Schedule cells
+    calCols.forEach((col, ci) => {
+      const td = document.createElement('td');
+      td.className = 'sched-cell ' + cellClass(col, state.month, state.year, holidaysList);
+      td.dataset.si = si; td.dataset.ci = ci;
+      const val = state.schedule[`${si}_${ci}`] || '';
+
+      if (editable) {
+        const inp = document.createElement('input');
+        inp.type = 'text'; inp.maxLength = 2;
+        inp.value = val;
+        inp.dataset.si = si; inp.dataset.ci = ci;
+        inp.tabIndex = -1;
+        inp.addEventListener('mousedown', e => {
+          e.preventDefault();
+          focusCell(si, ci);
+        });
+        td.appendChild(inp);
+      } else {
+        const span = document.createElement('span');
+        span.className = 'cell-val'; span.textContent = val;
+        td.appendChild(span);
+      }
+      tr.appendChild(td);
+    });
+
+    // Sum cells
+    const sums = calcSums(si, calCols, state);
+    const sumVals = [sums.dw, sums.nw, sums.dk, sums.nk, sums.total, '', sums.totalHrs];
+    sumVals.forEach((v, idx) => {
+      const td = document.createElement('td');
+      td.className = 'sum-cell';
+      td.dataset.si = si; td.dataset.sumIdx = idx;
+      if (idx === 4 || idx === 6) td.classList.add('sum-bold');
+      if (idx === 5) {
+        // ±hod editable
+        td.classList.add('sum-extra');
+        const inp = document.createElement('input');
+        inp.type = 'text'; inp.value = sums.extraText;
+        inp.dataset.si = si;
+        inp.addEventListener('change', () => {
+          if (!state.extras[si]) state.extras[si] = {};
+          state.extras[si].hours = inp.value;
+          updateSumRow(si);
+          if (editable) scheduleAutoSave();
+        });
+        td.appendChild(inp);
+      } else if (idx === 6) {
+        // Σhod colored
+        const fond = s.contract === 'HPP' ? parseFloat(state.fondHpp)
+          : s.contract === 'ZPP' ? parseFloat(state.fondZpp) : null;
+        const maxH = parseFloat(s.maxHrs) || fond || null;
+        const hrs = sums.totalHrs;
+        let cls = '';
+        if (maxH !== null && !isNaN(maxH)) {
+          if (hrs > maxH) cls = 'col-hrs-red';
+          else if (hrs === maxH) cls = 'col-hrs-green';
+          else cls = 'col-hrs-orange';
+        }
+        td.classList.add('sum-bold');
+        if (cls) td.classList.add(cls);
+        td.textContent = hrs % 1 === 0 ? hrs : hrs.toFixed(1);
+      } else {
+        td.textContent = v;
+      }
+      tr.appendChild(td);
+    });
+
+    // Poznámka cell
+    const noteTd = document.createElement('td');
+    noteTd.className = 'sum-cell';
+    noteTd.style.minWidth = '80px'; noteTd.style.textAlign = 'left';
+    noteTd.dataset.si = si; noteTd.dataset.sumIdx = 7;
+    noteTd.textContent = (editable ? s.noteM : s.noteP) || '';
+    tr.appendChild(noteTd);
+
+    tbody.appendChild(tr);
+  });
+  tbl.appendChild(tbody);
+
+  if (editable) {
+    setupKeyboardNav(tbl);
+  }
+}
+
+/* ══════════════════════════════════════════════════════════════════════════════
+   UPDATE SUMS
+══════════════════════════════════════════════════════════════════════════════ */
+
+function updateSumRow(si) {
+  const calCols = getCalCols(state.month, state.year);
+  const sums = calcSums(si, calCols, state);
+  const s = state.staff[si];
+
+  // Update in both tables (tvorba & view, whichever is rendered)
+  ['tvorba-tbl','rozpis-tbl'].forEach(tblId => {
+    const tbl = document.getElementById(tblId);
+    if (!tbl || tbl.style.display === 'none') return;
+    const row = tbl.querySelector(`tbody tr[data-si="${si}"]`);
+    if (!row) return;
+
+    [0,1,2,3,4,6].forEach(idx => {
+      const td = row.querySelector(`.sum-cell[data-sum-idx="${idx}"]`);
+      if (!td) return;
+      const vals = [sums.dw, sums.nw, sums.dk, sums.nk, sums.total, '', sums.totalHrs];
+      if (idx === 6) {
+        const fond = s.contract === 'HPP' ? parseFloat(state.fondHpp)
+          : s.contract === 'ZPP' ? parseFloat(state.fondZpp) : null;
+        const maxH = parseFloat(s.maxHrs) || fond || null;
+        const hrs = sums.totalHrs;
+        td.className = 'sum-cell sum-bold';
+        if (maxH !== null && !isNaN(maxH)) {
+          if (hrs > maxH) td.classList.add('col-hrs-red');
+          else if (hrs === maxH) td.classList.add('col-hrs-green');
+          else td.classList.add('col-hrs-orange');
+        }
+        td.textContent = hrs % 1 === 0 ? hrs : hrs.toFixed(1);
+      } else {
+        td.textContent = vals[idx];
+      }
+    });
+  });
+}
+
+function updateAllSums() {
+  state.staff.forEach((_, si) => updateSumRow(si));
+}
+
+/* render only cell values (after undo/redo) */
+function renderCells(tableId, editable) {
+  const tbl = document.getElementById(tableId);
+  if (!tbl) return;
+  tbl.querySelectorAll('.sched-cell').forEach(td => {
+    const si = +td.dataset.si, ci = +td.dataset.ci;
+    const val = state.schedule[`${si}_${ci}`] || '';
+    if (editable) {
+      const inp = td.querySelector('input');
+      if (inp) inp.value = val;
+    } else {
+      const span = td.querySelector('.cell-val');
+      if (span) span.textContent = val;
+    }
+  });
+}
+
+/* ══════════════════════════════════════════════════════════════════════════════
+   KEYBOARD NAVIGATION (Tvorba)
+══════════════════════════════════════════════════════════════════════════════ */
+
+let focusedCell = null;
+
+function focusCell(si, ci) {
+  const tbl = document.getElementById('tvorba-tbl');
+  if (!tbl) return;
+
+  // Unfocus old
+  if (focusedCell) {
+    const old = tbl.querySelector(`.sched-cell[data-si="${focusedCell.si}"][data-ci="${focusedCell.ci}"]`);
+    if (old) old.classList.remove('focused');
+  }
+
+  focusedCell = {si, ci};
+  const td = tbl.querySelector(`.sched-cell[data-si="${si}"][data-ci="${ci}"]`);
+  if (!td) return;
+  td.classList.add('focused');
+  td.scrollIntoView({block:'nearest', inline:'nearest'});
+  const inp = td.querySelector('input');
+  if (inp) inp.focus({preventScroll: true});
+}
+
+function setupKeyboardNav(tbl) {
+  const calCols = getCalCols(state.month, state.year);
+  const numCols = calCols.length;
+  const numRows = state.staff.length;
+
+  tbl.addEventListener('keydown', e => {
+    if (!focusedCell) return;
+    const {si, ci} = focusedCell;
+    let handled = false;
+
+    if (e.key === 'ArrowRight' || e.key === 'Tab') {
+      handled = true;
+      if (ci + 1 < numCols) focusCell(si, ci + 1);
+      else if (si + 1 < numRows) focusCell(si + 1, 0);
+    } else if (e.key === 'ArrowLeft' || (e.key === 'Tab' && e.shiftKey)) {
+      handled = true;
+      if (ci - 1 >= 0) focusCell(si, ci - 1);
+      else if (si - 1 >= 0) focusCell(si - 1, numCols - 1);
+    } else if (e.key === 'ArrowDown' || e.key === 'Enter') {
+      handled = true;
+      if (si + 1 < numRows) focusCell(si + 1, ci);
+    } else if (e.key === 'ArrowUp') {
+      handled = true;
+      if (si - 1 >= 0) focusCell(si - 1, ci);
+    } else if (e.key === 'Delete' || e.key === 'Backspace') {
+      handled = true;
+      setCellValue(si, ci, '');
+    } else if (e.key === 'z' && (e.ctrlKey || e.metaKey) && !e.shiftKey) {
+      handled = true; historyUndo();
+    } else if ((e.key === 'z' && (e.ctrlKey || e.metaKey) && e.shiftKey) ||
+               (e.key === 'y' && (e.ctrlKey || e.metaKey))) {
+      handled = true; historyRedo();
+    } else if (e.key.length === 1 && !e.ctrlKey && !e.metaKey && !e.altKey) {
+      handled = true;
+      const newVal = smartCase(e.key);
+      setCellValue(si, ci, newVal);
+      // move right
+      if (ci + 1 < numCols) focusCell(si, ci + 1);
+      else if (si + 1 < numRows) focusCell(si + 1, 0);
+    }
+
+    if (handled && e.key !== 'Tab') e.preventDefault();
+  }, true);
+}
+
+function setCellValue(si, ci, val) {
+  historySave();
+  const key = `${si}_${ci}`;
+  if (val === '') delete state.schedule[key];
+  else state.schedule[key] = val;
+
+  const tbl = document.getElementById('tvorba-tbl');
+  if (tbl) {
+    const td = tbl.querySelector(`.sched-cell[data-si="${si}"][data-ci="${ci}"]`);
+    if (td) {
+      const inp = td.querySelector('input');
+      if (inp) inp.value = val;
+    }
+  }
+  updateSumRow(si);
+  scheduleAutoSave();
+}
+
+/* ══════════════════════════════════════════════════════════════════════════════
+   STAFF TABLE (Nastavení)
+══════════════════════════════════════════════════════════════════════════════ */
+
+function renderStaffTable() {
+  const tbody = document.getElementById('staff-tbody');
+  tbody.innerHTML = '';
+  state.staff.forEach((s, si) => {
+    const tr = document.createElement('tr');
+    tr.dataset.si = si;
+
+    // #
+    const numTd = document.createElement('td');
+    numTd.className = 'col-num'; numTd.textContent = si + 1;
+    tr.appendChild(numTd);
+
+    // Name (colored bg)
+    const nameTd = document.createElement('td');
+    nameTd.className = 'col-name';
+    const tc = TYPE_COLORS[s.type] || '';
+    if (tc) { nameTd.style.background = tc; }
+    const nameInp = document.createElement('input');
+    nameInp.type = 'text'; nameInp.value = s.name || '';
+    nameInp.placeholder = 'Jméno...';
+    nameInp.addEventListener('input', () => { s.name = nameInp.value; });
+    nameTd.appendChild(nameInp);
+    tr.appendChild(nameTd);
+
+    // Type
+    const typeTd = document.createElement('td');
+    typeTd.className = 'col-type';
+    const typeSel = document.createElement('select');
+    STAFF_TYPES.forEach(t => {
+      const opt = document.createElement('option');
+      opt.value = t; opt.textContent = t || '(žádný)';
+      if (s.type === t) opt.selected = true;
+      typeSel.appendChild(opt);
+    });
+    typeSel.addEventListener('change', () => {
+      s.type = typeSel.value;
+      const c2 = TYPE_COLORS[s.type] || '';
+      nameTd.style.background = c2;
+    });
+    typeTd.appendChild(typeSel);
+    tr.appendChild(typeTd);
+
+    // Contract
+    const conTd = document.createElement('td');
+    conTd.className = 'col-contract';
+    const conSel = document.createElement('select');
+    CONTRACTS.forEach(c => {
+      const opt = document.createElement('option');
+      opt.value = c; opt.textContent = c || '—';
+      if (s.contract === c) opt.selected = true;
+      conSel.appendChild(opt);
+    });
+    conSel.addEventListener('change', () => { s.contract = conSel.value; });
+    conTd.appendChild(conSel);
+    tr.appendChild(conTd);
+
+    // MaxHrs
+    const maxTd = document.createElement('td');
+    maxTd.className = 'col-maxhrs';
+    const maxInp = document.createElement('input');
+    maxInp.type = 'text'; maxInp.value = s.maxHrs || '';
+    maxInp.placeholder = '160';
+    maxInp.addEventListener('input', () => { s.maxHrs = maxInp.value; });
+    maxTd.appendChild(maxInp);
+    tr.appendChild(maxTd);
+
+    // Regular
+    const regTd = document.createElement('td');
+    regTd.className = 'col-regular';
+    const regInp = document.createElement('input');
+    regInp.type = 'text'; regInp.value = s.regular || '';
+    regInp.placeholder = 'po-d,út-n,sv';
+    regInp.addEventListener('input', () => { s.regular = regInp.value; });
+    regTd.appendChild(regInp);
+    tr.appendChild(regTd);
+
+    // Dates
+    const datesTd = document.createElement('td');
+    datesTd.className = 'col-dates';
+    const datesInp = document.createElement('input');
+    datesInp.type = 'text'; datesInp.value = s.dates || '';
+    datesInp.placeholder = 'spec.data...';
+    datesInp.addEventListener('input', () => { s.dates = datesInp.value; });
+    datesTd.appendChild(datesInp);
+    tr.appendChild(datesTd);
+
+    // Save / delete row
+    const saveTd = document.createElement('td');
+    saveTd.className = 'col-save';
+    const delBtn = document.createElement('button');
+    delBtn.textContent = '✕'; delBtn.className = 'btn btn-sm btn-danger';
+    delBtn.title = 'Odebrat pracovníka';
+    delBtn.addEventListener('click', () => {
+      if (!confirm(`Odebrat pracovníka "${s.name || si+1}"?`)) return;
+      state.staff.splice(si, 1);
+      renderStaffTable();
+    });
+    saveTd.appendChild(delBtn);
+    tr.appendChild(saveTd);
+
+    tbody.appendChild(tr);
+  });
+}
+
+/* ══════════════════════════════════════════════════════════════════════════════
+   STATE SERIALIZATION
+══════════════════════════════════════════════════════════════════════════════ */
+
+function buildSaveData() {
+  return {
+    month: state.month,
+    year: state.year,
+    staff: JSON.parse(JSON.stringify(state.staff)),
+    schedule: JSON.parse(JSON.stringify(state.schedule)),
+    extras: JSON.parse(JSON.stringify(state.extras)),
+    fondHpp: state.fondHpp,
+    fondZpp: state.fondZpp,
+    holidays: state.holidays,
+    hotelOverrides: JSON.parse(JSON.stringify(state.hotelOverrides)),
+    customHotels: JSON.parse(JSON.stringify(state.customHotels))
+  };
+}
+
+function applyData(data) {
+  if (!data) return;
+  if (data.month) state.month = data.month;
+  if (data.year) state.year = data.year;
+  if (data.staff) state.staff = data.staff;
+  if (data.schedule) state.schedule = data.schedule;
+  if (data.extras) state.extras = data.extras || {};
+  if (data.fondHpp !== undefined) state.fondHpp = data.fondHpp;
+  if (data.fondZpp !== undefined) state.fondZpp = data.fondZpp;
+  if (data.holidays !== undefined) state.holidays = data.holidays;
+  if (data.hotelOverrides) state.hotelOverrides = data.hotelOverrides;
+  if (data.customHotels) state.customHotels = data.customHotels;
+
+  // sync UI controls
+  document.getElementById('sel-month').value = state.month;
+  document.getElementById('inp-year').value = state.year;
+  document.getElementById('inp-fond-hpp').value = state.fondHpp;
+  document.getElementById('inp-fond-zpp').value = state.fondZpp;
+  document.getElementById('inp-holidays').value = state.holidays;
+}
+
+/* ══════════════════════════════════════════════════════════════════════════════
+   DRAFT SYSTEM
+══════════════════════════════════════════════════════════════════════════════ */
+
+let currentDraftId = null;
+let dirtyFlag = false;
+let autoSaveTimer = null;
+
+function setAutosaveInd(msg) {
+  document.getElementById('autosave-ind').textContent = msg;
+}
+
+function scheduleAutoSave() {
+  dirtyFlag = true;
+  clearTimeout(autoSaveTimer);
+  setAutosaveInd('Čekám…');
+  autoSaveTimer = setTimeout(() => saveDraft(true), 4000);
+}
+
+async function loadDraftList() {
+  const sel = document.getElementById('rt-draft-sel');
+  sel.innerHTML = '<option value="">— Koncepty —</option>';
+  try {
+    const r = await fetch('/api/rt/drafts', {credentials:'include'});
+    if (!r.ok) return;
+    const list = await r.json();
+    list.forEach(d => {
+      const opt = document.createElement('option');
+      opt.value = d.id || d._id;
+      opt.textContent = `${MONTH_NAMES[(d.month||1)-1]} ${d.year}` + (d.label ? ` – ${d.label}` : '');
+      sel.appendChild(opt);
+    });
+    if (currentDraftId) sel.value = currentDraftId;
+  } catch(e) {
+    console.error('loadDraftList', e);
+  }
+}
+
+async function loadDraft(id) {
+  if (!id) return;
+  try {
+    const r = await fetch(`/api/rt/drafts/${id}`, {credentials:'include'});
+    if (!r.ok) { toast('Chyba načtení konceptu', true); return; }
+    const data = await r.json();
+    applyData(data.data || data);
+    currentDraftId = id;
+    dirtyFlag = false;
+    renderStaffTable();
+    renderScheduleTable('tvorba-tbl', true);
+    setAutosaveInd('Načteno');
+  } catch(e) {
+    toast('Chyba načtení konceptu', true);
+  }
+}
+
+async function saveDraft(silent) {
+  clearTimeout(autoSaveTimer);
+  if (!silent) setAutosaveInd('Ukládám…');
+  try {
+    const body = {month: state.month, year: state.year, data: buildSaveData()};
+    if (currentDraftId) body.id = currentDraftId;
+    const r = await fetch('/api/rt/drafts/save', {
+      method: 'POST', credentials: 'include',
+      headers: {'Content-Type':'application/json'},
+      body: JSON.stringify(body)
+    });
+    if (!r.ok) throw new Error(r.status);
+    const res = await r.json();
+    if (res.id || res._id) currentDraftId = res.id || res._id;
+    dirtyFlag = false;
+    const now = new Date();
+    const hhmm = `${String(now.getHours()).padStart(2,'0')}:${String(now.getMinutes()).padStart(2,'0')}`;
+    setAutosaveInd(`Uloženo ${hhmm}`);
+    if (!silent) { toast('Koncept uložen'); loadDraftList(); }
+  } catch(e) {
+    setAutosaveInd('Chyba uložení');
+    if (!silent) toast('Chyba uložení konceptu', true);
+  }
+}
+
+function newDraft() {
+  if (dirtyFlag && !confirm('Neuložené změny budou ztraceny. Pokračovat?')) return;
+  state.schedule = {};
+  state.extras = {};
+  currentDraftId = null;
+  dirtyFlag = false;
+  history = []; historyIndex = -1;
+  setAutosaveInd('');
+  document.getElementById('rt-draft-sel').value = '';
+  renderScheduleTable('tvorba-tbl', true);
+  toast('Nový koncept');
+}
+
+async function deleteDraft(id) {
+  try {
+    await fetch(`/api/rt/drafts/${id}`, {method:'DELETE', credentials:'include'});
+  } catch(e) {}
+}
+
+/* Trash */
+async function showTrash() {
+  const overlay = document.getElementById('overlay-trash');
+  const list = document.getElementById('trash-list');
+  const empty = document.getElementById('trash-empty');
+  list.innerHTML = ''; empty.style.display = 'none';
+  overlay.classList.add('show');
+  try {
+    const r = await fetch('/api/rt/drafts/trash/list', {credentials:'include'});
+    if (!r.ok) throw new Error();
+    const items = await r.json();
+    if (!items || !items.length) { empty.style.display = ''; return; }
+    items.forEach(it => {
+      const li = document.createElement('li');
+      const id = it.id || it._id;
+      const label = `${MONTH_NAMES[(it.month||1)-1]} ${it.year}` + (it.label ? ` – ${it.label}` : '');
+      const dateStr = it.deletedAt ? new Date(it.deletedAt).toLocaleDateString('cs') : '';
+      li.innerHTML = `
+        <span class="trash-name">${label}</span>
+        <span class="trash-date">${dateStr}</span>
+        <button class="btn btn-sm btn-secondary" data-id="${id}">Obnovit</button>
+      `;
+      li.querySelector('button').addEventListener('click', async () => {
+        await fetch(`/api/rt/drafts/restore/${id}`, {method:'POST', credentials:'include'});
+        overlay.classList.remove('show');
+        loadDraftList();
+        toast('Koncept obnoven');
+      });
+      list.appendChild(li);
+    });
+  } catch(e) {
+    list.innerHTML = '<li style="color:var(--text-muted)">Chyba načtení koše</li>';
+  }
+}
+
+/* ══════════════════════════════════════════════════════════════════════════════
+   PUBLISH
+══════════════════════════════════════════════════════════════════════════════ */
+
+async function publishSchedule() {
+  const mn = MONTH_NAMES[state.month - 1];
+  if (!confirm(`Publikovat rozpis ${mn} ${state.year}?`)) return;
+  try {
+    const r = await fetch('/api/rt/schedules/publish', {
+      method: 'POST', credentials: 'include',
+      headers: {'Content-Type':'application/json'},
+      body: JSON.stringify({month: state.month, year: state.year, data: buildSaveData()})
+    });
+    if (!r.ok) throw new Error(r.status);
+    toast('Rozpis publikován');
+    loadScheduleList();
+  } catch(e) {
+    toast('Chyba publikování', true);
+  }
+}
+
+/* ══════════════════════════════════════════════════════════════════════════════
+   PUBLISHED SCHEDULES (Rozpis VR)
+══════════════════════════════════════════════════════════════════════════════ */
+
+let currentPubKey = null;
+
+async function loadScheduleList() {
+  const sel = document.getElementById('pub-sel');
+  sel.innerHTML = '';
+  try {
+    const r = await fetch('/api/rt/schedules', {credentials:'include'});
+    if (!r.ok) throw new Error();
+    const data = await r.json();
+    const items = data.history || [];
+    if (data.current) {
+      const cur = data.current;
+      const opt = document.createElement('option');
+      opt.value = cur.key || 'current';
+      const mn = MONTH_NAMES[(cur.month||1)-1];
+      opt.textContent = `${mn} ${cur.year} (aktuální)`;
+      sel.appendChild(opt);
+    }
+    items.forEach(it => {
+      const opt = document.createElement('option');
+      opt.value = it.key;
+      const mn = MONTH_NAMES[(it.month||1)-1];
+      opt.textContent = it.label || `${mn} ${it.year}`;
+      sel.appendChild(opt);
+    });
+    if (!sel.options.length) {
+      sel.innerHTML = '<option value="">Žádný publikovaný rozpis</option>';
+      showRozpisEmpty(true);
+    } else {
+      showRozpisEmpty(false);
+      currentPubKey = sel.value;
+      loadSchedule(currentPubKey);
+    }
+  } catch(e) {
+    sel.innerHTML = '<option value="">Žádný publikovaný rozpis</option>';
+    showRozpisEmpty(true);
+  }
+}
+
+function showRozpisEmpty(yes) {
+  document.getElementById('rozpis-empty').style.display = yes ? '' : 'none';
+  document.getElementById('rozpis-tbl').style.display = yes ? 'none' : '';
+}
+
+async function loadSchedule(key) {
+  if (!key) return;
+  const spinner = document.getElementById('rozpis-spinner');
+  spinner.style.display = '';
+  document.getElementById('rozpis-tbl').style.display = 'none';
+  document.getElementById('rozpis-empty').style.display = 'none';
+  try {
+    const r = await fetch(`/api/rt/schedules/${key}`, {credentials:'include'});
+    if (!r.ok) throw new Error();
+    const data = await r.json();
+    applyData(data.data || data);
+    spinner.style.display = 'none';
+    renderScheduleTable('rozpis-tbl', false);
+    showRozpisEmpty(false);
+    currentPubKey = key;
+  } catch(e) {
+    spinner.style.display = 'none';
+    showRozpisEmpty(true);
+  }
+}
+
+/* Load published into Tvorba */
+function pubToTvorba() {
+  if (!currentPubKey) { toast('Není vybraný rozpis', true); return; }
+  if (dirtyFlag && !confirm('Neuložené změny budou ztraceny. Pokračovat?')) return;
+  dirtyFlag = false;
+  currentDraftId = null;
+  history = []; historyIndex = -1;
+  setAutosaveInd('');
+  renderScheduleTable('tvorba-tbl', true);
+  switchTab('tvorba');
+  toast('Načteno do Tvorby');
+}
+
+/* ══════════════════════════════════════════════════════════════════════════════
+   LOCK SYSTEM
+══════════════════════════════════════════════════════════════════════════════ */
+
+let lockOwned = false;
+let lockPollTimer = null;
+
+async function acquireLock() {
+  try {
+    const r = await fetch('/api/lock/rt-view/acquire', {method:'POST', credentials:'include'});
+    if (r.ok) {
+      lockOwned = true;
+      updateLockUI();
+      toast('Zámek získán');
+      scheduleLockPoll();
+    } else {
+      const d = await r.json().catch(() => ({}));
+      toast(`Zámek drží: ${d.owner || '?'}`, true);
+    }
+  } catch(e) { toast('Chyba zámku', true); }
+}
+
+async function releaseLock() {
+  try {
+    await fetch('/api/lock/rt-view/release', {method:'POST', credentials:'include'});
+    lockOwned = false;
+    updateLockUI();
+    clearTimeout(lockPollTimer);
+    toast('Zámek uvolněn');
+  } catch(e) {}
+}
+
+async function pollLock() {
+  try {
+    const r = await fetch('/api/lock/rt-view', {credentials:'include'});
+    if (!r.ok) return;
+    const d = await r.json();
+    const info = document.getElementById('lock-info');
+    if (d.locked && d.owner) {
+      if (lockOwned && d.owner === (_user && _user.name)) {
+        // renew by re-acquiring
+        await acquireLock();
+        info.textContent = '🔒 Mám zámek';
+        info.className = 'lock-owned';
+      } else {
+        info.textContent = `🔒 ${d.owner}`;
+        info.className = 'locked-by-other';
+      }
+    } else {
+      info.textContent = lockOwned ? '🔒 Mám zámek' : '';
+      info.className = lockOwned ? 'lock-owned' : '';
+    }
+  } catch(e) {}
+}
+
+function scheduleLockPoll() {
+  clearTimeout(lockPollTimer);
+  lockPollTimer = setTimeout(async () => { await pollLock(); scheduleLockPoll(); }, 30000);
+}
+
+function updateLockUI() {
+  const btn = document.getElementById('btn-lock');
+  const info = document.getElementById('lock-info');
+  if (lockOwned) {
+    btn.textContent = '🔓 Uvolnit';
+    info.textContent = '🔒 Mám zámek';
+    info.className = 'lock-owned';
+  } else {
+    btn.textContent = '🔒 Zamknout';
+    info.textContent = '';
+    info.className = '';
+  }
+}
+
+/* ══════════════════════════════════════════════════════════════════════════════
+   EXPORT XLSX
+══════════════════════════════════════════════════════════════════════════════ */
+
+function exportXlsx() {
+  if (typeof XLSX === 'undefined') { toast('SheetJS se nenačetl', true); return; }
+  const calCols = getCalCols(state.month, state.year);
+  const holidaysList = parseHolidays(state.holidays);
+
+  // Header row 1: Name + day numbers + sum labels
+  const hdr1 = ['Jméno'];
+  let prevDay2 = null;
+  calCols.forEach(col => {
+    if (col.day !== prevDay2) { hdr1.push(col.nextYear ? '1.1.' : String(col.day)); prevDay2 = col.day; }
+    else hdr1.push('');
+  });
+  hdr1.push('D všed','N všed','D vík','N vík','Σ smě','±hod','Σhod','Poznámka');
+
+  // Header row 2: Name + d/n
+  const hdr2 = [''];
+  calCols.forEach(col => hdr2.push(col.dn));
+  hdr2.push('','','','','','','','');
+
+  const rows = [hdr1, hdr2];
+
+  state.staff.forEach((s, si) => {
+    const row = [s.name || `pracovník ${si+1}`];
+    calCols.forEach((_, ci) => {
+      row.push(state.schedule[`${si}_${ci}`] || '');
+    });
+    const sums = calcSums(si, calCols, state);
+    row.push(sums.dw, sums.nw, sums.dk, sums.nk, sums.total,
+             sums.extraText, sums.totalHrs, s.noteP || '');
+    rows.push(row);
+  });
+
+  const ws = XLSX.utils.aoa_to_sheet(rows);
+  const wb = XLSX.utils.book_new();
+  const mn = MONTH_NAMES[state.month - 1];
+  XLSX.utils.book_append_sheet(wb, ws, `${mn} ${state.year}`);
+  XLSX.writeFile(wb, `Rozpis_${mn}_${state.year}.xlsx`);
+  toast('Export dokončen');
+}
+
+/* ══════════════════════════════════════════════════════════════════════════════
+   SETTINGS SAVE / LOAD
+══════════════════════════════════════════════════════════════════════════════ */
+
+async function saveSettings() {
+  state.month = parseInt(document.getElementById('sel-month').value, 10);
+  state.year  = parseInt(document.getElementById('inp-year').value, 10);
+  state.fondHpp = document.getElementById('inp-fond-hpp').value;
+  state.fondZpp = document.getElementById('inp-fond-zpp').value;
+  state.holidays = document.getElementById('inp-holidays').value;
+  // Rebuild tables with new month/year
+  renderScheduleTable('tvorba-tbl', true);
+  toast('Nastavení uloženo');
+}
+
+async function loadMasterStaff() {
+  try {
+    const r = await fetch('/api/master-staff', {credentials:'include'});
+    if (!r.ok) throw new Error(r.status);
+    const list = await r.json();
+    if (!list || !list.length) { toast('Master nemá žádné pracovníky', true); return; }
+    if (!confirm(`Načíst ${list.length} pracovníků z master? Stávající seznam bude nahrazen.`)) return;
+    state.staff = list.map(s => ({
+      name: s.name || '', type: s.type || '', contract: s.contract || '',
+      maxHrs: s.maxHrs || '', regular: s.regular || '',
+      dates: s.dates || '', noteM: s.noteM || '', noteP: s.noteP || ''
+    }));
+    renderStaffTable();
+    toast(`Načteno ${state.staff.length} pracovníků z master`);
+  } catch(e) {
+    toast('Chyba načtení z master', true);
+  }
+}
+
+function addStaff() {
+  state.staff.push({name:'', type:'', contract:'', maxHrs:'', regular:'', dates:'', noteM:'', noteP:''});
+  renderStaffTable();
+  // focus last name input
+  const tbody = document.getElementById('staff-tbody');
+  const rows = tbody.querySelectorAll('tr');
+  if (rows.length) {
+    const inp = rows[rows.length - 1].querySelector('input[type=text]');
+    if (inp) inp.focus();
+  }
+}
+
+/* ══════════════════════════════════════════════════════════════════════════════
+   TAB SWITCHING
+══════════════════════════════════════════════════════════════════════════════ */
+
+function switchTab(name) {
+  document.querySelectorAll('.tb-tab').forEach(b => b.classList.toggle('active', b.dataset.tab === name));
+  document.querySelectorAll('.tab-btn').forEach(b => b.classList.toggle('active', b.dataset.tab === name));
+  document.querySelectorAll('.tab-panel').forEach(p => p.classList.remove('active'));
+  document.querySelectorAll('.tb-actions').forEach(a => a.classList.add('hidden'));
+
+  const panel = document.getElementById(`tab-${name}`);
+  if (panel) panel.classList.add('active');
+
+  const act = document.getElementById(`tb-act-${name}`);
+  if (act) act.classList.remove('hidden');
+
+  if (name === 'tvorba') {
+    const tbl = document.getElementById('tvorba-tbl');
+    const spinner = document.getElementById('tvorba-spinner');
+    if (!tbl || tbl.style.display === 'none') {
+      spinner.style.display = '';
+      setTimeout(() => {
+        renderScheduleTable('tvorba-tbl', true);
+        spinner.style.display = 'none';
+      }, 10);
+    }
+  } else if (name === 'rozpis') {
+    pollLock();
+  } else if (name === 'nastaveni') {
+    renderStaffTable();
+  }
+}
+
+/* ══════════════════════════════════════════════════════════════════════════════
+   INIT
+══════════════════════════════════════════════════════════════════════════════ */
+
+document.addEventListener('DOMContentLoaded', async () => {
+  // Set initial month/year
+  document.getElementById('sel-month').value = state.month;
+  document.getElementById('inp-year').value = state.year;
+
+  await fetchUser();
+
+  // Show publish button only for admins
+  if (isAdmin()) {
+    document.getElementById('btn-publish').style.display = '';
+  }
+
+  // Render staff table (empty)
+  renderStaffTable();
+
+  // Load draft list
+  await loadDraftList();
+
+  // Load published schedules list
+  await loadScheduleList();
+
+  // Show tvorba spinner initially hidden
+  document.getElementById('tvorba-spinner').style.display = 'none';
+
+  // ── Topbar tab buttons ──
+  document.querySelectorAll('.tb-tab[data-tab]').forEach(b => {
+    b.addEventListener('click', () => switchTab(b.dataset.tab));
+  });
+  // ── Tab bar buttons ──
+  document.querySelectorAll('.tab-btn[data-tab]').forEach(b => {
+    b.addEventListener('click', () => switchTab(b.dataset.tab));
+  });
+
+  // ── Nastavení actions ──
+  document.getElementById('btn-add-staff').addEventListener('click', addStaff);
+  document.getElementById('btn-save-settings').addEventListener('click', saveSettings);
+  document.getElementById('btn-load-master').addEventListener('click', loadMasterStaff);
+
+  // Settings field changes → mark dirty
+  ['sel-month','inp-year','inp-fond-hpp','inp-fond-zpp','inp-holidays'].forEach(id => {
+    document.getElementById(id).addEventListener('change', () => {
+      state.month = parseInt(document.getElementById('sel-month').value, 10) || state.month;
+      state.year  = parseInt(document.getElementById('inp-year').value, 10) || state.year;
+      state.fondHpp = document.getElementById('inp-fond-hpp').value;
+      state.fondZpp = document.getElementById('inp-fond-zpp').value;
+      state.holidays = document.getElementById('inp-holidays').value;
+    });
+  });
+
+  // ── Tvorba actions ──
+  document.getElementById('rt-draft-sel').addEventListener('change', e => {
+    if (e.target.value) loadDraft(e.target.value);
+  });
+  document.getElementById('btn-draft-save').addEventListener('click', () => saveDraft(false));
+  document.getElementById('btn-draft-new').addEventListener('click', newDraft);
+  document.getElementById('btn-publish').addEventListener('click', publishSchedule);
+  document.getElementById('btn-draft-trash').addEventListener('click', showTrash);
+
+  // ── Rozpis VR actions ──
+  document.getElementById('pub-sel').addEventListener('change', e => {
+    if (e.target.value) loadSchedule(e.target.value);
+  });
+  document.getElementById('btn-pub-to-tvorba').addEventListener('click', pubToTvorba);
+  document.getElementById('btn-lock').addEventListener('click', () => {
+    if (lockOwned) releaseLock(); else acquireLock();
+  });
+  document.getElementById('btn-export-xlsx').addEventListener('click', exportXlsx);
+
+  // ── Trash modal ──
+  document.getElementById('trash-close').addEventListener('click', () => {
+    document.getElementById('overlay-trash').classList.remove('show');
+  });
+  document.getElementById('trash-close2').addEventListener('click', () => {
+    document.getElementById('overlay-trash').classList.remove('show');
+  });
+  document.getElementById('overlay-trash').addEventListener('click', e => {
+    if (e.target === e.currentTarget) e.currentTarget.classList.remove('show');
+  });
+
+  // ── Global keyboard shortcuts ──
+  document.addEventListener('keydown', e => {
+    if ((e.ctrlKey || e.metaKey) && e.key === 'z' && !e.shiftKey) {
+      const tbl = document.getElementById('tvorba-tbl');
+      if (tbl && tbl.style.display !== 'none') { e.preventDefault(); historyUndo(); }
+    }
+    if (((e.ctrlKey || e.metaKey) && e.key === 'z' && e.shiftKey) ||
+        ((e.ctrlKey || e.metaKey) && e.key === 'y')) {
+      const tbl = document.getElementById('tvorba-tbl');
+      if (tbl && tbl.style.display !== 'none') { e.preventDefault(); historyRedo(); }
+    }
+    if ((e.ctrlKey || e.metaKey) && e.key === 's') {
+      const tab = document.querySelector('.tb-tab.active');
+      if (tab && tab.dataset.tab === 'tvorba') { e.preventDefault(); saveDraft(false); }
+      else if (tab && tab.dataset.tab === 'nastaveni') { e.preventDefault(); saveSettings(); }
+    }
+  });
+
+  // Initialize history snapshot
+  historySave();
+});
+</script>
+</body>
+</html>

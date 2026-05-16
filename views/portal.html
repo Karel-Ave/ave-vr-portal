@@ -607,11 +607,12 @@
   // ── Card definitions ──────────────────────────────────────────────────────
   // ── Všechny karty aplikací (jednotný seznam) ─────────────────────────────
   const ALL_CARDS = [
-    { id: 'raspis',   icon: calendarIcon(), title: 'Rozpis VR',          href: '/rozpis-view', permKey: 'raspis'   },
-    { id: 'rozpis',   icon: '📋',           title: 'Rozpis',             href: '/rozpis',      permKey: 'rozpis'   },
-    { id: 'priplatky',icon: '💵',           title: 'Příplatky a pokuty', href: '/priplatky',   permKey: 'priplatky'},
-    { id: 'blacklist',icon: blacklistIcon(), title: 'Blacklist',          href: '/blacklist',   permKey: 'blacklist'},
-    { id: 'admin',    icon: '👥',           title: 'Správa uživatelů',   href: '/admin',       permKey: 'admin', adminOnly: true }
+    { id: 'raspis',      icon: calendarIcon(), title: 'Rozpis VR',          href: '/rozpis-view',  permKey: 'raspis'      },
+    { id: 'raspis-test', icon: '🧪',           title: 'Rozpis Test',        href: '/raspis-test',  permKey: 'raspis-test', adminOnly: true },
+    { id: 'rozpis',      icon: '📋',           title: 'Rozpis',             href: '/rozpis',       permKey: 'rozpis'      },
+    { id: 'priplatky',   icon: '💵',           title: 'Příplatky a pokuty', href: '/priplatky',    permKey: 'priplatky'   },
+    { id: 'blacklist',   icon: blacklistIcon(), title: 'Blacklist',          href: '/blacklist',    permKey: 'blacklist'   },
+    { id: 'admin',       icon: '👥',           title: 'Správa uživatelů',   href: '/admin',        permKey: 'admin', adminOnly: true }
   ];
 
   // ── Build a card element ──────────────────────────────────────────────────

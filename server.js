@@ -162,6 +162,11 @@ app.get('/rozpis', requireLogin, (req, res) =>
   res.sendFile(path.join(__dirname, 'public', 'rozpis-recep.html'))
 );
 
+// Raspis Test — nová samostatná karta (separátní data)
+app.get('/raspis-test', requireLogin, (req, res) =>
+  res.sendFile(path.join(__dirname, 'views', 'raspis-test.html'))
+);
+
 // Desktop widget — dnešní rozpis
 app.get('/widget', requireLoginWidget, (req, res) =>
   res.sendFile(path.join(__dirname, 'views', 'widget.html'))
@@ -3080,6 +3085,228 @@ app.post('/api/master-staff', requireLogin, async (req, res) => {
     console.error('Chyba uložení master_staff:', err);
     res.json({ ok: false, msg: 'Chyba serveru.' });
   }
+});
+
+// ═════════════════════════════════════════════════════════════════════════════
+// ── Raspis Test API (/api/rt/) ────────────────────────────────────────────────
+// Kompletně separátní data od Raspis VR (vlastní tabulky rt_drafts, rt_schedules)
+// ═════════════════════════════════════════════════════════════════════════════
+
+// ── Drafts ───────────────────────────────────────────────────────────────────
+
+app.get('/api/rt/drafts', requireLogin, async (req, res) => {
+  try {
+    const db = getPool();
+    const { rows } = await db.query(
+      'SELECT id, month, year, saved_at FROM rt_drafts WHERE user_id = $1 ORDER BY year DESC, month DESC',
+      [req.session.user.id]
+    );
+    res.json(rows.map(r => ({
+      id: r.id, month: r.month, year: r.year, saved_at: r.saved_at,
+      label: `Koncept ${String(r.month).padStart(2,'0')}/${r.year}`
+    })));
+  } catch (err) { console.error(err); res.json([]); }
+});
+
+app.get('/api/rt/drafts/:id', requireLogin, async (req, res) => {
+  const id = parseInt(req.params.id, 10);
+  try {
+    const db = getPool();
+    const { rows } = await db.query('SELECT * FROM rt_drafts WHERE id = $1 AND user_id = $2', [id, req.session.user.id]);
+    if (!rows.length) return res.status(404).json({ ok: false });
+    res.json({ ok: true, draft: rows[0] });
+  } catch (err) { console.error(err); res.status(500).json({ ok: false }); }
+});
+
+app.post('/api/rt/drafts/save', requireLogin, async (req, res) => {
+  const { month, year, data } = req.body;
+  if (!month || !year || !data) return res.json({ ok: false, msg: 'Chybí data.' });
+  try {
+    const db = getPool();
+    const { rows } = await db.query(
+      `INSERT INTO rt_drafts (user_id, month, year, data, saved_at)
+       VALUES ($1, $2, $3, $4, NOW())
+       ON CONFLICT (user_id, month, year) DO UPDATE SET data = $4, saved_at = NOW()
+       RETURNING id`,
+      [req.session.user.id, month, year, JSON.stringify(data)]
+    );
+    res.json({ ok: true, id: rows[0].id });
+  } catch (err) { console.error(err); res.json({ ok: false, msg: 'Chyba serveru.' }); }
+});
+
+app.delete('/api/rt/drafts/:id', requireLogin, async (req, res) => {
+  const id = parseInt(req.params.id, 10);
+  try {
+    const db = getPool();
+    const { rows } = await db.query('SELECT * FROM rt_drafts WHERE id = $1 AND user_id = $2', [id, req.session.user.id]);
+    if (!rows.length) return res.json({ ok: false, msg: 'Nenalezeno.' });
+    const r = rows[0];
+    await db.query('INSERT INTO rt_drafts_trash (user_id, original_id, month, year, data) VALUES ($1,$2,$3,$4,$5)',
+      [r.user_id, r.id, r.month, r.year, r.data]);
+    await db.query('DELETE FROM rt_drafts WHERE id = $1', [id]);
+    res.json({ ok: true });
+  } catch (err) { console.error(err); res.json({ ok: false }); }
+});
+
+app.get('/api/rt/drafts/trash/list', requireLogin, async (req, res) => {
+  try {
+    const db = getPool();
+    const isAdmin = req.session.user.role === 'admin';
+    const { rows } = isAdmin
+      ? await db.query('SELECT id, user_id, month, year, deleted_at FROM rt_drafts_trash ORDER BY deleted_at DESC')
+      : await db.query('SELECT id, user_id, month, year, deleted_at FROM rt_drafts_trash WHERE user_id = $1 ORDER BY deleted_at DESC', [req.session.user.id]);
+    res.json(rows.map(r => ({ ...r, label: `Koncept ${String(r.month).padStart(2,'0')}/${r.year}` })));
+  } catch (err) { console.error(err); res.json([]); }
+});
+
+app.post('/api/rt/drafts/restore/:id', requireLogin, async (req, res) => {
+  const id = parseInt(req.params.id, 10);
+  try {
+    const db = getPool();
+    const { rows } = await db.query('SELECT * FROM rt_drafts_trash WHERE id = $1 AND user_id = $2', [id, req.session.user.id]);
+    if (!rows.length) return res.json({ ok: false, msg: 'Nenalezeno.' });
+    const r = rows[0];
+    await db.query(
+      `INSERT INTO rt_drafts (user_id, month, year, data, saved_at)
+       VALUES ($1,$2,$3,$4,NOW()) ON CONFLICT (user_id, month, year) DO UPDATE SET data=$3, saved_at=NOW()`,
+      [r.user_id, r.month, r.year, r.data]
+    );
+    await db.query('DELETE FROM rt_drafts_trash WHERE id = $1', [id]);
+    res.json({ ok: true });
+  } catch (err) { console.error(err); res.json({ ok: false }); }
+});
+
+// ── Publikované rozpisy ───────────────────────────────────────────────────────
+
+app.get('/api/rt/schedules', requireLogin, async (req, res) => {
+  try {
+    const db = getPool();
+    const { rows } = await db.query(
+      'SELECT key, month, year, label, published_at, published_by FROM rt_schedules ORDER BY published_at DESC'
+    );
+    const current = rows.length > 0 ? rows[0].key : null;
+    const history = rows.map(r => ({ key: r.key, label: r.label, month: r.month, year: r.year }));
+    res.json({ current, history });
+  } catch (err) { console.error(err); res.status(500).json({ ok: false }); }
+});
+
+app.get('/api/rt/schedules/:key', requireLogin, async (req, res) => {
+  const key = decodeURIComponent(req.params.key);
+  try {
+    const db = getPool();
+    const { rows } = await db.query('SELECT * FROM rt_schedules WHERE key = $1', [key]);
+    if (!rows.length) return res.status(404).json({ ok: false });
+    res.json({ ok: true, entry: rows[0] });
+  } catch (err) { console.error(err); res.status(500).json({ ok: false }); }
+});
+
+app.post('/api/rt/schedules/publish', requireLogin, requireAdmin, async (req, res) => {
+  const { month, year, data } = req.body;
+  if (!month || !year || !data) return res.json({ ok: false, msg: 'Chybí data.' });
+  const key   = `RT:${String(month).padStart(2,'0')}/${year}`;
+  const label = `${['','Leden','Únor','Březen','Duben','Květen','Červen','Červenec','Srpen','Září','Říjen','Listopad','Prosinec'][month]} ${year}`;
+  try {
+    const db = getPool();
+    await db.query(
+      `INSERT INTO rt_schedules (key, month, year, label, data, published_at, published_by)
+       VALUES ($1,$2,$3,$4,$5,NOW(),$6)
+       ON CONFLICT (key) DO UPDATE SET data=$5, published_at=NOW(), published_by=$6`,
+      [key, month, year, label, JSON.stringify(data), req.session.user.name]
+    );
+    res.json({ ok: true, key });
+  } catch (err) { console.error(err); res.json({ ok: false, msg: 'Chyba serveru.' }); }
+});
+
+app.delete('/api/rt/schedules/:key', requireLogin, requireAdmin, async (req, res) => {
+  const key = decodeURIComponent(req.params.key);
+  try {
+    const db = getPool();
+    const { rows } = await db.query('SELECT * FROM rt_schedules WHERE key = $1', [key]);
+    if (!rows.length) return res.json({ ok: false, msg: 'Nenalezeno.' });
+    const r = rows[0];
+    await db.query(
+      `INSERT INTO rt_schedules_trash (key, month, year, label, data, published_at, published_by, deleted_by)
+       VALUES ($1,$2,$3,$4,$5,$6,$7,$8)`,
+      [r.key, r.month, r.year, r.label, r.data, r.published_at, r.published_by, req.session.user.name]
+    );
+    await db.query('DELETE FROM rt_schedules WHERE key = $1', [key]);
+    res.json({ ok: true });
+  } catch (err) { console.error(err); res.json({ ok: false }); }
+});
+
+app.get('/api/rt/schedules/trash/list', requireLogin, requireAdmin, async (req, res) => {
+  try {
+    const db = getPool();
+    const { rows } = await db.query('SELECT id, key, month, year, label, deleted_at FROM rt_schedules_trash ORDER BY deleted_at DESC');
+    res.json(rows);
+  } catch (err) { console.error(err); res.json([]); }
+});
+
+app.post('/api/rt/schedules/restore/:id', requireLogin, requireAdmin, async (req, res) => {
+  const id = parseInt(req.params.id, 10);
+  try {
+    const db = getPool();
+    const { rows } = await db.query('SELECT * FROM rt_schedules_trash WHERE id = $1', [id]);
+    if (!rows.length) return res.json({ ok: false });
+    const r = rows[0];
+    await db.query(
+      `INSERT INTO rt_schedules (key, month, year, label, data, published_at, published_by)
+       VALUES ($1,$2,$3,$4,$5,$6,$7) ON CONFLICT (key) DO UPDATE SET data=$5, published_at=$6, published_by=$7`,
+      [r.key, r.month, r.year, r.label, r.data, r.published_at, r.published_by]
+    );
+    await db.query('DELETE FROM rt_schedules_trash WHERE id = $1', [id]);
+    res.json({ ok: true });
+  } catch (err) { console.error(err); res.json({ ok: false }); }
+});
+
+app.delete('/api/rt/schedules/perma/:id', requireLogin, requireAdmin, async (req, res) => {
+  try {
+    const db = getPool();
+    await db.query('DELETE FROM rt_schedules_trash WHERE id = $1', [parseInt(req.params.id, 10)]);
+    res.json({ ok: true });
+  } catch (err) { console.error(err); res.json({ ok: false }); }
+});
+
+// ── Uložit editace publikovaného (Rozpis VR tab) ──────────────────────────────
+
+app.post('/api/rt/schedules/save-edits', requireLogin, requireAdmin, async (req, res) => {
+  const { key, data } = req.body;
+  if (!key || !data) return res.json({ ok: false, msg: 'Chybí data.' });
+  try {
+    const db = getPool();
+    await db.query('UPDATE rt_schedules SET data = $1 WHERE key = $2', [JSON.stringify(data), key]);
+    res.json({ ok: true });
+  } catch (err) { console.error(err); res.json({ ok: false }); }
+});
+
+// ── Change log ────────────────────────────────────────────────────────────────
+
+app.get('/api/rt/log/:key', requireLogin, requireAdmin, async (req, res) => {
+  const key = decodeURIComponent(req.params.key);
+  try {
+    const db = getPool();
+    const { rows } = await db.query(
+      'SELECT * FROM rt_change_log WHERE schedule_key = $1 ORDER BY timestamp DESC LIMIT 500', [key]
+    );
+    res.json(rows);
+  } catch (err) { console.error(err); res.json([]); }
+});
+
+app.post('/api/rt/log', requireLogin, requireAdmin, async (req, res) => {
+  const { key, entries } = req.body;
+  if (!key || !Array.isArray(entries)) return res.json({ ok: false });
+  try {
+    const db = getPool();
+    for (const e of entries) {
+      await db.query(
+        `INSERT INTO rt_change_log (schedule_key, user_id, user_name, is_saved, change_type, staff_name, day, dn, old_value, new_value)
+         VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10)`,
+        [key, req.session.user.id, req.session.user.name, e.is_saved||false, e.change_type||'cell',
+         e.staff_name||'', e.day||null, e.dn||null, e.old_value||null, e.new_value||null]
+      );
+    }
+    res.json({ ok: true });
+  } catch (err) { console.error(err); res.json({ ok: false }); }
 });
 
 // ── Start ─────────────────────────────────────────────────────────────────────
