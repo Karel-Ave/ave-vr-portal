@@ -209,6 +209,7 @@ table.sched-tbl {
 .sched-tbl .th-dn {
   background: var(--thead-bg); color: var(--thead-text);
   text-align: center; font-size: 10px; padding: 1px 0; width: 18px;
+  position: relative; vertical-align: bottom; padding-top: 24px;
 }
 /* Sum header */
 .sched-tbl .th-sum {
@@ -307,10 +308,35 @@ table.sched-tbl {
 .sched-tbl thead th.col-name-th { z-index: 22; }
 /* Single header row — allow auto height for day-info stacking */
 .sched-tbl thead th { height: auto; min-height: var(--sched-row-h); }
-/* Day info inside d-column th-dn cells */
-.th-dn-day { line-height: 1.1; margin-bottom: 1px; overflow: hidden; }
-.th-day-num { display: block; font-size: 8px; font-weight: 700; }
+/* Day info inside d-column th-dn cells — absolutely positioned to span d+n visually */
+.th-dn-day {
+  position: absolute; top: 2px; left: 0; width: 200%;
+  text-align: center; pointer-events: none; line-height: 1.15;
+}
+.th-day-num { display: block; font-size: 9px; font-weight: 700; }
 .th-day-dow { display: block; font-size: 7px; opacity: 0.75; }
+/* Copy/paste selection */
+.sched-cell.cell-copy-sel { outline: 2px solid #2980b9 !important; outline-offset: -1px; background: rgba(41,128,185,.18) !important; }
+.sched-tbl.copy-mode .sched-cell { cursor: crosshair !important; }
+/* Coverage panel rows (dots in name cell) */
+.cov-dot-wrap { float: right; display: flex; gap: 2px; align-items: center; margin-left: 4px; }
+.cov-dot { width: 7px; height: 7px; border-radius: 50%; display: inline-block; flex-shrink: 0; }
+.cov-dot-ok  { background: #27ae60; }
+.cov-dot-mis { background: #e74c3c; }
+.cov-row .col-name-td { font-size: 10px; font-weight: 700; padding: 2px 5px; background: var(--surface); }
+.cov-tbody .col-name-td { position: sticky; left: 0; z-index: 12 !important; background: var(--surface) !important; }
+.cov-tbody td { background: var(--surface); }
+.cov-row td.cov-cell { font-size: 9px; text-align: center; padding: 0; }
+.cov-empty { background: var(--col-cov0-bg,#ffebeb); color: var(--col-cov0-tx,#c0392b); }
+.cov-1 { background: var(--col-cov1-bg,#c8f5c8); color: var(--col-cov1-tx,#1a6b1a); font-weight: 700; }
+.cov-2 { background: var(--col-cov2-bg,#ffe082); color: var(--col-cov2-tx,#7a5000); font-weight: 700; }
+.cov-3plus { background: var(--col-cov3-bg,#ff8a65); color: var(--col-cov3-tx,#5d1a00); font-weight: 700; }
+.cov-dayonly-night { background: var(--col-covdn-bg,#e8e8e8) !important; color: var(--col-covdn-tx,#999) !important; }
+[data-theme="dark"] .cov-empty { background: var(--col-cov0-bg); color: var(--col-cov0-tx); }
+[data-theme="dark"] .cov-1 { background: var(--col-cov1-bg); color: var(--col-cov1-tx); }
+[data-theme="dark"] .cov-2 { background: var(--col-cov2-bg); color: var(--col-cov2-tx); }
+[data-theme="dark"] .cov-3plus { background: var(--col-cov3-bg); color: var(--col-cov3-tx); }
+[data-theme="dark"] .cov-dayonly-night { background: var(--col-covdn-bg) !important; color: var(--col-covdn-tx) !important; }
 /* Row hover highlight (schedule cells + sum cells up to Σhod, not name or note) */
 .staff-tbody tr:hover td.sched-cell { filter: brightness(0.88); }
 .staff-tbody tr:hover td.sched-cell.focused { filter: none; }
@@ -644,11 +670,15 @@ tbody tr.row-filtered { display: none; }
     <button class="stb-btn" id="stb-save-req">Zapamatuj požadavky</button>
   </div>
   <div class="stb-row">
+    <button class="stb-btn" id="stb-hide-hotels">Skrýt hotely</button>
+    <div class="stb-sep"></div>
     <button class="stb-btn" id="stb-day-only">Jen denní</button>
     <button class="stb-btn" id="stb-night-only">Jen noční</button>
     <button class="stb-btn" id="stb-available">Jen dostupní</button>
     <button class="stb-btn" id="stb-mark-sel">Označ vybrané</button>
     <button class="stb-btn" id="btn-show-hidden" style="display:none">👁 Skrytí</button>
+    <div class="stb-sep"></div>
+    <button class="stb-btn" id="stb-copy-mode" title="Přepne do režimu výběru buněk — táhni myší pro výběr, Ctrl+C zkopíruje, Ctrl+V vloží">📋 Kopírovat</button>
     <div class="stb-spacer"></div>
     <button class="stb-btn" id="stb-undo">⇐ Zpět</button>
     <button class="stb-btn" id="stb-redo">⇒ Vpřed</button>
@@ -1234,52 +1264,16 @@ function hideSchedTip() {
 
 /* ── ±hod popup ── */
 let _extraPopSi = null;
+let _extraPopEditIdx = null; // null = new entry, number = editing that index
+
 function _fmtAdjDate(d) {
   if (!d) return '';
-  // d is 'YYYY-MM-DD' → format as 'D.M.'
   const p = d.split('-');
   if (p.length < 3) return d;
   return parseInt(p[2]) + '.' + parseInt(p[1]) + '.';
 }
-function showExtraPopup(si) {
-  _extraPopSi = si;
-  const pop = document.getElementById('extra-popup');
-  pop.style.display = 'block';
-  const valInp = document.getElementById('extra-pop-val');
-  valInp.value = '';
-  document.getElementById('extra-pop-note').value = '';
-  // Default date = today
-  const today = new Date();
-  const pad = n => String(n).padStart(2,'0');
-  document.getElementById('extra-pop-date').value =
-    `${today.getFullYear()}-${pad(today.getMonth()+1)}-${pad(today.getDate())}`;
-  // History
-  const adjs = getExtraAdjustments(si);
-  const hist = document.getElementById('extra-pop-history');
-  if (adjs.length > 0) {
-    const total = getExtraTotal(si);
-    hist.style.display = '';
-    hist.innerHTML = '<b>Celkem: ' + (total > 0 ? '+' : '') + total + ' hod</b>\n' +
-      adjs.map(a => {
-        let line = (a.val > 0 ? '+' : '') + a.val + ' hod';
-        if (a.date) line = _fmtAdjDate(a.date) + ' ' + line;
-        if (a.note) line += ' — ' + a.note;
-        if (a.login) line += ' (' + a.login + ')';
-        return line;
-      }).join('\n');
-  } else { hist.style.display = 'none'; }
-  // Center popup
-  pop.style.left = Math.round(window.innerWidth / 2 - 130) + 'px';
-  pop.style.top = Math.round(window.innerHeight / 2 - 130) + 'px';
-  setTimeout(() => valInp.focus(), 30);
-}
-function applyExtraAdj() {
-  const si = _extraPopSi;
-  if (si === null || si === undefined) return;
-  const valStr = document.getElementById('extra-pop-val').value.trim();
-  const note = document.getElementById('extra-pop-note').value.trim();
-  const val = parseFloat(valStr.replace(',', '.'));
-  if (isNaN(val) || val === 0) { document.getElementById('extra-pop-val').focus(); return; }
+
+function _ensureAdjList(si) {
   if (!state.extras[si] || !Array.isArray(state.extras[si].adjustments)) {
     const old = state.extras[si];
     state.extras[si] = { adjustments: [] };
@@ -1288,10 +1282,113 @@ function applyExtraAdj() {
       if (!isNaN(v) && v !== 0) state.extras[si].adjustments.push({val: v, note: '', login: ''});
     }
   }
+}
+
+function renderExtraAdjList(si) {
+  const adjs = getExtraAdjustments(si);
+  const el = document.getElementById('extra-pop-adjlist');
+  if (!adjs.length) { el.style.display = 'none'; return; }
+  el.style.display = '';
+  const total = getExtraTotal(si);
+  el.innerHTML = '';
+  const hdr = document.createElement('div');
+  hdr.style.cssText = 'font-size:10px;font-weight:700;margin-bottom:4px;color:var(--text-muted)';
+  hdr.textContent = 'Záznamy — celkem: ' + (total > 0 ? '+' : '') + total + ' hod';
+  el.appendChild(hdr);
+  adjs.forEach((a, idx) => {
+    const row = document.createElement('div');
+    row.style.cssText = 'display:flex;align-items:center;gap:4px;margin-bottom:3px;font-size:10px;border:1px solid var(--border);border-radius:4px;padding:2px 5px;';
+    const lbl = document.createElement('span');
+    lbl.style.cssText = 'flex:1;';
+    let txt = (a.val > 0 ? '+' : '') + a.val + ' hod';
+    if (a.date) txt = _fmtAdjDate(a.date) + ' ' + txt;
+    if (a.note) txt += ' — ' + a.note;
+    if (a.login) txt += ' (' + a.login + ')';
+    lbl.textContent = txt;
+    const btnE = document.createElement('button');
+    btnE.textContent = '✏';
+    btnE.title = 'Upravit';
+    btnE.style.cssText = 'padding:1px 5px;border:1px solid var(--border);border-radius:3px;cursor:pointer;font-size:10px;background:var(--surface-alt);color:var(--text);flex-shrink:0';
+    btnE.addEventListener('click', () => editExtraAdj(si, idx));
+    const btnD = document.createElement('button');
+    btnD.textContent = '✕';
+    btnD.title = 'Smazat';
+    btnD.style.cssText = 'padding:1px 5px;border:1px solid var(--border);border-radius:3px;cursor:pointer;font-size:10px;background:var(--surface-alt);color:#e74c3c;flex-shrink:0';
+    btnD.addEventListener('click', () => deleteExtraAdj(si, idx));
+    row.appendChild(lbl); row.appendChild(btnE); row.appendChild(btnD);
+    el.appendChild(row);
+  });
+}
+
+function editExtraAdj(si, idx) {
+  const adjs = getExtraAdjustments(si);
+  const a = adjs[idx];
+  if (!a) return;
+  _extraPopEditIdx = idx;
+  document.getElementById('extra-pop-val').value = a.val;
+  document.getElementById('extra-pop-note').value = a.note || '';
+  document.getElementById('extra-pop-date').value = a.date || '';
+  document.getElementById('extra-pop-apply').textContent = 'Uložit';
+  document.getElementById('extra-pop-title').textContent = '± Hodiny — upravit záznam';
+  document.getElementById('extra-pop-val').focus();
+}
+
+function deleteExtraAdj(si, idx) {
+  _ensureAdjList(si);
+  state.extras[si].adjustments.splice(idx, 1);
+  renderExtraAdjList(si);
+  updateSumRow(si);
+  scheduleAutoSave();
+}
+
+function showExtraPopup(si) {
+  _extraPopSi = si;
+  _extraPopEditIdx = null;
+  const pop = document.getElementById('extra-popup');
+  pop.style.display = 'block';
+  const valInp = document.getElementById('extra-pop-val');
+  valInp.value = '';
+  document.getElementById('extra-pop-note').value = '';
+  document.getElementById('extra-pop-apply').textContent = 'Přidat';
+  document.getElementById('extra-pop-title').textContent = '± Hodiny — přidat záznam';
+  // Default date = today
+  const today = new Date();
+  const pad = n => String(n).padStart(2,'0');
+  document.getElementById('extra-pop-date').value =
+    `${today.getFullYear()}-${pad(today.getMonth()+1)}-${pad(today.getDate())}`;
+  // Adjustments list
+  renderExtraAdjList(si);
+  // Center popup
+  pop.style.left = Math.round(window.innerWidth / 2 - 140) + 'px';
+  pop.style.top = Math.round(window.innerHeight / 2 - 150) + 'px';
+  setTimeout(() => valInp.focus(), 30);
+}
+
+function applyExtraAdj() {
+  const si = _extraPopSi;
+  if (si === null || si === undefined) return;
+  const valStr = document.getElementById('extra-pop-val').value.trim();
+  const note = document.getElementById('extra-pop-note').value.trim();
+  const val = parseFloat(valStr.replace(',', '.'));
+  if (isNaN(val) || val === 0) { document.getElementById('extra-pop-val').focus(); return; }
+  _ensureAdjList(si);
   const login = (typeof CURRENT_LOGIN !== 'undefined' ? CURRENT_LOGIN : '') || '';
   const date = document.getElementById('extra-pop-date').value || '';
-  state.extras[si].adjustments.push({val, note, login, date});
-  document.getElementById('extra-popup').style.display = 'none';
+  if (_extraPopEditIdx !== null) {
+    // Edit existing entry
+    state.extras[si].adjustments[_extraPopEditIdx] = {val, note, login, date};
+    _extraPopEditIdx = null;
+    document.getElementById('extra-pop-apply').textContent = 'Přidat';
+    document.getElementById('extra-pop-title').textContent = '± Hodiny — přidat záznam';
+    document.getElementById('extra-pop-val').value = '';
+    document.getElementById('extra-pop-note').value = '';
+    renderExtraAdjList(si);
+  } else {
+    state.extras[si].adjustments.push({val, note, login, date});
+    document.getElementById('extra-pop-val').value = '';
+    document.getElementById('extra-pop-note').value = '';
+    renderExtraAdjList(si);
+  }
   updateSumRow(si);
   scheduleAutoSave();
 }
@@ -1683,7 +1780,40 @@ function updateRequirementClasses() {
 ══════════════════════════════════════════════════════════════════════════════ */
 
 function updateCoverageRows() {
-  // Coverage panel removed — just refresh d/n header coloring
+  const calCols = getCalCols(state.month, state.year);
+  ['tvorba-tbl','rozpis-tbl'].forEach(tblId => {
+    const tbl = document.getElementById(tblId);
+    if (!tbl) return;
+    tbl.querySelectorAll('tbody.cov-tbody tr.cov-row').forEach(tr => {
+      const letter = tr.dataset.covLetter;
+      if (!letter) return;
+      const hotelInfo = (state.hotels || []).find(h => h.letter === letter);
+      const _isDayOnly = hotelInfo && hotelInfo.dayOnly;
+      const dayT   = calCols.filter(c => c.dn === 'd').length;
+      const nightT = _isDayOnly ? 0 : calCols.filter(c => c.dn === 'n').length;
+      const dayC   = calCols.filter((c, ci) => c.dn === 'd' && state.staff.some((_, si) => state.schedule[`${si}_${ci}`] === letter)).length;
+      const nightC = _isDayOnly ? 0 : calCols.filter((c, ci) => c.dn === 'n' && state.staff.some((_, si) => state.schedule[`${si}_${ci}`] === letter)).length;
+      // Update dots in name cell
+      const dDot = tr.querySelector('.cov-dot:nth-child(1)');
+      const nDot = tr.querySelector('.cov-dot:nth-child(2)');
+      if (dDot) { dDot.className = 'cov-dot ' + (dayC >= dayT ? 'cov-dot-ok' : 'cov-dot-mis'); dDot.title = `Denní: ${dayC}/${dayT}`; }
+      if (nDot) { nDot.className = 'cov-dot ' + (nightC >= nightT ? 'cov-dot-ok' : 'cov-dot-mis'); nDot.title = `Noční: ${nightC}/${nightT}`; }
+      // Update per-day cells
+      tr.querySelectorAll('td.cov-cell').forEach(td => {
+        const ci = +td.dataset.ci;
+        const dn = td.dataset.dn;
+        if (isNaN(ci)) return;
+        td.className = 'sched-cell cov-cell';
+        if (_isDayOnly && dn === 'n') { td.classList.add('cov-dayonly-night'); td.textContent = '–'; return; }
+        const count = state.staff.filter((_, si) => state.schedule[`${si}_${ci}`] === letter).length;
+        if (count === 0) td.classList.add('cov-empty');
+        else if (count === 1) td.classList.add('cov-1');
+        else if (count === 2) td.classList.add('cov-2');
+        else td.classList.add('cov-3plus');
+        td.textContent = count > 0 ? count : '';
+      });
+    });
+  });
   updateDnCoverageColors();
 }
 
@@ -1783,15 +1913,86 @@ function renderScheduleTable(tableId, editable) {
   tbl.appendChild(thead);
 
   // Force explicit sticky on single header row
+  const _rowH = Math.round(parseFloat(getComputedStyle(document.documentElement).getPropertyValue('--sched-row-h'))) || 22;
   tbl.querySelectorAll('thead th').forEach(th => {
     th.style.position = 'sticky';
     th.style.top = '0px';
     th.style.zIndex = th.classList.contains('col-name-th') ? '22' : '20';
   });
 
-  // ── TBODY (single tbody for staff) ──
+  // ── TBODIES: covTbody (coverage rows, sticky under header) + staffTbody ──
+  const covTbody = document.createElement('tbody');
+  covTbody.className = 'cov-tbody';
   const staffTbody = document.createElement('tbody');
   staffTbody.className = 'staff-tbody';
+
+  // ── Coverage rows (hotel letters with colored dots, no "Pokrytí" header) ──
+  if (state.staff.length > 0) {
+    const hotelLetters = getUsedHotelLetters();
+    const EXCL_PANEL = new Set(['F','Q','W']); // excluded from PANEL only (still checked for d/n coloring)
+    const filteredLetters = hotelLetters.filter(l => !EXCL_PANEL.has(l));
+    const pIdx = filteredLetters.indexOf('P');
+    if (pIdx > -1) { filteredLetters.splice(pIdx, 1); filteredLetters.push('P'); }
+    filteredLetters.forEach(letter => {
+      const tr = document.createElement('tr');
+      tr.className = 'cov-row';
+      tr.dataset.covLetter = letter;
+      const nameTd = document.createElement('td');
+      nameTd.className = 'col-name-td cov-row';
+      const hotelInfo = (state.hotels || []).find(h => h.letter === letter);
+      const hotelName = hotelInfo && hotelInfo.name ? hotelInfo.name : '';
+      const _isDayOnly = hotelInfo && hotelInfo.dayOnly;
+      // Colored dots
+      const dayT = calCols.filter(c => c.dn === 'd').length;
+      const nightT = _isDayOnly ? 0 : calCols.filter(c => c.dn === 'n').length;
+      const dayC = calCols.filter((c, ci) => c.dn === 'd' && state.staff.some((_, si) => state.schedule[`${si}_${ci}`] === letter)).length;
+      const nightC = _isDayOnly ? 0 : calCols.filter((c, ci) => c.dn === 'n' && state.staff.some((_, si) => state.schedule[`${si}_${ci}`] === letter)).length;
+      const dotWrap = document.createElement('span');
+      dotWrap.className = 'cov-dot-wrap';
+      const dDot = document.createElement('span');
+      dDot.className = 'cov-dot ' + (dayC >= dayT ? 'cov-dot-ok' : 'cov-dot-mis');
+      dDot.title = `Denní: ${dayC}/${dayT}`;
+      dotWrap.appendChild(dDot);
+      if (nightT > 0) {
+        const nDot = document.createElement('span');
+        nDot.className = 'cov-dot ' + (nightC >= nightT ? 'cov-dot-ok' : 'cov-dot-mis');
+        nDot.title = `Noční: ${nightC}/${nightT}`;
+        dotWrap.appendChild(nDot);
+      }
+      const letterSpan = document.createElement('strong');
+      letterSpan.textContent = letter;
+      letterSpan.prepend(dotWrap);
+      nameTd.appendChild(letterSpan);
+      if (hotelName) {
+        const ns = document.createElement('span');
+        ns.textContent = ' ' + hotelName;
+        ns.style.cssText = 'font-size:9px;opacity:.6;font-weight:400';
+        nameTd.appendChild(ns);
+      }
+      tr.appendChild(nameTd);
+      // Day/night cells
+      calCols.forEach((col, ci) => {
+        const td = document.createElement('td');
+        td.className = 'sched-cell cov-cell ' + cellClass(col, state.month, state.year, holidaysList);
+        td.dataset.dn = col.dn; td.dataset.ci = ci;
+        if (_isDayOnly && col.dn === 'n') {
+          td.classList.add('cov-dayonly-night'); td.textContent = '–';
+        } else {
+          const count = state.staff.filter((_, si) => state.schedule[`${si}_${ci}`] === letter).length;
+          if (count === 0) td.classList.add('cov-empty');
+          else if (count === 1) td.classList.add('cov-1');
+          else if (count === 2) td.classList.add('cov-2');
+          else td.classList.add('cov-3plus');
+          td.textContent = count > 0 ? count : '';
+        }
+        tr.appendChild(td);
+      });
+      SUM_HEADS.forEach((_, idx) => {
+        const td = document.createElement('td'); td.className = 'sum-cell'; tr.appendChild(td);
+      });
+      covTbody.appendChild(tr);
+    });
+  }
 
   // Pre-compute duplicate cells and P-many cells for coloring
   const _dupeKeys = computeDuplicateCells(calCols, state.staff, state.schedule);
@@ -1897,7 +2098,21 @@ function renderScheduleTable(tableId, editable) {
 
     staffTbody.appendChild(tr);
   });
+  tbl.appendChild(covTbody);
   tbl.appendChild(staffTbody);
+
+  // Coverage rows sticky — cells positioned below the single header row
+  let _covVisRow = 0;
+  Array.from(covTbody.querySelectorAll('tr')).forEach(tr => {
+    const hidden = tr.classList.contains('row-filtered');
+    const topPx = hidden ? '-9999px' : ((_covVisRow + 1) * _rowH) + 'px';
+    tr.querySelectorAll('td, th').forEach(cell => {
+      cell.style.top = topPx;
+      if (!cell.classList.contains('col-name-td')) cell.style.position = 'sticky';
+      cell.style.zIndex = cell.classList.contains('col-name-td') ? '12' : '10';
+    });
+    if (!hidden) _covVisRow++;
+  });
 
   if (editable) {
     setupKeyboardNav(tbl);
@@ -2659,6 +2874,12 @@ function exportXlsx() {
 let filterHotels = new Set();  // empty = VSE, else set of letter strings
 let markedWorkers = new Set();  // Set of si indices that remain visible across hotel filters
 let filterShift  = null;  // null | 'day' | 'night' | 'available'
+let showHotels   = true;
+// ── Copy/paste mode ──
+let _copyMode    = false;
+let _copySelSi1  = null, _copySelCi1 = null;
+let _copySelSi2  = null, _copySelCi2 = null;
+let _copyDragging = false;
 let sumsMode     = 'all'; // 'all' | 'hidden' | 'hoursonly'
 
 function updateSubtoolbar() {
@@ -2795,18 +3016,15 @@ function filterByShift(mode) {
   applyRowFilters();
 }
 
-// Coverage panel removed — d/n headers colored red for any uncovered shift
-const _COV_EXCL = new Set(['F','Q','W']);
+// d/n headers: always-red when any active hotel (ALL of them, no exclusion) has uncovered shift
 function updateDnCoverageColors() {
   const calCols = getCalCols(state.month, state.year);
-  // Hotels to check: filterHotels if active, else all active non-excluded hotels with hours>0
+  // Which hotels to check: filtered ones or all active with hours > 0
   let hotelsToCheck;
   if (filterHotels.size > 0) {
-    hotelsToCheck = Array.from(filterHotels).filter(l => !_COV_EXCL.has(l));
+    hotelsToCheck = Array.from(filterHotels);
   } else {
-    hotelsToCheck = (state.hotels || [])
-      .filter(h => h.active && !_COV_EXCL.has(h.letter) && h.hours > 0)
-      .map(h => h.letter);
+    hotelsToCheck = (state.hotels || []).filter(h => h.active && h.hours > 0).map(h => h.letter);
   }
   ['tvorba-tbl','rozpis-tbl'].forEach(tblId => {
     const tbl = document.getElementById(tblId);
@@ -2819,17 +3037,32 @@ function updateDnCoverageColors() {
       let uncovered = false;
       for (const letter of hotelsToCheck) {
         const hd = (state.hotels||[]).find(h => h.letter === letter);
-        if (hd && hd.dayOnly && col.dn === 'n') continue; // dayOnly has no night shift
+        if (hd && hd.dayOnly && col.dn === 'n') continue;
         const hasCover = state.staff.some((_, si) => state.schedule[`${si}_${ci}`] === letter);
         if (!hasCover) { uncovered = true; break; }
       }
-      if (uncovered) {
-        th.style.background = '#e74c3c';
-        th.style.color = '#fff';
-      } else {
-        th.style.background = '';
-        th.style.color = '';
-      }
+      th.style.background = uncovered ? '#e74c3c' : '';
+      th.style.color = uncovered ? '#fff' : '';
+    });
+  });
+}
+
+function refreshCoverageSticky() {
+  const rowH = Math.round(parseFloat(getComputedStyle(document.documentElement).getPropertyValue('--sched-row-h'))) || 22;
+  ['tvorba-tbl','rozpis-tbl'].forEach(tblId => {
+    const tbl = document.getElementById(tblId);
+    if (!tbl) return;
+    const covTbody = tbl.querySelector('tbody.cov-tbody');
+    if (!covTbody || covTbody.style.display === 'none') return;
+    let visRow = 0;
+    Array.from(covTbody.querySelectorAll('tr')).forEach(tr => {
+      const hidden = tr.classList.contains('row-filtered');
+      tr.querySelectorAll('td, th').forEach(cell => {
+        cell.style.top = hidden ? '-9999px' : ((visRow + 1) * rowH) + 'px';
+        if (!cell.classList.contains('col-name-td')) cell.style.position = 'sticky';
+        cell.style.zIndex = cell.classList.contains('col-name-td') ? '12' : '10';
+      });
+      if (!hidden) visRow++;
     });
   });
 }
@@ -2843,27 +3076,146 @@ function applyRowFilters() {
       const s = state.staff[si];
       if (!s) return;
       let hide = false;
-      // Hotel filter: show only rows where at least one cell matches
       if (filterHotels.size > 0) {
         const calCols = getCalCols(state.month, state.year);
         const hasHotel = calCols.some((_, ci) => filterHotels.has(state.schedule[`${si}_${ci}`]));
         if (!hasHotel && !markedWorkers.has(si)) hide = true;
       }
-      // Shift filter
       if (!hide && filterShift === 'day') {
         hide = s.type === 'Noční';
       } else if (!hide && filterShift === 'night') {
         hide = s.type === 'Denní';
       } else if (!hide && filterShift === 'available') {
-        // available = has at least one empty cell (not fully assigned)
         const calCols = getCalCols(state.month, state.year);
         const allFilled = calCols.every((_, ci) => !!state.schedule[`${si}_${ci}`]);
         hide = allFilled;
       }
       tr.classList.toggle('row-filtered', hide);
     });
+    // Coverage rows: hide all if showHotels=false, else filter by active hotel filter
+    const covTbodyEl = tbl.querySelector('tbody.cov-tbody');
+    if (covTbodyEl) {
+      covTbodyEl.style.display = !showHotels ? 'none' : '';
+      if (showHotels) {
+        covTbodyEl.querySelectorAll('tr.cov-row').forEach(tr => {
+          const letter = tr.dataset.covLetter;
+          tr.classList.toggle('row-filtered', filterHotels.size > 0 && !filterHotels.has(letter));
+        });
+      }
+    }
   });
+  refreshCoverageSticky();
   updateDnCoverageColors();
+}
+
+function toggleHotelRows() {
+  showHotels = !showHotels;
+  const btn = document.getElementById('stb-hide-hotels');
+  btn.classList.toggle('active', !showHotels);
+  btn.textContent = showHotels ? 'Skrýt hotely' : 'Zobrazit hotely';
+  applyRowFilters();
+}
+
+/* ══════════════════════════════════════════════════════════════════════════════
+   COPY / PASTE (Excel-like)
+══════════════════════════════════════════════════════════════════════════════ */
+
+function toggleCopyMode() {
+  _copyMode = !_copyMode;
+  const btn = document.getElementById('stb-copy-mode');
+  btn.classList.toggle('active', _copyMode);
+  btn.textContent = _copyMode ? '❌ Zrušit výběr' : '📋 Kopírovat';
+  ['tvorba-tbl','rozpis-tbl'].forEach(tblId => {
+    const tbl = document.getElementById(tblId);
+    if (tbl) tbl.classList.toggle('copy-mode', _copyMode);
+  });
+  if (!_copyMode) clearCopySelection();
+}
+
+function clearCopySelection() {
+  _copySelSi1 = _copySelCi1 = _copySelSi2 = _copySelCi2 = null;
+  document.querySelectorAll('.cell-copy-sel').forEach(el => el.classList.remove('cell-copy-sel'));
+}
+
+function updateCopySelection() {
+  document.querySelectorAll('.cell-copy-sel').forEach(el => el.classList.remove('cell-copy-sel'));
+  if (_copySelSi1 === null || _copySelCi1 === null) return;
+  const si1 = Math.min(_copySelSi1, _copySelSi2 !== null ? _copySelSi2 : _copySelSi1);
+  const si2 = Math.max(_copySelSi1, _copySelSi2 !== null ? _copySelSi2 : _copySelSi1);
+  const ci1 = Math.min(_copySelCi1, _copySelCi2 !== null ? _copySelCi2 : _copySelCi1);
+  const ci2 = Math.max(_copySelCi1, _copySelCi2 !== null ? _copySelCi2 : _copySelCi1);
+  ['tvorba-tbl','rozpis-tbl'].forEach(tblId => {
+    const tbl = document.getElementById(tblId);
+    if (!tbl) return;
+    tbl.querySelectorAll('.staff-tbody .sched-cell[data-si][data-ci]').forEach(td => {
+      const si = +td.dataset.si;
+      const ci = +td.dataset.ci;
+      if (si >= si1 && si <= si2 && ci >= ci1 && ci <= ci2) {
+        td.classList.add('cell-copy-sel');
+      }
+    });
+  });
+}
+
+function copySelectionToClipboard() {
+  if (_copySelSi1 === null || _copySelCi1 === null) { toast('Nejdřív označ buňky tažením', false); return; }
+  const si1 = Math.min(_copySelSi1, _copySelSi2 !== null ? _copySelSi2 : _copySelSi1);
+  const si2 = Math.max(_copySelSi1, _copySelSi2 !== null ? _copySelSi2 : _copySelSi1);
+  const ci1 = Math.min(_copySelCi1, _copySelCi2 !== null ? _copySelCi2 : _copySelCi1);
+  const ci2 = Math.max(_copySelCi1, _copySelCi2 !== null ? _copySelCi2 : _copySelCi1);
+  const lines = [];
+  for (let si = si1; si <= si2; si++) {
+    const s = state.staff[si];
+    if (!s) continue;
+    const cells = [s.name || ''];
+    for (let ci = ci1; ci <= ci2; ci++) {
+      cells.push(state.schedule[`${si}_${ci}`] || '');
+    }
+    lines.push(cells.join('\t'));
+  }
+  const tsv = lines.join('\n');
+  navigator.clipboard.writeText(tsv).then(() => {
+    toast('Zkopírováno ' + (si2 - si1 + 1) + ' řádků, ' + (ci2 - ci1 + 1) + ' sloupců');
+  }).catch(() => {
+    toast('Kopírování selhalo — zkontrolujte oprávnění clipboardu', true);
+  });
+}
+
+function pasteFromClipboard(startSi, startCi) {
+  if (!_copyMode) return;
+  navigator.clipboard.readText().then(text => {
+    const lines = text.split(/\r?\n/).filter(l => l !== '');
+    if (!lines.length) return;
+    historySave();
+    const calCols = getCalCols(state.month, state.year);
+    lines.forEach((line, rowOff) => {
+      const si = startSi + rowOff;
+      if (si >= state.staff.length) return;
+      const cols = line.split('\t');
+      // If the first column looks like a name (length > 1 or not a valid single-char value), skip it
+      let colStart = 0;
+      const firstCol = (cols[0] || '').trim();
+      if (firstCol.length > 1 || !/^[A-ZXYZa-z0-9]$/.test(firstCol)) colStart = 1;
+      cols.slice(colStart).forEach((rawVal, colOff) => {
+        const ci = startCi + colOff;
+        if (ci >= calCols.length) return;
+        const v = rawVal.trim().toUpperCase();
+        const key = `${si}_${ci}`;
+        // Accept hotel letters, blank, and known values
+        if (v === '' || /^[A-Z]$/.test(v)) {
+          state.schedule[key] = v;
+        }
+      });
+    });
+    scheduleAutoSave();
+    renderScheduleTable('tvorba-tbl', true);
+    renderScheduleTable('rozpis-tbl', false);
+    buildHotelFilterButtons();
+    updateCoverageRows();
+    toast('Vloženo');
+  }).catch(() => {
+    toast('Vkládání selhalo — zkontrolujte oprávnění clipboardu', true);
+  });
 }
 
 function setSumsMode(mode) {
@@ -3862,6 +4214,8 @@ document.addEventListener('DOMContentLoaded', async () => {
     document.querySelectorAll('#stb-hotel-btns .stb-btn').forEach(b => b.classList.remove('active'));
     applyRowFilters();
   });
+  document.getElementById('stb-hide-hotels').addEventListener('click', toggleHotelRows);
+  document.getElementById('stb-copy-mode').addEventListener('click', toggleCopyMode);
   document.getElementById('stb-day-only').addEventListener('click', () => filterByShift('day'));
   document.getElementById('stb-night-only').addEventListener('click', () => filterByShift('night'));
   document.getElementById('stb-available').addEventListener('click', () => filterByShift('available'));
@@ -4095,6 +4449,18 @@ document.addEventListener('DOMContentLoaded', async () => {
       if (tab && tab.dataset.tab === 'tvorba') { e.preventDefault(); saveDraft(false); }
       else if (tab && tab.dataset.tab === 'nastaveni') { e.preventDefault(); saveSettings(); }
     }
+    // ── Copy mode: Ctrl+C / Ctrl+V ──
+    if (_copyMode && (e.ctrlKey || e.metaKey) && e.key === 'c' && !e.shiftKey) {
+      e.preventDefault();
+      copySelectionToClipboard();
+    }
+    if (_copyMode && (e.ctrlKey || e.metaKey) && e.key === 'v') {
+      e.preventDefault();
+      // Paste at the start of the current selection (top-left corner)
+      const si = _copySelSi1 !== null ? Math.min(_copySelSi1, _copySelSi2 !== null ? _copySelSi2 : _copySelSi1) : 0;
+      const ci = _copySelCi1 !== null ? Math.min(_copySelCi1, _copySelCi2 !== null ? _copySelCi2 : _copySelCi1) : 0;
+      pasteFromClipboard(si, ci);
+    }
   });
 
   // ── Regular picker ──
@@ -4114,6 +4480,45 @@ document.addEventListener('DOMContentLoaded', async () => {
 
   // Initialize history snapshot
   historySave();
+
+  // ── Copy mode: drag selection on schedule cells ──
+  document.addEventListener('mousedown', e => {
+    if (!_copyMode) return;
+    const td = e.target.closest('.staff-tbody .sched-cell[data-si][data-ci]');
+    if (!td) return;
+    e.preventDefault();
+    _copyDragging = true;
+    _copySelSi1 = +td.dataset.si;
+    _copySelCi1 = +td.dataset.ci;
+    _copySelSi2 = _copySelSi1;
+    _copySelCi2 = _copySelCi1;
+    updateCopySelection();
+  });
+  document.addEventListener('mousemove', e => {
+    if (!_copyMode || !_copyDragging) return;
+    const td = e.target.closest('.staff-tbody .sched-cell[data-si][data-ci]');
+    if (!td) return;
+    const si = +td.dataset.si;
+    const ci = +td.dataset.ci;
+    if (si !== _copySelSi2 || ci !== _copySelCi2) {
+      _copySelSi2 = si;
+      _copySelCi2 = ci;
+      updateCopySelection();
+    }
+  });
+  document.addEventListener('mouseup', e => {
+    if (!_copyMode || !_copyDragging) return;
+    _copyDragging = false;
+    // If clicked on a name cell (col-name-td with data-si) → set as paste anchor row
+    const nameTd = e.target.closest('.staff-tbody td.col-name-td[data-si]');
+    if (nameTd && _copySelSi1 === null) {
+      _copySelSi1 = +nameTd.dataset.si;
+      _copySelCi1 = 0;
+      _copySelSi2 = _copySelSi1;
+      _copySelCi2 = 0;
+      updateCopySelection();
+    }
+  });
 
   // Tooltip delegation for schedule tables
   ['tvorba-tbl', 'rozpis-tbl'].forEach(tblId => {
@@ -4142,8 +4547,8 @@ document.addEventListener('DOMContentLoaded', async () => {
 });
 </script>
 <!-- ±hod popup -->
-<div id="extra-popup" style="display:none;position:fixed;z-index:10000;background:var(--modal-bg,var(--surface));border:1px solid var(--border);border-radius:10px;padding:14px;box-shadow:0 4px 20px rgba(0,0,0,.3);min-width:250px;max-width:320px;">
-  <div style="font-weight:700;font-size:12px;margin-bottom:10px">± Hodiny</div>
+<div id="extra-popup" style="display:none;position:fixed;z-index:10000;background:var(--modal-bg,var(--surface));border:1px solid var(--border);border-radius:10px;padding:14px;box-shadow:0 4px 20px rgba(0,0,0,.3);min-width:260px;max-width:340px;">
+  <div style="font-weight:700;font-size:12px;margin-bottom:10px" id="extra-pop-title">± Hodiny — přidat záznam</div>
   <div style="display:flex;gap:6px;margin-bottom:8px;align-items:center">
     <button id="extra-pop-minus" style="padding:4px 12px;border:1px solid var(--border);border-radius:5px;cursor:pointer;background:var(--surface-alt);color:var(--text);font-size:18px;line-height:1">−</button>
     <input id="extra-pop-val" type="text" inputmode="decimal" placeholder="±hod (např. 2 nebo -3)" style="flex:1;padding:5px 8px;border:1px solid var(--border);border-radius:5px;font-family:inherit;font-size:13px;text-align:center;background:var(--input-bg,var(--bg));color:var(--text)">
@@ -4158,7 +4563,8 @@ document.addEventListener('DOMContentLoaded', async () => {
     <button id="extra-pop-cancel" style="padding:4px 10px;border:1px solid var(--border);border-radius:5px;cursor:pointer;background:var(--surface-alt);color:var(--text);font-size:12px">Zrušit</button>
     <button id="extra-pop-apply" style="padding:4px 14px;border:none;border-radius:5px;cursor:pointer;background:var(--accent);color:#fff;font-size:12px;font-weight:700">Přidat</button>
   </div>
-  <div id="extra-pop-history" style="font-size:10px;color:var(--text-muted);max-height:120px;overflow-y:auto;border-top:1px solid var(--border);padding-top:6px;display:none"></div>
+  <!-- Existing adjustments list with edit/delete -->
+  <div id="extra-pop-adjlist" style="display:none;border-top:1px solid var(--border);padding-top:6px;max-height:160px;overflow-y:auto"></div>
 </div>
 <!-- ±hod hover tooltip -->
 <div id="extra-tip" style="position:fixed;z-index:9997;display:none;pointer-events:none;background:rgba(28,28,28,.97);color:#fff;padding:8px 12px;border-radius:8px;max-width:260px;box-shadow:0 4px 16px rgba(0,0,0,.45);font-size:11px;white-space:pre-line"></div>
