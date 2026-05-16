@@ -135,16 +135,29 @@ table.staff-tbl {
 .size-row input[type=range] { flex: 1; }
 .size-row span { font-size: 11px; color: var(--text-muted); width: 32px; text-align: right; }
 
-/* Hotel manager grid */
-.hotel-grid { display: grid; grid-template-columns: repeat(auto-fill,minmax(140px,1fr)); gap: 8px; }
-.hotel-row { display: flex; align-items: center; gap: 6px; }
-.hotel-row label { font-size: 12px; font-weight: 700; width: 24px; text-align: center;
-  padding: 3px; border-radius: 4px; background: var(--accent); color: #fff; flex-shrink: 0; }
-.hotel-row input { flex: 1; padding: 4px 7px; border: 1px solid var(--border); border-radius: 5px;
-  background: var(--input-bg,var(--bg)); color: var(--text); font-size: 12px; font-family: inherit; }
-.hotel-row .hotel-del { background: none; border: none; color: var(--text-muted); cursor: pointer;
-  font-size: 14px; padding: 0 2px; }
-.hotel-row .hotel-del:hover { color: #e74c3c; }
+/* ── Hotel manager list ── */
+.hotel-item { display:flex; align-items:center; gap:6px; padding:5px 0;
+  border-bottom:1px solid var(--border); }
+.hotel-item:last-child { border-bottom:none; }
+.hotel-letter-badge { width:26px; height:26px; background:var(--accent); color:#fff; border-radius:5px;
+  display:flex; align-items:center; justify-content:center; font-weight:700; font-size:12px; flex-shrink:0; }
+.hotel-name-inp { flex:1; min-width:80px; padding:4px 7px; border:1px solid var(--border); border-radius:5px;
+  background:var(--input-bg,var(--bg)); color:var(--text); font-size:12px; font-family:inherit; }
+.hotel-hours-sel { width:62px; padding:4px 4px; border:1px solid var(--border); border-radius:5px;
+  background:var(--input-bg,var(--bg)); color:var(--text); font-size:12px; font-family:inherit; }
+.hotel-chk-lbl { font-size:11px; display:flex; align-items:center; gap:3px; white-space:nowrap;
+  cursor:pointer; color:var(--text-muted); }
+.hotel-chk-lbl input[type=checkbox] { cursor:pointer; accent-color:var(--accent); }
+.hotel-del-btn { background:none; border:none; color:var(--text-muted); cursor:pointer;
+  font-size:14px; padding:0 3px; flex-shrink:0; }
+.hotel-del-btn:hover { color:#e74c3c; }
+.hotel-add-section { margin-top:14px; padding-top:12px; border-top:2px solid var(--border); }
+.hotel-add-title { font-size:10px; font-weight:700; text-transform:uppercase; letter-spacing:.07em;
+  color:var(--text-muted); margin-bottom:8px; }
+.hotel-add-row { display:flex; align-items:center; gap:6px; flex-wrap:wrap; margin-bottom:8px; }
+.hotel-letter-inp { width:48px; padding:5px 6px; border:2px solid var(--accent); border-radius:5px;
+  background:var(--input-bg,var(--bg)); color:var(--text); font-size:14px; font-weight:700;
+  text-transform:uppercase; text-align:center; font-family:inherit; }
 
 /* ── Schedule table ── */
 .schedule-wrap {
@@ -461,7 +474,8 @@ tbody tr.row-filtered { display: none; }
     <button class="tb-btn" id="btn-draft-save">Uložit</button>
     <button class="tb-btn" id="btn-draft-new">Nový</button>
     <button class="tb-btn primary" id="btn-publish">Publikovat</button>
-    <button class="tb-btn" id="btn-import-xls">Import .xls</button>
+    <button class="tb-btn" id="btn-template-dl">⬇ Šablona</button>
+    <button class="tb-btn" id="btn-import-xls">⬆ Nahrát rozpis</button>
     <button class="tb-btn" id="btn-draft-trash">Koš</button>
     <span id="autosave-ind"></span>
     <input type="file" id="xls-file-input" accept=".xls,.xlsx" style="display:none">
@@ -685,26 +699,41 @@ tbody tr.row-filtered { display: none; }
 
 <!-- ═══════════════════════ MODAL: Hotel manager ══════════════════════════════════════════ -->
 <div class="overlay" id="overlay-hotels">
-  <div class="modal" style="width:min(560px,100%)">
+  <div class="modal" style="width:min(620px,100%)">
     <div class="modal-header">
       <h3>🏨 Správa hotelů</h3>
       <button class="modal-close" id="hotels-close">✕</button>
     </div>
     <div class="modal-body">
-      <p style="font-size:12px;color:var(--text-muted);margin-bottom:12px">
-        Nastavte počet hodin za směnu pro každý hotel. Speciální: F=10h, J=10h, S=10h, P=0h, Q=0h — ostatní=12h.
-        Kliknutím ✕ hotel odeberete z interního seznamu (ze směn zmizí až při příštím výpočtu).
-      </p>
-      <div class="hotel-grid" id="hotel-grid"></div>
-      <div style="margin-top:12px;display:flex;gap:8px;align-items:center">
-        <input type="text" id="hotel-new-letter" placeholder="Písmeno" style="width:80px;padding:5px 8px;border:1px solid var(--border);border-radius:6px;background:var(--input-bg,var(--bg));color:var(--text);font-size:13px;font-family:inherit">
-        <input type="number" id="hotel-new-hours" placeholder="Hod." min="0" max="24" style="width:80px;padding:5px 8px;border:1px solid var(--border);border-radius:6px;background:var(--input-bg,var(--bg));color:var(--text);font-size:13px;font-family:inherit">
-        <button class="btn btn-secondary btn-sm" id="btn-hotel-add">+ Přidat</button>
+      <div style="display:flex;gap:8px;align-items:center;margin-bottom:8px;font-size:11px;color:var(--text-muted)">
+        <span style="width:28px"></span>
+        <span style="flex:1;font-weight:700">Název</span>
+        <span style="width:62px;font-weight:700">Hod.</span>
+        <span style="width:80px;font-weight:700">Jen denní</span>
+        <span style="width:66px;font-weight:700">Aktivní</span>
+        <span style="width:24px"></span>
+      </div>
+      <div id="hotel-list"></div>
+      <div class="hotel-add-section">
+        <div class="hotel-add-title">Přidat nový hotel:</div>
+        <div class="hotel-add-row">
+          <input type="text" id="hotel-new-letter" placeholder="V" maxlength="2" class="hotel-letter-inp">
+          <input type="text" id="hotel-new-name" placeholder="Název hotelu" class="hotel-name-inp">
+          <select id="hotel-new-hours" class="hotel-hours-sel">
+            <option value="0">0h</option>
+            <option value="8">8h</option>
+            <option value="10">10h</option>
+            <option value="11">11h</option>
+            <option value="12" selected>12h</option>
+          </select>
+          <label class="hotel-chk-lbl"><input type="checkbox" id="hotel-new-dayonly"> Jen denní</label>
+        </div>
+        <button class="btn btn-primary btn-sm" id="btn-hotel-add">+ Přidat hotel</button>
       </div>
     </div>
     <div class="modal-footer">
-      <button class="btn btn-secondary" id="hotels-close2">Zrušit</button>
-      <button class="btn btn-primary" id="btn-hotels-save">Uložit</button>
+      <button class="btn btn-secondary" id="hotels-close2">Zavřít</button>
+      <button class="btn btn-primary" id="btn-hotels-save">💾 Uložit</button>
     </div>
   </div>
 </div>
@@ -917,6 +946,27 @@ const HOTEL_HOURS_BUILTIN = {
 const DEFAULT_HOURS = 12;
 const SKIP_VALS = new Set(['X','x','Y','y','Z','z','Ž','ž']);
 
+const HOTELS_DEFAULT = [
+  {letter:'A',name:'',hours:12,dayOnly:false,active:true},
+  {letter:'B',name:'',hours:12,dayOnly:false,active:true},
+  {letter:'C',name:'',hours:12,dayOnly:false,active:true},
+  {letter:'D',name:'',hours:12,dayOnly:false,active:true},
+  {letter:'E',name:'',hours:12,dayOnly:false,active:true},
+  {letter:'F',name:'',hours:10,dayOnly:false,active:true},
+  {letter:'G',name:'',hours:12,dayOnly:false,active:true},
+  {letter:'H',name:'',hours:12,dayOnly:false,active:true},
+  {letter:'I',name:'',hours:12,dayOnly:false,active:true},
+  {letter:'J',name:'',hours:10,dayOnly:true, active:true},
+  {letter:'L',name:'',hours:12,dayOnly:true, active:true},
+  {letter:'M',name:'',hours:12,dayOnly:false,active:true},
+  {letter:'N',name:'',hours:12,dayOnly:true, active:true},
+  {letter:'P',name:'',hours:0, dayOnly:false,active:true},
+  {letter:'Q',name:'',hours:0, dayOnly:false,active:true},
+  {letter:'S',name:'',hours:10,dayOnly:true, active:true},
+  {letter:'T',name:'',hours:12,dayOnly:false,active:true},
+  {letter:'U',name:'',hours:12,dayOnly:true, active:true},
+];
+
 const state = {
   staff: [],
   schedule: {},   // key: `${si}_${ci}` → string (cell value)
@@ -927,8 +977,9 @@ const state = {
   fondHpp: '',
   fondZpp: '',
   holidays: '',
-  hotelOverrides: {},
-  customHotels: []
+  hotels: [],     // [{letter, name, hours, dayOnly, active}]
+  hotelOverrides: {}, // legacy compat
+  customHotels: []    // legacy compat
 };
 
 /* ══════════════════════════════════════════════════════════════════════════════
@@ -983,13 +1034,34 @@ function isDayOff(col, month, year, holidaysList) {
    HOTEL HOURS
 ══════════════════════════════════════════════════════════════════════════════ */
 
-function getHotelHours(letter, st) {
-  const up = letter ? letter.toUpperCase() : '';
-  if (st && st.hotelOverrides && st.hotelOverrides[up] !== undefined) {
-    return Number(st.hotelOverrides[up]);
+function ensureHotels() {
+  if (!state.hotels || !state.hotels.length) {
+    // Initialize from HOTELS_DEFAULT, merging any legacy overrides
+    state.hotels = HOTELS_DEFAULT.map(h => {
+      const ovr = state.hotelOverrides && state.hotelOverrides[h.letter];
+      const cst = state.customHotels && state.customHotels.find(c => c.letter === h.letter);
+      return {
+        ...h,
+        hours: ovr !== undefined ? Number(ovr) : (cst ? Number(cst.hours) : h.hours)
+      };
+    });
+    // Add any custom hotels not in default list
+    (state.customHotels || []).forEach(c => {
+      if (!state.hotels.find(h => h.letter === c.letter)) {
+        state.hotels.push({letter: c.letter, name: '', hours: Number(c.hours), dayOnly: false, active: true});
+      }
+    });
   }
+}
+
+function getHotelHours(letter, st) {
+  const up = (letter || '').toUpperCase();
+  const h = (st.hotels || []).find(h => h.letter === up);
+  if (h) return Number(h.hours);
+  // Legacy fallback
+  if (st.hotelOverrides && st.hotelOverrides[up] !== undefined) return Number(st.hotelOverrides[up]);
   if (HOTEL_HOURS_BUILTIN[up] !== undefined) return HOTEL_HOURS_BUILTIN[up];
-  if (st && st.customHotels) {
+  if (st.customHotels) {
     const c = st.customHotels.find(h => h.letter === up);
     if (c) return Number(c.hours);
   }
@@ -1206,8 +1278,8 @@ function renderScheduleTable(tableId, editable) {
 
   // ── Pokrytí (coverage) rows ──
   if (state.staff.length > 0) {
-    // Only show letters actually in the schedule (not all defined hotels)
-    const hotelLetters = getScheduleHotelLetters();
+    // Show all active hotels so "Skrýt hotely" always has something to toggle
+    const hotelLetters = getUsedHotelLetters();
     if (hotelLetters.length > 0) {
       // header row
       const covHdr = document.createElement('tr');
@@ -1641,6 +1713,7 @@ function renderStaffTable() {
 ══════════════════════════════════════════════════════════════════════════════ */
 
 function buildSaveData() {
+  ensureHotels();
   return {
     month: state.month,
     year: state.year,
@@ -1650,6 +1723,8 @@ function buildSaveData() {
     fondHpp: state.fondHpp,
     fondZpp: state.fondZpp,
     holidays: state.holidays,
+    hotels: JSON.parse(JSON.stringify(state.hotels)),
+    // legacy fields kept for backward compat
     hotelOverrides: JSON.parse(JSON.stringify(state.hotelOverrides)),
     customHotels: JSON.parse(JSON.stringify(state.customHotels))
   };
@@ -1665,8 +1740,15 @@ function applyData(data) {
   if (data.fondHpp !== undefined) state.fondHpp = data.fondHpp;
   if (data.fondZpp !== undefined) state.fondZpp = data.fondZpp;
   if (data.holidays !== undefined) state.holidays = data.holidays;
-  if (data.hotelOverrides) state.hotelOverrides = data.hotelOverrides;
-  if (data.customHotels) state.customHotels = data.customHotels;
+  if (data.hotels && data.hotels.length) {
+    state.hotels = data.hotels;
+  } else {
+    // Legacy migration: build from hotelOverrides + customHotels
+    state.hotels = [];
+    if (data.hotelOverrides) state.hotelOverrides = data.hotelOverrides;
+    if (data.customHotels) state.customHotels = data.customHotels;
+    ensureHotels(); // will populate state.hotels from legacy data
+  }
 
   // sync UI controls
   document.getElementById('sel-month').value = state.month;
@@ -2054,13 +2136,12 @@ function updateSubtoolbar() {
 }
 
 function getUsedHotelLetters() {
-  // All defined hotels (builtin + custom + overrides + schedule) — for filter buttons
+  // All active hotels + any letters in schedule
+  ensureHotels();
   const letters = new Set();
-  Object.keys(HOTEL_HOURS_BUILTIN).forEach(k => letters.add(k));
-  (state.customHotels||[]).forEach(h => letters.add(h.letter));
-  Object.keys(state.hotelOverrides||{}).forEach(k => letters.add(k));
+  (state.hotels || []).forEach(h => { if (h.active !== false) letters.add(h.letter); });
   Object.values(state.schedule).forEach(v => {
-    if (v && v.length === 1 && /[A-Z]/i.test(v)) letters.add(v.toUpperCase());
+    if (v && v.length === 1 && /[A-Z]/i.test(v) && !SKIP_VALS.has(v)) letters.add(v.toUpperCase());
   });
   return Array.from(letters).sort();
 }
@@ -2468,52 +2549,75 @@ function clearActual() {
 
 /* ── Hotel manager ─────────────────────────────────────────────────────────── */
 
+const HOURS_OPTIONS = [0, 8, 10, 11, 12];
+
+function hotelHoursSelect(selected) {
+  return `<select class="hotel-hours-sel">
+    ${HOURS_OPTIONS.map(h => `<option value="${h}"${Number(selected)===h?' selected':''}>${h}h</option>`).join('')}
+  </select>`;
+}
+
 function showHotelManager() {
-  const grid = document.getElementById('hotel-grid');
-  grid.innerHTML = '';
-  // Merge builtin + overrides + custom
-  const all = {};
-  Object.entries(HOTEL_HOURS_BUILTIN).forEach(([k, v]) => { all[k] = v; });
-  (state.customHotels || []).forEach(h => { all[h.letter] = Number(h.hours); });
-  Object.entries(state.hotelOverrides || {}).forEach(([k, v]) => { all[k] = Number(v); });
+  ensureHotels();
+  const list = document.getElementById('hotel-list');
+  list.innerHTML = '';
 
-  function addRow(letter, hours) {
-    const row = document.createElement('div');
-    row.className = 'hotel-row';
-    row.dataset.letter = letter;
-    row.innerHTML = `
-      <label>${letter}</label>
-      <input type="number" min="0" max="24" step="0.5" value="${hours}" data-letter="${letter}">
-      <button class="hotel-del" title="Odebrat" data-letter="${letter}">✕</button>
+  state.hotels.forEach((h, idx) => {
+    const item = document.createElement('div');
+    item.className = 'hotel-item';
+    item.dataset.idx = idx;
+    const activeChk = h.active !== false ? 'checked' : '';
+    const dayOnlyChk = h.dayOnly ? 'checked' : '';
+    item.innerHTML = `
+      <span class="hotel-letter-badge">${h.letter}</span>
+      <input type="text" class="hotel-name-inp" value="${h.name||''}" placeholder="Název hotelu…">
+      ${hotelHoursSelect(h.hours)}
+      <label class="hotel-chk-lbl"><input type="checkbox" class="hm-dayonly" ${dayOnlyChk}> Jen denní</label>
+      <label class="hotel-chk-lbl" style="width:66px"><input type="checkbox" class="hm-active" ${activeChk}> Aktivní</label>
+      <button class="hotel-del-btn" title="Odebrat hotel">✕</button>
     `;
-    row.querySelector('.hotel-del').addEventListener('click', () => row.remove());
-    grid.appendChild(row);
-  }
+    item.querySelector('.hotel-del-btn').addEventListener('click', () => {
+      if (!confirm(`Odebrat hotel ${h.letter}?`)) return;
+      item.remove();
+    });
+    list.appendChild(item);
+  });
 
-  Object.entries(all).sort((a,b)=>a[0].localeCompare(b[0])).forEach(([k,v]) => addRow(k, v));
+  // Reset add form
+  document.getElementById('hotel-new-letter').value = '';
+  document.getElementById('hotel-new-name').value = '';
+  document.getElementById('hotel-new-hours').value = '12';
+  document.getElementById('hotel-new-dayonly').checked = false;
   document.getElementById('overlay-hotels').classList.add('show');
 }
 
 function saveHotelManager() {
-  const grid = document.getElementById('hotel-grid');
-  const newOverrides = {};
-  const newCustom = [];
-  grid.querySelectorAll('.hotel-row').forEach(row => {
-    const letter = row.dataset.letter.toUpperCase();
-    const inp = row.querySelector('input[type=number]');
-    const hours = parseFloat(inp ? inp.value : 0);
-    if (HOTEL_HOURS_BUILTIN[letter] !== undefined) {
-      // builtin — store as override
-      newOverrides[letter] = hours;
-    } else {
-      newCustom.push({ letter, hours });
-    }
+  const list = document.getElementById('hotel-list');
+  const newHotels = [];
+  list.querySelectorAll('.hotel-item').forEach(item => {
+    const newLetter = item.dataset.newletter; // new hotel added via form
+    const idx = +item.dataset.idx;
+    const orig = newLetter ? {letter: newLetter} : (state.hotels[idx] || {});
+    newHotels.push({
+      letter:  orig.letter,
+      name:    item.querySelector('.hotel-name-inp').value.trim(),
+      hours:   Number(item.querySelector('.hotel-hours-sel').value),
+      dayOnly: item.querySelector('.hm-dayonly').checked,
+      active:  item.querySelector('.hm-active').checked,
+    });
   });
-  state.hotelOverrides = newOverrides;
-  state.customHotels = newCustom;
+  state.hotels = newHotels;
+  // Update legacy fields for backward compat
+  state.hotelOverrides = {};
+  state.customHotels = [];
+  newHotels.forEach(h => {
+    if (HOTEL_HOURS_BUILTIN[h.letter] !== undefined) state.hotelOverrides[h.letter] = h.hours;
+    else state.customHotels.push({letter: h.letter, hours: h.hours});
+  });
   document.getElementById('overlay-hotels').classList.remove('show');
   toast('Hotely uloženy');
   updateAllSums();
+  buildHotelFilterButtons();
 }
 
 /* ══════════════════════════════════════════════════════════════════════════════
@@ -2698,6 +2802,58 @@ function resetSizes() {
    IMPORT XLS
 ══════════════════════════════════════════════════════════════════════════════ */
 
+function downloadTemplate() {
+  if (typeof XLSX === 'undefined') { toast('SheetJS se nenačetl', true); return; }
+  const calCols = getCalCols(state.month, state.year);
+
+  // Header row 1: Jméno + day numbers (each day = 2 cols d+n) + sum labels
+  const hdr1 = ['Jméno'];
+  let prevDay3 = null;
+  calCols.forEach(col => {
+    if (col.day !== prevDay3) {
+      hdr1.push(col.nextYear ? '1.1.' : String(col.day));
+      prevDay3 = col.day;
+    } else {
+      hdr1.push('');
+    }
+  });
+  hdr1.push('D všed','N všed','D vík','N vík','Σ smě','±hod','Σhod','Poznámka');
+
+  // Header row 2: d/n for each column
+  const hdr2 = [''];
+  calCols.forEach(col => hdr2.push(col.dn));
+  hdr2.push('','','','','','','','');
+
+  const rows = [hdr1, hdr2];
+
+  // Staff rows (name + empty schedule cells)
+  if (state.staff.length) {
+    state.staff.forEach(s => {
+      const row = [s.name || ''];
+      calCols.forEach(() => row.push(''));
+      row.push('','','','','','','','');
+      rows.push(row);
+    });
+  } else {
+    // At least 10 empty rows
+    for (let i = 0; i < 10; i++) {
+      const row = [''];
+      calCols.forEach(() => row.push(''));
+      row.push('','','','','','','','');
+      rows.push(row);
+    }
+  }
+
+  const ws = XLSX.utils.aoa_to_sheet(rows);
+  // Set column widths
+  ws['!cols'] = [{wch:20},...calCols.map(() => ({wch:3})), {wch:7},{wch:7},{wch:7},{wch:7},{wch:7},{wch:7},{wch:7},{wch:16}];
+  const wb = XLSX.utils.book_new();
+  const mn = MONTH_NAMES[state.month - 1];
+  XLSX.utils.book_append_sheet(wb, ws, `${mn} ${state.year}`);
+  XLSX.writeFile(wb, `Sablona_${mn}_${state.year}.xlsx`);
+  toast('Šablona stažena');
+}
+
 function importXls() {
   document.getElementById('xls-file-input').click();
 }
@@ -2851,6 +3007,9 @@ document.addEventListener('DOMContentLoaded', async () => {
   loadColorProfile();
   applyColorProfile();
 
+  // Initialize hotel list from defaults
+  ensureHotels();
+
   // Set initial month/year
   document.getElementById('sel-month').value = state.month;
   document.getElementById('inp-year').value = state.year;
@@ -2937,6 +3096,7 @@ document.addEventListener('DOMContentLoaded', async () => {
   document.getElementById('btn-draft-new').addEventListener('click', newDraft);
   document.getElementById('btn-publish').addEventListener('click', publishSchedule);
   document.getElementById('btn-draft-trash').addEventListener('click', showTrash);
+  document.getElementById('btn-template-dl').addEventListener('click', downloadTemplate);
   document.getElementById('btn-import-xls').addEventListener('click', importXls);
   document.getElementById('xls-file-input').addEventListener('change', handleXlsImport);
   document.getElementById('btn-size-tvorba').addEventListener('click', showSizeEditor);
@@ -3000,21 +3160,33 @@ document.addEventListener('DOMContentLoaded', async () => {
   document.getElementById('btn-hotels-save').addEventListener('click', saveHotelManager);
   document.getElementById('btn-hotel-add').addEventListener('click', () => {
     const letter = document.getElementById('hotel-new-letter').value.toUpperCase().trim();
-    const hours  = document.getElementById('hotel-new-hours').value;
-    if (!letter || letter.length !== 1) { toast('Zadejte jedno písmeno', true); return; }
-    document.getElementById('hotel-new-letter').value = '';
-    document.getElementById('hotel-new-hours').value = '';
-    // add to grid dynamically
-    const grid = document.getElementById('hotel-grid');
-    const row = document.createElement('div');
-    row.className = 'hotel-row'; row.dataset.letter = letter;
-    row.innerHTML = `
-      <label>${letter}</label>
-      <input type="number" min="0" max="24" step="0.5" value="${hours||12}" data-letter="${letter}">
-      <button class="hotel-del" title="Odebrat" data-letter="${letter}">✕</button>
+    const name   = document.getElementById('hotel-new-name').value.trim();
+    const hours  = Number(document.getElementById('hotel-new-hours').value) || 12;
+    const dayOnly= document.getElementById('hotel-new-dayonly').checked;
+    if (!letter || !/^[A-Z]$/.test(letter)) { toast('Zadejte jedno písmeno A–Z', true); return; }
+    const list = document.getElementById('hotel-list');
+    if (list.querySelector(`.hotel-item [data-letter="${letter}"]`)) { toast('Hotel ' + letter + ' již existuje', true); return; }
+    // Append to bottom of list (next idx = current count)
+    const idx = list.querySelectorAll('.hotel-item').length;
+    const item = document.createElement('div');
+    item.className = 'hotel-item';
+    item.dataset.idx = idx;
+    item.innerHTML = `
+      <span class="hotel-letter-badge">${letter}</span>
+      <input type="text" class="hotel-name-inp" value="${name}" placeholder="Název hotelu…">
+      ${hotelHoursSelect(hours)}
+      <label class="hotel-chk-lbl"><input type="checkbox" class="hm-dayonly" ${dayOnly?'checked':''}> Jen denní</label>
+      <label class="hotel-chk-lbl" style="width:66px"><input type="checkbox" class="hm-active" checked> Aktivní</label>
+      <button class="hotel-del-btn" title="Odebrat hotel">✕</button>
     `;
-    row.querySelector('.hotel-del').addEventListener('click', () => row.remove());
-    grid.appendChild(row);
+    item.dataset.newletter = letter; // flag so saveHotelManager knows it's new
+    item.querySelector('.hotel-del-btn').addEventListener('click', () => item.remove());
+    list.appendChild(item);
+    // Clear add form
+    document.getElementById('hotel-new-letter').value = '';
+    document.getElementById('hotel-new-name').value = '';
+    document.getElementById('hotel-new-hours').value = '12';
+    document.getElementById('hotel-new-dayonly').checked = false;
   });
 
   // ── Size panel ──
