@@ -6668,6 +6668,8 @@ document.addEventListener('mouseup', (e) => {
 const WEB_MODE   = window.location.pathname.includes('tvorba') ? 'tvorba'
                  : window.location.pathname === '/rozpis' ? 'recep'
                  : 'view';
+// FOUC prevence — přidej třídu IHNED (skript běží koncem <body>, před prvním renderem; window.onload by bylo pozdě)
+if (WEB_MODE === 'recep') document.body.classList.add('portal-standalone-recep');
 const LOCK_APP   = 'raspis-view';
 const POLL_INTERVAL    = 10000;
 const _INACT_TIMEOUT   = 10 * 60 * 1000; // 10 minut nečinnosti → ukončit editaci
@@ -7572,7 +7574,9 @@ function showAppTab(tabName) {
     document.body.classList.add('portal-recep-mode');
 
     // Aktivuj "Pouze hodiny" (hoursonly) pokud ještě není
-    if (typeof sumViewMode !== 'undefined' && sumViewMode !== 'hoursonly' && typeof toggleHoursOnly === 'function') {
+    // Výjimka: v samostatné kartě Rozpis (/rozpis) zobrazit všechny součtové sloupce
+    // (hod. denní/noční všední i víkendové mají třídu sum-col-counts, která by v hoursonly zmizela)
+    if (WEB_MODE !== 'recep' && typeof sumViewMode !== 'undefined' && sumViewMode !== 'hoursonly' && typeof toggleHoursOnly === 'function') {
       _viewHoursOnlyActivated = true;
       toggleHoursOnly();
     }
