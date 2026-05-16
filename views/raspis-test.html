@@ -106,12 +106,12 @@ table.staff-tbl {
 .staff-tbl input:focus, .staff-tbl select:focus { outline: 1px solid var(--accent); border-radius: 3px; }
 .staff-tbl .col-num { width: 30px; text-align: center; color: var(--text-muted); }
 .staff-tbl .col-name { min-width: 130px; }
-.staff-tbl .col-login { min-width: 90px; }
+.staff-tbl .col-login { width: 60px; min-width: 60px; max-width: 60px; }
 .staff-tbl .col-type { width: 110px; }
 .staff-tbl .col-contract { width: 70px; }
 .staff-tbl .col-maxhrs { width: 70px; }
-.staff-tbl .col-regular { min-width: 70px; width: 70px; }
-.staff-tbl .col-dates { min-width: 40px; width: 40px; }
+.staff-tbl .col-regular { width: 36px; min-width: 36px; max-width: 36px; text-align: center; }
+.staff-tbl .col-dates { width: 36px; min-width: 36px; max-width: 36px; text-align: center; }
 .staff-tbl .col-note { min-width: 110px; }
 .staff-tbl .col-note textarea {
   width: 100%; min-height: 28px; border: none; background: transparent;
@@ -365,20 +365,28 @@ tbody tr.row-filtered { display: none; }
 [data-theme="dark"] .cov-dayonly-night { background: var(--col-covdn-bg,#1a1a1a) !important; color: var(--col-covdn-tx,#555) !important; }
 .cov-row .col-name-td { font-size: 10px; font-weight: 700; padding: 2px 5px; background: var(--surface); }
 .cov-tbody { position: sticky; z-index: 3; }
-.cov-tbody td, .cov-tbody th { background-color: var(--surface, #fff); }
-.cov-tbody td.cov-empty { background-color: var(--col-cov0-bg, #ffebeb) !important; }
-.cov-tbody td.cov-1 { background-color: var(--col-cov1-bg, #c8f5c8) !important; }
-.cov-tbody td.cov-2 { background-color: var(--col-cov2-bg, #ffe082) !important; }
-.cov-tbody td.cov-3plus { background-color: var(--col-cov3-bg, #ff8a65) !important; }
-.cov-tbody td.cov-dayonly-night { background-color: var(--col-covdn-bg, #e8e8e8) !important; }
-.cov-tbody td.cell-wd { background-color: var(--col-wd-bg, #fff) !important; }
-.cov-tbody td.cell-wn { background-color: var(--col-wn-bg, #c8c8c8) !important; }
-.cov-tbody td.cell-kd { background-color: var(--col-kd-bg, #a8d8f0) !important; }
-.cov-tbody td.cell-kn { background-color: var(--col-kn-bg, #5b9dc9) !important; }
+.cov-tbody td { background: var(--surface); }
+.cov-tbody th { background: #2a2a2a; color: #ccc; }
+[data-theme="dark"] .cov-tbody th { background: #111; }
+.cov-tbody .col-name-td {
+  position: sticky; left: 0; z-index: 6 !important;
+  background: var(--surface) !important;
+}
+.cov-tbody td.cov-empty { background: var(--col-cov0-bg) !important; color: var(--col-cov0-tx) !important; }
+.cov-tbody td.cov-1 { background: var(--col-cov1-bg) !important; color: var(--col-cov1-tx) !important; }
+.cov-tbody td.cov-2 { background: var(--col-cov2-bg) !important; color: var(--col-cov2-tx) !important; }
+.cov-tbody td.cov-3plus { background: var(--col-cov3-bg) !important; color: var(--col-cov3-tx) !important; }
+.cov-tbody td.cov-dayonly-night { background: var(--col-covdn-bg) !important; color: var(--col-covdn-tx) !important; }
+/* Override cell-wd/wn/kd/kn for cov cells to just be surface */
+.cov-tbody td.cell-wd:not(.cov-1):not(.cov-2):not(.cov-3plus):not(.cov-empty):not(.cov-dayonly-night) { background: var(--col-wd-bg); }
+.cov-tbody td.cell-wn:not(.cov-1):not(.cov-2):not(.cov-3plus):not(.cov-empty):not(.cov-dayonly-night) { background: var(--col-wn-bg); }
+.cov-tbody td.cell-kd:not(.cov-1):not(.cov-2):not(.cov-3plus):not(.cov-empty):not(.cov-dayonly-night) { background: var(--col-kd-bg); }
+.cov-tbody td.cell-kn:not(.cov-1):not(.cov-2):not(.cov-3plus):not(.cov-empty):not(.cov-dayonly-night) { background: var(--col-kn-bg); }
 
 /* Cell state coloring */
-.sched-cell.cell-empty { background: var(--col-empty-bg,#fff5f5) !important; }
-[data-theme="dark"] .sched-cell.cell-empty { background: var(--col-empty-bg,#2a1a1a) !important; }
+/* .cell-empty removed (CHANGE 7a) */
+.sched-cell.cell-p-many { color: #e74c3c !important; font-weight: 700; }
+.sched-cell.cell-p-many input { color: #e74c3c !important; font-weight: 700; }
 .sched-cell.cell-regular-off { background: var(--col-reg-off-bg,#e8e8e8) !important; color: var(--col-reg-off-tx,#888) !important; }
 [data-theme="dark"] .sched-cell.cell-regular-off { background: var(--col-reg-off-bg,#1e1e24) !important; color: var(--col-reg-off-tx,#666) !important; }
 .sched-cell.cell-req-missing { background: var(--col-req-miss-bg,#ffd6d6) !important; outline: 1px dashed #e74c3c; outline-offset: -1px; }
@@ -404,11 +412,25 @@ tbody tr.row-filtered { display: none; }
   font-family: inherit; cursor: pointer; }
 .btn-rp-ok { background: var(--accent); color: #fff; }
 .btn-rp-cancel { background: var(--surface-alt); color: var(--text); border: 1px solid var(--border); }
-/* Regular picker trigger button in staff table */
-.btn-regular-pick { padding: 2px 6px; border: 1px solid var(--border); border-radius: 4px;
-  background: var(--surface-alt); color: var(--text-muted); font-size: 10px; cursor: pointer;
-  font-family: inherit; flex-shrink: 0; }
-.btn-regular-pick:hover { background: var(--accent); color: #fff; border-color: transparent; }
+/* Indicator pick buttons (stálé volno & nemůže aktuálně) */
+.btn-ind-pick {
+  padding: 1px 5px; border: 1px solid var(--border); border-radius: 4px;
+  background: var(--surface-alt); color: var(--text-muted);
+  font-size: 12px; cursor: pointer; font-family: inherit;
+  width: 26px; height: 22px; display: flex; align-items: center; justify-content: center;
+  margin: auto; transition: background .15s, color .15s;
+}
+.btn-ind-pick:hover { background: var(--accent); color: #fff; border-color: transparent; }
+.btn-ind-pick.btn-ind-active { background: var(--accent); color: #fff; border-color: transparent; }
+/* Row action buttons (edit/delete) */
+.btn-row-act {
+  padding: 2px 5px; border: 1px solid var(--border); border-radius: 4px;
+  background: var(--surface-alt); color: var(--text-muted);
+  cursor: pointer; font-size: 11px; font-family: inherit;
+  margin: 0 1px; transition: background .12s;
+}
+.btn-row-act:hover { background: var(--accent); color: #fff; border-color: transparent; }
+.btn-row-del:hover { background: #e74c3c; color: #fff; border-color: transparent; }
 
 /* ── Dates picker popup (same style as #regular-picker) ── */
 #dates-picker {
@@ -418,10 +440,6 @@ tbody tr.row-filtered { display: none; }
   min-width: 240px; display: none;
 }
 #dates-picker.show { display: block; }
-.col-regular { min-width: 130px; }
-.col-regular-wrap { display: flex; align-items: center; gap: 4px; }
-.col-regular-text { font-size: 11px; color: var(--text-muted); flex: 1; overflow: hidden;
-  text-overflow: ellipsis; white-space: nowrap; }
 /* Tooltip – buňka s požadavkem */
 .sched-cell[data-req-tip]:hover::after {
   content: attr(data-req-tip);
@@ -723,12 +741,7 @@ tbody tr.row-filtered { display: none; }
             <option>HPP</option><option>ZPP</option><option>DPČ</option><option>DPP</option>
           </select>
         </div>
-        <div class="field"><label>Max. hodin</label><input type="text" id="ns-maxhrs"></div>
-        <div class="field"><label>Stálé volno</label><input type="text" id="ns-regular" placeholder="po-d,út-n,sv"></div>
-        <div class="field"><label>Nemůže aktuálně</label><input type="text" id="ns-dates" placeholder="1, 3. 5 nebo 1-6, 20-22"></div>
       </div>
-      <div class="field"><label>Poznámka aktuální</label><textarea id="ns-notem" rows="2" style="resize:vertical"></textarea></div>
-      <div class="field"><label>Poznámka trvalá</label><textarea id="ns-notep" rows="2" style="resize:vertical"></textarea></div>
     </div>
     <div class="modal-footer">
       <button class="btn btn-secondary" id="add-staff-cancel">Zrušit</button>
@@ -1012,11 +1025,6 @@ tbody tr.row-filtered { display: none; }
         <div class="color-group">
           <h4>Buňky pracovníků</h4>
           <div class="color-row2">
-            <span class="color-lbl">Prázdná buňka</span>
-            <label>Pozadí <input type="color" class="col-inp" data-th="light" data-k="emptyBg"></label>
-            <span class="color-swatch" id="sw-light-empty"></span>
-          </div>
-          <div class="color-row2">
             <span class="color-lbl">Stálé volno</span>
             <label>Pozadí <input type="color" class="col-inp" data-th="light" data-k="regOffBg"></label>
             <label>Text <input type="color" class="col-inp" data-th="light" data-k="regOffTx"></label>
@@ -1128,11 +1136,6 @@ tbody tr.row-filtered { display: none; }
         <div class="color-group">
           <h4>Buňky pracovníků</h4>
           <div class="color-row2">
-            <span class="color-lbl">Prázdná buňka</span>
-            <label>Pozadí <input type="color" class="col-inp" data-th="dark" data-k="emptyBg"></label>
-            <span class="color-swatch" id="sw-dark-empty"></span>
-          </div>
-          <div class="color-row2">
             <span class="color-lbl">Stálé volno</span>
             <label>Pozadí <input type="color" class="col-inp" data-th="dark" data-k="regOffBg"></label>
             <label>Text <input type="color" class="col-inp" data-th="dark" data-k="regOffTx"></label>
@@ -1212,22 +1215,51 @@ tbody tr.row-filtered { display: none; }
 <!-- ═══════════════════════════ TOAST ═════════════════════════════════════════════════════ -->
 <div id="toast"></div>
 
-<div id="sched-name-tip" style="position:fixed;z-index:9998;display:none;pointer-events:none;background:rgba(28,28,28,.97);color:#fff;padding:6px 11px;border-radius:7px;font-size:11px;line-height:1.6;white-space:pre-line;max-width:260px;box-shadow:0 3px 14px rgba(0,0,0,.4)"></div>
+<div id="sched-name-tip" style="position:fixed;z-index:9998;display:none;pointer-events:none;background:rgba(28,28,28,.97);color:#fff;padding:8px 12px;border-radius:8px;min-width:160px;max-width:280px;box-shadow:0 4px 16px rgba(0,0,0,.45)">
+  <div id="snt-name" style="font-weight:700;font-size:12px;margin-bottom:4px"></div>
+  <div id="snt-sums" style="font-size:11px;margin-bottom:2px"></div>
+  <div id="snt-pref" style="font-size:11px;font-style:italic;opacity:.75"></div>
+  <div id="snt-notes" style="font-size:10px;opacity:.7;margin-top:4px;white-space:pre-line"></div>
+</div>
 
 <script>
 'use strict';
 
 /* ── Floating name tooltip ── */
-const _schedTip = document.getElementById('sched-name-tip');
-function showSchedTip(text, x, y) {
-  _schedTip.textContent = text;
-  _schedTip.style.display = 'block';
-  const w = _schedTip.offsetWidth || 200;
-  const left = Math.min(x + 12, window.innerWidth - w - 8);
-  _schedTip.style.left = left + 'px';
-  _schedTip.style.top = (y + 6) + 'px';
+function showSchedTip(si, x, y) {
+  const s = state.staff[si];
+  if (!s) return;
+  const calCols = getCalCols(state.month, state.year);
+  const sums = calcSums(si, calCols, state);
+  const targetHrs = parseFloat(s.maxHrs) || (s.contract === 'HPP' ? parseFloat(state.fondHpp) : parseFloat(state.fondZpp)) || 0;
+  const targetShifts = targetHrs > 0 ? Math.round(targetHrs / 12) : 0;
+
+  document.getElementById('snt-name').textContent = s.name || `(pracovník ${si+1})`;
+  document.getElementById('snt-sums').textContent = `Směn: ${sums.total}   Hodin: ${sums.totalHrs % 1 === 0 ? sums.totalHrs : sums.totalHrs.toFixed(1)}`;
+  const prefEl = document.getElementById('snt-pref');
+  if (targetShifts > 0) { prefEl.textContent = `chtěl by ideálně ${targetShifts} směn`; prefEl.style.display = ''; }
+  else prefEl.style.display = 'none';
+
+  const noteParts = [];
+  if (s.dates) noteParts.push(`Nemůže: ${s.dates}`);
+  if (s.noteM) noteParts.push(`Pozn.: ${s.noteM}`);
+  if (s.noteP) noteParts.push(`Trvalá: ${s.noteP}`);
+  const noteEl = document.getElementById('snt-notes');
+  if (noteParts.length) { noteEl.textContent = noteParts.join('\n'); noteEl.style.display = ''; }
+  else noteEl.style.display = 'none';
+
+  const tip = document.getElementById('sched-name-tip');
+  tip.style.display = 'block';
+  // Position after layout
+  const w = tip.offsetWidth || 200;
+  const h = tip.offsetHeight || 80;
+  tip.style.left = Math.min(x + 14, window.innerWidth - w - 8) + 'px';
+  tip.style.top = Math.min(y + 8, window.innerHeight - h - 8) + 'px';
 }
-function hideSchedTip() { _schedTip.style.display = 'none'; }
+
+function hideSchedTip() {
+  document.getElementById('sched-name-tip').style.display = 'none';
+}
 
 /* ══════════════════════════════════════════════════════════════════════════════
    CONSTANTS & STATE
@@ -1482,6 +1514,7 @@ function historyUndo() {
   updateDuplicateClasses();
   updateCoverageRows();
   updateRequirementClasses();
+  updatePManyCells();
 }
 
 function historyRedo() {
@@ -1493,6 +1526,7 @@ function historyRedo() {
   updateDuplicateClasses();
   updateCoverageRows();
   updateRequirementClasses();
+  updatePManyCells();
 }
 
 /* ══════════════════════════════════════════════════════════════════════════════
@@ -1551,14 +1585,11 @@ function applyRegularAndReqClasses(td, si, ci, col, val) {
   const holidaysList = parseHolidays(state.holidays);
   // Regular off
   const regOff = s && isRegularOff(col, state.month, state.year, s.regular, holidaysList);
-  // Empty cell (not skip val, not regular off)
-  const isEmpty = !val && !regOff;
   // Requirements
   const req = state.requirements && state.requirements[`${si}_${ci}`];
   const reqMissing = !!(req && !val);
 
   td.classList.toggle('cell-regular-off', !!(regOff && !val));
-  td.classList.toggle('cell-empty', !!(isEmpty && !reqMissing));
   td.classList.toggle('cell-req-missing', reqMissing);
   if (reqMissing) td.dataset.reqTip = `Původně: ${req}`;
   else delete td.dataset.reqTip;
@@ -1738,7 +1769,18 @@ function renderScheduleTable(tableId, editable) {
         tr.dataset.covLetter = letter;
         const nameTd = document.createElement('td');
         nameTd.className = 'col-name-td cov-label';
-        nameTd.textContent = letter;
+        const hotelInfo = (state.hotels || []).find(h => h.letter === letter);
+        const hotelName = hotelInfo && hotelInfo.name ? hotelInfo.name : '';
+        nameTd.innerHTML = '';
+        const letterSpan = document.createElement('strong');
+        letterSpan.textContent = letter;
+        nameTd.appendChild(letterSpan);
+        if (hotelName) {
+          const nameSpan = document.createElement('span');
+          nameSpan.textContent = ' ' + hotelName;
+          nameSpan.style.cssText = 'font-size:9px;opacity:.65;font-weight:400;';
+          nameTd.appendChild(nameSpan);
+        }
         tr.appendChild(nameTd);
         const _hotelData = (state.hotels||[]).find(h => h.letter === letter);
         const _isDayOnly = _hotelData && _hotelData.dayOnly;
@@ -1771,8 +1813,9 @@ function renderScheduleTable(tableId, editable) {
     }
   }
 
-  // Pre-compute duplicate cells for coloring
+  // Pre-compute duplicate cells and P-many cells for coloring
   const _dupeKeys = computeDuplicateCells(calCols, state.staff, state.schedule);
+  const _pManyKeys = computePersonPMany(calCols, state.staff, state.schedule);
 
   state.staff.forEach((s, si) => {
     // Skip if not yet active in this month
@@ -1787,20 +1830,10 @@ function renderScheduleTable(tableId, editable) {
     // Name cell
     const nameTd = document.createElement('td');
     nameTd.className = 'col-name-td';
+    nameTd.dataset.si = si;
     nameTd.textContent = s.name || `(pracovník ${si+1})`;
     const tc = TYPE_COLORS[s.type] || '';
     if (tc) { nameTd.style.background = tc; nameTd.style.color = '#222'; }
-    // Tooltip: nemůže + poznámky (JS-based floating tooltip)
-    const _tipParts = [];
-    if (s.dates) _tipParts.push(`Nemůže: ${s.dates}`);
-    if (editable && s.noteM) _tipParts.push(`Pozn.: ${s.noteM}`);
-    if (s.noteP) _tipParts.push(editable ? `Trvalá: ${s.noteP}` : s.noteP);
-    if (_tipParts.length) {
-      const _tip = _tipParts.join('\n');
-      nameTd.addEventListener('mouseenter', e => showSchedTip(_tip, e.clientX, e.clientY));
-      nameTd.addEventListener('mousemove', e => showSchedTip(_tip, e.clientX, e.clientY));
-      nameTd.addEventListener('mouseleave', hideSchedTip);
-    }
     tr.appendChild(nameTd);
 
     // Schedule cells
@@ -1809,6 +1842,7 @@ function renderScheduleTable(tableId, editable) {
       td.className = 'sched-cell ' + cellClass(col, state.month, state.year, holidaysList);
       td.dataset.si = si; td.dataset.ci = ci; td.dataset.dn = col.dn;
       if (_dupeKeys.has(`${si}_${ci}`)) td.classList.add('cell-duplicate');
+      if (_pManyKeys.has(`${si}_${ci}`)) td.classList.add('cell-p-many');
       const val = state.schedule[`${si}_${ci}`] || '';
       if (!_dupeKeys.has(`${si}_${ci}`)) applyRegularAndReqClasses(td, si, ci, col, val);
 
@@ -1961,6 +1995,7 @@ function renderCells(tableId, editable) {
       applyRegularAndReqClasses(td, si, ci, col, val);
     }
   });
+  updatePManyCells();
 }
 
 /* ══════════════════════════════════════════════════════════════════════════════
@@ -2065,6 +2100,7 @@ function setCellValue(si, ci, val) {
   updateDuplicateClasses();
   updateCoverageRows();
   updateRequirementClasses();
+  updatePManyCells();
   scheduleAutoSave();
 }
 
@@ -2101,6 +2137,7 @@ function renderStaffTable() {
     loginTd.className = 'col-login';
     const loginInp = document.createElement('input');
     loginInp.type = 'text'; loginInp.value = s.login || '';
+    loginInp.style.textTransform = 'uppercase'; loginInp.maxLength = 10;
     loginInp.addEventListener('input', () => { s.login = loginInp.value; });
     loginTd.appendChild(loginInp);
     tr.appendChild(loginTd);
@@ -2147,36 +2184,27 @@ function renderStaffTable() {
     maxTd.appendChild(maxInp);
     tr.appendChild(maxTd);
 
-    // Regular — visual picker button
+    // Regular (stálé volno) — indicator button
     const regTd = document.createElement('td');
     regTd.className = 'col-regular';
-    const regWrap = document.createElement('div');
-    regWrap.className = 'col-regular-wrap';
-    const regLabel = document.createElement('span');
-    regLabel.className = 'col-regular-text';
-    regLabel.title = s.regular || '';
-    regLabel.textContent = s.regular || '(žádné)';
     const regBtn = document.createElement('button');
-    regBtn.className = 'btn-regular-pick';
-    regBtn.textContent = '📅';
-    regBtn.title = 'Nastavit stálé volno';
-    regBtn.addEventListener('click', (e) => {
-      e.stopPropagation();
-      openRegularPicker(si, regLabel, e.currentTarget);
+    regBtn.className = 'btn-ind-pick' + (s.regular ? ' btn-ind-active' : '');
+    regBtn.textContent = s.regular ? '●' : '○';
+    regBtn.title = s.regular ? `Stálé volno: ${s.regular}` : '';
+    regBtn.addEventListener('click', ev => {
+      ev.stopPropagation();
+      openRegularPicker(si, regBtn, ev.currentTarget);
     });
-    regWrap.appendChild(regLabel);
-    regWrap.appendChild(regBtn);
-    regTd.appendChild(regWrap);
+    regTd.appendChild(regBtn);
     tr.appendChild(regTd);
 
     // Dates (nemůže aktuálně) — indicator button + popup
     const datesTd = document.createElement('td');
     datesTd.className = 'col-dates';
     const datesBtn = document.createElement('button');
-    datesBtn.className = 'btn-regular-pick';
+    datesBtn.className = 'btn-ind-pick' + (s.dates ? ' btn-ind-active' : '');
     datesBtn.title = 'Nemůže aktuálně';
     datesBtn.textContent = s.dates ? '●' : '○';
-    datesBtn.style.width = '100%';
     datesBtn.addEventListener('click', e => {
       e.stopPropagation();
       openDatesPicker(si, datesBtn);
@@ -2212,23 +2240,24 @@ function renderStaffTable() {
     notePTd.appendChild(notePArea);
     tr.appendChild(notePTd);
 
-    // Save / delete / edit row
+    // Edit / delete row buttons
     const saveTd = document.createElement('td');
     saveTd.className = 'col-save';
+    saveTd.style.whiteSpace = 'nowrap';
     const editBtn = document.createElement('button');
-    editBtn.textContent = '✏'; editBtn.className = 'btn btn-sm btn-secondary';
-    editBtn.title = 'Upravit pracovníka';
+    editBtn.textContent = '✏'; editBtn.className = 'btn-row-act';
+    editBtn.title = 'Upravit';
     editBtn.addEventListener('click', () => showEditStaffModal(si));
-    saveTd.appendChild(editBtn);
     const delBtn = document.createElement('button');
-    delBtn.textContent = '✕'; delBtn.className = 'btn btn-sm btn-danger';
-    delBtn.title = 'Odebrat pracovníka';
-    delBtn.style.marginLeft = '4px';
+    delBtn.textContent = '✕'; delBtn.className = 'btn-row-act btn-row-del';
+    delBtn.title = 'Odebrat';
     delBtn.addEventListener('click', () => {
       if (!confirm(`Odebrat pracovníka "${s.name || si+1}"?`)) return;
       state.staff.splice(si, 1);
+      sortStaffAlpha();
       renderStaffTable();
     });
+    saveTd.appendChild(editBtn);
     saveTd.appendChild(delBtn);
     tr.appendChild(saveTd);
 
@@ -2338,6 +2367,7 @@ async function loadDraft(id) {
     updateDuplicateClasses();
     updateCoverageRows();
     updateRequirementClasses();
+    updatePManyCells();
     buildHotelFilterButtons();
     setAutosaveInd('Načteno');
   } catch(e) {
@@ -2502,6 +2532,7 @@ async function loadSchedule(key) {
     updateDuplicateClasses();
     updateCoverageRows();
     updateRequirementClasses();
+    updatePManyCells();
     buildHotelFilterButtons();
     showRozpisEmpty(false);
     currentPubKey = key;
@@ -2708,6 +2739,33 @@ function computeDuplicateCells(calCols, staff, schedule) {
   return dupes;
 }
 
+function computePersonPMany(calCols, staff, schedule) {
+  // Returns Set of 'si_ci' where worker has letter P more than once in the month
+  const result = new Set();
+  staff.forEach((_, si) => {
+    const pCols = [];
+    calCols.forEach((col, ci) => {
+      const val = schedule[`${si}_${ci}`] || '';
+      if (val.toUpperCase() === 'P') pCols.push(ci);
+    });
+    if (pCols.length > 1) pCols.forEach(ci => result.add(`${si}_${ci}`));
+  });
+  return result;
+}
+
+function updatePManyCells() {
+  const calCols = getCalCols(state.month, state.year);
+  const pMany = computePersonPMany(calCols, state.staff, state.schedule);
+  ['tvorba-tbl', 'rozpis-tbl'].forEach(tblId => {
+    const tbl = document.getElementById(tblId);
+    if (!tbl) return;
+    tbl.querySelectorAll('.sched-cell[data-si][data-ci]').forEach(td => {
+      if (td.classList.contains('cov-cell')) return;
+      td.classList.toggle('cell-p-many', pMany.has(`${td.dataset.si}_${td.dataset.ci}`));
+    });
+  });
+}
+
 function updateDuplicateClasses() {
   const calCols = getCalCols(state.month, state.year);
   const dupeKeys = computeDuplicateCells(calCols, state.staff, state.schedule);
@@ -2895,8 +2953,9 @@ function applyRegularPicker() {
   const val = regularToString(checks, sv, wk);
   state.staff[_rpSi].regular = val;
   if (_rpLabel) {
-    _rpLabel.textContent = val || '(žádné)';
-    _rpLabel.title = val || '';
+    _rpLabel.textContent = val ? '●' : '○';
+    _rpLabel.classList.toggle('btn-ind-active', !!val);
+    _rpLabel.title = val ? 'Stálé volno: ' + val : '';
   }
   picker.classList.remove('show');
   _rpSi = null;
@@ -2979,7 +3038,7 @@ function applyDatesPicker() {
   if (_dpSi === null) return;
   const val = document.getElementById('dp-input').value.trim();
   state.staff[_dpSi].dates = val;
-  if (_dpBtn) _dpBtn.textContent = val ? '●' : '○';
+  if (_dpBtn) { _dpBtn.textContent = val ? '●' : '○'; _dpBtn.classList.toggle('btn-ind-active', !!val); }
   document.getElementById('dates-picker').classList.remove('show');
   _dpSi = null;
   updateRequirementClasses();
@@ -3220,7 +3279,7 @@ function initColorEditorListeners() {
 ══════════════════════════════════════════════════════════════════════════════ */
 
 function showAddStaffModal() {
-  ['ns-name','ns-login','ns-maxhrs','ns-regular','ns-dates','ns-notem','ns-notep'].forEach(id => {
+  ['ns-name','ns-login'].forEach(id => {
     document.getElementById(id).value = '';
   });
   document.getElementById('ns-type').value = '';
@@ -3239,11 +3298,11 @@ function confirmAddStaff() {
     login:    document.getElementById('ns-login').value,
     type:     document.getElementById('ns-type').value,
     contract: document.getElementById('ns-contract').value,
-    maxHrs:   document.getElementById('ns-maxhrs').value,
-    regular:  document.getElementById('ns-regular').value,
-    dates:    document.getElementById('ns-dates').value,
-    noteM:    document.getElementById('ns-notem').value,
-    noteP:    document.getElementById('ns-notep').value,
+    maxHrs:   '',
+    regular:  '',
+    dates:    '',
+    noteM:    '',
+    noteP:    '',
     activeFrom: {
       month: +document.getElementById('ns-active-month').value,
       year: +document.getElementById('ns-active-year').value
@@ -4024,6 +4083,31 @@ document.addEventListener('DOMContentLoaded', async () => {
 
   // Initialize history snapshot
   historySave();
+
+  // Tooltip delegation for schedule tables
+  ['tvorba-tbl', 'rozpis-tbl'].forEach(tblId => {
+    const tbl = document.getElementById(tblId);
+    if (!tbl) return;
+    tbl.addEventListener('mouseover', e => {
+      const td = e.target.closest('td[data-si]');
+      if (!td || td.classList.contains('cov-cell')) { hideSchedTip(); return; }
+      const si = +td.dataset.si;
+      if (isNaN(si) || si < 0 || si >= state.staff.length) { hideSchedTip(); return; }
+      showSchedTip(si, e.clientX, e.clientY);
+    });
+    tbl.addEventListener('mousemove', e => {
+      const tip = document.getElementById('sched-name-tip');
+      if (tip && tip.style.display !== 'none') {
+        const w = tip.offsetWidth || 200;
+        const h = tip.offsetHeight || 80;
+        tip.style.left = Math.min(e.clientX + 14, window.innerWidth - w - 8) + 'px';
+        tip.style.top = Math.min(e.clientY + 8, window.innerHeight - h - 8) + 'px';
+      }
+    });
+    tbl.addEventListener('mouseout', e => {
+      if (!e.relatedTarget || !e.relatedTarget.closest(`#${tblId}`)) hideSchedTip();
+    });
+  });
 });
 </script>
 </body>
