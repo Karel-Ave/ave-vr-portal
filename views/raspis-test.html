@@ -105,7 +105,7 @@ table.staff-tbl {
 }
 .staff-tbl input:focus, .staff-tbl select:focus { outline: 1px solid var(--accent); border-radius: 3px; }
 .staff-tbl .col-num { width: 30px; text-align: center; color: var(--text-muted); }
-.staff-tbl .col-name { min-width: 130px; }
+.staff-tbl .col-name { min-width: 65px; }
 .staff-tbl .col-login { width: 60px; min-width: 60px; max-width: 60px; }
 .staff-tbl .col-type { width: 110px; }
 .staff-tbl .col-contract { width: 70px; }
@@ -191,7 +191,7 @@ table.sched-tbl {
   border-right: 2px solid var(--border);
 }
 .sched-tbl .col-name-td {
-  position: sticky; left: 0; z-index: 4;
+  position: sticky; left: 0; z-index: 3;
   min-width: var(--sched-name-w); max-width: var(--sched-name-w); width: var(--sched-name-w);
   padding: 2px 5px; font-weight: 600; font-size: 11px;
   border-right: 2px solid var(--border);
@@ -305,12 +305,17 @@ table.sched-tbl {
 .col-hrs-red   { color: #e74c3c; font-weight: 700; }
 .col-hrs-orange{ color: #e67e22; font-weight: 700; }
 
-/* Sticky header rows */
-.sched-tbl thead tr:nth-child(1) th { position: sticky; top: 0; z-index: 5; }
-.sched-tbl thead tr:nth-child(2) th { position: sticky; top: var(--sched-row-h); z-index: 5; }
+/* Sticky header rows — keep above coverage (z-index 20+) */
+.sched-tbl thead tr:nth-child(1) th { position: sticky; top: 0; z-index: 20; }
+.sched-tbl thead tr:nth-child(2) th { position: sticky; top: var(--sched-row-h); z-index: 20; }
 /* Name header sticky corner */
-.sched-tbl thead tr:nth-child(1) th.col-name-th { z-index: 7; }
-.sched-tbl thead tr:nth-child(2) th.col-name-th { z-index: 7; display: none; }
+.sched-tbl thead tr:nth-child(1) th.col-name-th { z-index: 22; }
+.sched-tbl thead tr:nth-child(2) th.col-name-th { z-index: 22; display: none; }
+/* Row hover highlight (only schedule cells, not name) */
+.staff-tbody tr:hover td.sched-cell { filter: brightness(0.88); }
+.staff-tbody tr:hover td.sched-cell.focused { filter: none; }
+/* Hidden row */
+tbody tr.row-hidden { display: none !important; }
 
 /* ── Sub-toolbar (Tvorba & Rozpis) ── */
 #subtoolbar {
@@ -364,12 +369,13 @@ tbody tr.row-filtered { display: none; }
 [data-theme="dark"] .cov-3plus { background: var(--col-cov3-bg,#4a1500); color: var(--col-cov3-tx,#ff8a65); }
 [data-theme="dark"] .cov-dayonly-night { background: var(--col-covdn-bg,#1a1a1a) !important; color: var(--col-covdn-tx,#555) !important; }
 .cov-row .col-name-td { font-size: 10px; font-weight: 700; padding: 2px 5px; background: var(--surface); }
-.cov-tbody { position: sticky; z-index: 3; }
+/* cov-tbody — sticky is now applied per-TR in JS, not on tbody */
 .cov-tbody td { background: var(--surface); }
 .cov-tbody th { background: #2a2a2a; color: #ccc; }
 [data-theme="dark"] .cov-tbody th { background: #111; }
+.cov-tbody tr { background: var(--surface); }
 .cov-tbody .col-name-td {
-  position: sticky; left: 0; z-index: 6 !important;
+  position: sticky; left: 0; z-index: 12 !important;
   background: var(--surface) !important;
 }
 .cov-tbody td.cov-empty { background: var(--col-cov0-bg) !important; color: var(--col-cov0-tx) !important; }
@@ -583,6 +589,7 @@ tbody tr.row-filtered { display: none; }
     <button class="tb-btn" id="btn-draft-trash">Koš</button>
     <span id="autosave-ind"></span>
     <input type="file" id="xls-file-input" accept=".xls,.xlsx" style="display:none">
+    <button class="tb-btn" id="btn-show-hidden" style="display:none" title="Zobraz skryté řádky">👁 Skrytí</button>
     <button class="tb-btn" id="btn-size-tvorba" title="Nastavení velikosti tabulky">⊞ Velikost</button>
   </div>
 
@@ -648,8 +655,8 @@ tbody tr.row-filtered { display: none; }
             <th class="col-type">Typ</th>
             <th class="col-contract">Smlouva</th>
             <th class="col-maxhrs">Max.hod</th>
-            <th class="col-regular">Stálé volno</th>
-            <th class="col-dates">Nemůže aktuálně</th>
+            <th class="col-regular" title="Stálé volno">x</th>
+            <th class="col-dates" title="Nemůže aktuálně">xA</th>
             <th class="col-note">Pozn. aktuální</th>
             <th class="col-note">Pozn. trvalá</th>
             <th class="col-save"></th>
@@ -1668,6 +1675,11 @@ function renderScheduleTable(tableId, editable) {
   if (!tbl) return;
   tbl.innerHTML = '';
   tbl.style.display = '';
+  // Reset hidden-row button when re-rendering
+  if (editable) {
+    const btnH = document.getElementById('btn-show-hidden');
+    if (btnH) btnH.style.display = 'none';
+  }
 
   const calCols = getCalCols(state.month, state.year);
   const holidaysList = parseHolidays(state.holidays);
@@ -1834,6 +1846,18 @@ function renderScheduleTable(tableId, editable) {
     nameTd.textContent = s.name || `(pracovník ${si+1})`;
     const tc = TYPE_COLORS[s.type] || '';
     if (tc) { nameTd.style.background = tc; nameTd.style.color = '#222'; }
+    if (editable) {
+      nameTd.style.cursor = 'pointer';
+      nameTd.title = 'Kliknutím skryješ řádek';
+      nameTd.addEventListener('click', () => {
+        tr.classList.toggle('row-hidden');
+        const btn = document.getElementById('btn-show-hidden');
+        if (btn) {
+          const hasHidden = !!document.querySelector('#tvorba-tbl .staff-tbody tr.row-hidden');
+          btn.style.display = hasHidden ? '' : 'none';
+        }
+      });
+    }
     tr.appendChild(nameTd);
 
     // Schedule cells
@@ -1921,9 +1945,10 @@ function renderScheduleTable(tableId, editable) {
   tbl.appendChild(covTbody);
   tbl.appendChild(staffTbody);
 
-  // Make coverage sticky
-  const stickyTopPx = 'calc(var(--sched-row-h) * 2)';
-  covTbody.style.cssText = `position:sticky;top:${stickyTopPx};z-index:3;`;
+  // Make each coverage row sticky individually (more reliable than tbody sticky)
+  Array.from(covTbody.querySelectorAll('tr')).forEach((tr, rowIdx) => {
+    tr.style.cssText = `position:sticky;top:calc(var(--sched-row-h) * ${rowIdx + 2});z-index:10;`;
+  });
 
   if (editable) {
     setupKeyboardNav(tbl);
@@ -3602,6 +3627,10 @@ function applySizes() {
   // update sticky top of dn sub-header row (was hardcoded to 22px in CSS)
   document.querySelectorAll('.sched-tbl thead tr:nth-child(2) th')
     .forEach(th => { th.style.top = h + 'px'; });
+  // update sticky top of each coverage row
+  document.querySelectorAll('.sched-tbl .cov-tbody tr').forEach((tr, rowIdx) => {
+    tr.style.top = ((rowIdx + 2) * parseInt(h)) + 'px';
+  });
   document.getElementById('size-row-h-val').textContent = h + 'px';
   document.getElementById('size-col-w-val').textContent = w + 'px';
   document.getElementById('size-name-w-val').textContent = n + 'px';
@@ -3934,6 +3963,12 @@ document.addEventListener('DOMContentLoaded', async () => {
   document.getElementById('btn-draft-new').addEventListener('click', newDraft);
   document.getElementById('btn-publish').addEventListener('click', publishSchedule);
   document.getElementById('btn-draft-trash').addEventListener('click', showTrash);
+  document.getElementById('btn-show-hidden').addEventListener('click', () => {
+    document.querySelectorAll('#tvorba-tbl .staff-tbody tr.row-hidden').forEach(tr => {
+      tr.classList.remove('row-hidden');
+    });
+    document.getElementById('btn-show-hidden').style.display = 'none';
+  });
   document.getElementById('btn-template-dl').addEventListener('click', downloadTemplate);
   document.getElementById('btn-import-xls').addEventListener('click', importXls);
   document.getElementById('xls-file-input').addEventListener('change', handleXlsImport);
