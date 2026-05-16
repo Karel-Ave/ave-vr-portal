@@ -208,16 +208,36 @@ table.sched-tbl {
 .sched-tbl .th-dn  { width: var(--sched-col-w); }
 .sched-tbl td.sched-cell { width: var(--sched-col-w); min-width: var(--sched-col-w); max-width: var(--sched-col-w); }
 
-/* Schedule cells */
-.cell-wd { background: #ffffff; }
-.cell-wn { background: #c8c8c8; }
-.cell-kd { background: #a8d8f0; }
-.cell-kn { background: #5b9dc9; color: #fff; }
+/* ── Cell color variables (user-editable via 🎨 Editor barev) ── */
+:root {
+  --col-wd-bg:#ffffff;  --col-wd-tx:#222222;
+  --col-wn-bg:#c8c8c8;  --col-wn-tx:#222222;
+  --col-kd-bg:#a8d8f0;  --col-kd-tx:#222222;
+  --col-kn-bg:#5b9dc9;  --col-kn-tx:#ffffff;
+  --col-dup-bg:#ffccaa; --col-dup-tx:#7a3000;
+  --col-type-den:#F8FF35; --col-type-noc:#4DC3F5;
+  --col-type-oba:#A8E05A; --col-type-ved:#FFB347; --col-type-spe:#FF8585;
+}
+[data-theme="dark"] {
+  --col-wd-bg:#2a2e36;  --col-wd-tx:#c8ccd6;
+  --col-wn-bg:#1e2228;  --col-wn-tx:#8a8e98;
+  --col-kd-bg:#1a3a52;  --col-kd-tx:#9cd4f0;
+  --col-kn-bg:#0f2840;  --col-kn-tx:#9cd4f0;
+  --col-dup-bg:#5a3000; --col-dup-tx:#ffccaa;
+}
 
-[data-theme="dark"] .cell-wd { background: #2a2e36; }
-[data-theme="dark"] .cell-wn { background: #1e2228; }
-[data-theme="dark"] .cell-kd { background: #1a3a52; }
-[data-theme="dark"] .cell-kn { background: #0f2840; color: #9cd4f0; }
+/* Schedule cells */
+.cell-wd { background: var(--col-wd-bg); color: var(--col-wd-tx); }
+.cell-wn { background: var(--col-wn-bg); color: var(--col-wn-tx); }
+.cell-kd { background: var(--col-kd-bg); color: var(--col-kd-tx); }
+.cell-kn { background: var(--col-kn-bg); color: var(--col-kn-tx); }
+
+/* Duplicate cell (same shift in same column for multiple workers) */
+.sched-cell.cell-duplicate {
+  background: var(--col-dup-bg) !important;
+  color: var(--col-dup-tx) !important;
+  outline: 1px solid #e67e22; outline-offset: -1px;
+}
 
 .cell-hol-header { color: #e53030 !important; }
 
@@ -394,6 +414,24 @@ tbody tr.row-filtered { display: none; }
 
 /* Empty state */
 .empty-state { text-align: center; padding: 40px 20px; color: var(--text-muted); font-size: 14px; }
+
+/* ── Color editor modal ── */
+.color-tabs { display:flex; gap:6px; margin-bottom:14px; border-bottom:1px solid var(--border); padding-bottom:10px; }
+.color-tab { padding:4px 14px; border:1px solid var(--border); border-radius:5px;
+  background:none; color:var(--text-muted); cursor:pointer; font-size:12px; font-family:inherit; }
+.color-tab.active { background:var(--accent); color:#fff; border-color:transparent; }
+.color-group { margin-bottom:16px; }
+.color-group h4 { font-size:11px; font-weight:700; text-transform:uppercase; letter-spacing:.05em;
+  color:var(--text-muted); margin-bottom:8px; border-bottom:1px solid var(--border); padding-bottom:4px; }
+.color-row2 { display:flex; align-items:center; gap:8px; padding:4px 0; border-bottom:1px solid var(--border); }
+.color-row2:last-child { border-bottom:none; }
+.color-lbl { font-size:12px; width:140px; flex-shrink:0; }
+.color-row2 label { font-size:11px; display:flex; align-items:center; gap:5px; color:var(--text-muted); white-space:nowrap; }
+.color-row2 input[type=color] { width:34px; height:26px; padding:1px 2px; border:1px solid var(--border);
+  border-radius:3px; cursor:pointer; background:none; }
+.color-swatch { min-width:80px; height:22px; border-radius:4px; text-align:center;
+  line-height:22px; font-size:10px; font-weight:700; border:1px solid var(--border);
+  padding:0 6px; display:inline-block; }
 </style>
 </head>
 <body>
@@ -447,6 +485,7 @@ tbody tr.row-filtered { display: none; }
   </div>
 
   <div class="tb-spacer"></div>
+  <button class="tb-btn" id="btn-color-editor" title="Editor barev tabulky">🎨 Barvy</button>
 </div>
 
 <!-- ═══════════════════════════ TAB: NASTAVENÍ ════════════════════════════════════════════ -->
@@ -653,8 +692,8 @@ tbody tr.row-filtered { display: none; }
     </div>
     <div class="modal-body">
       <p style="font-size:12px;color:var(--text-muted);margin-bottom:12px">
-        Nastavte počet hodin za směnu pro jednotlivé hotely (písmeno → hodiny).
-        Výchozí hodnoty: F=10h, J=10h, S=10h, P=0h, Q=0h, ostatní=12h.
+        Nastavte počet hodin za směnu pro každý hotel. Speciální: F=10h, J=10h, S=10h, P=0h, Q=0h — ostatní=12h.
+        Kliknutím ✕ hotel odeberete z interního seznamu (ze směn zmizí až při příštím výpočtu).
       </p>
       <div class="hotel-grid" id="hotel-grid"></div>
       <div style="margin-top:12px;display:flex;gap:8px;align-items:center">
@@ -694,6 +733,156 @@ tbody tr.row-filtered { display: none; }
   </div>
 </div>
 
+<!-- ═══════════════════════ MODAL: Editor barev ════════════════════════════════════════════ -->
+<div class="overlay" id="overlay-colors">
+  <div class="modal" style="width:min(680px,100%)">
+    <div class="modal-header">
+      <h3>🎨 Editor barev</h3>
+      <button class="modal-close" id="colors-close">✕</button>
+    </div>
+    <div class="modal-body">
+      <div class="color-tabs">
+        <button class="color-tab active" data-coltheme="light">☀ Světlý režim</button>
+        <button class="color-tab" data-coltheme="dark">🌙 Tmavý režim</button>
+      </div>
+      <!-- Light panel -->
+      <div class="color-panel" id="colpanel-light">
+        <div class="color-group">
+          <h4>Buňky rozpisové tabulky</h4>
+          <div class="color-row2">
+            <span class="color-lbl">Pracovní den</span>
+            <label>Pozadí <input type="color" class="col-inp" data-th="light" data-k="wdBg"></label>
+            <label>Text <input type="color" class="col-inp" data-th="light" data-k="wdTx"></label>
+            <span class="color-swatch" id="sw-light-wd">Ukázka</span>
+          </div>
+          <div class="color-row2">
+            <span class="color-lbl">Pracovní noc</span>
+            <label>Pozadí <input type="color" class="col-inp" data-th="light" data-k="wnBg"></label>
+            <label>Text <input type="color" class="col-inp" data-th="light" data-k="wnTx"></label>
+            <span class="color-swatch" id="sw-light-wn">Ukázka</span>
+          </div>
+          <div class="color-row2">
+            <span class="color-lbl">Víkend/svátek den</span>
+            <label>Pozadí <input type="color" class="col-inp" data-th="light" data-k="kdBg"></label>
+            <label>Text <input type="color" class="col-inp" data-th="light" data-k="kdTx"></label>
+            <span class="color-swatch" id="sw-light-kd">Ukázka</span>
+          </div>
+          <div class="color-row2">
+            <span class="color-lbl">Víkend/svátek noc</span>
+            <label>Pozadí <input type="color" class="col-inp" data-th="light" data-k="knBg"></label>
+            <label>Text <input type="color" class="col-inp" data-th="light" data-k="knTx"></label>
+            <span class="color-swatch" id="sw-light-kn">Ukázka</span>
+          </div>
+          <div class="color-row2">
+            <span class="color-lbl">Duplikátní buňka</span>
+            <label>Pozadí <input type="color" class="col-inp" data-th="light" data-k="dupBg"></label>
+            <label>Text <input type="color" class="col-inp" data-th="light" data-k="dupTx"></label>
+            <span class="color-swatch" id="sw-light-dup">Dup!</span>
+          </div>
+        </div>
+        <div class="color-group">
+          <h4>Typ pracovníka (barva řádku v Nastavení / Jméno v tabulce)</h4>
+          <div class="color-row2">
+            <span class="color-lbl">Denní</span>
+            <label>Barva <input type="color" class="col-inp" data-th="light" data-k="tDen"></label>
+            <span class="color-swatch" id="sw-light-tDen" style="color:#222">Denní</span>
+          </div>
+          <div class="color-row2">
+            <span class="color-lbl">Noční</span>
+            <label>Barva <input type="color" class="col-inp" data-th="light" data-k="tNoc"></label>
+            <span class="color-swatch" id="sw-light-tNoc" style="color:#222">Noční</span>
+          </div>
+          <div class="color-row2">
+            <span class="color-lbl">Obojí</span>
+            <label>Barva <input type="color" class="col-inp" data-th="light" data-k="tOba"></label>
+            <span class="color-swatch" id="sw-light-tOba" style="color:#222">Obojí</span>
+          </div>
+          <div class="color-row2">
+            <span class="color-lbl">Vedoucí</span>
+            <label>Barva <input type="color" class="col-inp" data-th="light" data-k="tVed"></label>
+            <span class="color-swatch" id="sw-light-tVed" style="color:#222">Vedoucí</span>
+          </div>
+          <div class="color-row2">
+            <span class="color-lbl">Speciální</span>
+            <label>Barva <input type="color" class="col-inp" data-th="light" data-k="tSpe"></label>
+            <span class="color-swatch" id="sw-light-tSpe" style="color:#222">Speciální</span>
+          </div>
+        </div>
+      </div>
+      <!-- Dark panel -->
+      <div class="color-panel" id="colpanel-dark" style="display:none">
+        <div class="color-group">
+          <h4>Buňky rozpisové tabulky (tmavý režim)</h4>
+          <div class="color-row2">
+            <span class="color-lbl">Pracovní den</span>
+            <label>Pozadí <input type="color" class="col-inp" data-th="dark" data-k="wdBg"></label>
+            <label>Text <input type="color" class="col-inp" data-th="dark" data-k="wdTx"></label>
+            <span class="color-swatch" id="sw-dark-wd">Ukázka</span>
+          </div>
+          <div class="color-row2">
+            <span class="color-lbl">Pracovní noc</span>
+            <label>Pozadí <input type="color" class="col-inp" data-th="dark" data-k="wnBg"></label>
+            <label>Text <input type="color" class="col-inp" data-th="dark" data-k="wnTx"></label>
+            <span class="color-swatch" id="sw-dark-wn">Ukázka</span>
+          </div>
+          <div class="color-row2">
+            <span class="color-lbl">Víkend/svátek den</span>
+            <label>Pozadí <input type="color" class="col-inp" data-th="dark" data-k="kdBg"></label>
+            <label>Text <input type="color" class="col-inp" data-th="dark" data-k="kdTx"></label>
+            <span class="color-swatch" id="sw-dark-kd">Ukázka</span>
+          </div>
+          <div class="color-row2">
+            <span class="color-lbl">Víkend/svátek noc</span>
+            <label>Pozadí <input type="color" class="col-inp" data-th="dark" data-k="knBg"></label>
+            <label>Text <input type="color" class="col-inp" data-th="dark" data-k="knTx"></label>
+            <span class="color-swatch" id="sw-dark-kn">Ukázka</span>
+          </div>
+          <div class="color-row2">
+            <span class="color-lbl">Duplikátní buňka</span>
+            <label>Pozadí <input type="color" class="col-inp" data-th="dark" data-k="dupBg"></label>
+            <label>Text <input type="color" class="col-inp" data-th="dark" data-k="dupTx"></label>
+            <span class="color-swatch" id="sw-dark-dup">Dup!</span>
+          </div>
+        </div>
+        <div class="color-group">
+          <h4>Typ pracovníka (tmavý režim)</h4>
+          <div class="color-row2">
+            <span class="color-lbl">Denní</span>
+            <label>Barva <input type="color" class="col-inp" data-th="dark" data-k="tDen"></label>
+            <span class="color-swatch" id="sw-dark-tDen">Denní</span>
+          </div>
+          <div class="color-row2">
+            <span class="color-lbl">Noční</span>
+            <label>Barva <input type="color" class="col-inp" data-th="dark" data-k="tNoc"></label>
+            <span class="color-swatch" id="sw-dark-tNoc">Noční</span>
+          </div>
+          <div class="color-row2">
+            <span class="color-lbl">Obojí</span>
+            <label>Barva <input type="color" class="col-inp" data-th="dark" data-k="tOba"></label>
+            <span class="color-swatch" id="sw-dark-tOba">Obojí</span>
+          </div>
+          <div class="color-row2">
+            <span class="color-lbl">Vedoucí</span>
+            <label>Barva <input type="color" class="col-inp" data-th="dark" data-k="tVed"></label>
+            <span class="color-swatch" id="sw-dark-tVed">Vedoucí</span>
+          </div>
+          <div class="color-row2">
+            <span class="color-lbl">Speciální</span>
+            <label>Barva <input type="color" class="col-inp" data-th="dark" data-k="tSpe"></label>
+            <span class="color-swatch" id="sw-dark-tSpe">Speciální</span>
+          </div>
+        </div>
+      </div>
+    </div>
+    <div class="modal-footer">
+      <button class="btn btn-secondary btn-sm" id="btn-colors-reset">↺ Reset</button>
+      <div style="flex:1"></div>
+      <button class="btn btn-secondary" id="colors-close2">Zavřít</button>
+      <button class="btn btn-primary" id="btn-colors-save">💾 Uložit barvy</button>
+    </div>
+  </div>
+</div>
+
 <!-- ═══════════════════════════ TOAST ═════════════════════════════════════════════════════ -->
 <div id="toast"></div>
 
@@ -711,7 +900,7 @@ const DAY_NAMES = ['ne','po','út','st','čt','pá','so'];
 const STAFF_TYPES = ['','Denní','Noční','Obojí','Vedoucí','Pohotovost','Speciální'];
 const CONTRACTS   = ['','HPP','ZPP','DPČ','DPP'];
 
-const TYPE_COLORS = {
+let TYPE_COLORS = {
   'Denní':'#F8FF35','Noční':'#4DC3F5','Obojí':'#A8E05A',
   'Vedoucí':'#FFB347','Speciální':'#FF8585'
 };
@@ -720,7 +909,11 @@ const STATIC_HOLIDAYS = {
   1:[1], 5:[1,8], 7:[5,6], 9:[28], 10:[28], 11:[17], 12:[24,25,26,31]
 };
 
-const HOTEL_HOURS_BUILTIN = {F:10,J:10,S:10,P:0,Q:0};
+// All known hotels with default hours (F=10, J=10, S=10, P=0, Q=0 special; rest=12)
+const HOTEL_HOURS_BUILTIN = {
+  A:12, B:12, C:12, D:12, E:12, F:10, G:12, H:12, I:12, J:10,
+  L:12, M:12, N:12, P:0,  Q:0,  S:10, T:12, U:12
+};
 const DEFAULT_HOURS = 12;
 const SKIP_VALS = new Set(['X','x','Y','y','Z','z','Ž','ž']);
 
@@ -903,6 +1096,7 @@ function historyUndo() {
   state.schedule = JSON.parse(history[historyIndex]);
   updateAllSums();
   renderCells('tvorba-tbl', true);
+  updateDuplicateClasses();
 }
 
 function historyRedo() {
@@ -911,6 +1105,7 @@ function historyRedo() {
   state.schedule = JSON.parse(history[historyIndex]);
   updateAllSums();
   renderCells('tvorba-tbl', true);
+  updateDuplicateClasses();
 }
 
 /* ══════════════════════════════════════════════════════════════════════════════
@@ -989,11 +1184,17 @@ function renderScheduleTable(tableId, editable) {
     th.dataset.dn = col.dn;
     const hol = isHoliday(col, state.month, state.year, holidaysList);
     const cls = cellClass(col, state.month, state.year, holidaysList);
-    th.style.background = cls === 'cell-kn' ? '#5b9dc9'
-      : cls === 'cell-kd' ? '#a8d8f0'
-      : cls === 'cell-wn' ? '#c8c8c8' : '';
-    if (cls === 'cell-kn') th.style.color = '#fff';
-    if (hol) th.style.color = '#e53030';
+    // Use CSS vars so dark mode and color editor are respected
+    const bgVar = cls === 'cell-kn' ? 'var(--col-kn-bg)'
+      : cls === 'cell-kd' ? 'var(--col-kd-bg)'
+      : cls === 'cell-wn' ? 'var(--col-wn-bg)'
+      : 'var(--col-wd-bg)';
+    const txVar = cls === 'cell-kn' ? 'var(--col-kn-tx)'
+      : cls === 'cell-kd' ? 'var(--col-kd-tx)'
+      : cls === 'cell-wn' ? 'var(--col-wn-tx)'
+      : 'var(--col-wd-tx)';
+    th.style.background = bgVar;
+    th.style.color = hol ? '#e53030' : txVar;
     th.textContent = col.dn;
     tr2.appendChild(th);
   });
@@ -1005,8 +1206,8 @@ function renderScheduleTable(tableId, editable) {
 
   // ── Pokrytí (coverage) rows ──
   if (state.staff.length > 0) {
-    // Get all hotel letters present in schedule
-    const hotelLetters = getUsedHotelLetters();
+    // Only show letters actually in the schedule (not all defined hotels)
+    const hotelLetters = getScheduleHotelLetters();
     if (hotelLetters.length > 0) {
       // header row
       const covHdr = document.createElement('tr');
@@ -1048,6 +1249,9 @@ function renderScheduleTable(tableId, editable) {
     }
   }
 
+  // Pre-compute duplicate cells for coloring
+  const _dupeKeys = computeDuplicateCells(calCols, state.staff, state.schedule);
+
   state.staff.forEach((s, si) => {
     const tr = document.createElement('tr');
     tr.dataset.si = si;
@@ -1065,6 +1269,7 @@ function renderScheduleTable(tableId, editable) {
       const td = document.createElement('td');
       td.className = 'sched-cell ' + cellClass(col, state.month, state.year, holidaysList);
       td.dataset.si = si; td.dataset.ci = ci; td.dataset.dn = col.dn;
+      if (_dupeKeys.has(`${si}_${ci}`)) td.classList.add('cell-duplicate');
       const val = state.schedule[`${si}_${ci}`] || '';
 
       if (editable) {
@@ -1291,6 +1496,7 @@ function setCellValue(si, ci, val) {
     }
   }
   updateSumRow(si);
+  updateDuplicateClasses();
   scheduleAutoSave();
 }
 
@@ -1519,6 +1725,8 @@ async function loadDraft(id) {
     dirtyFlag = false;
     renderStaffTable();
     renderScheduleTable('tvorba-tbl', true);
+    updateDuplicateClasses();
+    buildHotelFilterButtons();
     setAutosaveInd('Načteno');
   } catch(e) {
     toast('Chyba načtení konceptu', true);
@@ -1679,6 +1887,8 @@ async function loadSchedule(key) {
     applyData(data.data || data);
     spinner.style.display = 'none';
     renderScheduleTable('rozpis-tbl', false);
+    updateDuplicateClasses();
+    buildHotelFilterButtons();
     showRozpisEmpty(false);
     currentPubKey = key;
   } catch(e) {
@@ -1844,15 +2054,58 @@ function updateSubtoolbar() {
 }
 
 function getUsedHotelLetters() {
+  // All defined hotels (builtin + custom + overrides + schedule) — for filter buttons
   const letters = new Set();
-  Object.values(state.schedule).forEach(v => {
-    if (v && v.length === 1 && /[A-Z]/i.test(v)) letters.add(v.toUpperCase());
-  });
-  // Also include all defined hotels (builtin + custom)
   Object.keys(HOTEL_HOURS_BUILTIN).forEach(k => letters.add(k));
   (state.customHotels||[]).forEach(h => letters.add(h.letter));
   Object.keys(state.hotelOverrides||{}).forEach(k => letters.add(k));
+  Object.values(state.schedule).forEach(v => {
+    if (v && v.length === 1 && /[A-Z]/i.test(v)) letters.add(v.toUpperCase());
+  });
   return Array.from(letters).sort();
+}
+
+function getScheduleHotelLetters() {
+  // Only letters actually present in the schedule — for coverage rows
+  const letters = new Set();
+  Object.values(state.schedule).forEach(v => {
+    if (v && v.length === 1 && /[A-Z]/i.test(v) && !SKIP_VALS.has(v)) {
+      letters.add(v.toUpperCase());
+    }
+  });
+  return Array.from(letters).sort();
+}
+
+function computeDuplicateCells(calCols, staff, schedule) {
+  // Returns Set of 'si_ci' keys where the same hotel letter appears more than once in a column
+  const dupes = new Set();
+  calCols.forEach((col, ci) => {
+    const byVal = {};
+    staff.forEach((_, si) => {
+      const val = (schedule[`${si}_${ci}`] || '');
+      if (!val || SKIP_VALS.has(val)) return;
+      const up = val.toUpperCase();
+      if (!byVal[up]) byVal[up] = [];
+      byVal[up].push(si);
+    });
+    Object.values(byVal).forEach(siArr => {
+      if (siArr.length > 1) siArr.forEach(si => dupes.add(`${si}_${ci}`));
+    });
+  });
+  return dupes;
+}
+
+function updateDuplicateClasses() {
+  const calCols = getCalCols(state.month, state.year);
+  const dupeKeys = computeDuplicateCells(calCols, state.staff, state.schedule);
+  ['tvorba-tbl','rozpis-tbl'].forEach(tblId => {
+    const tbl = document.getElementById(tblId);
+    if (!tbl) return;
+    tbl.querySelectorAll('.sched-cell[data-si][data-ci]').forEach(td => {
+      const si = +td.dataset.si, ci = +td.dataset.ci;
+      td.classList.toggle('cell-duplicate', dupeKeys.has(`${si}_${ci}`));
+    });
+  });
 }
 
 function buildHotelFilterButtons() {
@@ -1968,6 +2221,198 @@ function markSelected() {
 function saveRequirements() {
   state.requirements = JSON.parse(JSON.stringify(state.schedule));
   toast('Požadavky zapamatovány');
+}
+
+/* ══════════════════════════════════════════════════════════════════════════════
+   COLOR EDITOR
+══════════════════════════════════════════════════════════════════════════════ */
+
+const COLOR_DEFAULTS = {
+  light: {
+    wdBg:'#ffffff', wdTx:'#222222',
+    wnBg:'#c8c8c8', wnTx:'#222222',
+    kdBg:'#a8d8f0', kdTx:'#222222',
+    knBg:'#5b9dc9', knTx:'#ffffff',
+    dupBg:'#ffccaa', dupTx:'#7a3000',
+    tDen:'#F8FF35', tNoc:'#4DC3F5', tOba:'#A8E05A',
+    tVed:'#FFB347', tSpe:'#FF8585'
+  },
+  dark: {
+    wdBg:'#2a2e36', wdTx:'#c8ccd6',
+    wnBg:'#1e2228', wnTx:'#8a8e98',
+    kdBg:'#1a3a52', kdTx:'#9cd4f0',
+    knBg:'#0f2840', knTx:'#9cd4f0',
+    dupBg:'#5a3000', dupTx:'#ffccaa',
+    tDen:'#F8FF35', tNoc:'#4DC3F5', tOba:'#A8E05A',
+    tVed:'#FFB347', tSpe:'#FF8585'
+  }
+};
+
+let colorProfile = {
+  light: Object.assign({}, COLOR_DEFAULTS.light),
+  dark:  Object.assign({}, COLOR_DEFAULTS.dark)
+};
+
+function loadColorProfile() {
+  try {
+    const saved = localStorage.getItem('rt-color-profile');
+    if (saved) {
+      const p = JSON.parse(saved);
+      if (p.light) colorProfile.light = Object.assign({}, COLOR_DEFAULTS.light, p.light);
+      if (p.dark)  colorProfile.dark  = Object.assign({}, COLOR_DEFAULTS.dark,  p.dark);
+    }
+  } catch(e) {}
+}
+
+function saveColorProfileStorage() {
+  try { localStorage.setItem('rt-color-profile', JSON.stringify(colorProfile)); } catch(e) {}
+}
+
+function applyColorProfile() {
+  let styleEl = document.getElementById('rt-color-style');
+  if (!styleEl) {
+    styleEl = document.createElement('style');
+    styleEl.id = 'rt-color-style';
+    document.head.appendChild(styleEl);
+  }
+  const l = colorProfile.light, d = colorProfile.dark;
+  styleEl.textContent = `
+    :root {
+      --col-wd-bg:${l.wdBg}; --col-wd-tx:${l.wdTx};
+      --col-wn-bg:${l.wnBg}; --col-wn-tx:${l.wnTx};
+      --col-kd-bg:${l.kdBg}; --col-kd-tx:${l.kdTx};
+      --col-kn-bg:${l.knBg}; --col-kn-tx:${l.knTx};
+      --col-dup-bg:${l.dupBg}; --col-dup-tx:${l.dupTx};
+      --col-type-den:${l.tDen}; --col-type-noc:${l.tNoc};
+      --col-type-oba:${l.tOba}; --col-type-ved:${l.tVed}; --col-type-spe:${l.tSpe};
+    }
+    [data-theme="dark"] {
+      --col-wd-bg:${d.wdBg}; --col-wd-tx:${d.wdTx};
+      --col-wn-bg:${d.wnBg}; --col-wn-tx:${d.wnTx};
+      --col-kd-bg:${d.kdBg}; --col-kd-tx:${d.kdTx};
+      --col-kn-bg:${d.knBg}; --col-kn-tx:${d.knTx};
+      --col-dup-bg:${d.dupBg}; --col-dup-tx:${d.dupTx};
+      --col-type-den:${d.tDen}; --col-type-noc:${d.tNoc};
+      --col-type-oba:${d.tOba}; --col-type-ved:${d.tVed}; --col-type-spe:${d.tSpe};
+    }
+  `;
+  // Sync TYPE_COLORS to current theme
+  const isDark = document.documentElement.getAttribute('data-theme') === 'dark';
+  const cp = isDark ? d : l;
+  TYPE_COLORS['Denní']    = cp.tDen;
+  TYPE_COLORS['Noční']    = cp.tNoc;
+  TYPE_COLORS['Obojí']    = cp.tOba;
+  TYPE_COLORS['Vedoucí']  = cp.tVed;
+  TYPE_COLORS['Speciální']= cp.tSpe;
+}
+
+let _colorEditorTheme = 'light'; // which tab is active
+
+function showColorEditor() {
+  loadColorEditorInputs('light');
+  loadColorEditorInputs('dark');
+  // Auto-select current theme tab
+  _colorEditorTheme = document.documentElement.getAttribute('data-theme') === 'dark' ? 'dark' : 'light';
+  document.querySelectorAll('.color-tab').forEach(b => {
+    b.classList.toggle('active', b.dataset.coltheme === _colorEditorTheme);
+  });
+  document.getElementById('colpanel-light').style.display = _colorEditorTheme === 'light' ? '' : 'none';
+  document.getElementById('colpanel-dark').style.display  = _colorEditorTheme === 'dark'  ? '' : 'none';
+  document.getElementById('overlay-colors').classList.add('show');
+}
+
+function loadColorEditorInputs(theme) {
+  const cp = colorProfile[theme];
+  const keys = Object.keys(COLOR_DEFAULTS[theme]);
+  keys.forEach(k => {
+    const inp = document.querySelector(`.col-inp[data-th="${theme}"][data-k="${k}"]`);
+    if (inp) inp.value = cp[k] || COLOR_DEFAULTS[theme][k];
+  });
+  updateColorSwatches(theme);
+}
+
+function updateColorSwatches(theme) {
+  const cp = colorProfile[theme];
+  const S = (id, bg, tx) => {
+    const el = document.getElementById(id);
+    if (el) { el.style.background = bg; el.style.color = tx || '#222'; }
+  };
+  S(`sw-${theme}-wd`,  cp.wdBg,  cp.wdTx);
+  S(`sw-${theme}-wn`,  cp.wnBg,  cp.wnTx);
+  S(`sw-${theme}-kd`,  cp.kdBg,  cp.kdTx);
+  S(`sw-${theme}-kn`,  cp.knBg,  cp.knTx);
+  S(`sw-${theme}-dup`, cp.dupBg, cp.dupTx);
+  S(`sw-${theme}-tDen`, cp.tDen, '#222');
+  S(`sw-${theme}-tNoc`, cp.tNoc, '#222');
+  S(`sw-${theme}-tOba`, cp.tOba, '#222');
+  S(`sw-${theme}-tVed`, cp.tVed, '#222');
+  S(`sw-${theme}-tSpe`, cp.tSpe, '#222');
+}
+
+function readColorEditorInputs(theme) {
+  const keys = Object.keys(COLOR_DEFAULTS[theme]);
+  keys.forEach(k => {
+    const inp = document.querySelector(`.col-inp[data-th="${theme}"][data-k="${k}"]`);
+    if (inp && inp.value) colorProfile[theme][k] = inp.value;
+  });
+}
+
+function initColorEditorListeners() {
+  // Tab switching
+  document.querySelectorAll('.color-tab').forEach(btn => {
+    btn.addEventListener('click', () => {
+      _colorEditorTheme = btn.dataset.coltheme;
+      document.querySelectorAll('.color-tab').forEach(b => b.classList.toggle('active', b === btn));
+      document.getElementById('colpanel-light').style.display = _colorEditorTheme === 'light' ? '' : 'none';
+      document.getElementById('colpanel-dark').style.display  = _colorEditorTheme === 'dark'  ? '' : 'none';
+    });
+  });
+
+  // Live preview on color input change
+  document.querySelectorAll('.col-inp').forEach(inp => {
+    inp.addEventListener('input', () => {
+      const th = inp.dataset.th, k = inp.dataset.k;
+      colorProfile[th][k] = inp.value;
+      updateColorSwatches(th);
+      applyColorProfile(); // live preview
+    });
+  });
+
+  // Save button
+  document.getElementById('btn-colors-save').addEventListener('click', () => {
+    readColorEditorInputs('light');
+    readColorEditorInputs('dark');
+    saveColorProfileStorage();
+    applyColorProfile();
+    document.getElementById('overlay-colors').classList.remove('show');
+    toast('Barvy uloženy');
+  });
+
+  // Reset button
+  document.getElementById('btn-colors-reset').addEventListener('click', () => {
+    if (!confirm('Obnovit výchozí barvy?')) return;
+    colorProfile = {
+      light: Object.assign({}, COLOR_DEFAULTS.light),
+      dark:  Object.assign({}, COLOR_DEFAULTS.dark)
+    };
+    loadColorEditorInputs('light');
+    loadColorEditorInputs('dark');
+    applyColorProfile();
+    toast('Barvy resetovány');
+  });
+
+  // Close buttons
+  ['colors-close','colors-close2'].forEach(id => {
+    document.getElementById(id).addEventListener('click', () => {
+      document.getElementById('overlay-colors').classList.remove('show');
+    });
+  });
+  document.getElementById('overlay-colors').addEventListener('click', e => {
+    if (e.target === e.currentTarget) e.currentTarget.classList.remove('show');
+  });
+
+  // Open button
+  document.getElementById('btn-color-editor').addEventListener('click', showColorEditor);
 }
 
 /* ══════════════════════════════════════════════════════════════════════════════
@@ -2402,6 +2847,10 @@ function switchTab(name) {
 ══════════════════════════════════════════════════════════════════════════════ */
 
 document.addEventListener('DOMContentLoaded', async () => {
+  // Load & apply color profile from localStorage first (before any render)
+  loadColorProfile();
+  applyColorProfile();
+
   // Set initial month/year
   document.getElementById('sel-month').value = state.month;
   document.getElementById('inp-year').value = state.year;
@@ -2605,6 +3054,9 @@ document.addEventListener('DOMContentLoaded', async () => {
       else if (tab && tab.dataset.tab === 'nastaveni') { e.preventDefault(); saveSettings(); }
     }
   });
+
+  // Initialize color editor
+  initColorEditorListeners();
 
   // Initialize history snapshot
   historySave();
