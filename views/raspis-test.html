@@ -65,22 +65,6 @@ body { min-height: 100vh; background: var(--bg); font-family: 'Segoe UI', system
 .tb-actions { display: flex; align-items: center; gap: 5px; }
 .tb-actions.hidden { display: none; }
 
-/* ── Tab content ── */
-#tabs-bar {
-  display: flex; gap: 2px; padding: 0 12px;
-  border-bottom: 1px solid var(--border); background: var(--bg);
-  position: sticky; top: 48px; z-index: 100;
-}
-.tab-btn {
-  padding: 8px 16px; border: none; border-radius: 6px 6px 0 0;
-  background: none; color: var(--text-muted); cursor: pointer;
-  font-size: 13px; font-weight: 600; font-family: inherit;
-  border-bottom: 3px solid transparent;
-  transition: color .15s, border-color .15s, background .15s;
-}
-.tab-btn:hover { color: var(--text); background: var(--surface-alt); }
-.tab-btn.active { color: var(--accent); border-bottom-color: var(--accent); background: none; }
-
 .tab-panel { display: none; }
 .tab-panel.active { display: block; }
 
@@ -90,7 +74,7 @@ body { min-height: 100vh; background: var(--bg); font-family: 'Segoe UI', system
 .settings-top {
   display: flex; gap: 12px; flex-wrap: wrap; align-items: flex-end;
   padding: 12px 14px; border-bottom: 1px solid var(--border);
-  background: var(--bg); position: sticky; top: 82px; z-index: 80;
+  background: var(--bg); position: sticky; top: 48px; z-index: 80;
 }
 .settings-top label { font-size: 11px; font-weight: 700; text-transform: uppercase;
   letter-spacing: .05em; color: var(--text-muted); display: block; margin-bottom: 3px; }
@@ -134,10 +118,10 @@ table.staff-tbl {
   -webkit-overflow-scrolling: touch;
 }
 .schedule-wrap.tvorba-wrap {
-  height: calc(100dvh - 48px - 36px - 12px);
+  height: calc(100dvh - 48px - 12px);
 }
 .schedule-wrap.view-wrap {
-  height: calc(100dvh - 48px - 36px - 12px);
+  height: calc(100dvh - 48px - 12px);
 }
 
 table.sched-tbl {
@@ -240,7 +224,7 @@ table.sched-tbl {
 .tab-controls {
   padding: 8px 12px; border-bottom: 1px solid var(--border);
   display: flex; align-items: center; gap: 8px; flex-wrap: wrap;
-  background: var(--bg); position: sticky; top: 82px; z-index: 80;
+  background: var(--bg); position: sticky; top: 48px; z-index: 80;
 }
 .tab-controls label { font-size: 12px; color: var(--text-muted); }
 .tab-controls select, .tab-controls input {
@@ -338,8 +322,6 @@ table.sched-tbl {
 
 <!-- ════════════════════════════════════════ TOPBAR ════════════════════════════════════════ -->
 <div id="topbar">
-  <img id="topbar-logo" src="/static/logo.png" alt="AVE">
-
   <button class="tb-tab active" data-tab="nastaveni">⚙ Nastavení</button>
   <button class="tb-tab" data-tab="tvorba">✏ Tvorba</button>
   <button class="tb-tab" data-tab="rozpis">📋 Rozpis VR</button>
@@ -358,9 +340,11 @@ table.sched-tbl {
     <select id="rt-draft-sel" class="tb-btn" style="padding:4px 6px;font-size:12px;"></select>
     <button class="tb-btn" id="btn-draft-save">Uložit</button>
     <button class="tb-btn" id="btn-draft-new">Nový</button>
-    <button class="tb-btn primary" id="btn-publish" style="display:none">Publikovat</button>
+    <button class="tb-btn primary" id="btn-publish">Publikovat</button>
+    <button class="tb-btn" id="btn-import-xls">Import .xls</button>
     <button class="tb-btn" id="btn-draft-trash">Koš</button>
     <span id="autosave-ind"></span>
+    <input type="file" id="xls-file-input" accept=".xls,.xlsx" style="display:none">
   </div>
 
   <!-- Rozpis VR actions -->
@@ -375,13 +359,6 @@ table.sched-tbl {
   <div class="tb-spacer"></div>
   <div class="tb-sep"></div>
   <button id="btn-theme">🌙</button>
-</div>
-
-<!-- ═══════════════════════════════════════ TAB BAR ════════════════════════════════════════ -->
-<div id="tabs-bar">
-  <button class="tab-btn active" data-tab="nastaveni">Nastavení</button>
-  <button class="tab-btn" data-tab="tvorba">Tvorba</button>
-  <button class="tab-btn" data-tab="rozpis">Rozpis VR</button>
 </div>
 
 <!-- ═══════════════════════════ TAB: NASTAVENÍ ════════════════════════════════════════════ -->
@@ -1524,6 +1501,69 @@ function exportXlsx() {
 }
 
 /* ══════════════════════════════════════════════════════════════════════════════
+   IMPORT XLS
+══════════════════════════════════════════════════════════════════════════════ */
+
+function importXls() {
+  document.getElementById('xls-file-input').click();
+}
+
+function handleXlsImport(e) {
+  const file = e.target.files[0];
+  if (!file) return;
+  if (typeof XLSX === 'undefined') { toast('SheetJS se nenačetl', true); return; }
+
+  const reader = new FileReader();
+  reader.onload = evt => {
+    try {
+      const wb = XLSX.read(evt.target.result, { type: 'array' });
+      const ws = wb.Sheets[wb.SheetNames[0]];
+      const rows = XLSX.utils.sheet_to_json(ws, { header: 1, defval: '' });
+
+      if (!rows || rows.length < 3) { toast('Soubor neobsahuje data', true); return; }
+
+      const calCols = getCalCols(state.month, state.year);
+
+      // Row 0 = day header, row 1 = d/n header, row 2+ = staff rows
+      const staffRows = rows.slice(2);
+      const newStaff = [];
+      const newSchedule = {};
+
+      staffRows.forEach((row, si) => {
+        if (!row[0] && row.slice(1, calCols.length + 1).every(v => v === '')) return;
+        const staffEntry = { ...state.staff[si] } || {};
+        staffEntry.name = row[0] || staffEntry.name || `pracovník ${si+1}`;
+        // noteP is last col after sums (4 sum cols + 3 extra = 7)
+        const noteCol = 1 + calCols.length + 7;
+        staffEntry.noteP = row[noteCol] || staffEntry.noteP || '';
+        newStaff.push(staffEntry);
+        calCols.forEach((_, ci) => {
+          const val = String(row[1 + ci] || '').trim();
+          if (val) newSchedule[`${si}_${ci}`] = val;
+        });
+      });
+
+      if (!newStaff.length) { toast('Nenalezeni žádní pracovníci', true); return; }
+
+      if (!confirm(`Import nahradí rozvrh pro ${newStaff.length} pracovníků. Pokračovat?`)) return;
+
+      state.staff = newStaff;
+      state.schedule = newSchedule;
+      renderStaffTable();
+      renderScheduleTable('tvorba-tbl', true);
+      toast(`Import dokončen (${newStaff.length} pracovníků)`);
+    } catch(err) {
+      console.error('Import error:', err);
+      toast('Chyba při importu souboru', true);
+    } finally {
+      // reset so same file can be re-imported
+      e.target.value = '';
+    }
+  };
+  reader.readAsArrayBuffer(file);
+}
+
+/* ══════════════════════════════════════════════════════════════════════════════
    SETTINGS SAVE / LOAD
 ══════════════════════════════════════════════════════════════════════════════ */
 
@@ -1575,7 +1615,6 @@ function addStaff() {
 
 function switchTab(name) {
   document.querySelectorAll('.tb-tab').forEach(b => b.classList.toggle('active', b.dataset.tab === name));
-  document.querySelectorAll('.tab-btn').forEach(b => b.classList.toggle('active', b.dataset.tab === name));
   document.querySelectorAll('.tab-panel').forEach(p => p.classList.remove('active'));
   document.querySelectorAll('.tb-actions').forEach(a => a.classList.add('hidden'));
 
@@ -1613,10 +1652,6 @@ document.addEventListener('DOMContentLoaded', async () => {
 
   await fetchUser();
 
-  // Show publish button only for admins
-  if (isAdmin()) {
-    document.getElementById('btn-publish').style.display = '';
-  }
 
   // Render staff table (empty)
   renderStaffTable();
@@ -1632,10 +1667,6 @@ document.addEventListener('DOMContentLoaded', async () => {
 
   // ── Topbar tab buttons ──
   document.querySelectorAll('.tb-tab[data-tab]').forEach(b => {
-    b.addEventListener('click', () => switchTab(b.dataset.tab));
-  });
-  // ── Tab bar buttons ──
-  document.querySelectorAll('.tab-btn[data-tab]').forEach(b => {
     b.addEventListener('click', () => switchTab(b.dataset.tab));
   });
 
@@ -1663,6 +1694,8 @@ document.addEventListener('DOMContentLoaded', async () => {
   document.getElementById('btn-draft-new').addEventListener('click', newDraft);
   document.getElementById('btn-publish').addEventListener('click', publishSchedule);
   document.getElementById('btn-draft-trash').addEventListener('click', showTrash);
+  document.getElementById('btn-import-xls').addEventListener('click', importXls);
+  document.getElementById('xls-file-input').addEventListener('change', handleXlsImport);
 
   // ── Rozpis VR actions ──
   document.getElementById('pub-sel').addEventListener('change', e => {
