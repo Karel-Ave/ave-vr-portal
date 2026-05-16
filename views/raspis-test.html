@@ -105,7 +105,7 @@ table.staff-tbl {
 }
 .staff-tbl input:focus, .staff-tbl select:focus { outline: 1px solid var(--accent); border-radius: 3px; }
 .staff-tbl .col-num { width: 30px; text-align: center; color: var(--text-muted); }
-.staff-tbl .col-name { min-width: 65px; }
+.staff-tbl .col-name { min-width: 65px; max-width: 65px; overflow: hidden; white-space: nowrap; }
 .staff-tbl .col-login { width: 60px; min-width: 60px; max-width: 60px; }
 .staff-tbl .col-type { width: 110px; }
 .staff-tbl .col-contract { width: 70px; }
@@ -311,9 +311,10 @@ table.sched-tbl {
 /* Name header sticky corner */
 .sched-tbl thead tr:nth-child(1) th.col-name-th { z-index: 22; }
 .sched-tbl thead tr:nth-child(2) th.col-name-th { z-index: 22; display: none; }
-/* Row hover highlight (only schedule cells, not name) */
+/* Row hover highlight (schedule cells + sum cells up to Σhod, not name or note) */
 .staff-tbody tr:hover td.sched-cell { filter: brightness(0.88); }
 .staff-tbody tr:hover td.sched-cell.focused { filter: none; }
+.staff-tbody tr:hover td.sum-cell:not([data-sum-idx="7"]) { filter: brightness(0.88); }
 /* Hidden row */
 tbody tr.row-hidden { display: none !important; }
 
@@ -589,7 +590,6 @@ tbody tr.row-filtered { display: none; }
     <button class="tb-btn" id="btn-draft-trash">Koš</button>
     <span id="autosave-ind"></span>
     <input type="file" id="xls-file-input" accept=".xls,.xlsx" style="display:none">
-    <button class="tb-btn" id="btn-show-hidden" style="display:none" title="Zobraz skryté řádky">👁 Skrytí</button>
     <button class="tb-btn" id="btn-size-tvorba" title="Nastavení velikosti tabulky">⊞ Velikost</button>
   </div>
 
@@ -685,7 +685,8 @@ tbody tr.row-filtered { display: none; }
     <button class="stb-btn" id="stb-night-only">Jen noční</button>
     <button class="stb-btn" id="stb-available">Jen dostupní</button>
     <button class="stb-btn" id="stb-mark-sel">Označ vybrané</button>
-    <div class="stb-sep"></div>
+    <button class="stb-btn" id="btn-show-hidden" style="display:none">👁 Skrytí</button>
+    <div class="stb-spacer"></div>
     <button class="stb-btn" id="stb-undo">⇐ Zpět</button>
     <button class="stb-btn" id="stb-redo">⇒ Vpřed</button>
     <div class="stb-spacer"></div>
@@ -1945,9 +1946,17 @@ function renderScheduleTable(tableId, editable) {
   tbl.appendChild(covTbody);
   tbl.appendChild(staffTbody);
 
-  // Make each coverage row sticky individually (more reliable than tbody sticky)
+  // Make coverage cells sticky at cell level (avoids Chrome z-index bug with TR sticky)
   Array.from(covTbody.querySelectorAll('tr')).forEach((tr, rowIdx) => {
-    tr.style.cssText = `position:sticky;top:calc(var(--sched-row-h) * ${rowIdx + 2});z-index:10;`;
+    const topVal = `calc(var(--sched-row-h) * ${rowIdx + 2})`;
+    tr.querySelectorAll('td, th').forEach(cell => {
+      cell.style.top = topVal;
+      if (!cell.classList.contains('col-name-td')) {
+        // col-name-td already has position:sticky left:0 from CSS; just add top
+        cell.style.position = 'sticky';
+      }
+      cell.style.zIndex = cell.classList.contains('col-name-td') ? '12' : '10';
+    });
   });
 
   if (editable) {
@@ -3627,9 +3636,10 @@ function applySizes() {
   // update sticky top of dn sub-header row (was hardcoded to 22px in CSS)
   document.querySelectorAll('.sched-tbl thead tr:nth-child(2) th')
     .forEach(th => { th.style.top = h + 'px'; });
-  // update sticky top of each coverage row
+  // update sticky top of each coverage cell
   document.querySelectorAll('.sched-tbl .cov-tbody tr').forEach((tr, rowIdx) => {
-    tr.style.top = ((rowIdx + 2) * parseInt(h)) + 'px';
+    const topPx = ((rowIdx + 2) * parseInt(h)) + 'px';
+    tr.querySelectorAll('td, th').forEach(cell => { cell.style.top = topPx; });
   });
   document.getElementById('size-row-h-val').textContent = h + 'px';
   document.getElementById('size-col-w-val').textContent = w + 'px';
