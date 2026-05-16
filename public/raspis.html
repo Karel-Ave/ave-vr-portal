@@ -899,7 +899,9 @@ body.portal-recep-mode .sc-left2 { display: none !important; }
 
 /* ── Samostatná karta Rozpis (/rozpis) ───────────────────────────────────── */
 /* Skryj tab lištu (má display:flex !important → nutno přebít !important) */
-body.portal-standalone-recep #raspis-tabs-bar { display: none !important; }
+body.portal-standalone-recep #raspis-tabs-bar  { display: none !important; }
+/* Skryj ovládací lištu (Zpět/Vpřed a ostatní tlačítka — jen čtení) */
+body.portal-standalone-recep #schedule-controls { display: none !important; }
 /* Skryj řádek Pokrytí (data i sticky záhlaví) */
 body.portal-standalone-recep #cover-row { display: none !important; }
 body.portal-standalone-recep .th-cover  { display: none !important; }
@@ -8235,7 +8237,7 @@ window.onload = async function() {
     // Samostatná karta Rozpis — skryj tab lištu, zobraz pouze recep záložku
     document.body.classList.add('portal-standalone-recep');
     const lbl = document.getElementById('recep-bar-label');
-    if (lbl) lbl.textContent = 'Vyber měsíc:';
+    if (lbl) { lbl.textContent = 'Vyber měsíc'; lbl.style.color = '#fff'; }
     showAppTab('recep');
     // overlay skryje _loadReceList() po načtení dat; timeout jako pojistka
     setTimeout(_hideLoadingOverlay, 8000);
