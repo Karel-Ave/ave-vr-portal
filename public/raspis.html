@@ -898,6 +898,8 @@ body.portal-recep-mode .sc-left { display: none !important; }
 body.portal-recep-mode .sc-left2 { display: none !important; }
 
 /* ── Samostatná karta Rozpis (/rozpis) ───────────────────────────────────── */
+/* Skryj tab lištu (má display:flex !important → nutno přebít !important) */
+body.portal-standalone-recep #raspis-tabs-bar { display: none !important; }
 /* Skryj řádek Pokrytí (data i sticky záhlaví) */
 body.portal-standalone-recep #cover-row { display: none !important; }
 body.portal-standalone-recep .th-cover  { display: none !important; }
@@ -952,7 +954,7 @@ body.portal-standalone-recep .th-cover  { display: none !important; }
 
 <div id="portal-recep-bar" style="display:none;align-items:center;gap:6px;background:var(--bg-controls,#ECEAE2);border-bottom:1px solid var(--bg-controls-border,#D8D5CC);padding:5px 12px;flex-shrink:0;min-height:38px;">
   <select id="portal-recep-sel" title="Vyberte měsíc rozpisu" style="height:26px;padding:0 8px;font-size:12px;font-family:inherit;border:1px solid var(--border);border-radius:5px;background:var(--surface);color:var(--text);cursor:pointer;max-width:220px;"></select>
-  <span style="font-size:11px;color:var(--text-muted,#888);">— zobrazení pro recepční</span>
+  <span id="recep-bar-label" style="font-size:11px;color:var(--text-muted,#888);">— zobrazení pro recepční</span>
 </div>
 
 <div id="content">
@@ -7182,6 +7184,12 @@ async function initPortal() {
       if (el) el.style.display = visible ? '' : 'none';
       if (visible) _visibleTabs.push(t.name);
     });
+    // List Rozpis přesunut do samostatné karty — v Raspis VR vždy skrytý
+    if (WEB_MODE !== 'recep') {
+      const receTab = document.getElementById('rtab-recep');
+      if (receTab) receTab.style.display = 'none';
+      _visibleTabs = _visibleTabs.filter(function(t) { return t !== 'recep'; });
+    }
   } catch(e) { /* not in portal, skip */ }
   startLockPoll();
 }
@@ -8226,8 +8234,8 @@ window.onload = async function() {
   } else if (WEB_MODE === 'recep') {
     // Samostatná karta Rozpis — skryj tab lištu, zobraz pouze recep záložku
     document.body.classList.add('portal-standalone-recep');
-    const tabsBar = document.getElementById('raspis-tabs-bar');
-    if (tabsBar) tabsBar.style.display = 'none';
+    const lbl = document.getElementById('recep-bar-label');
+    if (lbl) lbl.textContent = 'Vyber měsíc:';
     showAppTab('recep');
     // overlay skryje _loadReceList() po načtení dat; timeout jako pojistka
     setTimeout(_hideLoadingOverlay, 8000);
