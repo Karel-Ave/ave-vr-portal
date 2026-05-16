@@ -2734,11 +2734,8 @@ function applyRegularPicker() {
   }
   picker.classList.remove('show');
   _rpSi = null;
-  // Re-render schedule tables to update coloring
-  ['tvorba-tbl','rozpis-tbl'].forEach(tblId => {
-    const tbl = document.getElementById(tblId);
-    if (tbl && tbl.style.display !== 'none') updateRequirementClasses();
-  });
+  // Re-apply coloring in all rendered schedule tables
+  updateRequirementClasses();
 }
 
 /* ══════════════════════════════════════════════════════════════════════════════
@@ -3093,6 +3090,7 @@ function saveHotelManager() {
   toast('Hotely uloženy');
   updateAllSums();
   buildHotelFilterButtons();
+  updateCoverageRows();
 }
 
 /* ══════════════════════════════════════════════════════════════════════════════
@@ -3376,6 +3374,11 @@ function handleXlsImport(e) {
       state.schedule = newSchedule;
       renderStaffTable();
       renderScheduleTable('tvorba-tbl', true);
+      updateDuplicateClasses();
+      updateCoverageRows();
+      updateRequirementClasses();
+      buildHotelFilterButtons();
+      historySave();
       toast(`Import dokončen (${newStaff.length} pracovníků)`);
     } catch(err) {
       console.error('Import error:', err);
@@ -3400,6 +3403,7 @@ async function saveSettings() {
   state.holidays = document.getElementById('inp-holidays').value;
   // Rebuild tables with new month/year
   renderScheduleTable('tvorba-tbl', true);
+  buildHotelFilterButtons();
   toast('Nastavení uloženo');
 }
 
@@ -3640,7 +3644,8 @@ document.addEventListener('DOMContentLoaded', async () => {
     const dayOnly= document.getElementById('hotel-new-dayonly').checked;
     if (!letter || !/^[A-Z]$/.test(letter)) { toast('Zadejte jedno písmeno A–Z', true); return; }
     const list = document.getElementById('hotel-list');
-    if (list.querySelector(`.hotel-item [data-letter="${letter}"]`)) { toast('Hotel ' + letter + ' již existuje', true); return; }
+    const alreadyExists = Array.from(list.querySelectorAll('.hotel-letter-badge')).some(b => b.textContent.trim() === letter);
+    if (alreadyExists) { toast('Hotel ' + letter + ' již existuje', true); return; }
     // Append to bottom of list (next idx = current count)
     const idx = list.querySelectorAll('.hotel-item').length;
     const item = document.createElement('div');
