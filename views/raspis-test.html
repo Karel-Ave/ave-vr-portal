@@ -315,9 +315,13 @@ table.sched-tbl {
 }
 .th-day-num { display: block; font-size: 9px; font-weight: 700; }
 .th-day-dow { display: block; font-size: 7px; opacity: 0.75; }
+/* d/n letter — only this span gets red, day number area stays clean */
+.th-dn-letter { display: inline-block; line-height: 1.4; padding: 0 3px; border-radius: 3px; }
+.th-dn.dn-uncovered .th-dn-letter { background: #e74c3c !important; color: #fff !important; }
 /* Copy/paste selection */
 .sched-cell.cell-copy-sel { outline: 2px solid #2980b9 !important; outline-offset: -1px; background: rgba(41,128,185,.18) !important; }
 .sched-tbl.copy-mode .sched-cell { cursor: crosshair !important; }
+.sched-tbl.copy-mode { user-select: none; -webkit-user-select: none; }
 /* Coverage panel rows (dots in name cell) */
 .cov-dot-wrap { float: right; display: flex; gap: 2px; align-items: center; margin-left: 4px; }
 .cov-dot { width: 7px; height: 7px; border-radius: 50%; display: inline-block; flex-shrink: 0; }
@@ -1895,7 +1899,10 @@ function renderScheduleTable(tableId, editable) {
       dayDiv.appendChild(dowSpan);
       th.appendChild(dayDiv);
     }
-    th.appendChild(document.createTextNode(col.dn));
+    const dnLetter = document.createElement('span');
+    dnLetter.className = 'th-dn-letter';
+    dnLetter.textContent = col.dn;
+    th.appendChild(dnLetter);
     tr1.appendChild(th);
   });
 
@@ -3031,7 +3038,7 @@ function updateDnCoverageColors() {
     if (!tbl) return;
     const thDns = Array.from(tbl.querySelectorAll('thead th.th-dn'));
     thDns.forEach((th, ci) => {
-      if (hotelsToCheck.length === 0) { th.style.background = ''; th.style.color = ''; return; }
+      if (hotelsToCheck.length === 0) { th.classList.remove('dn-uncovered'); return; }
       const col = calCols[ci];
       if (!col) return;
       let uncovered = false;
@@ -3041,8 +3048,7 @@ function updateDnCoverageColors() {
         const hasCover = state.staff.some((_, si) => state.schedule[`${si}_${ci}`] === letter);
         if (!hasCover) { uncovered = true; break; }
       }
-      th.style.background = uncovered ? '#e74c3c' : '';
-      th.style.color = uncovered ? '#fff' : '';
+      th.classList.toggle('dn-uncovered', uncovered);
     });
   });
 }
@@ -3167,7 +3173,7 @@ function copySelectionToClipboard() {
   for (let si = si1; si <= si2; si++) {
     const s = state.staff[si];
     if (!s) continue;
-    const cells = [s.name || ''];
+    const cells = [];
     for (let ci = ci1; ci <= ci2; ci++) {
       cells.push(state.schedule[`${si}_${ci}`] || '');
     }
@@ -3175,7 +3181,7 @@ function copySelectionToClipboard() {
   }
   const tsv = lines.join('\n');
   navigator.clipboard.writeText(tsv).then(() => {
-    toast('Zkopírováno ' + (si2 - si1 + 1) + ' řádků, ' + (ci2 - ci1 + 1) + ' sloupců');
+    toast('Zkopírováno ' + (si2 - si1 + 1) + ' řádků × ' + (ci2 - ci1 + 1) + ' sloupců');
   }).catch(() => {
     toast('Kopírování selhalo — zkontrolujte oprávnění clipboardu', true);
   });
@@ -4486,7 +4492,7 @@ document.addEventListener('DOMContentLoaded', async () => {
     if (!_copyMode) return;
     const td = e.target.closest('.staff-tbody .sched-cell[data-si][data-ci]');
     if (!td) return;
-    e.preventDefault();
+    // No preventDefault — allows wheel scroll to work during drag
     _copyDragging = true;
     _copySelSi1 = +td.dataset.si;
     _copySelCi1 = +td.dataset.ci;
