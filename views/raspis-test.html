@@ -230,6 +230,14 @@ table.sched-tbl {
   --col-dup-bg:#ffccaa; --col-dup-tx:#7a3000;
   --col-type-den:#F8FF35; --col-type-noc:#4DC3F5;
   --col-type-oba:#A8E05A; --col-type-ved:#FFB347; --col-type-spe:#FF8585;
+  --col-empty-bg:#fff5f5;
+  --col-reg-off-bg:#ebebeb; --col-reg-off-tx:#999999;
+  --col-req-miss-bg:#ffd6d6;
+  --col-cov0-bg:#ffebeb; --col-cov0-tx:#c0392b;
+  --col-cov1-bg:#c8f5c8; --col-cov1-tx:#1a6b1a;
+  --col-cov2-bg:#ffe082; --col-cov2-tx:#7a5000;
+  --col-cov3-bg:#ff8a65; --col-cov3-tx:#5d1a00;
+  --col-covdn-bg:#e8e8e8; --col-covdn-tx:#999999;
 }
 [data-theme="dark"] {
   --col-wd-bg:#2a2e36;  --col-wd-tx:#c8ccd6;
@@ -237,6 +245,14 @@ table.sched-tbl {
   --col-kd-bg:#1a3a52;  --col-kd-tx:#9cd4f0;
   --col-kn-bg:#0f2840;  --col-kn-tx:#9cd4f0;
   --col-dup-bg:#5a3000; --col-dup-tx:#ffccaa;
+  --col-empty-bg:#2a1a1a;
+  --col-reg-off-bg:#1e1e24; --col-reg-off-tx:#666666;
+  --col-req-miss-bg:#3a0a0a;
+  --col-cov0-bg:#4a0000; --col-cov0-tx:#ff8a65;
+  --col-cov1-bg:#1a4a1a; --col-cov1-tx:#7fff7f;
+  --col-cov2-bg:#4a3a00; --col-cov2-tx:#ffe082;
+  --col-cov3-bg:#4a1500; --col-cov3-tx:#ff8a65;
+  --col-covdn-bg:#1a1a1a; --col-covdn-tx:#555555;
 }
 
 /* Schedule cells */
@@ -336,14 +352,63 @@ tbody tr.row-filtered { display: none; }
 }
 [data-theme="dark"] .cov-header-row th { background: #1a1a1a; }
 .cov-row td.cov-cell { font-size: 9px; text-align: center; padding: 0; }
-.cov-empty { background: transparent; }
-.cov-1 { background: #c8f5c8; color: #1a6b1a; font-weight: 700; }
-.cov-2 { background: #ffe082; color: #7a5000; font-weight: 700; }
-.cov-3plus { background: #ff8a65; color: #5d1a00; font-weight: 700; }
-[data-theme="dark"] .cov-1 { background: #1a4a1a; color: #7fff7f; }
-[data-theme="dark"] .cov-2 { background: #4a3a00; color: #ffe082; }
-[data-theme="dark"] .cov-3plus { background: #4a1500; color: #ff8a65; }
+.cov-empty { background: var(--col-cov0-bg,#ffebeb); color: var(--col-cov0-tx,#c0392b); }
+.cov-1 { background: var(--col-cov1-bg,#c8f5c8); color: var(--col-cov1-tx,#1a6b1a); font-weight: 700; }
+.cov-2 { background: var(--col-cov2-bg,#ffe082); color: var(--col-cov2-tx,#7a5000); font-weight: 700; }
+.cov-3plus { background: var(--col-cov3-bg,#ff8a65); color: var(--col-cov3-tx,#5d1a00); font-weight: 700; }
+.cov-dayonly-night { background: var(--col-covdn-bg,#e8e8e8) !important; color: var(--col-covdn-tx,#999) !important; }
+[data-theme="dark"] .cov-empty { background: var(--col-cov0-bg,#4a0000); color: var(--col-cov0-tx,#ff8a65); }
+[data-theme="dark"] .cov-1 { background: var(--col-cov1-bg,#1a4a1a); color: var(--col-cov1-tx,#7fff7f); }
+[data-theme="dark"] .cov-2 { background: var(--col-cov2-bg,#4a3a00); color: var(--col-cov2-tx,#ffe082); }
+[data-theme="dark"] .cov-3plus { background: var(--col-cov3-bg,#4a1500); color: var(--col-cov3-tx,#ff8a65); }
+[data-theme="dark"] .cov-dayonly-night { background: var(--col-covdn-bg,#1a1a1a) !important; color: var(--col-covdn-tx,#555) !important; }
 .cov-row .col-name-td { font-size: 10px; font-weight: 700; padding: 2px 5px; background: var(--surface); }
+
+/* Cell state coloring */
+.sched-cell.cell-empty { background: var(--col-empty-bg,#fff5f5) !important; }
+[data-theme="dark"] .sched-cell.cell-empty { background: var(--col-empty-bg,#2a1a1a) !important; }
+.sched-cell.cell-regular-off { background: var(--col-reg-off-bg,#e8e8e8) !important; color: var(--col-reg-off-tx,#888) !important; }
+[data-theme="dark"] .sched-cell.cell-regular-off { background: var(--col-reg-off-bg,#1e1e24) !important; color: var(--col-reg-off-tx,#666) !important; }
+.sched-cell.cell-req-missing { background: var(--col-req-miss-bg,#ffd6d6) !important; outline: 1px dashed #e74c3c; outline-offset: -1px; }
+[data-theme="dark"] .sched-cell.cell-req-missing { background: var(--col-req-miss-bg,#3a0a0a) !important; }
+
+/* ── Regular picker popup ── */
+#regular-picker {
+  position: fixed; z-index: 3000; background: var(--surface);
+  border: 1px solid var(--border); border-radius: 8px;
+  padding: 10px 12px; box-shadow: 0 6px 24px rgba(0,0,0,.25);
+  min-width: 220px; display: none;
+}
+#regular-picker.show { display: block; }
+.rp-title { font-size: 10px; font-weight: 700; text-transform: uppercase;
+  letter-spacing: .05em; color: var(--text-muted); margin-bottom: 8px; }
+.rp-table { border-collapse: collapse; font-size: 11px; width: 100%; }
+.rp-table th { padding: 2px 5px; text-align: center; color: var(--text-muted); font-weight: 700; font-size: 10px; }
+.rp-table td { padding: 2px 5px; text-align: center; }
+.rp-table input[type=checkbox] { cursor: pointer; accent-color: var(--accent); }
+.rp-footer { margin-top: 8px; display: flex; gap: 6px; align-items: center; flex-wrap: wrap; }
+.rp-footer label { font-size: 11px; display: flex; align-items: center; gap: 4px; cursor: pointer; }
+.btn-rp { padding: 3px 10px; border: none; border-radius: 5px; font-size: 11px; font-weight: 600;
+  font-family: inherit; cursor: pointer; }
+.btn-rp-ok { background: var(--accent); color: #fff; }
+.btn-rp-cancel { background: var(--surface-alt); color: var(--text); border: 1px solid var(--border); }
+/* Regular picker trigger button in staff table */
+.btn-regular-pick { padding: 2px 6px; border: 1px solid var(--border); border-radius: 4px;
+  background: var(--surface-alt); color: var(--text-muted); font-size: 10px; cursor: pointer;
+  font-family: inherit; flex-shrink: 0; }
+.btn-regular-pick:hover { background: var(--accent); color: #fff; border-color: transparent; }
+.col-regular { min-width: 130px; }
+.col-regular-wrap { display: flex; align-items: center; gap: 4px; }
+.col-regular-text { font-size: 11px; color: var(--text-muted); flex: 1; overflow: hidden;
+  text-overflow: ellipsis; white-space: nowrap; }
+/* Tooltip */
+.sched-cell[data-req-tip]:hover::after {
+  content: attr(data-req-tip);
+  position: absolute; bottom: calc(100% + 3px); left: 50%; transform: translateX(-50%);
+  background: #222; color: #fff; padding: 3px 7px; border-radius: 4px;
+  font-size: 10px; white-space: nowrap; pointer-events: none; z-index: 100;
+}
+.sched-cell { position: relative; }
 
 /* ── Buttons ── */
 .btn { padding: 6px 13px; border: none; border-radius: 7px; font-size: 13px;
@@ -837,6 +902,58 @@ tbody tr.row-filtered { display: none; }
             <span class="color-swatch" id="sw-light-tSpe" style="color:#222">Speciální</span>
           </div>
         </div>
+        <div class="color-group">
+          <h4>Pokrytí (počet lidí na hotel/den)</h4>
+          <div class="color-row2">
+            <span class="color-lbl">0 lidí (prázdný)</span>
+            <label>Pozadí <input type="color" class="col-inp" data-th="light" data-k="cov0Bg"></label>
+            <label>Text <input type="color" class="col-inp" data-th="light" data-k="cov0Tx"></label>
+            <span class="color-swatch" id="sw-light-cov0">0</span>
+          </div>
+          <div class="color-row2">
+            <span class="color-lbl">1 člověk</span>
+            <label>Pozadí <input type="color" class="col-inp" data-th="light" data-k="cov1Bg"></label>
+            <label>Text <input type="color" class="col-inp" data-th="light" data-k="cov1Tx"></label>
+            <span class="color-swatch" id="sw-light-cov1">1</span>
+          </div>
+          <div class="color-row2">
+            <span class="color-lbl">2 lidé</span>
+            <label>Pozadí <input type="color" class="col-inp" data-th="light" data-k="cov2Bg"></label>
+            <label>Text <input type="color" class="col-inp" data-th="light" data-k="cov2Tx"></label>
+            <span class="color-swatch" id="sw-light-cov2">2</span>
+          </div>
+          <div class="color-row2">
+            <span class="color-lbl">3+ lidé</span>
+            <label>Pozadí <input type="color" class="col-inp" data-th="light" data-k="cov3Bg"></label>
+            <label>Text <input type="color" class="col-inp" data-th="light" data-k="cov3Tx"></label>
+            <span class="color-swatch" id="sw-light-cov3">3+</span>
+          </div>
+          <div class="color-row2">
+            <span class="color-lbl">Hotel jen denní (noc)</span>
+            <label>Pozadí <input type="color" class="col-inp" data-th="light" data-k="covdnBg"></label>
+            <label>Text <input type="color" class="col-inp" data-th="light" data-k="covdnTx"></label>
+            <span class="color-swatch" id="sw-light-covdn">–</span>
+          </div>
+        </div>
+        <div class="color-group">
+          <h4>Buňky pracovníků</h4>
+          <div class="color-row2">
+            <span class="color-lbl">Prázdná buňka</span>
+            <label>Pozadí <input type="color" class="col-inp" data-th="light" data-k="emptyBg"></label>
+            <span class="color-swatch" id="sw-light-empty"></span>
+          </div>
+          <div class="color-row2">
+            <span class="color-lbl">Stálé volno</span>
+            <label>Pozadí <input type="color" class="col-inp" data-th="light" data-k="regOffBg"></label>
+            <label>Text <input type="color" class="col-inp" data-th="light" data-k="regOffTx"></label>
+            <span class="color-swatch" id="sw-light-regOff">vol</span>
+          </div>
+          <div class="color-row2">
+            <span class="color-lbl">Chybí požadavek</span>
+            <label>Pozadí <input type="color" class="col-inp" data-th="light" data-k="reqMissBg"></label>
+            <span class="color-swatch" id="sw-light-reqMiss">!</span>
+          </div>
+        </div>
       </div>
       <!-- Dark panel -->
       <div class="color-panel" id="colpanel-dark" style="display:none">
@@ -901,6 +1018,58 @@ tbody tr.row-filtered { display: none; }
             <span class="color-swatch" id="sw-dark-tSpe">Speciální</span>
           </div>
         </div>
+        <div class="color-group">
+          <h4>Pokrytí (počet lidí na hotel/den)</h4>
+          <div class="color-row2">
+            <span class="color-lbl">0 lidí (prázdný)</span>
+            <label>Pozadí <input type="color" class="col-inp" data-th="dark" data-k="cov0Bg"></label>
+            <label>Text <input type="color" class="col-inp" data-th="dark" data-k="cov0Tx"></label>
+            <span class="color-swatch" id="sw-dark-cov0">0</span>
+          </div>
+          <div class="color-row2">
+            <span class="color-lbl">1 člověk</span>
+            <label>Pozadí <input type="color" class="col-inp" data-th="dark" data-k="cov1Bg"></label>
+            <label>Text <input type="color" class="col-inp" data-th="dark" data-k="cov1Tx"></label>
+            <span class="color-swatch" id="sw-dark-cov1">1</span>
+          </div>
+          <div class="color-row2">
+            <span class="color-lbl">2 lidé</span>
+            <label>Pozadí <input type="color" class="col-inp" data-th="dark" data-k="cov2Bg"></label>
+            <label>Text <input type="color" class="col-inp" data-th="dark" data-k="cov2Tx"></label>
+            <span class="color-swatch" id="sw-dark-cov2">2</span>
+          </div>
+          <div class="color-row2">
+            <span class="color-lbl">3+ lidé</span>
+            <label>Pozadí <input type="color" class="col-inp" data-th="dark" data-k="cov3Bg"></label>
+            <label>Text <input type="color" class="col-inp" data-th="dark" data-k="cov3Tx"></label>
+            <span class="color-swatch" id="sw-dark-cov3">3+</span>
+          </div>
+          <div class="color-row2">
+            <span class="color-lbl">Hotel jen denní (noc)</span>
+            <label>Pozadí <input type="color" class="col-inp" data-th="dark" data-k="covdnBg"></label>
+            <label>Text <input type="color" class="col-inp" data-th="dark" data-k="covdnTx"></label>
+            <span class="color-swatch" id="sw-dark-covdn">–</span>
+          </div>
+        </div>
+        <div class="color-group">
+          <h4>Buňky pracovníků</h4>
+          <div class="color-row2">
+            <span class="color-lbl">Prázdná buňka</span>
+            <label>Pozadí <input type="color" class="col-inp" data-th="dark" data-k="emptyBg"></label>
+            <span class="color-swatch" id="sw-dark-empty"></span>
+          </div>
+          <div class="color-row2">
+            <span class="color-lbl">Stálé volno</span>
+            <label>Pozadí <input type="color" class="col-inp" data-th="dark" data-k="regOffBg"></label>
+            <label>Text <input type="color" class="col-inp" data-th="dark" data-k="regOffTx"></label>
+            <span class="color-swatch" id="sw-dark-regOff">vol</span>
+          </div>
+          <div class="color-row2">
+            <span class="color-lbl">Chybí požadavek</span>
+            <label>Pozadí <input type="color" class="col-inp" data-th="dark" data-k="reqMissBg"></label>
+            <span class="color-swatch" id="sw-dark-reqMiss">!</span>
+          </div>
+        </div>
       </div>
     </div>
     <div class="modal-footer">
@@ -909,6 +1078,48 @@ tbody tr.row-filtered { display: none; }
       <button class="btn btn-secondary" id="colors-close2">Zavřít</button>
       <button class="btn btn-primary" id="btn-colors-save">💾 Uložit barvy</button>
     </div>
+  </div>
+</div>
+
+<!-- Regular day picker popup -->
+<div id="regular-picker">
+  <div class="rp-title">Stálé volno</div>
+  <table class="rp-table">
+    <thead>
+      <tr>
+        <th></th>
+        <th>Po</th><th>Út</th><th>St</th><th>Čt</th><th>Pá</th><th>So</th><th>Ne</th>
+      </tr>
+    </thead>
+    <tbody>
+      <tr>
+        <td style="font-size:10px;font-weight:700;color:var(--text-muted)">Den</td>
+        <td><input type="checkbox" data-dow="1" data-dn="d"></td>
+        <td><input type="checkbox" data-dow="2" data-dn="d"></td>
+        <td><input type="checkbox" data-dow="3" data-dn="d"></td>
+        <td><input type="checkbox" data-dow="4" data-dn="d"></td>
+        <td><input type="checkbox" data-dow="5" data-dn="d"></td>
+        <td><input type="checkbox" data-dow="6" data-dn="d"></td>
+        <td><input type="checkbox" data-dow="0" data-dn="d"></td>
+      </tr>
+      <tr>
+        <td style="font-size:10px;font-weight:700;color:var(--text-muted)">Noc</td>
+        <td><input type="checkbox" data-dow="1" data-dn="n"></td>
+        <td><input type="checkbox" data-dow="2" data-dn="n"></td>
+        <td><input type="checkbox" data-dow="3" data-dn="n"></td>
+        <td><input type="checkbox" data-dow="4" data-dn="n"></td>
+        <td><input type="checkbox" data-dow="5" data-dn="n"></td>
+        <td><input type="checkbox" data-dow="6" data-dn="n"></td>
+        <td><input type="checkbox" data-dow="0" data-dn="n"></td>
+      </tr>
+    </tbody>
+  </table>
+  <div class="rp-footer">
+    <label><input type="checkbox" id="rp-sv"> Svátky</label>
+    <label><input type="checkbox" id="rp-hols"> Víkendy</label>
+    <div style="flex:1"></div>
+    <button class="btn-rp btn-rp-ok" id="rp-apply">OK</button>
+    <button class="btn-rp btn-rp-cancel" id="rp-cancel">✕</button>
   </div>
 </div>
 
@@ -1169,6 +1380,8 @@ function historyUndo() {
   updateAllSums();
   renderCells('tvorba-tbl', true);
   updateDuplicateClasses();
+  updateCoverageRows();
+  updateRequirementClasses();
 }
 
 function historyRedo() {
@@ -1178,6 +1391,132 @@ function historyRedo() {
   updateAllSums();
   renderCells('tvorba-tbl', true);
   updateDuplicateClasses();
+  updateCoverageRows();
+  updateRequirementClasses();
+}
+
+/* ══════════════════════════════════════════════════════════════════════════════
+   REGULAR OFF DAYS & REQUIREMENTS
+══════════════════════════════════════════════════════════════════════════════ */
+
+const DOW_NAMES = {po:1,út:2,st:3,čt:4,pá:5,so:6,ne:0};
+
+function parseRegular(regular) {
+  const result = new Set();
+  if (!regular) return result;
+  regular.split(',').map(s => s.trim().toLowerCase()).filter(Boolean).forEach(part => {
+    if (part === 'sv') { result.add('sv'); return; }
+    if (part === 'wk' || part === 'vik' || part === 'víkend') { result.add('wk'); return; }
+    const m2 = part.match(/^(po|út|st|čt|pá|so|ne)-(d|n)$/);
+    if (m2) { const d = DOW_NAMES[m2[1]]; if (d !== undefined) result.add(`${d}-${m2[2]}`); return; }
+    const m1 = part.match(/^(po|út|st|čt|pá|so|ne)$/);
+    if (m1) {
+      const d = DOW_NAMES[m1[1]];
+      if (d !== undefined) { result.add(`${d}-d`); result.add(`${d}-n`); }
+    }
+  });
+  return result;
+}
+
+function isRegularOff(col, month, year, regular, holidaysList) {
+  if (!regular) return false;
+  const parsed = parseRegular(regular);
+  if (!parsed.size) return false;
+  const m = col.nextYear ? 1 : month;
+  const y = col.nextYear ? year + 1 : year;
+  const dow = new Date(y, m - 1, col.day).getDay();
+  if (parsed.has('sv') && isHoliday(col, month, year, holidaysList)) return true;
+  if (parsed.has('wk') && isWeekend(col, month, year)) return true;
+  return parsed.has(`${dow}-${col.dn}`);
+}
+
+function regularToString(checks, sv, wk) {
+  const DOW_NAMES_R = {1:'po',2:'út',3:'st',4:'čt',5:'pá',6:'so',0:'ne'};
+  const parts = [];
+  // Group d+n for same day
+  [1,2,3,4,5,6,0].forEach(dow => {
+    const hasd = checks.some(c => +c.dataset.dow === dow && c.dataset.dn === 'd' && c.checked);
+    const hasn = checks.some(c => +c.dataset.dow === dow && c.dataset.dn === 'n' && c.checked);
+    if (hasd && hasn) parts.push(DOW_NAMES_R[dow]);
+    else if (hasd) parts.push(DOW_NAMES_R[dow] + '-d');
+    else if (hasn) parts.push(DOW_NAMES_R[dow] + '-n');
+  });
+  if (sv) parts.push('sv');
+  if (wk) parts.push('vik');
+  return parts.join(',');
+}
+
+function applyRegularAndReqClasses(td, si, ci, col, val) {
+  const s = state.staff[si];
+  const holidaysList = parseHolidays(state.holidays);
+  // Regular off
+  const regOff = s && isRegularOff(col, state.month, state.year, s.regular, holidaysList);
+  // Empty cell (not skip val, not regular off)
+  const isEmpty = !val && !regOff;
+  // Requirements
+  const req = state.requirements && state.requirements[`${si}_${ci}`];
+  const reqMissing = !!(req && !val);
+
+  td.classList.toggle('cell-regular-off', !!(regOff && !val));
+  td.classList.toggle('cell-empty', !!(isEmpty && !reqMissing));
+  td.classList.toggle('cell-req-missing', reqMissing);
+  if (reqMissing) td.dataset.reqTip = `Původně: ${req}`;
+  else delete td.dataset.reqTip;
+}
+
+function updateRequirementClasses() {
+  ['tvorba-tbl','rozpis-tbl'].forEach(tblId => {
+    const tbl = document.getElementById(tblId);
+    if (!tbl) return;
+    const calCols = getCalCols(state.month, state.year);
+    tbl.querySelectorAll('.sched-cell[data-si][data-ci]').forEach(td => {
+      if (td.classList.contains('cov-cell')) return;
+      const si = +td.dataset.si, ci = +td.dataset.ci;
+      const col = calCols[ci];
+      const val = state.schedule[`${si}_${ci}`] || '';
+      applyRegularAndReqClasses(td, si, ci, col, val);
+    });
+  });
+}
+
+/* ══════════════════════════════════════════════════════════════════════════════
+   COVERAGE ROW UPDATE
+══════════════════════════════════════════════════════════════════════════════ */
+
+function updateCoverageRows() {
+  const calCols = getCalCols(state.month, state.year);
+  const holidaysList = parseHolidays(state.holidays);
+  ['tvorba-tbl','rozpis-tbl'].forEach(tblId => {
+    const tbl = document.getElementById(tblId);
+    if (!tbl) return;
+    tbl.querySelectorAll('tbody tr.cov-row').forEach(tr => {
+      const letter = tr.dataset.covLetter;
+      const hotelData = (state.hotels||[]).find(h => h.letter === letter);
+      const isDayOnly = hotelData && hotelData.dayOnly;
+      tr.querySelectorAll('td.cov-cell[data-ci]').forEach(td => {
+        const ci = +td.dataset.ci;
+        const col = calCols[ci];
+        if (!col) return;
+        // DayOnly hotel + night col = N/A
+        if (isDayOnly && col.dn === 'n') {
+          td.className = 'sched-cell cov-cell cov-dayonly-night';
+          td.dataset.dn = 'n';
+          td.textContent = '–';
+          return;
+        }
+        const count = state.staff.filter((_, si) => state.schedule[`${si}_${ci}`] === letter).length;
+        // Rebuild class
+        const base = cellClass(col, state.month, state.year, holidaysList);
+        td.className = `sched-cell cov-cell ${base}`;
+        td.dataset.dn = col.dn;
+        if (count === 0) td.classList.add('cov-empty');
+        else if (count === 1) td.classList.add('cov-1');
+        else if (count === 2) td.classList.add('cov-2');
+        else td.classList.add('cov-3plus');
+        td.textContent = count > 0 ? count : '';
+      });
+    });
+  });
 }
 
 /* ══════════════════════════════════════════════════════════════════════════════
@@ -1298,16 +1637,24 @@ function renderScheduleTable(tableId, editable) {
         nameTd.className = 'col-name-td cov-label';
         nameTd.textContent = letter;
         tr.appendChild(nameTd);
+        const _hotelData = (state.hotels||[]).find(h => h.letter === letter);
+        const _isDayOnly = _hotelData && _hotelData.dayOnly;
         calCols.forEach((col, ci) => {
-          const count = state.staff.filter((_, si) => state.schedule[`${si}_${ci}`] === letter).length;
           const td = document.createElement('td');
           td.className = 'sched-cell cov-cell ' + cellClass(col, state.month, state.year, holidaysList);
           td.dataset.dn = col.dn;
-          if (count === 0) td.classList.add('cov-empty');
-          else if (count === 1) td.classList.add('cov-1');
-          else if (count === 2) td.classList.add('cov-2');
-          else td.classList.add('cov-3plus');
-          td.textContent = count > 0 ? count : '';
+          td.dataset.ci = ci;
+          if (_isDayOnly && col.dn === 'n') {
+            td.classList.add('cov-dayonly-night');
+            td.textContent = '–';
+          } else {
+            const count = state.staff.filter((_, si) => state.schedule[`${si}_${ci}`] === letter).length;
+            if (count === 0) td.classList.add('cov-empty');
+            else if (count === 1) td.classList.add('cov-1');
+            else if (count === 2) td.classList.add('cov-2');
+            else td.classList.add('cov-3plus');
+            td.textContent = count > 0 ? count : '';
+          }
           tr.appendChild(td);
         });
         // empty sum cells
@@ -1343,6 +1690,7 @@ function renderScheduleTable(tableId, editable) {
       td.dataset.si = si; td.dataset.ci = ci; td.dataset.dn = col.dn;
       if (_dupeKeys.has(`${si}_${ci}`)) td.classList.add('cell-duplicate');
       const val = state.schedule[`${si}_${ci}`] || '';
+      if (!_dupeKeys.has(`${si}_${ci}`)) applyRegularAndReqClasses(td, si, ci, col, val);
 
       if (editable) {
         const inp = document.createElement('input');
@@ -1470,8 +1818,11 @@ function updateAllSums() {
 function renderCells(tableId, editable) {
   const tbl = document.getElementById(tableId);
   if (!tbl) return;
-  tbl.querySelectorAll('.sched-cell').forEach(td => {
+  const calCols = getCalCols(state.month, state.year);
+  tbl.querySelectorAll('.sched-cell[data-si][data-ci]').forEach(td => {
+    if (td.classList.contains('cov-cell')) return;
     const si = +td.dataset.si, ci = +td.dataset.ci;
+    const col = calCols[ci];
     const val = state.schedule[`${si}_${ci}`] || '';
     if (editable) {
       const inp = td.querySelector('input');
@@ -1479,6 +1830,10 @@ function renderCells(tableId, editable) {
     } else {
       const span = td.querySelector('.cell-val');
       if (span) span.textContent = val;
+    }
+    // Update cell state classes (skip duplicates — handled by updateDuplicateClasses)
+    if (!td.classList.contains('cell-duplicate') && col) {
+      applyRegularAndReqClasses(td, si, ci, col, val);
     }
   });
 }
@@ -1569,6 +1924,8 @@ function setCellValue(si, ci, val) {
   }
   updateSumRow(si);
   updateDuplicateClasses();
+  updateCoverageRows();
+  updateRequirementClasses();
   scheduleAutoSave();
 }
 
@@ -1642,14 +1999,26 @@ function renderStaffTable() {
     maxTd.appendChild(maxInp);
     tr.appendChild(maxTd);
 
-    // Regular
+    // Regular — visual picker button
     const regTd = document.createElement('td');
     regTd.className = 'col-regular';
-    const regInp = document.createElement('input');
-    regInp.type = 'text'; regInp.value = s.regular || '';
-    regInp.placeholder = 'po-d,út-n,sv';
-    regInp.addEventListener('input', () => { s.regular = regInp.value; });
-    regTd.appendChild(regInp);
+    const regWrap = document.createElement('div');
+    regWrap.className = 'col-regular-wrap';
+    const regLabel = document.createElement('span');
+    regLabel.className = 'col-regular-text';
+    regLabel.title = s.regular || '';
+    regLabel.textContent = s.regular || '(žádné)';
+    const regBtn = document.createElement('button');
+    regBtn.className = 'btn-regular-pick';
+    regBtn.textContent = '📅';
+    regBtn.title = 'Nastavit stálé volno';
+    regBtn.addEventListener('click', (e) => {
+      e.stopPropagation();
+      openRegularPicker(si, regLabel, e.currentTarget);
+    });
+    regWrap.appendChild(regLabel);
+    regWrap.appendChild(regBtn);
+    regTd.appendChild(regWrap);
     tr.appendChild(regTd);
 
     // Dates
@@ -1808,6 +2177,8 @@ async function loadDraft(id) {
     renderStaffTable();
     renderScheduleTable('tvorba-tbl', true);
     updateDuplicateClasses();
+    updateCoverageRows();
+    updateRequirementClasses();
     buildHotelFilterButtons();
     setAutosaveInd('Načteno');
   } catch(e) {
@@ -1970,6 +2341,8 @@ async function loadSchedule(key) {
     spinner.style.display = 'none';
     renderScheduleTable('rozpis-tbl', false);
     updateDuplicateClasses();
+    updateCoverageRows();
+    updateRequirementClasses();
     buildHotelFilterButtons();
     showRozpisEmpty(false);
     currentPubKey = key;
@@ -2268,7 +2641,9 @@ function applyRowFilters() {
 
 function toggleHotelRows() {
   showHotels = !showHotels;
-  document.getElementById('stb-hide-hotels').classList.toggle('active', !showHotels);
+  const btn = document.getElementById('stb-hide-hotels');
+  btn.classList.toggle('active', !showHotels);
+  btn.textContent = showHotels ? 'Skrýt hotely' : 'Zobrazit hotely';
   applyRowFilters();
 }
 
@@ -2301,7 +2676,69 @@ function markSelected() {
 
 function saveRequirements() {
   state.requirements = JSON.parse(JSON.stringify(state.schedule));
-  toast('Požadavky zapamatovány');
+  toast('Požadavky zapamatovány — ' + Object.keys(state.requirements).length + ' buněk');
+  updateRequirementClasses();
+}
+
+/* ══════════════════════════════════════════════════════════════════════════════
+   REGULAR PICKER
+══════════════════════════════════════════════════════════════════════════════ */
+
+let _rpSi = null;
+let _rpLabel = null;
+
+function openRegularPicker(si, labelEl, triggerEl) {
+  _rpSi = si;
+  _rpLabel = labelEl;
+  const s = state.staff[si];
+  const parsed = parseRegular(s.regular || '');
+  const picker = document.getElementById('regular-picker');
+
+  // Set checkbox states from parsed regular string
+  picker.querySelectorAll('input[data-dow]').forEach(chk => {
+    const dow = chk.dataset.dow;
+    const dn = chk.dataset.dn;
+    chk.checked = parsed.has(`${dow}-${dn}`);
+  });
+  document.getElementById('rp-sv').checked = parsed.has('sv');
+  document.getElementById('rp-hols').checked = parsed.has('wk');
+
+  // Position near trigger
+  const rect = triggerEl.getBoundingClientRect();
+  picker.style.top = (rect.bottom + 4) + 'px';
+  picker.style.left = Math.min(rect.left, window.innerWidth - 250) + 'px';
+  picker.classList.add('show');
+
+  // Close on outside click
+  setTimeout(() => {
+    document.addEventListener('click', _closePickerOnOutside, {once: true});
+  }, 10);
+}
+
+function _closePickerOnOutside(e) {
+  const picker = document.getElementById('regular-picker');
+  if (!picker.contains(e.target)) picker.classList.remove('show');
+}
+
+function applyRegularPicker() {
+  if (_rpSi === null) return;
+  const picker = document.getElementById('regular-picker');
+  const checks = Array.from(picker.querySelectorAll('input[data-dow]'));
+  const sv = document.getElementById('rp-sv').checked;
+  const wk = document.getElementById('rp-hols').checked;
+  const val = regularToString(checks, sv, wk);
+  state.staff[_rpSi].regular = val;
+  if (_rpLabel) {
+    _rpLabel.textContent = val || '(žádné)';
+    _rpLabel.title = val || '';
+  }
+  picker.classList.remove('show');
+  _rpSi = null;
+  // Re-render schedule tables to update coloring
+  ['tvorba-tbl','rozpis-tbl'].forEach(tblId => {
+    const tbl = document.getElementById(tblId);
+    if (tbl && tbl.style.display !== 'none') updateRequirementClasses();
+  });
 }
 
 /* ══════════════════════════════════════════════════════════════════════════════
@@ -2316,7 +2753,14 @@ const COLOR_DEFAULTS = {
     knBg:'#5b9dc9', knTx:'#ffffff',
     dupBg:'#ffccaa', dupTx:'#7a3000',
     tDen:'#F8FF35', tNoc:'#4DC3F5', tOba:'#A8E05A',
-    tVed:'#FFB347', tSpe:'#FF8585'
+    tVed:'#FFB347', tSpe:'#FF8585',
+    cov0Bg:'#ffebeb', cov0Tx:'#c0392b',
+    cov1Bg:'#c8f5c8', cov1Tx:'#1a6b1a',
+    cov2Bg:'#ffe082', cov2Tx:'#7a5000',
+    cov3Bg:'#ff8a65', cov3Tx:'#5d1a00',
+    covdnBg:'#e8e8e8', covdnTx:'#999999',
+    emptyBg:'#fff5f5', regOffBg:'#ebebeb', regOffTx:'#999999',
+    reqMissBg:'#ffd6d6'
   },
   dark: {
     wdBg:'#2a2e36', wdTx:'#c8ccd6',
@@ -2325,7 +2769,14 @@ const COLOR_DEFAULTS = {
     knBg:'#0f2840', knTx:'#9cd4f0',
     dupBg:'#5a3000', dupTx:'#ffccaa',
     tDen:'#F8FF35', tNoc:'#4DC3F5', tOba:'#A8E05A',
-    tVed:'#FFB347', tSpe:'#FF8585'
+    tVed:'#FFB347', tSpe:'#FF8585',
+    cov0Bg:'#4a0000', cov0Tx:'#ff8a65',
+    cov1Bg:'#1a4a1a', cov1Tx:'#7fff7f',
+    cov2Bg:'#4a3a00', cov2Tx:'#ffe082',
+    cov3Bg:'#4a1500', cov3Tx:'#ff8a65',
+    covdnBg:'#1a1a1a', covdnTx:'#555555',
+    emptyBg:'#2a1a1a', regOffBg:'#1e1e24', regOffTx:'#666666',
+    reqMissBg:'#3a0a0a'
   }
 };
 
@@ -2366,6 +2817,14 @@ function applyColorProfile() {
       --col-dup-bg:${l.dupBg}; --col-dup-tx:${l.dupTx};
       --col-type-den:${l.tDen}; --col-type-noc:${l.tNoc};
       --col-type-oba:${l.tOba}; --col-type-ved:${l.tVed}; --col-type-spe:${l.tSpe};
+      --col-cov0-bg:${l.cov0Bg}; --col-cov0-tx:${l.cov0Tx};
+      --col-cov1-bg:${l.cov1Bg}; --col-cov1-tx:${l.cov1Tx};
+      --col-cov2-bg:${l.cov2Bg}; --col-cov2-tx:${l.cov2Tx};
+      --col-cov3-bg:${l.cov3Bg}; --col-cov3-tx:${l.cov3Tx};
+      --col-covdn-bg:${l.covdnBg}; --col-covdn-tx:${l.covdnTx};
+      --col-empty-bg:${l.emptyBg};
+      --col-reg-off-bg:${l.regOffBg}; --col-reg-off-tx:${l.regOffTx};
+      --col-req-miss-bg:${l.reqMissBg};
     }
     [data-theme="dark"] {
       --col-wd-bg:${d.wdBg}; --col-wd-tx:${d.wdTx};
@@ -2375,6 +2834,14 @@ function applyColorProfile() {
       --col-dup-bg:${d.dupBg}; --col-dup-tx:${d.dupTx};
       --col-type-den:${d.tDen}; --col-type-noc:${d.tNoc};
       --col-type-oba:${d.tOba}; --col-type-ved:${d.tVed}; --col-type-spe:${d.tSpe};
+      --col-cov0-bg:${d.cov0Bg}; --col-cov0-tx:${d.cov0Tx};
+      --col-cov1-bg:${d.cov1Bg}; --col-cov1-tx:${d.cov1Tx};
+      --col-cov2-bg:${d.cov2Bg}; --col-cov2-tx:${d.cov2Tx};
+      --col-cov3-bg:${d.cov3Bg}; --col-cov3-tx:${d.cov3Tx};
+      --col-covdn-bg:${d.covdnBg}; --col-covdn-tx:${d.covdnTx};
+      --col-empty-bg:${d.emptyBg};
+      --col-reg-off-bg:${d.regOffBg}; --col-reg-off-tx:${d.regOffTx};
+      --col-req-miss-bg:${d.reqMissBg};
     }
   `;
   // Sync TYPE_COLORS to current theme
@@ -2428,6 +2895,14 @@ function updateColorSwatches(theme) {
   S(`sw-${theme}-tOba`, cp.tOba, '#222');
   S(`sw-${theme}-tVed`, cp.tVed, '#222');
   S(`sw-${theme}-tSpe`, cp.tSpe, '#222');
+  S(`sw-${theme}-cov0`, cp.cov0Bg, cp.cov0Tx);
+  S(`sw-${theme}-cov1`, cp.cov1Bg, cp.cov1Tx);
+  S(`sw-${theme}-cov2`, cp.cov2Bg, cp.cov2Tx);
+  S(`sw-${theme}-cov3`, cp.cov3Bg, cp.cov3Tx);
+  S(`sw-${theme}-covdn`, cp.covdnBg, cp.covdnTx);
+  S(`sw-${theme}-empty`, cp.emptyBg, cp.emptyBg);
+  S(`sw-${theme}-regOff`, cp.regOffBg, cp.regOffTx);
+  S(`sw-${theme}-reqMiss`, cp.reqMissBg, '#c0392b');
 }
 
 function readColorEditorInputs(theme) {
@@ -3225,6 +3700,12 @@ document.addEventListener('DOMContentLoaded', async () => {
       if (tab && tab.dataset.tab === 'tvorba') { e.preventDefault(); saveDraft(false); }
       else if (tab && tab.dataset.tab === 'nastaveni') { e.preventDefault(); saveSettings(); }
     }
+  });
+
+  // ── Regular picker ──
+  document.getElementById('rp-apply').addEventListener('click', applyRegularPicker);
+  document.getElementById('rp-cancel').addEventListener('click', () => {
+    document.getElementById('regular-picker').classList.remove('show');
   });
 
   // Initialize color editor
