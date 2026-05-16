@@ -93,7 +93,7 @@ table.staff-tbl {
 .staff-tbl th {
   background: var(--thead-bg); color: var(--thead-text); padding: 7px 8px;
   font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: .04em;
-  border: 1px solid var(--thead-border); white-space: nowrap; position: sticky; top: 0;
+  border: 1px solid var(--thead-border); white-space: nowrap; position: sticky; top: 0; z-index: 10;
 }
 .staff-tbl td {
   padding: 4px 5px; border: 1px solid var(--border); vertical-align: middle;
@@ -352,6 +352,7 @@ tbody tr.row-hidden { display: none !important; }
 [data-theme="dark"] .sched-cell.cell-selected { background: #4a3000 !important; }
 /* row filter */
 tbody tr.row-filtered { display: none; }
+.staff-tbody tr.row-marked .col-name-td { outline: 2px solid var(--accent); outline-offset: -2px; }
 /* coverage rows */
 .cov-header-row th {
   background: #2a2a2a; color: #999; font-size: 10px; font-weight: 700;
@@ -1656,6 +1657,28 @@ function updateCoverageRows() {
       });
     });
   });
+  // Refresh coverage name cell counts
+  ['tvorba-tbl','rozpis-tbl'].forEach(tblId => {
+    const tbl2 = document.getElementById(tblId);
+    if (!tbl2) return;
+    const cc = getCalCols(state.month, state.year);
+    tbl2.querySelectorAll('tr.cov-row').forEach(tr => {
+      const l = tr.dataset.covLetter;
+      const hd = (state.hotels||[]).find(h => h.letter === l);
+      const isDO = hd && hd.dayOnly;
+      const dT = cc.filter(c => c.dn === 'd').length;
+      const nT = isDO ? 0 : cc.filter(c => c.dn === 'n').length;
+      const dC = cc.filter((c, ci) => c.dn === 'd' && state.staff.some((_, si) => state.schedule[`${si}_${ci}`] === l)).length;
+      const nC = isDO ? 0 : cc.filter((c, ci) => c.dn === 'n' && state.staff.some((_, si) => state.schedule[`${si}_${ci}`] === l)).length;
+      const cEl = tr.querySelector('.col-name-td .cov-counts');
+      if (!cEl) return;
+      const dClr = dC >= dT ? '#27ae60' : '';
+      const nClr = nT > 0 && nC >= nT ? '#27ae60' : '';
+      let html = `<span style="${dClr ? 'color:'+dClr : ''}">d:${dC}/${dT}</span>`;
+      if (nT > 0) html += ` <span style="${nClr ? 'color:'+nClr : ''}">n:${nC}/${nT}</span>`;
+      cEl.innerHTML = html;
+    });
+  });
 }
 
 /* ══════════════════════════════════════════════════════════════════════════════
@@ -1683,6 +1706,7 @@ function renderScheduleTable(tableId, editable) {
   }
 
   const calCols = getCalCols(state.month, state.year);
+  const _rowH = Math.round(parseFloat(getComputedStyle(document.documentElement).getPropertyValue('--sched-row-h'))) || 22;
   const holidaysList = parseHolidays(state.holidays);
   const SUM_HEADS = ['D všed','N všed','D vík','N vík','Σ smě','±hod','Σhod','Poznámka'];
 
@@ -1756,6 +1780,16 @@ function renderScheduleTable(tableId, editable) {
   thead.appendChild(tr2);
   tbl.appendChild(thead);
 
+  // Force explicit px sticky on header rows (CSS var resolution can fail in some browsers)
+  tbl.querySelectorAll('thead tr:nth-child(1) th').forEach(th => {
+    th.style.position = 'sticky'; th.style.top = '0px';
+    if (!th.style.zIndex) th.style.zIndex = '20';
+  });
+  tbl.querySelectorAll('thead tr:nth-child(2) th').forEach(th => {
+    th.style.position = 'sticky'; th.style.top = _rowH + 'px';
+    if (!th.style.zIndex) th.style.zIndex = '20';
+  });
+
   // ── TBODY (two separate tbodies: covTbody for coverage, staffTbody for staff) ──
   const covTbody = document.createElement('tbody');
   covTbody.className = 'cov-tbody';
@@ -1795,6 +1829,21 @@ function renderScheduleTable(tableId, editable) {
           nameTd.appendChild(nameSpan);
         }
         tr.appendChild(nameTd);
+        // Coverage count summary: d:X/Y n:X/Y
+        const _isDayOnly2 = hotelInfo && hotelInfo.dayOnly;
+        const dayT = calCols.filter(c => c.dn === 'd').length;
+        const nightT = _isDayOnly2 ? 0 : calCols.filter(c => c.dn === 'n').length;
+        const dayC = calCols.filter((c, ci) => c.dn === 'd' && state.staff.some((_, si) => state.schedule[`${si}_${ci}`] === letter)).length;
+        const nightC = _isDayOnly2 ? 0 : calCols.filter((c, ci) => c.dn === 'n' && state.staff.some((_, si) => state.schedule[`${si}_${ci}`] === letter)).length;
+        const cntSpan = document.createElement('span');
+        cntSpan.className = 'cov-counts';
+        cntSpan.style.cssText = 'font-size:8px;font-weight:400;display:block;white-space:nowrap;';
+        const dClr = dayC >= dayT ? '#27ae60' : '';
+        const nClr = nightT > 0 && nightC >= nightT ? '#27ae60' : '';
+        let cntHtml = `<span style="${dClr ? 'color:'+dClr : ''}">d:${dayC}/${dayT}</span>`;
+        if (nightT > 0) cntHtml += ` <span style="${nClr ? 'color:'+nClr : ''}">n:${nightC}/${nightT}</span>`;
+        cntSpan.innerHTML = cntHtml;
+        nameTd.appendChild(cntSpan);
         const _hotelData = (state.hotels||[]).find(h => h.letter === letter);
         const _isDayOnly = _hotelData && _hotelData.dayOnly;
         calCols.forEach((col, ci) => {
@@ -1946,13 +1995,12 @@ function renderScheduleTable(tableId, editable) {
   tbl.appendChild(covTbody);
   tbl.appendChild(staffTbody);
 
-  // Make coverage cells sticky at cell level (avoids Chrome z-index bug with TR sticky)
+  // Make coverage cells sticky at cell level — explicit px avoids CSS-var resolution issues
   Array.from(covTbody.querySelectorAll('tr')).forEach((tr, rowIdx) => {
-    const topVal = `calc(var(--sched-row-h) * ${rowIdx + 2})`;
+    const topPx = ((rowIdx + 2) * _rowH) + 'px';
     tr.querySelectorAll('td, th').forEach(cell => {
-      cell.style.top = topVal;
+      cell.style.top = topPx;
       if (!cell.classList.contains('col-name-td')) {
-        // col-name-td already has position:sticky left:0 from CSS; just add top
         cell.style.position = 'sticky';
       }
       cell.style.zIndex = cell.classList.contains('col-name-td') ? '12' : '10';
@@ -2711,7 +2759,8 @@ function exportXlsx() {
    SUB-TOOLBAR STATE & FUNCTIONS
 ══════════════════════════════════════════════════════════════════════════════ */
 
-let filterHotel  = null;  // null = VSE, else letter string
+let filterHotels = new Set();  // empty = VSE, else set of letter strings
+let markedWorkers = new Set();  // Set of si indices that remain visible across hotel filters
 let filterShift  = null;  // null | 'day' | 'night' | 'available'
 let showHotels   = true;
 let sumsMode     = 'all'; // 'all' | 'hidden' | 'hoursonly'
@@ -2818,7 +2867,7 @@ function buildHotelFilterButtons() {
   container.innerHTML = '';
   getUsedHotelLetters().forEach(letter => {
     const btn = document.createElement('button');
-    btn.className = 'stb-btn' + (filterHotel === letter ? ' active' : '');
+    btn.className = 'stb-btn' + (filterHotels.has(letter) ? ' active' : '');
     btn.textContent = letter;
     btn.dataset.hotel = letter;
     btn.addEventListener('click', () => filterByHotel(letter));
@@ -2827,14 +2876,14 @@ function buildHotelFilterButtons() {
 }
 
 function filterByHotel(letter) {
-  if (filterHotel === letter) {
-    filterHotel = null;
+  if (filterHotels.has(letter)) {
+    filterHotels.delete(letter);
   } else {
-    filterHotel = letter;
+    filterHotels.add(letter);
   }
-  document.getElementById('stb-vse').classList.toggle('active', !filterHotel);
+  document.getElementById('stb-vse').classList.toggle('active', filterHotels.size === 0);
   document.querySelectorAll('#stb-hotel-btns .stb-btn').forEach(b => {
-    b.classList.toggle('active', b.dataset.hotel === filterHotel);
+    b.classList.toggle('active', filterHotels.has(b.dataset.hotel));
   });
   applyRowFilters();
 }
@@ -2860,10 +2909,10 @@ function applyRowFilters() {
       if (!s) return;
       let hide = false;
       // Hotel filter: show only rows where at least one cell matches
-      if (filterHotel) {
+      if (filterHotels.size > 0) {
         const calCols = getCalCols(state.month, state.year);
-        const hasHotel = calCols.some((_, ci) => state.schedule[`${si}_${ci}`] === filterHotel);
-        if (!hasHotel) hide = true;
+        const hasHotel = calCols.some((_, ci) => filterHotels.has(state.schedule[`${si}_${ci}`]));
+        if (!hasHotel && !markedWorkers.has(si)) hide = true;
       }
       // Shift filter
       if (!hide && filterShift === 'day') {
@@ -2886,7 +2935,7 @@ function applyRowFilters() {
       if (showHotels) {
         covTbodyEl.querySelectorAll('tr.cov-row').forEach(tr => {
           const letter = tr.dataset.covLetter;
-          const hide = filterHotel && filterHotel !== letter;
+          const hide = filterHotels.size > 0 && !filterHotels.has(letter);
           tr.classList.toggle('row-filtered', hide);
         });
         covTbodyEl.querySelectorAll('tr.cov-header-row').forEach(tr => {
@@ -2918,18 +2967,22 @@ function setSumsMode(mode) {
 }
 
 function markSelected() {
-  // Toggle 'selected' highlight on hotel-filtered cells
-  if (!filterHotel) { toast('Nejdřív vyber hotel filtrem', false); return; }
-  ['tvorba-tbl','rozpis-tbl'].forEach(tblId => {
+  if (filterHotels.size === 0) { toast('Nejdřív vyber hotel filtrem', false); return; }
+  ['tvorba-tbl', 'rozpis-tbl'].forEach(tblId => {
     const tbl = document.getElementById(tblId);
     if (!tbl) return;
-    tbl.querySelectorAll('.sched-cell').forEach(td => {
-      const si = +td.dataset.si, ci = +td.dataset.ci;
-      if (state.schedule[`${si}_${ci}`] === filterHotel) {
-        td.classList.toggle('cell-selected');
+    tbl.querySelectorAll('.staff-tbody tr[data-si]:not(.row-filtered)').forEach(tr => {
+      const si = +tr.dataset.si;
+      if (markedWorkers.has(si)) {
+        markedWorkers.delete(si);
+        tr.classList.remove('row-marked');
+      } else {
+        markedWorkers.add(si);
+        tr.classList.add('row-marked');
       }
     });
   });
+  applyRowFilters();
 }
 
 function saveRequirements() {
@@ -3897,7 +3950,9 @@ document.addEventListener('DOMContentLoaded', async () => {
 
   // ── Sub-toolbar ──
   document.getElementById('stb-vse').addEventListener('click', () => {
-    filterHotel = null;
+    filterHotels.clear();
+    document.querySelectorAll('.staff-tbody tr.row-marked').forEach(tr => tr.classList.remove('row-marked'));
+    markedWorkers.clear();
     document.getElementById('stb-vse').classList.add('active');
     document.querySelectorAll('#stb-hotel-btns .stb-btn').forEach(b => b.classList.remove('active'));
     applyRowFilters();
@@ -4134,8 +4189,8 @@ document.addEventListener('DOMContentLoaded', async () => {
     const tbl = document.getElementById(tblId);
     if (!tbl) return;
     tbl.addEventListener('mouseover', e => {
-      const td = e.target.closest('td[data-si]');
-      if (!td || td.classList.contains('cov-cell')) { hideSchedTip(); return; }
+      const td = e.target.closest('td.col-name-td[data-si]');
+      if (!td) { hideSchedTip(); return; }
       const si = +td.dataset.si;
       if (isNaN(si) || si < 0 || si >= state.staff.length) { hideSchedTip(); return; }
       showSchedTip(si, e.clientX, e.clientY);
