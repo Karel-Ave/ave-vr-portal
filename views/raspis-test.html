@@ -296,11 +296,8 @@ table.sched-tbl {
   background: var(--surface);
 }
 .sched-tbl .sum-bold { font-weight: 700; }
-.sched-tbl .sum-extra input {
-  width: 100%; border: none; background: transparent; text-align: center;
-  font-size: 11px; font-family: inherit; color: inherit; padding: 0; outline: none;
-}
-.sched-tbl .sum-extra input:focus { outline: 1px solid var(--accent); border-radius: 2px; }
+.sched-tbl .sum-extra { cursor: pointer; }
+.sched-tbl .sum-extra:hover { background: var(--surface-alt) !important; }
 .col-hrs-green { color: #27ae60; font-weight: 700; }
 .col-hrs-red   { color: #e74c3c; font-weight: 700; }
 .col-hrs-orange{ color: #e67e22; font-weight: 700; }
@@ -308,13 +305,14 @@ table.sched-tbl {
 /* Sticky header rows — keep above coverage (z-index 20+) */
 .sched-tbl thead tr:nth-child(1) th { position: sticky; top: 0; z-index: 20; }
 .sched-tbl thead tr:nth-child(2) th { position: sticky; top: var(--sched-row-h); z-index: 20; }
+.sched-tbl thead tr:nth-child(2) th { border-bottom: 2px solid var(--thead-border,#3a3a3a) !important; }
 /* Name header sticky corner */
 .sched-tbl thead tr:nth-child(1) th.col-name-th { z-index: 22; }
 .sched-tbl thead tr:nth-child(2) th.col-name-th { z-index: 22; display: none; }
 /* Row hover highlight (schedule cells + sum cells up to Σhod, not name or note) */
 .staff-tbody tr:hover td.sched-cell { filter: brightness(0.88); }
 .staff-tbody tr:hover td.sched-cell.focused { filter: none; }
-.staff-tbody tr:hover td.sum-cell:not([data-sum-idx="7"]) { filter: brightness(0.88); }
+.staff-tbody tr:hover td.sum-cell { filter: brightness(0.88); }
 /* Hidden row */
 tbody tr.row-hidden { display: none !important; }
 
@@ -371,6 +369,10 @@ tbody tr.row-filtered { display: none; }
 [data-theme="dark"] .cov-3plus { background: var(--col-cov3-bg,#4a1500); color: var(--col-cov3-tx,#ff8a65); }
 [data-theme="dark"] .cov-dayonly-night { background: var(--col-covdn-bg,#1a1a1a) !important; color: var(--col-covdn-tx,#555) !important; }
 .cov-row .col-name-td { font-size: 10px; font-weight: 700; padding: 2px 5px; background: var(--surface); }
+.cov-dot-wrap { float: right; display: flex; gap: 2px; align-items: center; margin-left: 4px; }
+.cov-dot { width: 7px; height: 7px; border-radius: 50%; display: inline-block; flex-shrink: 0; }
+.cov-dot-ok  { background: #27ae60; }
+.cov-dot-mis { background: #e74c3c; }
 /* cov-tbody — sticky is now applied per-TR in JS, not on tbody */
 .cov-tbody td { background: var(--surface); }
 .cov-tbody th { background: #2a2a2a; color: #ccc; }
@@ -1270,9 +1272,69 @@ function hideSchedTip() {
   document.getElementById('sched-name-tip').style.display = 'none';
 }
 
+/* ── ±hod popup ── */
+let _extraPopSi = null;
+function showExtraPopup(si) {
+  _extraPopSi = si;
+  const pop = document.getElementById('extra-popup');
+  pop.style.display = 'block';
+  const valInp = document.getElementById('extra-pop-val');
+  valInp.value = '';
+  document.getElementById('extra-pop-note').value = '';
+  // History
+  const adjs = getExtraAdjustments(si);
+  const hist = document.getElementById('extra-pop-history');
+  if (adjs.length > 0) {
+    const total = getExtraTotal(si);
+    hist.style.display = '';
+    hist.innerHTML = '<b>Celkem: ' + (total > 0 ? '+' : '') + total + ' hod</b>\n' +
+      adjs.map(a => (a.val > 0 ? '+' : '') + a.val + ' hod' + (a.note ? ' — ' + a.note : '') + (a.login ? ' (' + a.login + ')' : '')).join('\n');
+  } else { hist.style.display = 'none'; }
+  // Center popup
+  pop.style.left = Math.round(window.innerWidth / 2 - 130) + 'px';
+  pop.style.top = Math.round(window.innerHeight / 2 - 120) + 'px';
+  setTimeout(() => valInp.focus(), 30);
+}
+function applyExtraAdj() {
+  const si = _extraPopSi;
+  if (si === null || si === undefined) return;
+  const valStr = document.getElementById('extra-pop-val').value.trim();
+  const note = document.getElementById('extra-pop-note').value.trim();
+  const val = parseFloat(valStr.replace(',', '.'));
+  if (isNaN(val) || val === 0) { document.getElementById('extra-pop-val').focus(); return; }
+  if (!state.extras[si] || !Array.isArray(state.extras[si].adjustments)) {
+    const old = state.extras[si];
+    state.extras[si] = { adjustments: [] };
+    if (old && old.hours) {
+      const v = parseFloat(old.hours);
+      if (!isNaN(v) && v !== 0) state.extras[si].adjustments.push({val: v, note: '', login: ''});
+    }
+  }
+  const login = (typeof CURRENT_LOGIN !== 'undefined' ? CURRENT_LOGIN : '') || '';
+  state.extras[si].adjustments.push({val, note, login});
+  document.getElementById('extra-popup').style.display = 'none';
+  updateSumRow(si);
+  scheduleAutoSave();
+}
+function showExtraTip(si, x, y) {
+  const adjs = getExtraAdjustments(si);
+  if (!adjs.length) return;
+  const total = getExtraTotal(si);
+  const tip = document.getElementById('extra-tip');
+  tip.textContent = 'Celkem: ' + (total > 0 ? '+' : '') + total + ' hod\n' +
+    adjs.map(a => (a.val > 0 ? '+' : '') + a.val + ' hod' + (a.note ? ' — ' + a.note : '') + (a.login ? ' (' + a.login + ')' : '')).join('\n');
+  tip.style.display = 'block';
+  const w = tip.offsetWidth || 200, h = tip.offsetHeight || 80;
+  tip.style.left = Math.min(x + 14, window.innerWidth - w - 8) + 'px';
+  tip.style.top = Math.min(y + 8, window.innerHeight - h - 8) + 'px';
+}
+function hideExtraTip() { document.getElementById('extra-tip').style.display = 'none'; }
+
 /* ══════════════════════════════════════════════════════════════════════════════
    CONSTANTS & STATE
 ══════════════════════════════════════════════════════════════════════════════ */
+
+const CURRENT_LOGIN = ''; // placeholder — can be set by server
 
 const MONTH_NAMES = ['Leden','Únor','Březen','Duben','Květen','Červen',
   'Červenec','Srpen','Září','Říjen','Listopad','Prosinec'];
@@ -1435,6 +1497,18 @@ function smartCase(val) {
    SUMS
 ══════════════════════════════════════════════════════════════════════════════ */
 
+function getExtraAdjustments(si) {
+  const e = state.extras && state.extras[si];
+  if (!e) return [];
+  if (Array.isArray(e.adjustments)) return e.adjustments;
+  // Backward compat: single hours string
+  const v = parseFloat(e.hours || (typeof e === 'string' ? e : ''));
+  return (!isNaN(v) && v !== 0) ? [{val: v, note: '', login: ''}] : [];
+}
+function getExtraTotal(si) {
+  return getExtraAdjustments(si).reduce((s, a) => s + (parseFloat(a.val) || 0), 0);
+}
+
 function calcSums(si, calCols, st) {
   const s = st.staff[si];
   const holidaysList = parseHolidays(st.holidays);
@@ -1460,8 +1534,8 @@ function calcSums(si, calCols, st) {
     totalHrs += getHotelHours(val, st);
   });
 
-  const extraText = (st.extras[si] && st.extras[si].hours) || '';
-  const extraNum = parseFloat(extraText) || 0;
+  const extraNum = getExtraTotal(si);
+  const extraText = extraNum !== 0 ? (extraNum > 0 ? '+' + extraNum : String(extraNum)) : '';
   const finalHrs = totalHrs + extraNum;
 
   return {dw, nw, dk, nk, total, extraText, totalHrs: finalHrs};
@@ -1657,7 +1731,7 @@ function updateCoverageRows() {
       });
     });
   });
-  // Refresh coverage name cell counts
+  // Refresh colored dots in coverage name cells
   ['tvorba-tbl','rozpis-tbl'].forEach(tblId => {
     const tbl2 = document.getElementById(tblId);
     if (!tbl2) return;
@@ -1670,15 +1744,13 @@ function updateCoverageRows() {
       const nT = isDO ? 0 : cc.filter(c => c.dn === 'n').length;
       const dC = cc.filter((c, ci) => c.dn === 'd' && state.staff.some((_, si) => state.schedule[`${si}_${ci}`] === l)).length;
       const nC = isDO ? 0 : cc.filter((c, ci) => c.dn === 'n' && state.staff.some((_, si) => state.schedule[`${si}_${ci}`] === l)).length;
-      const cEl = tr.querySelector('.col-name-td .cov-counts');
-      if (!cEl) return;
-      const dClr = dC >= dT ? '#27ae60' : '';
-      const nClr = nT > 0 && nC >= nT ? '#27ae60' : '';
-      let html = `<span style="${dClr ? 'color:'+dClr : ''}">d:${dC}/${dT}</span>`;
-      if (nT > 0) html += ` <span style="${nClr ? 'color:'+nClr : ''}">n:${nC}/${nT}</span>`;
-      cEl.innerHTML = html;
+      const dots = tr.querySelectorAll('.col-name-td .cov-dot');
+      let di = 0;
+      if (dots[di]) { dots[di].className = 'cov-dot ' + (dC >= dT ? 'cov-dot-ok' : 'cov-dot-mis'); dots[di].title = `Denní: ${dC}/${dT}`; di++; }
+      if (nT > 0 && dots[di]) { dots[di].className = 'cov-dot ' + (nC >= nT ? 'cov-dot-ok' : 'cov-dot-mis'); dots[di].title = `Noční: ${nC}/${nT}`; }
     });
   });
+  updateDnCoverageColors();
 }
 
 /* ══════════════════════════════════════════════════════════════════════════════
@@ -1708,7 +1780,7 @@ function renderScheduleTable(tableId, editable) {
   const calCols = getCalCols(state.month, state.year);
   const _rowH = Math.round(parseFloat(getComputedStyle(document.documentElement).getPropertyValue('--sched-row-h'))) || 22;
   const holidaysList = parseHolidays(state.holidays);
-  const SUM_HEADS = ['D všed','N všed','D vík','N vík','Σ smě','±hod','Σhod','Poznámka'];
+  const SUM_HEADS = ['D všed','N všed','D vík','N vík','Σ smě','±hod','Σhod'];
 
   // ── THEAD ──
   const thead = document.createElement('thead');
@@ -1800,7 +1872,13 @@ function renderScheduleTable(tableId, editable) {
   if (state.staff.length > 0) {
     // Show all active hotels so "Skrýt hotely" always has something to toggle
     const hotelLetters = getUsedHotelLetters();
-    if (hotelLetters.length > 0) {
+      // Exclude special/non-coverage hotels; P always last
+      const EXCL_HOTELS = new Set(['F','Q','W']);
+      const filteredLetters = hotelLetters.filter(l => !EXCL_HOTELS.has(l));
+      const pIdx = filteredLetters.indexOf('P');
+      if (pIdx > -1) { filteredLetters.splice(pIdx, 1); filteredLetters.push('P'); }
+      const hotelLettersForCov = filteredLetters;
+    if (hotelLettersForCov.length > 0) {
       // header row
       const covHdr = document.createElement('tr');
       covHdr.className = 'cov-header-row';
@@ -1810,7 +1888,7 @@ function renderScheduleTable(tableId, editable) {
       covHdr.appendChild(th0);
       covTbody.appendChild(covHdr);
 
-      hotelLetters.forEach(letter => {
+      hotelLettersForCov.forEach(letter => {
         const tr = document.createElement('tr');
         tr.className = 'cov-row';
         tr.dataset.covLetter = letter;
@@ -1821,6 +1899,27 @@ function renderScheduleTable(tableId, editable) {
         nameTd.innerHTML = '';
         const letterSpan = document.createElement('strong');
         letterSpan.textContent = letter;
+        tr.appendChild(nameTd);
+        // Coverage count summary as colored dots
+        const _isDayOnly2 = hotelInfo && hotelInfo.dayOnly;
+        const dayT = calCols.filter(c => c.dn === 'd').length;
+        const nightT = _isDayOnly2 ? 0 : calCols.filter(c => c.dn === 'n').length;
+        const dayC = calCols.filter((c, ci) => c.dn === 'd' && state.staff.some((_, si) => state.schedule[`${si}_${ci}`] === letter)).length;
+        const nightC = _isDayOnly2 ? 0 : calCols.filter((c, ci) => c.dn === 'n' && state.staff.some((_, si) => state.schedule[`${si}_${ci}`] === letter)).length;
+        // Two colored dots for day/night coverage
+        const dotWrap = document.createElement('span');
+        dotWrap.className = 'cov-dot-wrap';
+        const dDot = document.createElement('span');
+        dDot.className = 'cov-dot ' + (dayC >= dayT ? 'cov-dot-ok' : 'cov-dot-mis');
+        dDot.title = `Denní: ${dayC}/${dayT}`;
+        dotWrap.appendChild(dDot);
+        if (nightT > 0) {
+          const nDot = document.createElement('span');
+          nDot.className = 'cov-dot ' + (nightC >= nightT ? 'cov-dot-ok' : 'cov-dot-mis');
+          nDot.title = `Noční: ${nightC}/${nightT}`;
+          dotWrap.appendChild(nDot);
+        }
+        letterSpan.prepend(dotWrap); // float:right, so prepend to appear on the right
         nameTd.appendChild(letterSpan);
         if (hotelName) {
           const nameSpan = document.createElement('span');
@@ -1828,22 +1927,6 @@ function renderScheduleTable(tableId, editable) {
           nameSpan.style.cssText = 'font-size:9px;opacity:.65;font-weight:400;';
           nameTd.appendChild(nameSpan);
         }
-        tr.appendChild(nameTd);
-        // Coverage count summary: d:X/Y n:X/Y
-        const _isDayOnly2 = hotelInfo && hotelInfo.dayOnly;
-        const dayT = calCols.filter(c => c.dn === 'd').length;
-        const nightT = _isDayOnly2 ? 0 : calCols.filter(c => c.dn === 'n').length;
-        const dayC = calCols.filter((c, ci) => c.dn === 'd' && state.staff.some((_, si) => state.schedule[`${si}_${ci}`] === letter)).length;
-        const nightC = _isDayOnly2 ? 0 : calCols.filter((c, ci) => c.dn === 'n' && state.staff.some((_, si) => state.schedule[`${si}_${ci}`] === letter)).length;
-        const cntSpan = document.createElement('span');
-        cntSpan.className = 'cov-counts';
-        cntSpan.style.cssText = 'font-size:8px;font-weight:400;display:block;white-space:nowrap;';
-        const dClr = dayC >= dayT ? '#27ae60' : '';
-        const nClr = nightT > 0 && nightC >= nightT ? '#27ae60' : '';
-        let cntHtml = `<span style="${dClr ? 'color:'+dClr : ''}">d:${dayC}/${dayT}</span>`;
-        if (nightT > 0) cntHtml += ` <span style="${nClr ? 'color:'+nClr : ''}">n:${nightC}/${nightT}</span>`;
-        cntSpan.innerHTML = cntHtml;
-        nameTd.appendChild(cntSpan);
         const _hotelData = (state.hotels||[]).find(h => h.letter === letter);
         const _isDayOnly = _hotelData && _hotelData.dayOnly;
         calCols.forEach((col, ci) => {
@@ -1949,18 +2032,14 @@ function renderScheduleTable(tableId, editable) {
       if (idx === 6) td.classList.add('sum-hrs');
       if (idx === 4 || idx === 6) td.classList.add('sum-bold');
       if (idx === 5) {
-        // ±hod editable
         td.classList.add('sum-extra');
-        const inp = document.createElement('input');
-        inp.type = 'text'; inp.value = sums.extraText;
-        inp.dataset.si = si;
-        inp.addEventListener('change', () => {
-          if (!state.extras[si]) state.extras[si] = {};
-          state.extras[si].hours = inp.value;
-          updateSumRow(si);
-          if (editable) scheduleAutoSave();
-        });
-        td.appendChild(inp);
+        const total = getExtraTotal(si);
+        td.textContent = total !== 0 ? (total > 0 ? '+' + total : String(total)) : '';
+        td.style.cursor = 'pointer';
+        td.title = 'Klikni pro přidání/odebrání hodin';
+        td.addEventListener('click', () => showExtraPopup(si));
+        td.addEventListener('mouseenter', e => showExtraTip(si, e.clientX, e.clientY));
+        td.addEventListener('mouseleave', hideExtraTip);
       } else if (idx === 6) {
         // Σhod colored
         const fond = s.contract === 'HPP' ? parseFloat(state.fondHpp)
@@ -1981,14 +2060,6 @@ function renderScheduleTable(tableId, editable) {
       }
       tr.appendChild(td);
     });
-
-    // Poznámka cell
-    const noteTd = document.createElement('td');
-    noteTd.className = 'sum-cell';
-    noteTd.style.minWidth = '80px'; noteTd.style.textAlign = 'left';
-    noteTd.dataset.si = si; noteTd.dataset.sumIdx = 7;
-    noteTd.textContent = (editable ? s.noteM : s.noteP) || '';
-    tr.appendChild(noteTd);
 
     staffTbody.appendChild(tr);
   });
@@ -2048,6 +2119,11 @@ function updateSumRow(si) {
         td.textContent = vals[idx];
       }
     });
+    const extraCell = row.querySelector(`.sum-cell[data-sum-idx="5"]`);
+    if (extraCell) {
+      const et = getExtraTotal(si);
+      extraCell.textContent = et !== 0 ? (et > 0 ? '+' + et : String(et)) : '';
+    }
   });
 }
 
@@ -2899,6 +2975,56 @@ function filterByShift(mode) {
   applyRowFilters();
 }
 
+function updateDnCoverageColors() {
+  const calCols = getCalCols(state.month, state.year);
+  ['tvorba-tbl','rozpis-tbl'].forEach(tblId => {
+    const tbl = document.getElementById(tblId);
+    if (!tbl) return;
+    const thDns = Array.from(tbl.querySelectorAll('thead th.th-dn'));
+    thDns.forEach((th, ci) => {
+      if (filterHotels.size === 0) {
+        th.style.background = ''; th.style.color = '';
+        return;
+      }
+      const col = calCols[ci];
+      if (!col) return;
+      let allCovered = true;
+      for (const letter of filterHotels) {
+        const hd = (state.hotels||[]).find(h => h.letter === letter);
+        if (hd && hd.dayOnly && col.dn === 'n') continue; // dayOnly hotel has no night
+        const covered = state.staff.some((_, si) => state.schedule[`${si}_${ci}`] === letter);
+        if (!covered) { allCovered = false; break; }
+      }
+      th.style.background = allCovered ? '#27ae60' : '#e74c3c';
+      th.style.color = '#fff';
+    });
+  });
+}
+
+function refreshCoverageSticky() {
+  const rowH = Math.round(parseFloat(getComputedStyle(document.documentElement).getPropertyValue('--sched-row-h'))) || 22;
+  ['tvorba-tbl','rozpis-tbl'].forEach(tblId => {
+    const tbl = document.getElementById(tblId);
+    if (!tbl) return;
+    const covTbody = tbl.querySelector('tbody.cov-tbody');
+    if (!covTbody || covTbody.style.display === 'none') return;
+    let visRow = 0;
+    Array.from(covTbody.querySelectorAll('tr')).forEach(tr => {
+      const hidden = tr.classList.contains('row-filtered');
+      tr.querySelectorAll('td, th').forEach(cell => {
+        if (hidden) {
+          cell.style.top = '-9999px'; // pull hidden rows off-screen so they don't interfere
+        } else {
+          cell.style.top = ((visRow + 2) * rowH) + 'px';
+          if (!cell.classList.contains('col-name-td')) cell.style.position = 'sticky';
+          cell.style.zIndex = cell.classList.contains('col-name-td') ? '12' : '10';
+        }
+      });
+      if (!hidden) visRow++;
+    });
+  });
+}
+
 function applyRowFilters() {
   ['tvorba-tbl','rozpis-tbl'].forEach(tblId => {
     const tbl = document.getElementById(tblId);
@@ -2944,6 +3070,8 @@ function applyRowFilters() {
       }
     }
   });
+  refreshCoverageSticky();
+  updateDnCoverageColors();
 }
 
 function toggleHotelRows() {
@@ -2952,6 +3080,7 @@ function toggleHotelRows() {
   btn.classList.toggle('active', !showHotels);
   btn.textContent = showHotels ? 'Skrýt hotely' : 'Zobrazit hotely';
   applyRowFilters();
+  refreshCoverageSticky();
 }
 
 function setSumsMode(mode) {
@@ -3969,6 +4098,33 @@ document.addEventListener('DOMContentLoaded', async () => {
   document.getElementById('stb-redo').addEventListener('click', historyRedo);
   document.getElementById('stb-export2').addEventListener('click', exportXlsx);
 
+  // ── ±hod popup ──
+  document.getElementById('extra-pop-plus').addEventListener('click', () => {
+    const inp = document.getElementById('extra-pop-val');
+    const v = parseFloat(inp.value) || 0;
+    inp.value = v <= 0 ? '1' : String(Math.round((v + 0.5) * 2) / 2);
+  });
+  document.getElementById('extra-pop-minus').addEventListener('click', () => {
+    const inp = document.getElementById('extra-pop-val');
+    const v = parseFloat(inp.value) || 0;
+    inp.value = v >= 0 ? '-1' : String(Math.round((v - 0.5) * 2) / 2);
+  });
+  document.getElementById('extra-pop-apply').addEventListener('click', applyExtraAdj);
+  document.getElementById('extra-pop-cancel').addEventListener('click', () => {
+    document.getElementById('extra-popup').style.display = 'none';
+  });
+  document.getElementById('extra-pop-val').addEventListener('keydown', e => {
+    if (e.key === 'Enter') applyExtraAdj();
+    if (e.key === 'Escape') document.getElementById('extra-popup').style.display = 'none';
+  });
+  document.addEventListener('click', e => {
+    const pop = document.getElementById('extra-popup');
+    if (pop && pop.style.display !== 'none' && !pop.contains(e.target) &&
+        !e.target.classList.contains('sum-extra')) {
+      pop.style.display = 'none';
+    }
+  }, true);
+
   // ── Staff modal ──
   document.getElementById('add-staff-close').addEventListener('click', () => {
     document.getElementById('overlay-add-staff').classList.remove('show');
@@ -4210,5 +4366,22 @@ document.addEventListener('DOMContentLoaded', async () => {
   });
 });
 </script>
+<!-- ±hod popup -->
+<div id="extra-popup" style="display:none;position:fixed;z-index:10000;background:var(--modal-bg,var(--surface));border:1px solid var(--border);border-radius:10px;padding:14px;box-shadow:0 4px 20px rgba(0,0,0,.3);min-width:250px;max-width:320px;">
+  <div style="font-weight:700;font-size:12px;margin-bottom:10px">± Hodiny</div>
+  <div style="display:flex;gap:6px;margin-bottom:8px;align-items:center">
+    <button id="extra-pop-minus" style="padding:4px 12px;border:1px solid var(--border);border-radius:5px;cursor:pointer;background:var(--surface-alt);color:var(--text);font-size:18px;line-height:1">−</button>
+    <input id="extra-pop-val" type="text" inputmode="decimal" placeholder="±hod (např. 2 nebo -3)" style="flex:1;padding:5px 8px;border:1px solid var(--border);border-radius:5px;font-family:inherit;font-size:13px;text-align:center;background:var(--input-bg,var(--bg));color:var(--text)">
+    <button id="extra-pop-plus" style="padding:4px 12px;border:1px solid var(--border);border-radius:5px;cursor:pointer;background:var(--surface-alt);color:var(--text);font-size:18px;line-height:1">+</button>
+  </div>
+  <input id="extra-pop-note" type="text" placeholder="Poznámka..." style="width:100%;padding:5px 8px;border:1px solid var(--border);border-radius:5px;font-family:inherit;font-size:12px;margin-bottom:8px;background:var(--input-bg,var(--bg));color:var(--text)">
+  <div style="display:flex;gap:6px;justify-content:flex-end;margin-bottom:8px">
+    <button id="extra-pop-cancel" style="padding:4px 10px;border:1px solid var(--border);border-radius:5px;cursor:pointer;background:var(--surface-alt);color:var(--text);font-size:12px">Zrušit</button>
+    <button id="extra-pop-apply" style="padding:4px 14px;border:none;border-radius:5px;cursor:pointer;background:var(--accent);color:#fff;font-size:12px;font-weight:700">Přidat</button>
+  </div>
+  <div id="extra-pop-history" style="font-size:10px;color:var(--text-muted);max-height:120px;overflow-y:auto;border-top:1px solid var(--border);padding-top:6px;display:none"></div>
+</div>
+<!-- ±hod hover tooltip -->
+<div id="extra-tip" style="position:fixed;z-index:9997;display:none;pointer-events:none;background:rgba(28,28,28,.97);color:#fff;padding:8px 12px;border-radius:8px;max-width:260px;box-shadow:0 4px 16px rgba(0,0,0,.45);font-size:11px;white-space:pre-line"></div>
 </body>
 </html>
