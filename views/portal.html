@@ -653,6 +653,7 @@
     frame.src = url;
     // Use hash so F5 always reloads /portal (not the sub-app URL directly)
     history.pushState({ app: url }, '', '/portal#' + url.replace(/^\//, ''));
+    try { sessionStorage.setItem('portal-last-app', url); } catch(e) {}
   }
 
   // ── Return to home / card grid ────────────────────────────────────────────
@@ -669,6 +670,7 @@
     cardsView.style.display = '';
     btnHome.classList.remove('visible');
 
+    try { sessionStorage.removeItem('portal-last-app'); } catch(e) {}
     history.pushState({}, '', '/portal');
   }
 
@@ -745,6 +747,17 @@
         }
       });
     }
+
+    // ── Restore last app after F5 ────────────────────────────────────────
+    // Check URL hash first (set by loadApp), then sessionStorage as fallback
+    const validHrefs = ALL_CARDS.filter(c => c.href).map(c => c.href);
+    const hashApp = location.hash.slice(1);   // e.g. "raspis-test"
+    const hashUrl = hashApp ? (hashApp.startsWith('/') ? hashApp : '/' + hashApp) : null;
+    const storedUrl = (() => { try { return sessionStorage.getItem('portal-last-app'); } catch(e) { return null; } })();
+    const restoreUrl = (hashUrl && validHrefs.includes(hashUrl)) ? hashUrl
+                     : (storedUrl && validHrefs.includes(storedUrl)) ? storedUrl
+                     : null;
+    if (restoreUrl) loadApp(restoreUrl);
   })();
 
   // ── Password change ───────────────────────────────────────────────────────

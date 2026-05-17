@@ -115,9 +115,9 @@ table.staff-tbl {
 .staff-tbl .col-dates { width: 36px; min-width: 36px; max-width: 36px; text-align: center; }
 .staff-tbl .col-note { min-width: 110px; }
 .staff-tbl .col-note textarea {
-  width: 100%; min-height: 28px; border: none; background: transparent;
-  color: var(--text); font-size: 12px; font-family: inherit; padding: 2px 4px;
-  resize: none; overflow: hidden;
+  width: 100%; min-height: unset; height: 18px; border: none; background: transparent;
+  color: var(--text); font-size: 12px; font-family: inherit; padding: 0 4px;
+  resize: none; overflow: hidden; line-height: 1.4; display: block;
 }
 .staff-tbl .col-note textarea:focus { outline: 1px solid var(--accent); border-radius: 3px; resize: vertical; }
 .staff-tbl .col-save { width: 60px; text-align: center; }
@@ -1847,8 +1847,8 @@ function updateCoverageRows() {
       const _isDayOnly = hotelInfo && hotelInfo.dayOnly;
       const dayT   = calCols.filter(c => c.dn === 'd').length;
       const nightT = _isDayOnly ? 0 : calCols.filter(c => c.dn === 'n').length;
-      const dayC   = calCols.filter((c, ci) => c.dn === 'd' && state.staff.some((_, si) => state.schedule[`${si}_${ci}`] === letter)).length;
-      const nightC = _isDayOnly ? 0 : calCols.filter((c, ci) => c.dn === 'n' && state.staff.some((_, si) => state.schedule[`${si}_${ci}`] === letter)).length;
+      const dayC   = calCols.reduce((sum, c, ci) => c.dn === 'd' ? sum + state.staff.filter((_, si) => state.schedule[`${si}_${ci}`] === letter).length : sum, 0);
+      const nightC = _isDayOnly ? 0 : calCols.reduce((sum, c, ci) => c.dn === 'n' ? sum + state.staff.filter((_, si) => state.schedule[`${si}_${ci}`] === letter).length : sum, 0);
       // Update dots in name cell
       const dDot = tr.querySelector('.cov-dot:nth-child(1)');
       const nDot = tr.querySelector('.cov-dot:nth-child(2)');
@@ -2001,8 +2001,8 @@ function renderScheduleTable(tableId, editable) {
       // Colored dots
       const dayT = calCols.filter(c => c.dn === 'd').length;
       const nightT = _isDayOnly ? 0 : calCols.filter(c => c.dn === 'n').length;
-      const dayC = calCols.filter((c, ci) => c.dn === 'd' && state.staff.some((_, si) => state.schedule[`${si}_${ci}`] === letter)).length;
-      const nightC = _isDayOnly ? 0 : calCols.filter((c, ci) => c.dn === 'n' && state.staff.some((_, si) => state.schedule[`${si}_${ci}`] === letter)).length;
+      const dayC = calCols.reduce((sum, c, ci) => c.dn === 'd' ? sum + state.staff.filter((_, si) => state.schedule[`${si}_${ci}`] === letter).length : sum, 0);
+      const nightC = _isDayOnly ? 0 : calCols.reduce((sum, c, ci) => c.dn === 'n' ? sum + state.staff.filter((_, si) => state.schedule[`${si}_${ci}`] === letter).length : sum, 0);
       const dotWrap = document.createElement('span');
       dotWrap.className = 'cov-dot-wrap';
       const dDot = document.createElement('span');
