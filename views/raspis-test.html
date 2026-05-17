@@ -2020,14 +2020,17 @@ function renderScheduleTable(tableId, editable) {
       }
       const letterSpan = document.createElement('strong');
       letterSpan.textContent = letter;
-      letterSpan.prepend(dotWrap);
-      nameTd.appendChild(letterSpan);
+      const leftGroup = document.createElement('span');
+      leftGroup.style.cssText = 'display:inline-flex;align-items:center;gap:3px;overflow:hidden;min-width:0;';
+      leftGroup.appendChild(letterSpan);
       if (hotelName) {
         const ns = document.createElement('span');
-        ns.textContent = ' ' + hotelName;
-        ns.style.cssText = 'font-size:9px;opacity:.6;font-weight:400';
-        nameTd.appendChild(ns);
+        ns.textContent = hotelName;
+        ns.style.cssText = 'font-size:9px;opacity:.6;font-weight:400;overflow:hidden;text-overflow:ellipsis;';
+        leftGroup.appendChild(ns);
       }
+      nameTd.appendChild(leftGroup);
+      nameTd.appendChild(dotWrap);
       tr.appendChild(nameTd);
       // Day/night cells
       calCols.forEach((col, ci) => {
@@ -2176,11 +2179,13 @@ function renderScheduleTable(tableId, editable) {
   tbl.appendChild(covTbody);
   tbl.appendChild(staffTbody);
 
-  // Coverage rows sticky — cells positioned below the single header row
+  // Coverage rows sticky — cells positioned below the single header row.
+  // Measure actual thead height (padding-top:26px on th-dn makes it taller than --sched-row-h).
+  const _theadH = thead.offsetHeight || _rowH;
   let _covVisRow = 0;
   Array.from(covTbody.querySelectorAll('tr')).forEach(tr => {
     const hidden = tr.classList.contains('row-filtered');
-    const topPx = hidden ? '-9999px' : ((_covVisRow + 1) * _rowH) + 'px';
+    const topPx = hidden ? '-9999px' : (_theadH + _covVisRow * _rowH) + 'px';
     tr.querySelectorAll('td, th').forEach(cell => {
       cell.style.top = topPx;
       if (!cell.classList.contains('col-name-td')) cell.style.position = 'sticky';
@@ -3184,11 +3189,15 @@ function refreshCoverageSticky() {
     if (!tbl) return;
     const covTbody = tbl.querySelector('tbody.cov-tbody');
     if (!covTbody || covTbody.style.display === 'none') return;
+    // Measure actual thead height — th-dn has padding-top:26px so it's taller than rowH.
+    // Fall back to rowH if table isn't laid out yet (e.g. hidden tab).
+    const thead = tbl.querySelector('thead');
+    const theadH = (thead && thead.offsetHeight) ? thead.offsetHeight : rowH;
     let visRow = 0;
     Array.from(covTbody.querySelectorAll('tr')).forEach(tr => {
       const hidden = tr.classList.contains('row-filtered');
       tr.querySelectorAll('td, th').forEach(cell => {
-        cell.style.top = hidden ? '-9999px' : ((visRow + 1) * rowH) + 'px';
+        cell.style.top = hidden ? '-9999px' : (theadH + visRow * rowH) + 'px';
         if (!cell.classList.contains('col-name-td')) cell.style.position = 'sticky';
         cell.style.zIndex = cell.classList.contains('col-name-td') ? '12' : '10';
       });
@@ -4425,6 +4434,7 @@ function switchTab(name) {
       setTimeout(() => {
         renderScheduleTable('tvorba-tbl', true);
         buildHotelFilterButtons();
+        refreshCoverageSticky();
         spinner.style.display = 'none';
       }, 10);
     }
@@ -4489,6 +4499,9 @@ document.addEventListener('DOMContentLoaded', async () => {
   // updateSubtoolbar() at switchTab() time (above) ran before hotel buttons existed, so
   // --stb-h was under-estimated, which pushed the schedule table header behind the subtoolbar.
   updateSubtoolbar();
+  // After --stb-h is correct and tables are laid out, recalculate coverage row sticky positions
+  // using the actual thead height (th-dn padding-top:26px makes it taller than --sched-row-h).
+  refreshCoverageSticky();
 
   // Load published schedules list
   await loadScheduleList();
