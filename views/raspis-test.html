@@ -223,6 +223,9 @@ table.sched-tbl {
 .sched-tbl .th-day { min-width: calc(var(--sched-col-w) * 2); }
 .sched-tbl .th-dn  { width: var(--sched-col-w); }
 .sched-tbl td.sched-cell { width: var(--sched-col-w); min-width: var(--sched-col-w); max-width: var(--sched-col-w); }
+/* No border between d and n of the same day — border only between days */
+.sched-tbl [data-dn="d"] { border-right: none !important; }
+.sched-tbl [data-dn="n"] { border-left:  none !important; }
 
 /* ── Cell color variables (user-editable via 🎨 Editor barev) ── */
 :root {
