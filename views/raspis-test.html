@@ -582,7 +582,11 @@ tbody tr.row-filtered { display: none; }
 
 /* ── Color editor modal ── */
 .color-tabs { display:flex; gap:6px; margin-bottom:14px; border-bottom:1px solid var(--border); padding-bottom:10px; }
-.col-scope-sel { font-size:10px; padding:1px 3px; border-radius:3px; border:1px solid var(--border); background:var(--input-bg,var(--bg)); color:var(--text); margin-left:6px; cursor:pointer; }
+.scope-cbs { display:inline-flex; align-items:center; gap:5px; margin-left:8px; flex-shrink:0; }
+.scope-cb { display:inline-flex; align-items:center; gap:2px; font-size:10px; font-weight:600; cursor:pointer; user-select:none;
+  padding:1px 5px; border-radius:3px; border:1px solid var(--border); color:var(--text-muted); }
+.scope-cb input[type="checkbox"] { width:11px; height:11px; margin:0; cursor:pointer; accent-color:#2980b9; }
+.scope-cb:has(input:checked) { border-color:#2980b9; color:#2980b9; background:rgba(41,128,185,.08); }
 .color-tab { padding:4px 14px; border:1px solid var(--border); border-radius:5px;
   background:none; color:var(--text-muted); cursor:pointer; font-size:12px; font-family:inherit; }
 .color-tab.active { background:var(--accent); color:#fff; border-color:transparent; }
@@ -3513,11 +3517,14 @@ const COLOR_DEFAULTS = {
   }
 };
 
+const SHEET_NAMES = ['tvorba', 'nastaveni', 'raspis'];
+
 let colorProfile = {
-  light:  Object.assign({}, COLOR_DEFAULTS.light),
-  dark:   Object.assign({}, COLOR_DEFAULTS.dark),
-  tvorba: { light: {}, dark: {} },
-  raspis: { light: {}, dark: {} }
+  light:     Object.assign({}, COLOR_DEFAULTS.light),
+  dark:      Object.assign({}, COLOR_DEFAULTS.dark),
+  tvorba:    { light: {}, dark: {} },
+  nastaveni: { light: {}, dark: {} },
+  raspis:    { light: {}, dark: {} }
 };
 
 // CSS key → CSS variable name map (used for sparse per-sheet overrides)
@@ -3542,14 +3549,12 @@ function loadColorProfile() {
       const p = JSON.parse(saved);
       if (p.light) colorProfile.light = Object.assign({}, COLOR_DEFAULTS.light, p.light);
       if (p.dark)  colorProfile.dark  = Object.assign({}, COLOR_DEFAULTS.dark,  p.dark);
-      if (p.tvorba) {
-        if (p.tvorba.light) colorProfile.tvorba.light = Object.assign({}, p.tvorba.light);
-        if (p.tvorba.dark)  colorProfile.tvorba.dark  = Object.assign({}, p.tvorba.dark);
-      }
-      if (p.raspis) {
-        if (p.raspis.light) colorProfile.raspis.light = Object.assign({}, p.raspis.light);
-        if (p.raspis.dark)  colorProfile.raspis.dark  = Object.assign({}, p.raspis.dark);
-      }
+      SHEET_NAMES.forEach(s => {
+        if (p[s]) {
+          if (p[s].light) colorProfile[s].light = Object.assign({}, p[s].light);
+          if (p[s].dark)  colorProfile[s].dark  = Object.assign({}, p[s].dark);
+        }
+      });
     }
   } catch(e) {}
 }
@@ -3603,18 +3608,13 @@ function applyColorProfile() {
     }
   `;
   // Per-sheet overrides: sparse CSS vars scoped to each tab panel
-  const scopedCss = (tLightCss, tDarkCss, rLightCss, rDarkCss) => {
-    let s = '';
-    if (tLightCss) s += `#tab-tvorba{${tLightCss}}`;
-    if (tDarkCss)  s += `[data-theme="dark"] #tab-tvorba{${tDarkCss}}`;
-    if (rLightCss) s += `#tab-rozpis{${rLightCss}}`;
-    if (rDarkCss)  s += `[data-theme="dark"] #tab-rozpis{${rDarkCss}}`;
-    return s;
-  };
-  styleEl.textContent += scopedCss(
-    sparseToCss(colorProfile.tvorba.light), sparseToCss(colorProfile.tvorba.dark),
-    sparseToCss(colorProfile.raspis.light), sparseToCss(colorProfile.raspis.dark)
-  );
+  const TAB_IDS = { tvorba:'#tab-tvorba', nastaveni:'#tab-nastaveni', raspis:'#tab-rozpis' };
+  SHEET_NAMES.forEach(s => {
+    const lc = sparseToCss(colorProfile[s].light);
+    const dc = sparseToCss(colorProfile[s].dark);
+    if (lc) styleEl.textContent += `${TAB_IDS[s]}{${lc}}`;
+    if (dc) styleEl.textContent += `[data-theme="dark"] ${TAB_IDS[s]}{${dc}}`;
+  });
   // Sync TYPE_COLORS to current theme
   const isDark = document.documentElement.getAttribute('data-theme') === 'dark';
   const cp = isDark ? d : l;
@@ -3641,27 +3641,31 @@ function showColorEditor() {
 }
 
 // Per-key scope helpers
-function getKeyScope(theme, k) {
-  if (k in colorProfile.tvorba[theme]) return 'tvorba';
-  if (k in colorProfile.raspis[theme]) return 'raspis';
-  return 'both';
+function getKeySheets(theme, k) {
+  // Returns which sheets have an override for this key; empty array = global (all sheets)
+  const sheets = SHEET_NAMES.filter(s => k in colorProfile[s][theme]);
+  return sheets; // empty = global
 }
 function getEffectiveColor(theme, k) {
-  if (k in colorProfile.tvorba[theme]) return colorProfile.tvorba[theme][k];
-  if (k in colorProfile.raspis[theme]) return colorProfile.raspis[theme][k];
+  for (const s of SHEET_NAMES) {
+    if (k in colorProfile[s][theme]) return colorProfile[s][theme][k];
+  }
   return colorProfile[theme][k] || COLOR_DEFAULTS[theme][k];
 }
-function setColorByScope(theme, k, v, scope) {
-  if (scope === 'tvorba') {
-    colorProfile.tvorba[theme][k] = v;
-    delete colorProfile.raspis[theme][k];
-  } else if (scope === 'raspis') {
-    colorProfile.raspis[theme][k] = v;
-    delete colorProfile.tvorba[theme][k];
-  } else {
+function getRowCheckedSheets(row) {
+  if (!row) return [...SHEET_NAMES];
+  const checked = Array.from(row.querySelectorAll('.scope-cb input[type="checkbox"]:checked')).map(cb => cb.dataset.sheet);
+  return checked.length ? checked : [...SHEET_NAMES];
+}
+function applyColorToSheets(theme, k, v, checkedSheets) {
+  // Remove all per-sheet overrides for this key
+  SHEET_NAMES.forEach(s => delete colorProfile[s][theme][k]);
+  if (checkedSheets.length >= SHEET_NAMES.length) {
+    // All sheets = global
     colorProfile[theme][k] = v;
-    delete colorProfile.tvorba[theme][k];
-    delete colorProfile.raspis[theme][k];
+  } else {
+    // Per-sheet overrides for checked sheets only
+    checkedSheets.forEach(s => { colorProfile[s][theme][k] = v; });
   }
 }
 
@@ -3671,9 +3675,15 @@ function loadColorEditorInputs(theme) {
     const inp = document.querySelector(`.col-inp[data-th="${theme}"][data-k="${k}"]`);
     if (!inp) return;
     inp.value = getEffectiveColor(theme, k);
-    // Sync the row's scope select
-    const sel = inp.closest('.color-row2')?.querySelector('.col-scope-sel');
-    if (sel) sel.value = getKeyScope(theme, k);
+    // Sync checkboxes: checked if this sheet has an override OR if key is global (no overrides)
+    const row = inp.closest('.color-row2');
+    if (row) {
+      const activeSheets = getKeySheets(theme, k); // empty = global = all
+      const isGlobal = activeSheets.length === 0;
+      row.querySelectorAll('.scope-cb input[type="checkbox"]').forEach(cb => {
+        cb.checked = isGlobal || activeSheets.includes(cb.dataset.sheet);
+      });
+    }
   });
   updateColorSwatches(theme);
 }
@@ -3711,9 +3721,8 @@ function readColorEditorInputs(theme) {
   keys.forEach(k => {
     const inp = document.querySelector(`.col-inp[data-th="${theme}"][data-k="${k}"]`);
     if (!inp || !inp.value) return;
-    const sel = inp.closest('.color-row2')?.querySelector('.col-scope-sel');
-    const scope = sel?.value || 'both';
-    setColorByScope(theme, k, inp.value, scope);
+    const checkedSheets = getRowCheckedSheets(inp.closest('.color-row2'));
+    applyColorToSheets(theme, k, inp.value, checkedSheets);
   });
 }
 
@@ -3728,45 +3737,46 @@ function initColorEditorListeners() {
     });
   });
 
-  // Add per-row scope selects dynamically
+  // Add per-row scope checkboxes (T / N / R) dynamically
+  const SCOPE_LABELS = [['tvorba','T','Tvorba'],['nastaveni','N','Nastavení'],['raspis','R','Raspis']];
   document.querySelectorAll('.color-row2').forEach(row => {
     const inputs = row.querySelectorAll('.col-inp');
     if (!inputs.length) return;
     const th = inputs[0].dataset.th;
     const keys = Array.from(inputs).map(i => i.dataset.k);
-    const sel = document.createElement('select');
-    sel.className = 'col-scope-sel';
-    sel.title = 'Kde se barva projeví';
-    [['both','Oba listy'],['tvorba','Jen Tvorba'],['raspis','Jen Raspis']].forEach(([v,t]) => {
-      const o = document.createElement('option');
-      o.value = v; o.textContent = t;
-      sel.appendChild(o);
-    });
-    sel.value = getKeyScope(th, keys[0]);
-    row.appendChild(sel);
-    sel.addEventListener('change', () => {
-      const newScope = sel.value;
-      keys.forEach(k => {
-        const val = getEffectiveColor(th, k);
-        // Remove from old locations
-        delete colorProfile.tvorba[th][k];
-        delete colorProfile.raspis[th][k];
-        // Write to new location
-        if (newScope === 'tvorba') colorProfile.tvorba[th][k] = val;
-        else if (newScope === 'raspis') colorProfile.raspis[th][k] = val;
-        else colorProfile[th][k] = val;
+    const wrap = document.createElement('span');
+    wrap.className = 'scope-cbs';
+    SCOPE_LABELS.forEach(([sheet, abbr, title]) => {
+      const lbl = document.createElement('label');
+      lbl.className = 'scope-cb'; lbl.title = title;
+      const cb = document.createElement('input');
+      cb.type = 'checkbox'; cb.dataset.sheet = sheet;
+      const activeSheets = getKeySheets(th, keys[0]);
+      cb.checked = activeSheets.length === 0 || activeSheets.includes(sheet); // unchecked = global = all
+      lbl.appendChild(cb);
+      lbl.appendChild(document.createTextNode(abbr));
+      wrap.appendChild(lbl);
+      cb.addEventListener('change', () => {
+        // Ensure at least one stays checked
+        const anyChecked = Array.from(wrap.querySelectorAll('input:checked')).length > 0;
+        if (!anyChecked) { cb.checked = true; return; }
+        const checkedSheets = Array.from(wrap.querySelectorAll('input:checked')).map(c => c.dataset.sheet);
+        keys.forEach(k => {
+          const val = getEffectiveColor(th, k);
+          applyColorToSheets(th, k, val, checkedSheets);
+        });
+        applyColorProfile();
       });
-      applyColorProfile();
     });
+    row.appendChild(wrap);
   });
 
   // Live preview on color input change
   document.querySelectorAll('.col-inp').forEach(inp => {
     inp.addEventListener('input', () => {
       const th = inp.dataset.th, k = inp.dataset.k, v = inp.value;
-      const sel = inp.closest('.color-row2')?.querySelector('.col-scope-sel');
-      const scope = sel?.value || 'both';
-      setColorByScope(th, k, v, scope);
+      const checkedSheets = getRowCheckedSheets(inp.closest('.color-row2'));
+      applyColorToSheets(th, k, v, checkedSheets);
       updateColorSwatches(th);
       applyColorProfile(); // live preview
     });
@@ -3786,10 +3796,11 @@ function initColorEditorListeners() {
   document.getElementById('btn-colors-reset').addEventListener('click', () => {
     if (!confirm('Obnovit výchozí barvy?')) return;
     colorProfile = {
-      light:  Object.assign({}, COLOR_DEFAULTS.light),
-      dark:   Object.assign({}, COLOR_DEFAULTS.dark),
-      tvorba: { light: {}, dark: {} },
-      raspis: { light: {}, dark: {} }
+      light:     Object.assign({}, COLOR_DEFAULTS.light),
+      dark:      Object.assign({}, COLOR_DEFAULTS.dark),
+      tvorba:    { light: {}, dark: {} },
+      nastaveni: { light: {}, dark: {} },
+      raspis:    { light: {}, dark: {} }
     };
     loadColorEditorInputs('light');
     loadColorEditorInputs('dark');
