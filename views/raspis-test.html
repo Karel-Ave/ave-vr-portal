@@ -2027,11 +2027,24 @@ function renderScheduleTable(tableId, editable) {
       nameTd.style.cursor = 'pointer';
       nameTd.title = 'Kliknutím skryješ řádek';
       nameTd.addEventListener('click', () => {
-        tr.classList.toggle('row-hidden');
-        const btn = document.getElementById('btn-show-hidden');
-        if (btn) {
-          const hasHidden = !!document.querySelector('#tvorba-tbl .staff-tbody tr.row-hidden');
-          btn.style.display = hasHidden ? '' : 'none';
+        if (_markMode) {
+          // Mark mode: toggle worker selection (outline), never hide
+          if (markedWorkers.has(si)) {
+            markedWorkers.delete(si);
+            tr.classList.remove('row-marked');
+          } else {
+            markedWorkers.add(si);
+            tr.classList.add('row-marked');
+          }
+          applyRowFilters();
+        } else {
+          // Normal mode: hide/show the row
+          tr.classList.toggle('row-hidden');
+          const btn = document.getElementById('btn-show-hidden');
+          if (btn) {
+            const hasHidden = !!document.querySelector('#tvorba-tbl .staff-tbody tr.row-hidden');
+            btn.style.display = hasHidden ? '' : 'none';
+          }
         }
       });
     }
@@ -2881,6 +2894,7 @@ function exportXlsx() {
 
 let filterHotels = new Set();  // empty = VSE, else set of letter strings
 let markedWorkers = new Set();  // Set of si indices that remain visible across hotel filters
+let _markMode    = false;       // true = "Označ vybrané" mode active (click name → mark, not hide)
 let filterShift  = null;  // null | 'day' | 'night' | 'available'
 let showHotels   = true;
 // ── Copy/paste mode ──
@@ -3113,6 +3127,23 @@ function applyRowFilters() {
   });
   refreshCoverageSticky();
   updateDnCoverageColors();
+  // When mark mode + hotel filter active: float marked (visible) workers to top of staff tbody
+  ['tvorba-tbl','rozpis-tbl'].forEach(tblId => {
+    const tbl = document.getElementById(tblId);
+    if (!tbl) return;
+    const staffTbody = tbl.querySelector('.staff-tbody');
+    if (!staffTbody) return;
+    const allRows = Array.from(staffTbody.querySelectorAll('tr[data-si]'));
+    if (_markMode && markedWorkers.size > 0 && filterHotels.size > 0) {
+      const markedVisible = allRows.filter(tr => markedWorkers.has(+tr.dataset.si) && !tr.classList.contains('row-filtered'));
+      const rest = allRows.filter(tr => !markedVisible.includes(tr));
+      [...markedVisible, ...rest].forEach(tr => staffTbody.appendChild(tr));
+    } else {
+      // Restore original order by si index
+      allRows.sort((a, b) => +a.dataset.si - +b.dataset.si);
+      allRows.forEach(tr => staffTbody.appendChild(tr));
+    }
+  });
 }
 
 function toggleHotelRows() {
@@ -3237,23 +3268,21 @@ function setSumsMode(mode) {
   document.getElementById('stb-hours-only').classList.toggle('active', sumsMode === 'hoursonly');
 }
 
-function markSelected() {
-  if (filterHotels.size === 0) { toast('Nejdřív vyber hotel filtrem', false); return; }
-  ['tvorba-tbl', 'rozpis-tbl'].forEach(tblId => {
-    const tbl = document.getElementById(tblId);
-    if (!tbl) return;
-    tbl.querySelectorAll('.staff-tbody tr[data-si]:not(.row-filtered)').forEach(tr => {
-      const si = +tr.dataset.si;
-      if (markedWorkers.has(si)) {
-        markedWorkers.delete(si);
-        tr.classList.remove('row-marked');
-      } else {
-        markedWorkers.add(si);
-        tr.classList.add('row-marked');
-      }
-    });
+function toggleMarkMode() {
+  _markMode = !_markMode;
+  const btn = document.getElementById('stb-mark-sel');
+  btn.classList.toggle('active', _markMode);
+  btn.textContent = _markMode ? '✓ Označování' : 'Označ vybrané';
+  // Update name cell tooltips to reflect current mode
+  document.querySelectorAll('.staff-tbody td.col-name-td[data-si]').forEach(td => {
+    td.title = _markMode ? 'Kliknutím označíš / odznačíš pracovníka' : 'Kliknutím skryješ řádek';
   });
-  applyRowFilters();
+  if (!_markMode) {
+    // Deactivate: clear all marks and restore normal order
+    markedWorkers.clear();
+    document.querySelectorAll('.staff-tbody tr.row-marked').forEach(tr => tr.classList.remove('row-marked'));
+    applyRowFilters();
+  }
 }
 
 function saveRequirements() {
@@ -4217,6 +4246,12 @@ document.addEventListener('DOMContentLoaded', async () => {
     filterHotels.clear();
     document.querySelectorAll('.staff-tbody tr.row-marked').forEach(tr => tr.classList.remove('row-marked'));
     markedWorkers.clear();
+    if (_markMode) {
+      _markMode = false;
+      const btn = document.getElementById('stb-mark-sel');
+      btn.classList.remove('active');
+      btn.textContent = 'Označ vybrané';
+    }
     document.getElementById('stb-vse').classList.add('active');
     document.querySelectorAll('#stb-hotel-btns .stb-btn').forEach(b => b.classList.remove('active'));
     applyRowFilters();
@@ -4228,7 +4263,7 @@ document.addEventListener('DOMContentLoaded', async () => {
   document.getElementById('stb-available').addEventListener('click', () => filterByShift('available'));
   document.getElementById('stb-hide-sums').addEventListener('click', () => setSumsMode('hidden'));
   document.getElementById('stb-hours-only').addEventListener('click', () => setSumsMode('hoursonly'));
-  document.getElementById('stb-mark-sel').addEventListener('click', markSelected);
+  document.getElementById('stb-mark-sel').addEventListener('click', toggleMarkMode);
   document.getElementById('stb-save-req').addEventListener('click', saveRequirements);
   document.getElementById('stb-undo').addEventListener('click', historyUndo);
   document.getElementById('stb-redo').addEventListener('click', historyRedo);
