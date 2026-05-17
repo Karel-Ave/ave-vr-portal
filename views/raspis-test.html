@@ -2747,7 +2747,7 @@ function buildSaveData() {
 function applyData(data) {
   if (!data) return;
 
-  // ── Načíst sdílená data (pracovníci, hotely) ──
+  // ── Sdílená data (pracovníci, hotely) ──
   if (data.staff) state.staff = data.staff;
   state.hrsColorOverride = data.hrsColorOverride || {};
   if (data.hotels && data.hotels.length) {
@@ -2759,13 +2759,19 @@ function applyData(data) {
     ensureHotels();
   }
 
-  // ── Načíst monthlyData ──
-  state.monthlyData = data.monthlyData || {};
+  // ── monthlyData ──
+  state.monthlyData = data.monthlyData ? JSON.parse(JSON.stringify(data.monthlyData)) : {};
 
-  // Zpětná kompatibilita: starý draft bez monthlyData — uložit root data pod uloženým klíčem
-  if (!data.monthlyData && data.month && data.year) {
-    const legacyKey = `${data.year}-${data.month}`;
-    state.monthlyData[legacyKey] = {
+  // ── Určit měsíc: vždy použij uložený (žádná "chytrá" logika) ──
+  const savedMonth = data.month || state.month;
+  const savedYear  = data.year  || state.year;
+  state.month = savedMonth;
+  state.year  = savedYear;
+  const savedKey = `${savedYear}-${savedMonth}`;
+
+  // Zpětná kompatibilita: starý draft bez monthlyData
+  if (!data.monthlyData && savedMonth && savedYear && !state.monthlyData[savedKey]) {
+    state.monthlyData[savedKey] = {
       schedule:     data.schedule     || {},
       extras:       data.extras       || {},
       requirements: data.requirements || {},
@@ -2775,20 +2781,8 @@ function applyData(data) {
     };
   }
 
-  // ── Určit, který měsíc zobrazit ──
-  const now = new Date();
-  const realM = now.getMonth() + 1, realY = now.getFullYear();
-  let targetM = realM, targetY = realY;
-  // Pokud uložený měsíc je aktuální nebo budoucí, zobrazit ho
-  if (data.month && data.year) {
-    const isFutureOrNow = data.year > realY || (data.year === realY && data.month >= realM);
-    if (isFutureOrNow) { targetM = data.month; targetY = data.year; }
-  }
-
-  // ── Načíst data cílového měsíce ──
-  state.month = targetM; state.year = targetY;
-  const targetKey = `${targetY}-${targetM}`;
-  const md = state.monthlyData[targetKey];
+  // ── Načíst data uloženého měsíce ──
+  const md = state.monthlyData[savedKey];
   if (md) {
     state.schedule     = md.schedule     || {};
     state.extras       = md.extras       || {};
@@ -2797,14 +2791,22 @@ function applyData(data) {
     state.fondZpp  = md.fondZpp  || '';
     state.holidays = md.holidays || '';
   } else {
-    state.schedule = {}; state.extras = {}; state.requirements = {};
-    state.fondHpp = ''; state.fondZpp = ''; state.holidays = '';
+    // Fallback: root-level data (pro úplnou zpětnou kompatibilitu)
+    state.schedule     = data.schedule     || {};
+    state.extras       = data.extras       || {};
+    state.requirements = data.requirements || {};
+    state.fondHpp  = data.fondHpp  || '';
+    state.fondZpp  = data.fondZpp  || '';
+    state.holidays = data.holidays || '';
   }
 
-  // ── Synchronizovat UI ──
+  // ── UI: sel-month-year ──
   populateMonthYearSelect();
   const selMY = document.getElementById('sel-month-year');
-  if (selMY) selMY.value = targetKey;
+  // Nastav hodnotu jen pokud option existuje (min = aktuální reálný měsíc)
+  if (selMY && selMY.querySelector(`option[value="${savedKey}"]`)) {
+    selMY.value = savedKey;
+  }
 }
 
 /* ══════════════════════════════════════════════════════════════════════════════
@@ -2814,6 +2816,7 @@ function applyData(data) {
 let currentDraftId = null;
 let dirtyFlag = false;
 let autoSaveTimer = null;
+let draftListCache = []; // cache seznamu draftů (pro init a findAndLoadMonthDraft)
 
 function setAutosaveInd(msg) {
   document.getElementById('autosave-ind').textContent = msg;
@@ -2958,17 +2961,17 @@ async function switchMonth(newMonth, newYear) {
   buildHotelFilterButtons();
 }
 
-/** Najde na serveru draft pro daný měsíc+rok; pokud existuje, načte ho. Vrací true/false. */
+/** Najde draft pro daný měsíc+rok v cache a načte ho. Vrací true/false. */
 async function findAndLoadMonthDraft(month, year) {
   try {
+    // Refresh cache ze serveru (just saved → server má nejaktuálnější seznam)
     const r = await fetch('/api/rt/drafts', {credentials:'include'});
-    if (!r.ok) return false;
-    const list = await r.json();
+    if (r.ok) draftListCache = await r.json();
     // Server má UNIQUE constraint (user_id, month, year) — nejvýše jeden draft na měsíc
-    const match = list.find(d => d.month === month && d.year === year);
+    const match = draftListCache.find(d => d.month === month && d.year === year);
     if (!match) return false;
     await loadDraft(match.id || match._id);
-    // applyData mohla změnit state.month/year — opravit na cílový měsíc
+    // Zajistit správný měsíc (applyData ho obnoví ze savedMonth, ale potvrdíme)
     state.month = month; state.year = year;
     await loadDraftList();
     toast(`Načten: ${MONTH_NAMES[month - 1]} ${year}`);
@@ -3013,6 +3016,7 @@ async function loadDraftList() {
     const r = await fetch('/api/rt/drafts', {credentials:'include'});
     if (!r.ok) return;
     const list = await r.json();
+    draftListCache = list; // uložit pro init a findAndLoadMonthDraft
     list.forEach(d => {
       const opt = document.createElement('option');
       opt.value = d.id || d._id;
@@ -4887,14 +4891,18 @@ document.addEventListener('DOMContentLoaded', async () => {
   // Render staff table (empty)
   renderStaffTable();
 
-  // Load draft list and auto-load the most recent draft
+  // Load draft list a načti draft aktuálního reálného měsíce (ne nejnovějšího)
   await loadDraftList();
   {
-    const sel = document.getElementById('rt-draft-sel');
-    if (sel.options.length > 1) {
-      const firstId = sel.options[1].value;
-      sel.selectedIndex = 1;
-      await loadDraft(firstId);
+    const now = new Date();
+    const realM = now.getMonth() + 1, realY = now.getFullYear();
+    // Preferuj draft pro aktuální měsíc; fallback na první v seznamu
+    const preferred = draftListCache.find(d => d.month === realM && d.year === realY)
+                   || draftListCache[0];
+    if (preferred) {
+      const id = preferred.id || preferred._id;
+      document.getElementById('rt-draft-sel').value = id;
+      await loadDraft(id);
     }
   }
 
