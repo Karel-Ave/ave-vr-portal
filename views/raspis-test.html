@@ -2948,6 +2948,42 @@ let filterShift  = null;  // null | 'day' | 'night' | 'available'
 let showHotels   = true;
 // ── Copy/paste mode ──
 let _copyMode    = false;
+
+// ── Subtoolbar state persistence (sessionStorage) ────────────────────────
+function saveStbState() {
+  try {
+    sessionStorage.setItem('rt-stb-sumsMode',      sumsMode);
+    sessionStorage.setItem('rt-stb-showHotels',    String(showHotels));
+    sessionStorage.setItem('rt-stb-filterShift',   filterShift || '');
+    sessionStorage.setItem('rt-stb-filterHotels',  JSON.stringify(Array.from(filterHotels)));
+  } catch(e) {}
+}
+function restoreStbState() {
+  try {
+    // sumsMode
+    const sm = sessionStorage.getItem('rt-stb-sumsMode');
+    if (sm && sm !== 'all') { sumsMode = 'all'; setSumsMode(sm); }
+    // showHotels
+    if (sessionStorage.getItem('rt-stb-showHotels') === 'false' && showHotels) { toggleHotelRows(); }
+    // filterShift
+    const fs = sessionStorage.getItem('rt-stb-filterShift');
+    if (fs) { filterShift = null; filterByShift(fs); }
+    // filterHotels
+    const fh = sessionStorage.getItem('rt-stb-filterHotels');
+    if (fh) {
+      const letters = JSON.parse(fh);
+      if (letters.length > 0) {
+        filterHotels = new Set(letters);
+        const vseBtn = document.getElementById('stb-vse');
+        if (vseBtn) vseBtn.classList.remove('active');
+        document.querySelectorAll('#stb-hotel-btns .stb-btn').forEach(b => {
+          b.classList.toggle('active', filterHotels.has(b.dataset.hotel));
+        });
+        applyRowFilters();
+      }
+    }
+  } catch(e) {}
+}
 let _copySelSi1  = null, _copySelCi1 = null;
 let _copySelSi2  = null, _copySelCi2 = null;
 let _copyDragging = false;
@@ -3074,6 +3110,7 @@ function filterByHotel(letter) {
     b.classList.toggle('active', filterHotels.has(b.dataset.hotel));
   });
   applyRowFilters();
+  saveStbState();
 }
 
 function filterByShift(mode) {
@@ -3085,6 +3122,7 @@ function filterByShift(mode) {
     el.classList.toggle('active', filterShift === m);
   });
   applyRowFilters();
+  saveStbState();
 }
 
 // d/n headers: always-red when any active hotel (ALL of them, no exclusion) has uncovered shift
@@ -3201,6 +3239,7 @@ function toggleHotelRows() {
   btn.classList.toggle('active', !showHotels);
   btn.textContent = showHotels ? 'Skrýt hotely' : 'Zobrazit hotely';
   applyRowFilters();
+  saveStbState();
 }
 
 /* ══════════════════════════════════════════════════════════════════════════════
@@ -3315,6 +3354,7 @@ function setSumsMode(mode) {
   });
   document.getElementById('stb-hide-sums').classList.toggle('active', sumsMode === 'hidden');
   document.getElementById('stb-hours-only').classList.toggle('active', sumsMode === 'hoursonly');
+  saveStbState();
 }
 
 function toggleMarkMode() {
@@ -4413,6 +4453,9 @@ document.addEventListener('DOMContentLoaded', async () => {
     }
   }
 
+  // Restore subtoolbar button states (after draft loaded → hotel buttons exist, tables rendered)
+  restoreStbState();
+
   // Load published schedules list
   await loadScheduleList();
 
@@ -4438,6 +4481,7 @@ document.addEventListener('DOMContentLoaded', async () => {
     document.getElementById('stb-vse').classList.add('active');
     document.querySelectorAll('#stb-hotel-btns .stb-btn').forEach(b => b.classList.remove('active'));
     applyRowFilters();
+    saveStbState();
   });
   document.getElementById('stb-hide-hotels').addEventListener('click', toggleHotelRows);
   document.getElementById('stb-copy-mode').addEventListener('click', toggleCopyMode);
