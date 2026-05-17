@@ -435,6 +435,15 @@ tbody tr.row-hidden { display: none !important; }
 .stb-btn.active { background: var(--accent,#C4A96A); color: #fff; border-color: transparent; }
 .stb-btn.active:hover { opacity: .88; }
 .stb-hotel-lbl { font-size: 10px; color: var(--text-muted); margin-right: 2px; }
+.stb-label { font-size: 10px; color: var(--btn-top-color,#9A9890); white-space: nowrap; }
+.stb-input {
+  padding: 2px 6px; border: 1px solid var(--btn-top-border,#3E3E3E);
+  border-radius: 5px; background: rgba(255,255,255,.06);
+  color: var(--text-topbar,#DDD); font-size: 12px; font-family: inherit;
+  outline: none; transition: border-color .15s;
+}
+.stb-input:focus { border-color: var(--accent,#C4A96A); }
+:root:not([data-theme="dark"]) .stb-input { background: rgba(0,0,0,.04); color: var(--text); }
 /* schedule filters */
 .sched-tbl.hide-night td[data-dn="n"],
 .sched-tbl.hide-night th[data-dn="n"] { display: none; }
@@ -658,7 +667,6 @@ tbody tr.row-filtered { display: none; }
     <button class="tb-btn" id="btn-add-staff">+ Přidat</button>
     <button class="tb-btn" id="btn-clear-actual">Smazat aktuální</button>
     <button class="tb-btn" id="btn-hotel-manager">🏨 Hotely</button>
-    <button class="tb-btn" id="btn-save-settings">Uložit nastavení</button>
     <button class="tb-btn" id="btn-load-master">Načíst z master</button>
     <button class="tb-btn" id="btn-size-nastaveni" title="Nastavení velikosti tabulky">⊞ Velikost</button>
   </div>
@@ -699,35 +707,6 @@ tbody tr.row-filtered { display: none; }
 
 <!-- ═══════════════════════════ TAB: NASTAVENÍ ════════════════════════════════════════════ -->
 <div class="tab-panel" id="tab-nastaveni">
-  <div class="settings-top" id="settings-top">
-    <div>
-      <label>Měsíc</label>
-      <select id="sel-month">
-        <option value="1">Leden</option><option value="2">Únor</option>
-        <option value="3">Březen</option><option value="4">Duben</option>
-        <option value="5">Květen</option><option value="6">Červen</option>
-        <option value="7">Červenec</option><option value="8">Srpen</option>
-        <option value="9">Září</option><option value="10">Říjen</option>
-        <option value="11">Listopad</option><option value="12">Prosinec</option>
-      </select>
-    </div>
-    <div>
-      <label>Rok</label>
-      <input type="number" id="inp-year" style="width:80px" min="2020" max="2050">
-    </div>
-    <div>
-      <label>Fond HPP (hod)</label>
-      <input type="text" id="inp-fond-hpp" style="width:70px">
-    </div>
-    <div>
-      <label>Fond ZPP (hod)</label>
-      <input type="text" id="inp-fond-zpp" style="width:70px">
-    </div>
-    <div>
-      <label>Svátky (čísla dnů, čárkou)</label>
-      <input type="text" id="inp-holidays" style="width:200px">
-    </div>
-  </div>
   <div class="wrap">
     <div class="staff-table-wrap">
       <table class="staff-tbl" id="staff-tbl">
@@ -761,6 +740,27 @@ tbody tr.row-filtered { display: none; }
     <div class="stb-spacer"></div>
     <button class="stb-btn" id="stb-hide-sums">Skrýt součty</button>
     <button class="stb-btn" id="stb-save-req">Zapamatuj požadavky</button>
+  </div>
+  <!-- Měsíc/rok/fondy/svátky — viditelné pouze v záložce Tvorba -->
+  <div class="stb-row" id="stb-row-month" style="display:none;">
+    <span class="stb-label">Měsíc:</span>
+    <select id="sel-month" class="stb-input">
+      <option value="1">Leden</option><option value="2">Únor</option>
+      <option value="3">Březen</option><option value="4">Duben</option>
+      <option value="5">Květen</option><option value="6">Červen</option>
+      <option value="7">Červenec</option><option value="8">Srpen</option>
+      <option value="9">Září</option><option value="10">Říjen</option>
+      <option value="11">Listopad</option><option value="12">Prosinec</option>
+    </select>
+    <input type="number" id="inp-year" class="stb-input" style="width:68px" min="2020" max="2050">
+    <div class="stb-sep"></div>
+    <span class="stb-label">Fond HPP:</span>
+    <input type="text" id="inp-fond-hpp" class="stb-input" style="width:52px" placeholder="hod">
+    <span class="stb-label">ZPP:</span>
+    <input type="text" id="inp-fond-zpp" class="stb-input" style="width:52px" placeholder="hod">
+    <div class="stb-sep"></div>
+    <span class="stb-label">Svátky:</span>
+    <input type="text" id="inp-holidays" class="stb-input" style="width:150px" placeholder="1,5,8,…">
   </div>
   <div class="stb-row">
     <button class="stb-btn" id="stb-hide-hotels">Skrýt hotely</button>
@@ -3168,6 +3168,9 @@ function updateSubtoolbar() {
   const stb = document.getElementById('subtoolbar');
   const showStb = active === 'tvorba' || active === 'rozpis';
   stb.classList.toggle('show', showStb);
+  // Řádek měsíce/fondů/svátků jen v Tvorba
+  const monthRow = document.getElementById('stb-row-month');
+  if (monthRow) monthRow.style.display = active === 'tvorba' ? '' : 'none';
   if (showStb) {
     const h = stb.offsetHeight;
     document.documentElement.style.setProperty('--stb-h', h + 'px');
@@ -4770,27 +4773,27 @@ document.addEventListener('DOMContentLoaded', async () => {
   document.getElementById('btn-add-staff').addEventListener('click', addStaff);
   document.getElementById('btn-clear-actual').addEventListener('click', clearActual);
   document.getElementById('btn-hotel-manager').addEventListener('click', showHotelManager);
-  document.getElementById('btn-save-settings').addEventListener('click', saveSettings);
   document.getElementById('btn-load-master').addEventListener('click', loadMasterStaff);
   document.getElementById('btn-size-nastaveni').addEventListener('click', showSizeEditor);
 
-  // Settings field changes → mark dirty
+  // Settings field changes — okamžitě aplikuj + auto-save
   ['sel-month','inp-year','inp-fond-hpp','inp-fond-zpp','inp-holidays'].forEach(id => {
     document.getElementById(id).addEventListener('change', () => {
-      state.month = parseInt(document.getElementById('sel-month').value, 10) || state.month;
-      state.year  = parseInt(document.getElementById('inp-year').value, 10) || state.year;
-      state.fondHpp = document.getElementById('inp-fond-hpp').value;
-      state.fondZpp = document.getElementById('inp-fond-zpp').value;
+      state.month    = parseInt(document.getElementById('sel-month').value, 10) || state.month;
+      state.year     = parseInt(document.getElementById('inp-year').value, 10)  || state.year;
+      state.fondHpp  = document.getElementById('inp-fond-hpp').value;
+      state.fondZpp  = document.getElementById('inp-fond-zpp').value;
       state.holidays = document.getElementById('inp-holidays').value;
-      // Re-colour Σhod cells in real-time when fond changes
-      if (id === 'inp-fond-hpp' || id === 'inp-fond-zpp') updateAllSums();
+      if (id === 'sel-month' || id === 'inp-year' || id === 'inp-holidays') {
+        // Změna měsíce/roku/svátků → přestavět celou tabulku
+        renderScheduleTable('tvorba-tbl', true);
+        buildHotelFilterButtons();
+      } else {
+        // Fond HPP/ZPP → přebarvit pouze součtové buňky
+        updateAllSums();
+      }
+      scheduleAutoSave();
     });
-  });
-  // Holidays change → immediately re-render schedule table
-  document.getElementById('inp-holidays').addEventListener('change', () => {
-    state.holidays = document.getElementById('inp-holidays').value;
-    renderScheduleTable('tvorba-tbl', true);
-    buildHotelFilterButtons();
   });
 
   // ── Tvorba actions ──
