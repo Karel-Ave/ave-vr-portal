@@ -1829,7 +1829,7 @@ function updateCoverageRows() {
 ══════════════════════════════════════════════════════════════════════════════ */
 
 function cellClass(col, month, year, holidaysList) {
-  const weekend = isDayOff(col, month, year, holidaysList);
+  const weekend = isWeekend(col, month, year);
   const isNight = col.dn === 'n';
   if (weekend && isNight) return 'cell-kn';
   if (weekend) return 'cell-kd';
@@ -4130,6 +4130,7 @@ async function saveSettings() {
   // Rebuild tables with new month/year
   renderScheduleTable('tvorba-tbl', true);
   buildHotelFilterButtons();
+  await saveDraft(false);
   toast('Nastavení uloženo');
 }
 

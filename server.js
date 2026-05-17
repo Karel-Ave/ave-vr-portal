@@ -3114,7 +3114,10 @@ app.get('/api/rt/drafts/:id', requireLogin, async (req, res) => {
     const db = getPool();
     const { rows } = await db.query('SELECT * FROM rt_drafts WHERE id = $1 AND user_id = $2', [id, req.session.user.id]);
     if (!rows.length) return res.status(404).json({ ok: false });
-    res.json({ ok: true, draft: rows[0] });
+    const draft = rows[0];
+    let parsed;
+    try { parsed = JSON.parse(draft.data); } catch(e) { parsed = draft.data; }
+    res.json({ ok: true, data: parsed, month: draft.month, year: draft.year });
   } catch (err) { console.error(err); res.status(500).json({ ok: false }); }
 });
 
