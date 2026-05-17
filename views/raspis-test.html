@@ -1869,34 +1869,26 @@ function renderScheduleTable(tableId, editable) {
     th.className = 'th-dn';
     th.dataset.dn = col.dn;
     const hol = isHoliday(col, state.month, state.year, holidaysList);
-    const cls = cellClass(col, state.month, state.year, holidaysList);
-    const bgVar = cls === 'cell-kn' ? 'var(--col-kn-bg)'
-      : cls === 'cell-kd' ? 'var(--col-kd-bg)'
-      : cls === 'cell-wn' ? 'var(--col-wn-bg)'
-      : 'var(--col-wd-bg)';
-    const txVar = cls === 'cell-kn' ? 'var(--col-kn-tx)'
-      : cls === 'cell-kd' ? 'var(--col-kd-tx)'
-      : cls === 'cell-wn' ? 'var(--col-wn-tx)'
-      : 'var(--col-wd-tx)';
-    th.style.background = bgVar;
-    th.style.color = hol ? '#e53030' : txVar;
+    const wkndTh = isWeekend(col, state.month, state.year);
+    // Header cells always keep the dark thead background — only text is colored
+    // (weekends → blue, holidays → red, weekdays → default white)
+    const dayTextColor = hol ? '#e74c3c' : wkndTh ? '#7ec8f0' : '';
     if (col.dn === 'd') {
       const m2 = col.nextYear ? 1 : state.month;
       const y2 = col.nextYear ? state.year + 1 : state.year;
       const dow = new Date(y2, m2 - 1, col.day).getDay();
       const dayLabel = col.nextYear ? '1.1.' : String(col.day);
       const dayName = DAY_NAMES[dow];
-      const wknd = isWeekend(col, state.month, state.year);
       const dayDiv = document.createElement('div');
       dayDiv.className = 'th-dn-day';
       const numSpan = document.createElement('span');
       numSpan.className = 'th-day-num';
       numSpan.textContent = dayLabel;
-      if (wknd && !hol) numSpan.style.color = '#7ec8f0';
-      if (hol) numSpan.style.color = '#e53030';
+      if (dayTextColor) numSpan.style.color = dayTextColor;
       const dowSpan = document.createElement('span');
       dowSpan.className = 'th-day-dow';
       dowSpan.textContent = dayName;
+      if (dayTextColor) dowSpan.style.color = dayTextColor;
       dayDiv.appendChild(numSpan);
       dayDiv.appendChild(dowSpan);
       th.appendChild(dayDiv);
