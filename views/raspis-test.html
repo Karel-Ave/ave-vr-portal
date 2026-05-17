@@ -283,6 +283,13 @@ table.sched-tbl {
 .sched-tbl td.sched-cell {
   text-align: center;
   padding: 0; cursor: pointer; position: relative;
+  /* Inset shadow provides a visible cell border regardless of background colour.
+     border-collapse:collapse would make adjacent coloured cells share a single
+     pixel, which blends into the fill. box-shadow is not affected by collapse. */
+  box-shadow: inset 0 0 0 1px rgba(0,0,0,.12);
+}
+[data-theme="dark"] .sched-tbl td.sched-cell {
+  box-shadow: inset 0 0 0 1px rgba(255,255,255,.08);
 }
 .sched-tbl td.sched-cell input {
   width: 100%; height: 100%; border: none; background: transparent;
