@@ -610,7 +610,7 @@ tbody tr.row-filtered { display: none; }
 
 <!-- ════════════════════════════════════════ TOPBAR ════════════════════════════════════════ -->
 <div id="topbar">
-  <button class="tb-tab active" data-tab="nastaveni">⚙ Nastavení</button>
+  <button class="tb-tab" data-tab="nastaveni">⚙ Nastavení</button>
   <button class="tb-tab" data-tab="tvorba">✏ Tvorba</button>
   <button class="tb-tab" data-tab="rozpis">📋 Rozpis VR</button>
 
@@ -661,7 +661,7 @@ tbody tr.row-filtered { display: none; }
 </div>
 
 <!-- ═══════════════════════════ TAB: NASTAVENÍ ════════════════════════════════════════════ -->
-<div class="tab-panel active" id="tab-nastaveni">
+<div class="tab-panel" id="tab-nastaveni">
   <div class="settings-top" id="settings-top">
     <div>
       <label>Měsíc</label>
@@ -4377,6 +4377,14 @@ function switchTab(name) {
 ══════════════════════════════════════════════════════════════════════════════ */
 
 document.addEventListener('DOMContentLoaded', async () => {
+  // ── Restore active tab FIRST (synchronous, before any await) ──────────
+  // Prevents flash of the default "Nastavení" panel.
+  // Default on first visit: 'rozpis' (Rozpis VR).
+  {
+    const savedTab = sessionStorage.getItem('rt-active-tab') || 'rozpis';
+    switchTab(savedTab);
+  }
+
   // Load & apply color profile from localStorage first (before any render)
   loadColorProfile();
   applyColorProfile();
@@ -4736,12 +4744,6 @@ document.addEventListener('DOMContentLoaded', async () => {
       updateCopySelection();
     }
   });
-
-  // Restore active tab from sessionStorage (persists across F5, clears on tab close)
-  {
-    const savedTab = sessionStorage.getItem('rt-active-tab');
-    if (savedTab && ['nastaveni','tvorba','rozpis'].includes(savedTab)) switchTab(savedTab);
-  }
 
   // Tooltip delegation for schedule tables
   ['tvorba-tbl', 'rozpis-tbl'].forEach(tblId => {
