@@ -2936,19 +2936,9 @@ async function switchMonth(newMonth, newYear) {
   const loaded = await findAndLoadMonthDraft(newMonth, newYear);
 
   if (!loaded) {
-    // Žádný draft na serveru — použij in-memory data nebo prázdné
-    const md = state.monthlyData[newKey];
-    if (md) {
-      state.schedule     = md.schedule     || {};
-      state.extras       = md.extras       || {};
-      state.requirements = md.requirements || {};
-      state.fondHpp  = md.fondHpp  || '';
-      state.fondZpp  = md.fondZpp  || '';
-      state.holidays = md.holidays || '';
-    } else {
-      state.schedule = {}; state.extras = {}; state.requirements = {};
-      state.fondHpp = ''; state.fondZpp = ''; state.holidays = '';
-    }
+    // Žádný draft na serveru — vždy prázdné (server je zdrojem pravdy)
+    state.schedule = {}; state.extras = {}; state.requirements = {};
+    state.fondHpp = ''; state.fondZpp = ''; state.holidays = '';
     currentDraftId = null; // vytvoří se nový draft při příštím uložení
     scheduleAutoSave();
     toast(`Nový draft: ${MONTH_NAMES[newMonth - 1]} ${newYear}`);
