@@ -4397,7 +4397,8 @@ function switchTab(name) {
   if (name === 'tvorba') {
     const tbl = document.getElementById('tvorba-tbl');
     const spinner = document.getElementById('tvorba-spinner');
-    if (!tbl || tbl.style.display === 'none') {
+    // Skip the lazy render during DOMContentLoaded init — loadDraft() renders authoritatively
+    if (!window._initRendering && (!tbl || tbl.style.display === 'none')) {
       spinner.style.display = '';
       setTimeout(() => {
         renderScheduleTable('tvorba-tbl', true);
@@ -4420,6 +4421,9 @@ document.addEventListener('DOMContentLoaded', async () => {
   // ── Restore active tab FIRST (synchronous, before any await) ──────────
   // Prevents flash of the default "Nastavení" panel.
   // Default on first visit: 'rozpis' (Rozpis VR).
+  // _initRendering flag suppresses the 10ms re-render inside switchTab —
+  // loadDraft() will do the authoritative first render of tvorba-tbl.
+  window._initRendering = true;
   {
     const savedTab = sessionStorage.getItem('rt-active-tab') || 'rozpis';
     switchTab(savedTab);
@@ -4453,8 +4457,16 @@ document.addEventListener('DOMContentLoaded', async () => {
     }
   }
 
+  // Clear init flag — normal tab switching re-renders are now allowed
+  window._initRendering = false;
+
   // Restore subtoolbar button states (after draft loaded → hotel buttons exist, tables rendered)
   restoreStbState();
+
+  // Re-measure subtoolbar height: hotel buttons are now rendered and the row may have wrapped.
+  // updateSubtoolbar() at switchTab() time (above) ran before hotel buttons existed, so
+  // --stb-h was under-estimated, which pushed the schedule table header behind the subtoolbar.
+  updateSubtoolbar();
 
   // Load published schedules list
   await loadScheduleList();
