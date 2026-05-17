@@ -2557,7 +2557,7 @@ async function loadDraftList() {
     list.forEach(d => {
       const opt = document.createElement('option');
       opt.value = d.id || d._id;
-      opt.textContent = `${MONTH_NAMES[(d.month||1)-1]} ${d.year}` + (d.label ? ` – ${d.label}` : '');
+      opt.textContent = `${MONTH_NAMES[(d.month||1)-1]} ${d.year}`;
       sel.appendChild(opt);
     });
     if (currentDraftId) sel.value = currentDraftId;
@@ -4148,6 +4148,7 @@ async function loadMasterStaff() {
       dates: s.dates || '', noteM: s.noteM || '', noteP: s.noteP || ''
     }));
     renderStaffTable();
+    scheduleAutoSave();
     toast(`Načteno ${state.staff.length} pracovníků z master`);
   } catch(e) {
     toast('Chyba načtení z master', true);
@@ -4226,8 +4227,16 @@ document.addEventListener('DOMContentLoaded', async () => {
   // Render staff table (empty)
   renderStaffTable();
 
-  // Load draft list
+  // Load draft list and auto-load the most recent draft
   await loadDraftList();
+  {
+    const sel = document.getElementById('rt-draft-sel');
+    if (sel.options.length > 1) {
+      const firstId = sel.options[1].value;
+      sel.selectedIndex = 1;
+      await loadDraft(firstId);
+    }
+  }
 
   // Load published schedules list
   await loadScheduleList();
