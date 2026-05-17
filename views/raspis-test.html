@@ -2454,7 +2454,7 @@ function renderStaffTable() {
       if (s.contract === c) opt.selected = true;
       conSel.appendChild(opt);
     });
-    conSel.addEventListener('change', () => { s.contract = conSel.value; });
+    conSel.addEventListener('change', () => { s.contract = conSel.value; updateSumRow(si); });
     conTd.appendChild(conSel);
     tr.appendChild(conTd);
 
@@ -2464,7 +2464,7 @@ function renderStaffTable() {
     const maxInp = document.createElement('input');
     maxInp.type = 'text'; maxInp.value = s.maxHrs || '';
     maxInp.placeholder = '';
-    maxInp.addEventListener('input', () => { s.maxHrs = maxInp.value; });
+    maxInp.addEventListener('input', () => { s.maxHrs = maxInp.value; updateSumRow(si); });
     maxTd.appendChild(maxInp);
     tr.appendChild(maxTd);
 
