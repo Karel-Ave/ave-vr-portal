@@ -356,6 +356,39 @@ tbody tr.row-hidden { display: none !important; }
   background: var(--bg-topbar); border-bottom: 2px solid var(--border);
   display: none; flex-direction: column; padding: 4px 10px 4px;
 }
+/* Light mode: subtoolbar uses light surface, dark text */
+:root:not([data-theme="dark"]) #subtoolbar {
+  background: var(--surface);
+  border-bottom-color: var(--border-strong);
+}
+:root:not([data-theme="dark"]) .stb-btn {
+  color: var(--text);
+  border-color: var(--border-strong);
+}
+:root:not([data-theme="dark"]) .stb-btn:hover {
+  background: var(--surface-alt);
+  color: var(--text);
+}
+:root:not([data-theme="dark"]) .stb-sep {
+  background: var(--border-strong);
+}
+:root:not([data-theme="dark"]) .stb-hotel-lbl {
+  color: var(--text-muted);
+}
+/* Light mode: schedule table header is light with dark text */
+:root:not([data-theme="dark"]) .sched-tbl .th-dn,
+:root:not([data-theme="dark"]) .sched-tbl .th-sum,
+:root:not([data-theme="dark"]) .sched-tbl .col-name-th,
+:root:not([data-theme="dark"]) .sched-tbl .th-day {
+  background: var(--surface);
+  color: var(--text);
+}
+:root:not([data-theme="dark"]) .sched-tbl thead th {
+  border-bottom-color: var(--border-strong) !important;
+}
+/* Weekends/holidays keep their colored text even in light mode */
+:root:not([data-theme="dark"]) .sched-tbl .th-day.is-weekend { color: #4a9fd4; }
+:root:not([data-theme="dark"]) .sched-tbl .th-day.is-holiday { color: #c0392b; }
 #subtoolbar.show { display: flex; }
 .stb-row { display: flex; align-items: center; gap: 4px; flex-wrap: wrap; min-height: 30px; }
 .stb-sep { width: 1px; height: 20px; background: var(--btn-top-border,#3E3E3E); flex-shrink: 0; margin: 0 2px; }
@@ -377,8 +410,8 @@ tbody tr.row-hidden { display: none !important; }
 .sched-tbl.hide-day th[data-dn="d"] { display: none; }
 .sched-tbl.hide-sums .sum-cell,
 .sched-tbl.hide-sums .th-sum { display: none; }
-.sched-tbl.hours-only .sum-cell:not(.sum-hrs),
-.sched-tbl.hours-only .th-sum:not(.th-sum-hrs) { display: none; }
+.sched-tbl.hours-only .sum-cell:not(.sum-hrs):not(.sum-pm),
+.sched-tbl.hours-only .th-sum:not(.th-sum-hrs):not(.th-sum-pm) { display: none; }
 /* selected cells highlight */
 .sched-cell.cell-selected { outline: 2px solid #f39c12; outline-offset: -1px; background: #fff3cd !important; }
 [data-theme="dark"] .sched-cell.cell-selected { background: #4a3000 !important; }
@@ -539,7 +572,10 @@ tbody tr.row-filtered { display: none; }
 .empty-state { text-align: center; padding: 40px 20px; color: var(--text-muted); font-size: 14px; }
 
 /* ── Color editor modal ── */
-.color-tabs { display:flex; gap:6px; margin-bottom:14px; border-bottom:1px solid var(--border); padding-bottom:10px; }
+.color-tabs { display:flex; gap:6px; margin-bottom:10px; border-bottom:1px solid var(--border); padding-bottom:10px; }
+.color-scope-row { display:flex; align-items:center; gap:12px; margin-bottom:14px; padding:6px 10px; background:var(--surface-alt); border-radius:6px; font-size:12px; }
+.color-scope-row span { font-weight:700; color:var(--text-muted); }
+.scope-opt { display:flex; align-items:center; gap:4px; cursor:pointer; }
 .color-tab { padding:4px 14px; border:1px solid var(--border); border-radius:5px;
   background:none; color:var(--text-muted); cursor:pointer; font-size:12px; font-family:inherit; }
 .color-tab.active { background:var(--accent); color:#fff; border-color:transparent; }
@@ -933,6 +969,12 @@ tbody tr.row-filtered { display: none; }
       <div class="color-tabs">
         <button class="color-tab active" data-coltheme="light">☀ Světlý režim</button>
         <button class="color-tab" data-coltheme="dark">🌙 Tmavý režim</button>
+      </div>
+      <div class="color-scope-row">
+        <span>Platí pro:</span>
+        <label class="scope-opt"><input type="radio" name="col-scope" value="both" checked> Oba listy</label>
+        <label class="scope-opt"><input type="radio" name="col-scope" value="tvorba"> Jen Tvorba</label>
+        <label class="scope-opt"><input type="radio" name="col-scope" value="raspis"> Jen Rozpis VR</label>
       </div>
       <!-- Light panel -->
       <div class="color-panel" id="colpanel-light">
@@ -1906,6 +1948,7 @@ function renderScheduleTable(tableId, editable) {
     const th = document.createElement('th');
     th.className = 'th-sum';
     if (idx === 6) th.classList.add('th-sum-hrs');
+    if (idx === 5) th.classList.add('th-sum-pm');
     th.textContent = h;
     th.title = SUM_TITLES[idx];
     tr1.appendChild(th);
@@ -2085,6 +2128,7 @@ function renderScheduleTable(tableId, editable) {
       td.className = 'sum-cell';
       td.dataset.si = si; td.dataset.sumIdx = idx;
       if (idx === 6) td.classList.add('sum-hrs');
+      if (idx === 5) td.classList.add('sum-pm');
       if (idx === 4 || idx === 6) td.classList.add('sum-bold');
       if (idx === 5) {
         td.classList.add('sum-extra');
@@ -3469,9 +3513,26 @@ const COLOR_DEFAULTS = {
 };
 
 let colorProfile = {
-  light: Object.assign({}, COLOR_DEFAULTS.light),
-  dark:  Object.assign({}, COLOR_DEFAULTS.dark)
+  light:  Object.assign({}, COLOR_DEFAULTS.light),
+  dark:   Object.assign({}, COLOR_DEFAULTS.dark),
+  tvorba: { light: {}, dark: {} },
+  raspis: { light: {}, dark: {} }
 };
+
+// CSS key → CSS variable name map (used for sparse per-sheet overrides)
+const COLOR_VAR_MAP = {
+  wdBg:'--col-wd-bg', wdTx:'--col-wd-tx', wnBg:'--col-wn-bg', wnTx:'--col-wn-tx',
+  kdBg:'--col-kd-bg', kdTx:'--col-kd-tx', knBg:'--col-kn-bg', knTx:'--col-kn-tx',
+  dupBg:'--col-dup-bg', dupTx:'--col-dup-tx',
+  tDen:'--col-type-den', tNoc:'--col-type-noc', tOba:'--col-type-oba', tVed:'--col-type-ved', tSpe:'--col-type-spe',
+  cov0Bg:'--col-cov0-bg', cov0Tx:'--col-cov0-tx', cov1Bg:'--col-cov1-bg', cov1Tx:'--col-cov1-tx',
+  cov2Bg:'--col-cov2-bg', cov2Tx:'--col-cov2-tx', cov3Bg:'--col-cov3-bg', cov3Tx:'--col-cov3-tx',
+  covdnBg:'--col-covdn-bg', covdnTx:'--col-covdn-tx', emptyBg:'--col-empty-bg',
+  regOffBg:'--col-reg-off-bg', regOffTx:'--col-reg-off-tx', reqMissBg:'--col-req-miss-bg'
+};
+function sparseToCss(obj) {
+  return Object.entries(obj).filter(([,v])=>v).map(([k,v])=>COLOR_VAR_MAP[k]?`${COLOR_VAR_MAP[k]}:${v}`:'').filter(Boolean).join(';');
+}
 
 function loadColorProfile() {
   try {
@@ -3480,6 +3541,14 @@ function loadColorProfile() {
       const p = JSON.parse(saved);
       if (p.light) colorProfile.light = Object.assign({}, COLOR_DEFAULTS.light, p.light);
       if (p.dark)  colorProfile.dark  = Object.assign({}, COLOR_DEFAULTS.dark,  p.dark);
+      if (p.tvorba) {
+        if (p.tvorba.light) colorProfile.tvorba.light = Object.assign({}, p.tvorba.light);
+        if (p.tvorba.dark)  colorProfile.tvorba.dark  = Object.assign({}, p.tvorba.dark);
+      }
+      if (p.raspis) {
+        if (p.raspis.light) colorProfile.raspis.light = Object.assign({}, p.raspis.light);
+        if (p.raspis.dark)  colorProfile.raspis.dark  = Object.assign({}, p.raspis.dark);
+      }
     }
   } catch(e) {}
 }
@@ -3532,6 +3601,19 @@ function applyColorProfile() {
       --col-req-miss-bg:${d.reqMissBg};
     }
   `;
+  // Per-sheet overrides: sparse CSS vars scoped to each tab panel
+  const scopedCss = (tLightCss, tDarkCss, rLightCss, rDarkCss) => {
+    let s = '';
+    if (tLightCss) s += `#tab-tvorba{${tLightCss}}`;
+    if (tDarkCss)  s += `[data-theme="dark"] #tab-tvorba{${tDarkCss}}`;
+    if (rLightCss) s += `#tab-rozpis{${rLightCss}}`;
+    if (rDarkCss)  s += `[data-theme="dark"] #tab-rozpis{${rDarkCss}}`;
+    return s;
+  };
+  styleEl.textContent += scopedCss(
+    sparseToCss(colorProfile.tvorba.light), sparseToCss(colorProfile.tvorba.dark),
+    sparseToCss(colorProfile.raspis.light), sparseToCss(colorProfile.raspis.dark)
+  );
   // Sync TYPE_COLORS to current theme
   const isDark = document.documentElement.getAttribute('data-theme') === 'dark';
   const cp = isDark ? d : l;
@@ -3545,6 +3627,11 @@ function applyColorProfile() {
 let _colorEditorTheme = 'light'; // which tab is active
 
 function showColorEditor() {
+  // Set default scope = active sheet
+  const activeTab = document.querySelector('.tb-tab.active')?.dataset.tab;
+  const defaultScope = (activeTab === 'tvorba' || activeTab === 'raspis') ? activeTab : 'both';
+  const scopeRadio = document.querySelector(`input[name="col-scope"][value="${defaultScope}"]`);
+  if (scopeRadio) scopeRadio.checked = true;
   loadColorEditorInputs('light');
   loadColorEditorInputs('dark');
   // Auto-select current theme tab
@@ -3557,8 +3644,15 @@ function showColorEditor() {
   document.getElementById('overlay-colors').classList.add('show');
 }
 
+function getEffectiveColorProfile(theme) {
+  const scope = document.querySelector('input[name="col-scope"]:checked')?.value || 'both';
+  if (scope === 'tvorba') return Object.assign({}, colorProfile[theme], colorProfile.tvorba[theme]);
+  if (scope === 'raspis') return Object.assign({}, colorProfile[theme], colorProfile.raspis[theme]);
+  return colorProfile[theme];
+}
+
 function loadColorEditorInputs(theme) {
-  const cp = colorProfile[theme];
+  const cp = getEffectiveColorProfile(theme);
   const keys = Object.keys(COLOR_DEFAULTS[theme]);
   keys.forEach(k => {
     const inp = document.querySelector(`.col-inp[data-th="${theme}"][data-k="${k}"]`);
@@ -3568,7 +3662,7 @@ function loadColorEditorInputs(theme) {
 }
 
 function updateColorSwatches(theme) {
-  const cp = colorProfile[theme];
+  const cp = getEffectiveColorProfile(theme);
   const S = (id, bg, tx) => {
     const el = document.getElementById(id);
     if (el) { el.style.background = bg; el.style.color = tx || '#222'; }
@@ -3594,10 +3688,20 @@ function updateColorSwatches(theme) {
 }
 
 function readColorEditorInputs(theme) {
+  const scope = document.querySelector('input[name="col-scope"]:checked')?.value || 'both';
   const keys = Object.keys(COLOR_DEFAULTS[theme]);
   keys.forEach(k => {
     const inp = document.querySelector(`.col-inp[data-th="${theme}"][data-k="${k}"]`);
-    if (inp && inp.value) colorProfile[theme][k] = inp.value;
+    if (!inp || !inp.value) return;
+    if (scope === 'tvorba') {
+      colorProfile.tvorba[theme][k] = inp.value;
+    } else if (scope === 'raspis') {
+      colorProfile.raspis[theme][k] = inp.value;
+    } else {
+      colorProfile[theme][k] = inp.value;
+      delete colorProfile.tvorba[theme][k];
+      delete colorProfile.raspis[theme][k];
+    }
   });
 }
 
@@ -3612,11 +3716,28 @@ function initColorEditorListeners() {
     });
   });
 
+  // Scope radio: reload inputs to show effective colors for new scope
+  document.querySelectorAll('input[name="col-scope"]').forEach(r => {
+    r.addEventListener('change', () => {
+      loadColorEditorInputs('light');
+      loadColorEditorInputs('dark');
+    });
+  });
+
   // Live preview on color input change
   document.querySelectorAll('.col-inp').forEach(inp => {
     inp.addEventListener('input', () => {
-      const th = inp.dataset.th, k = inp.dataset.k;
-      colorProfile[th][k] = inp.value;
+      const th = inp.dataset.th, k = inp.dataset.k, v = inp.value;
+      const scope = document.querySelector('input[name="col-scope"]:checked')?.value || 'both';
+      if (scope === 'tvorba') {
+        colorProfile.tvorba[th][k] = v;
+      } else if (scope === 'raspis') {
+        colorProfile.raspis[th][k] = v;
+      } else {
+        colorProfile[th][k] = v;
+        delete colorProfile.tvorba[th][k];
+        delete colorProfile.raspis[th][k];
+      }
       updateColorSwatches(th);
       applyColorProfile(); // live preview
     });
@@ -3636,8 +3757,10 @@ function initColorEditorListeners() {
   document.getElementById('btn-colors-reset').addEventListener('click', () => {
     if (!confirm('Obnovit výchozí barvy?')) return;
     colorProfile = {
-      light: Object.assign({}, COLOR_DEFAULTS.light),
-      dark:  Object.assign({}, COLOR_DEFAULTS.dark)
+      light:  Object.assign({}, COLOR_DEFAULTS.light),
+      dark:   Object.assign({}, COLOR_DEFAULTS.dark),
+      tvorba: { light: {}, dark: {} },
+      raspis: { light: {}, dark: {} }
     };
     loadColorEditorInputs('light');
     loadColorEditorInputs('dark');
