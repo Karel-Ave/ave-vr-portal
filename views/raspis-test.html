@@ -369,6 +369,15 @@ tbody tr.row-hidden { display: none !important; }
   background: var(--surface-alt);
   color: var(--text);
 }
+:root:not([data-theme="dark"]) .stb-btn.active {
+  background: #2980b9;
+  color: #fff;
+  border-color: transparent;
+}
+:root:not([data-theme="dark"]) .stb-btn.active:hover {
+  background: #2471a3;
+  opacity: 1;
+}
 :root:not([data-theme="dark"]) .stb-sep {
   background: var(--border-strong);
 }
@@ -572,10 +581,8 @@ tbody tr.row-filtered { display: none; }
 .empty-state { text-align: center; padding: 40px 20px; color: var(--text-muted); font-size: 14px; }
 
 /* ── Color editor modal ── */
-.color-tabs { display:flex; gap:6px; margin-bottom:10px; border-bottom:1px solid var(--border); padding-bottom:10px; }
-.color-scope-row { display:flex; align-items:center; gap:12px; margin-bottom:14px; padding:6px 10px; background:var(--surface-alt); border-radius:6px; font-size:12px; }
-.color-scope-row span { font-weight:700; color:var(--text-muted); }
-.scope-opt { display:flex; align-items:center; gap:4px; cursor:pointer; }
+.color-tabs { display:flex; gap:6px; margin-bottom:14px; border-bottom:1px solid var(--border); padding-bottom:10px; }
+.col-scope-sel { font-size:10px; padding:1px 3px; border-radius:3px; border:1px solid var(--border); background:var(--input-bg,var(--bg)); color:var(--text); margin-left:6px; cursor:pointer; }
 .color-tab { padding:4px 14px; border:1px solid var(--border); border-radius:5px;
   background:none; color:var(--text-muted); cursor:pointer; font-size:12px; font-family:inherit; }
 .color-tab.active { background:var(--accent); color:#fff; border-color:transparent; }
@@ -969,12 +976,6 @@ tbody tr.row-filtered { display: none; }
       <div class="color-tabs">
         <button class="color-tab active" data-coltheme="light">☀ Světlý režim</button>
         <button class="color-tab" data-coltheme="dark">🌙 Tmavý režim</button>
-      </div>
-      <div class="color-scope-row">
-        <span>Platí pro:</span>
-        <label class="scope-opt"><input type="radio" name="col-scope" value="both" checked> Oba listy</label>
-        <label class="scope-opt"><input type="radio" name="col-scope" value="tvorba"> Jen Tvorba</label>
-        <label class="scope-opt"><input type="radio" name="col-scope" value="raspis"> Jen Rozpis VR</label>
       </div>
       <!-- Light panel -->
       <div class="color-panel" id="colpanel-light">
@@ -3627,11 +3628,6 @@ function applyColorProfile() {
 let _colorEditorTheme = 'light'; // which tab is active
 
 function showColorEditor() {
-  // Set default scope = active sheet
-  const activeTab = document.querySelector('.tb-tab.active')?.dataset.tab;
-  const defaultScope = (activeTab === 'tvorba' || activeTab === 'raspis') ? activeTab : 'both';
-  const scopeRadio = document.querySelector(`input[name="col-scope"][value="${defaultScope}"]`);
-  if (scopeRadio) scopeRadio.checked = true;
   loadColorEditorInputs('light');
   loadColorEditorInputs('dark');
   // Auto-select current theme tab
@@ -3644,25 +3640,48 @@ function showColorEditor() {
   document.getElementById('overlay-colors').classList.add('show');
 }
 
-function getEffectiveColorProfile(theme) {
-  const scope = document.querySelector('input[name="col-scope"]:checked')?.value || 'both';
-  if (scope === 'tvorba') return Object.assign({}, colorProfile[theme], colorProfile.tvorba[theme]);
-  if (scope === 'raspis') return Object.assign({}, colorProfile[theme], colorProfile.raspis[theme]);
-  return colorProfile[theme];
+// Per-key scope helpers
+function getKeyScope(theme, k) {
+  if (k in colorProfile.tvorba[theme]) return 'tvorba';
+  if (k in colorProfile.raspis[theme]) return 'raspis';
+  return 'both';
+}
+function getEffectiveColor(theme, k) {
+  if (k in colorProfile.tvorba[theme]) return colorProfile.tvorba[theme][k];
+  if (k in colorProfile.raspis[theme]) return colorProfile.raspis[theme][k];
+  return colorProfile[theme][k] || COLOR_DEFAULTS[theme][k];
+}
+function setColorByScope(theme, k, v, scope) {
+  if (scope === 'tvorba') {
+    colorProfile.tvorba[theme][k] = v;
+    delete colorProfile.raspis[theme][k];
+  } else if (scope === 'raspis') {
+    colorProfile.raspis[theme][k] = v;
+    delete colorProfile.tvorba[theme][k];
+  } else {
+    colorProfile[theme][k] = v;
+    delete colorProfile.tvorba[theme][k];
+    delete colorProfile.raspis[theme][k];
+  }
 }
 
 function loadColorEditorInputs(theme) {
-  const cp = getEffectiveColorProfile(theme);
   const keys = Object.keys(COLOR_DEFAULTS[theme]);
   keys.forEach(k => {
     const inp = document.querySelector(`.col-inp[data-th="${theme}"][data-k="${k}"]`);
-    if (inp) inp.value = cp[k] || COLOR_DEFAULTS[theme][k];
+    if (!inp) return;
+    inp.value = getEffectiveColor(theme, k);
+    // Sync the row's scope select
+    const sel = inp.closest('.color-row2')?.querySelector('.col-scope-sel');
+    if (sel) sel.value = getKeyScope(theme, k);
   });
   updateColorSwatches(theme);
 }
 
 function updateColorSwatches(theme) {
-  const cp = getEffectiveColorProfile(theme);
+  const keys = Object.keys(COLOR_DEFAULTS[theme]);
+  const cp = {};
+  keys.forEach(k => cp[k] = getEffectiveColor(theme, k));
   const S = (id, bg, tx) => {
     const el = document.getElementById(id);
     if (el) { el.style.background = bg; el.style.color = tx || '#222'; }
@@ -3688,20 +3707,13 @@ function updateColorSwatches(theme) {
 }
 
 function readColorEditorInputs(theme) {
-  const scope = document.querySelector('input[name="col-scope"]:checked')?.value || 'both';
   const keys = Object.keys(COLOR_DEFAULTS[theme]);
   keys.forEach(k => {
     const inp = document.querySelector(`.col-inp[data-th="${theme}"][data-k="${k}"]`);
     if (!inp || !inp.value) return;
-    if (scope === 'tvorba') {
-      colorProfile.tvorba[theme][k] = inp.value;
-    } else if (scope === 'raspis') {
-      colorProfile.raspis[theme][k] = inp.value;
-    } else {
-      colorProfile[theme][k] = inp.value;
-      delete colorProfile.tvorba[theme][k];
-      delete colorProfile.raspis[theme][k];
-    }
+    const sel = inp.closest('.color-row2')?.querySelector('.col-scope-sel');
+    const scope = sel?.value || 'both';
+    setColorByScope(theme, k, inp.value, scope);
   });
 }
 
@@ -3716,11 +3728,35 @@ function initColorEditorListeners() {
     });
   });
 
-  // Scope radio: reload inputs to show effective colors for new scope
-  document.querySelectorAll('input[name="col-scope"]').forEach(r => {
-    r.addEventListener('change', () => {
-      loadColorEditorInputs('light');
-      loadColorEditorInputs('dark');
+  // Add per-row scope selects dynamically
+  document.querySelectorAll('.color-row2').forEach(row => {
+    const inputs = row.querySelectorAll('.col-inp');
+    if (!inputs.length) return;
+    const th = inputs[0].dataset.th;
+    const keys = Array.from(inputs).map(i => i.dataset.k);
+    const sel = document.createElement('select');
+    sel.className = 'col-scope-sel';
+    sel.title = 'Kde se barva projeví';
+    [['both','Oba listy'],['tvorba','Jen Tvorba'],['raspis','Jen Raspis']].forEach(([v,t]) => {
+      const o = document.createElement('option');
+      o.value = v; o.textContent = t;
+      sel.appendChild(o);
+    });
+    sel.value = getKeyScope(th, keys[0]);
+    row.appendChild(sel);
+    sel.addEventListener('change', () => {
+      const newScope = sel.value;
+      keys.forEach(k => {
+        const val = getEffectiveColor(th, k);
+        // Remove from old locations
+        delete colorProfile.tvorba[th][k];
+        delete colorProfile.raspis[th][k];
+        // Write to new location
+        if (newScope === 'tvorba') colorProfile.tvorba[th][k] = val;
+        else if (newScope === 'raspis') colorProfile.raspis[th][k] = val;
+        else colorProfile[th][k] = val;
+      });
+      applyColorProfile();
     });
   });
 
@@ -3728,16 +3764,9 @@ function initColorEditorListeners() {
   document.querySelectorAll('.col-inp').forEach(inp => {
     inp.addEventListener('input', () => {
       const th = inp.dataset.th, k = inp.dataset.k, v = inp.value;
-      const scope = document.querySelector('input[name="col-scope"]:checked')?.value || 'both';
-      if (scope === 'tvorba') {
-        colorProfile.tvorba[th][k] = v;
-      } else if (scope === 'raspis') {
-        colorProfile.raspis[th][k] = v;
-      } else {
-        colorProfile[th][k] = v;
-        delete colorProfile.tvorba[th][k];
-        delete colorProfile.raspis[th][k];
-      }
+      const sel = inp.closest('.color-row2')?.querySelector('.col-scope-sel');
+      const scope = sel?.value || 'both';
+      setColorByScope(th, k, v, scope);
       updateColorSwatches(th);
       applyColorProfile(); // live preview
     });
