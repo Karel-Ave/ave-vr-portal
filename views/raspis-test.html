@@ -957,6 +957,7 @@ tbody tr.row-filtered { display: none; }
         <span style="width:62px;font-weight:700">Hod.</span>
         <span style="width:80px;font-weight:700">Jen denní</span>
         <span style="width:66px;font-weight:700">Aktivní</span>
+        <span style="width:66px;font-weight:700">V panelu</span>
         <span style="width:24px"></span>
       </div>
       <div id="hotel-list"></div>
@@ -973,6 +974,7 @@ tbody tr.row-filtered { display: none; }
             <option value="12" selected>12h</option>
           </select>
           <label class="hotel-chk-lbl"><input type="checkbox" id="hotel-new-dayonly"> Jen denní</label>
+          <label class="hotel-chk-lbl"><input type="checkbox" id="hotel-new-panel" checked> V panelu</label>
         </div>
         <button class="btn btn-primary btn-sm" id="btn-hotel-add">+ Přidat hotel</button>
       </div>
@@ -1541,7 +1543,7 @@ const HOTELS_DEFAULT = [
   {letter:'C',name:'',hours:12,dayOnly:false,active:true},
   {letter:'D',name:'',hours:12,dayOnly:false,active:true},
   {letter:'E',name:'',hours:12,dayOnly:false,active:true},
-  {letter:'F',name:'',hours:10,dayOnly:false,active:true},
+  {letter:'F',name:'',hours:10,dayOnly:false,active:true,showInPanel:false},
   {letter:'G',name:'',hours:12,dayOnly:false,active:true},
   {letter:'H',name:'',hours:12,dayOnly:false,active:true},
   {letter:'I',name:'',hours:12,dayOnly:false,active:true},
@@ -1550,7 +1552,7 @@ const HOTELS_DEFAULT = [
   {letter:'M',name:'',hours:12,dayOnly:false,active:true},
   {letter:'N',name:'',hours:12,dayOnly:true, active:true},
   {letter:'P',name:'',hours:0, dayOnly:false,active:true},
-  {letter:'Q',name:'',hours:0, dayOnly:false,active:true},
+  {letter:'Q',name:'',hours:0, dayOnly:false,active:true,showInPanel:false},
   {letter:'S',name:'',hours:10,dayOnly:true, active:true},
   {letter:'T',name:'',hours:12,dayOnly:false,active:true},
   {letter:'U',name:'',hours:12,dayOnly:true, active:true},
@@ -2039,8 +2041,12 @@ function renderScheduleTable(tableId, editable) {
   // ── Coverage rows (hotel letters with colored dots, no "Pokrytí" header) ──
   if (state.staff.length > 0) {
     const hotelLetters = getUsedHotelLetters();
-    const EXCL_PANEL = new Set(['F','Q','W']); // excluded from PANEL only (still checked for d/n coloring)
-    const filteredLetters = hotelLetters.filter(l => !EXCL_PANEL.has(l));
+    const PANEL_DEF_EXCL = new Set(['F','Q','W']);
+    const filteredLetters = hotelLetters.filter(l => {
+      const hd = (state.hotels || []).find(h => h.letter === l);
+      return hd ? (hd.showInPanel !== undefined ? hd.showInPanel : !PANEL_DEF_EXCL.has(l))
+                : !PANEL_DEF_EXCL.has(l);
+    });
     const pIdx = filteredLetters.indexOf('P');
     if (pIdx > -1) { filteredLetters.splice(pIdx, 1); filteredLetters.push('P'); }
     filteredLetters.forEach(letter => {
@@ -3265,7 +3271,13 @@ function updateDuplicateClasses() {
 function buildHotelFilterButtons() {
   const container = document.getElementById('stb-hotel-btns');
   container.innerHTML = '';
+  const PANEL_DEF_EXCL = new Set(['F','Q','W']);
   getUsedHotelLetters().forEach(letter => {
+    // Zobrazit jen hotely označené "V panelu"
+    const hd = (state.hotels || []).find(h => h.letter === letter);
+    const show = hd ? (hd.showInPanel !== undefined ? hd.showInPanel : !PANEL_DEF_EXCL.has(letter))
+                    : !PANEL_DEF_EXCL.has(letter);
+    if (!show) return;
     const btn = document.createElement('button');
     btn.className = 'stb-btn' + (filterHotels.has(letter) ? ' active' : '');
     btn.textContent = letter;
@@ -4157,14 +4169,19 @@ function showHotelManager() {
     const item = document.createElement('div');
     item.className = 'hotel-item';
     item.dataset.idx = idx;
-    const activeChk = h.active !== false ? 'checked' : '';
+    const activeChk  = h.active !== false ? 'checked' : '';
     const dayOnlyChk = h.dayOnly ? 'checked' : '';
+    // Backward compat: F/Q/W defaultně skryté v panelu, ostatní zobrazené
+    const PANEL_DEF_EXCL = new Set(['F','Q','W']);
+    const panelOn = h.showInPanel !== undefined ? h.showInPanel : !PANEL_DEF_EXCL.has(h.letter);
+    const panelChk = panelOn ? 'checked' : '';
     item.innerHTML = `
       <span class="hotel-letter-badge">${h.letter}</span>
       <input type="text" class="hotel-name-inp" value="${h.name||''}" placeholder="Název hotelu…">
       ${hotelHoursSelect(h.hours)}
       <label class="hotel-chk-lbl"><input type="checkbox" class="hm-dayonly" ${dayOnlyChk}> Jen denní</label>
       <label class="hotel-chk-lbl" style="width:66px"><input type="checkbox" class="hm-active" ${activeChk}> Aktivní</label>
+      <label class="hotel-chk-lbl" style="width:66px"><input type="checkbox" class="hm-panel" ${panelChk}> V panelu</label>
       <button class="hotel-del-btn" title="Odebrat hotel">✕</button>
     `;
     item.querySelector('.hotel-del-btn').addEventListener('click', () => {
@@ -4190,11 +4207,12 @@ function saveHotelManager() {
     const idx = +item.dataset.idx;
     const orig = newLetter ? {letter: newLetter} : (state.hotels[idx] || {});
     newHotels.push({
-      letter:  orig.letter,
-      name:    item.querySelector('.hotel-name-inp').value.trim(),
-      hours:   Number(item.querySelector('.hotel-hours-sel').value),
-      dayOnly: item.querySelector('.hm-dayonly').checked,
-      active:  item.querySelector('.hm-active').checked,
+      letter:      orig.letter,
+      name:        item.querySelector('.hotel-name-inp').value.trim(),
+      hours:       Number(item.querySelector('.hotel-hours-sel').value),
+      dayOnly:     item.querySelector('.hm-dayonly').checked,
+      active:      item.querySelector('.hm-active').checked,
+      showInPanel: item.querySelector('.hm-panel').checked,
     });
   });
   state.hotels = newHotels;
@@ -4876,7 +4894,8 @@ document.addEventListener('DOMContentLoaded', async () => {
     const letter = document.getElementById('hotel-new-letter').value.toUpperCase().trim();
     const name   = document.getElementById('hotel-new-name').value.trim();
     const hours  = Number(document.getElementById('hotel-new-hours').value) || 12;
-    const dayOnly= document.getElementById('hotel-new-dayonly').checked;
+    const dayOnly  = document.getElementById('hotel-new-dayonly').checked;
+    const inPanel  = document.getElementById('hotel-new-panel').checked;
     if (!letter || !/^[A-Z]$/.test(letter)) { toast('Zadejte jedno písmeno A–Z', true); return; }
     const list = document.getElementById('hotel-list');
     const alreadyExists = Array.from(list.querySelectorAll('.hotel-letter-badge')).some(b => b.textContent.trim() === letter);
@@ -4892,6 +4911,7 @@ document.addEventListener('DOMContentLoaded', async () => {
       ${hotelHoursSelect(hours)}
       <label class="hotel-chk-lbl"><input type="checkbox" class="hm-dayonly" ${dayOnly?'checked':''}> Jen denní</label>
       <label class="hotel-chk-lbl" style="width:66px"><input type="checkbox" class="hm-active" checked> Aktivní</label>
+      <label class="hotel-chk-lbl" style="width:66px"><input type="checkbox" class="hm-panel" ${inPanel?'checked':''}> V panelu</label>
       <button class="hotel-del-btn" title="Odebrat hotel">✕</button>
     `;
     item.dataset.newletter = letter; // flag so saveHotelManager knows it's new
