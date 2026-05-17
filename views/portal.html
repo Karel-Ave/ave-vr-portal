@@ -694,7 +694,16 @@
 
   // ── Early restore: synchronously hide dashboard before any async fetch ──
   // Runs immediately so the user never sees the card grid flash before the app loads.
+  // Obnova poslední aplikace probíhá POUZE při F5/reload — ne při zadání URL z adresního řádku.
   (function() {
+    const navEntry = performance.getEntriesByType('navigation')[0];
+    const isReload = navEntry ? navEntry.type === 'reload'
+                              : (performance.navigation && performance.navigation.type === 1);
+    if (!isReload) {
+      // Čerstvá navigace (nová URL, back/forward…) — smaž uloženou aplikaci, ukaž dashboard
+      try { sessionStorage.removeItem('portal-last-app'); } catch(e) {}
+      return;
+    }
     const validHrefs = ALL_CARDS.filter(c => c.href).map(c => c.href);
     const storedUrl = (() => { try { return sessionStorage.getItem('portal-last-app'); } catch(e) { return null; } })();
     const url = (storedUrl && validHrefs.includes(storedUrl)) ? storedUrl : null;
