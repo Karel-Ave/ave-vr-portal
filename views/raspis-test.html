@@ -96,12 +96,13 @@ table.staff-tbl {
   border: 1px solid var(--thead-border); white-space: nowrap; position: sticky; top: 0; z-index: 10;
 }
 .staff-tbl td {
-  padding: 4px 5px; border: 1px solid var(--border); vertical-align: middle;
+  padding: 1px 4px; border: 1px solid var(--border); vertical-align: middle;
+  height: 22px; max-height: 22px; overflow: hidden; box-sizing: border-box;
 }
 .staff-tbl tr:hover td { background: var(--surface-alt); }
 .staff-tbl input, .staff-tbl select {
   width: 100%; border: none; background: transparent; color: var(--text);
-  font-size: 13px; font-family: inherit; padding: 2px 4px;
+  font-size: 11px; font-family: inherit; padding: 0 2px;
 }
 .staff-tbl input:focus, .staff-tbl select:focus { outline: 1px solid var(--accent); border-radius: 3px; }
 .staff-tbl .col-num { width: 30px; text-align: center; color: var(--text-muted); }
@@ -332,8 +333,9 @@ table.sched-tbl {
 /* Coverage panel rows (dots in name cell) */
 .cov-dot-wrap { float: right; display: flex; gap: 2px; align-items: center; margin-left: 4px; }
 .cov-dot { width: 7px; height: 7px; border-radius: 50%; display: inline-block; flex-shrink: 0; }
-.cov-dot-ok  { background: #27ae60; }
-.cov-dot-mis { background: #e74c3c; }
+.cov-dot-ok   { background: #27ae60; }
+.cov-dot-mis  { background: #e74c3c; }
+.cov-dot-over { background: #e67e22; }
 .cov-row .col-name-td { font-size: 10px; font-weight: 700; padding: 2px 5px; background: var(--surface); }
 .cov-tbody .col-name-td { position: sticky; left: 0; z-index: 12 !important; background: var(--surface) !important; }
 /* Note: do NOT add .cov-tbody td { background } here — it would override .cov-1/.cov-empty etc. */
@@ -1850,8 +1852,8 @@ function updateCoverageRows() {
       // Update dots in name cell
       const dDot = tr.querySelector('.cov-dot:nth-child(1)');
       const nDot = tr.querySelector('.cov-dot:nth-child(2)');
-      if (dDot) { dDot.className = 'cov-dot ' + (dayC >= dayT ? 'cov-dot-ok' : 'cov-dot-mis'); dDot.title = `Denní: ${dayC}/${dayT}`; }
-      if (nDot) { nDot.className = 'cov-dot ' + (nightC >= nightT ? 'cov-dot-ok' : 'cov-dot-mis'); nDot.title = `Noční: ${nightC}/${nightT}`; }
+      if (dDot) { dDot.className = 'cov-dot ' + (dayT > 0 && dayC > dayT ? 'cov-dot-over' : dayC >= dayT ? 'cov-dot-ok' : 'cov-dot-mis'); dDot.title = `Denní: ${dayC}/${dayT}`; }
+      if (nDot) { nDot.className = 'cov-dot ' + (nightT > 0 && nightC > nightT ? 'cov-dot-over' : nightC >= nightT ? 'cov-dot-ok' : 'cov-dot-mis'); nDot.title = `Noční: ${nightC}/${nightT}`; }
       // Update per-day cells
       tr.querySelectorAll('td.cov-cell').forEach(td => {
         const ci = +td.dataset.ci;
@@ -2004,12 +2006,12 @@ function renderScheduleTable(tableId, editable) {
       const dotWrap = document.createElement('span');
       dotWrap.className = 'cov-dot-wrap';
       const dDot = document.createElement('span');
-      dDot.className = 'cov-dot ' + (dayC >= dayT ? 'cov-dot-ok' : 'cov-dot-mis');
+      dDot.className = 'cov-dot ' + (dayT > 0 && dayC > dayT ? 'cov-dot-over' : dayC >= dayT ? 'cov-dot-ok' : 'cov-dot-mis');
       dDot.title = `Denní: ${dayC}/${dayT}`;
       dotWrap.appendChild(dDot);
       if (nightT > 0) {
         const nDot = document.createElement('span');
-        nDot.className = 'cov-dot ' + (nightC >= nightT ? 'cov-dot-ok' : 'cov-dot-mis');
+        nDot.className = 'cov-dot ' + (nightT > 0 && nightC > nightT ? 'cov-dot-over' : nightC >= nightT ? 'cov-dot-ok' : 'cov-dot-mis');
         nDot.title = `Noční: ${nightC}/${nightT}`;
         dotWrap.appendChild(nDot);
       }
@@ -3738,7 +3740,7 @@ function initColorEditorListeners() {
   });
 
   // Add per-row scope checkboxes (T / N / R) dynamically
-  const SCOPE_LABELS = [['tvorba','T','Tvorba'],['nastaveni','N','Nastavení'],['raspis','R','Raspis']];
+  const SCOPE_LABELS = [['nastaveni','N','Nastavení'],['tvorba','T','Tvorba'],['raspis','R','Rozpis']];
   document.querySelectorAll('.color-row2').forEach(row => {
     const inputs = row.querySelectorAll('.col-inp');
     if (!inputs.length) return;
@@ -4327,6 +4329,8 @@ function addStaff() {
 ══════════════════════════════════════════════════════════════════════════════ */
 
 function switchTab(name) {
+  // Persist active tab in URL hash so F5 restores position
+  history.replaceState(null, '', location.pathname + location.search + '#' + name);
   document.querySelectorAll('.tb-tab').forEach(b => b.classList.toggle('active', b.dataset.tab === name));
   document.querySelectorAll('.tab-panel').forEach(p => p.classList.remove('active'));
   document.querySelectorAll('.tb-actions').forEach(a => a.classList.add('hidden'));
@@ -4732,6 +4736,12 @@ document.addEventListener('DOMContentLoaded', async () => {
       updateCopySelection();
     }
   });
+
+  // Restore active tab from URL hash (persists across F5)
+  {
+    const savedTab = location.hash.replace('#', '');
+    if (['nastaveni','tvorba','rozpis'].includes(savedTab)) switchTab(savedTab);
+  }
 
   // Tooltip delegation for schedule tables
   ['tvorba-tbl', 'rozpis-tbl'].forEach(tblId => {
