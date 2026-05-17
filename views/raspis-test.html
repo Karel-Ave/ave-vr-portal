@@ -1613,9 +1613,6 @@ const HOTELS_DEFAULT = [
   {letter:'U',name:'',hours:12,dayOnly:true, active:true},
 ];
 
-const MONTH_NAMES = ['','Leden','Únor','Březen','Duben','Květen','Červen',
-                      'Červenec','Srpen','Září','Říjen','Listopad','Prosinec'];
-
 const state = {
   staff: [],
   schedule: {},        // key: `${si}_${ci}` → string (cell value), current month
@@ -2900,7 +2897,7 @@ function populateMonthYearSelect() {
     if (m > 12) { m -= 12; y++; }
     const opt = document.createElement('option');
     opt.value = `${y}-${m}`;
-    opt.textContent = `${MONTH_NAMES[m]} ${y}`;
+    opt.textContent = `${MONTH_NAMES[m - 1]} ${y}`;
     sel.appendChild(opt);
   }
 }
@@ -2942,7 +2939,7 @@ function switchMonth(newMonth, newYear) {
 /* ── F+S modal ── */
 function openFondsModal() {
   document.getElementById('fonds-title').textContent =
-    `Fondy a svátky — ${MONTH_NAMES[state.month]} ${state.year}`;
+    `Fondy a svátky — ${MONTH_NAMES[state.month - 1]} ${state.year}`;
   document.getElementById('inp-fond-hpp').value = state.fondHpp;
   document.getElementById('inp-fond-zpp').value = state.fondZpp;
   document.getElementById('inp-holidays').value = state.holidays;
