@@ -334,18 +334,13 @@ table.sched-tbl {
 .cov-dot-mis { background: #e74c3c; }
 .cov-row .col-name-td { font-size: 10px; font-weight: 700; padding: 2px 5px; background: var(--surface); }
 .cov-tbody .col-name-td { position: sticky; left: 0; z-index: 12 !important; background: var(--surface) !important; }
-.cov-tbody td { background: var(--surface); }
+/* Note: do NOT add .cov-tbody td { background } here — it would override .cov-1/.cov-empty etc. */
 .cov-row td.cov-cell { font-size: 9px; text-align: center; padding: 0; }
-.cov-empty { background: var(--col-cov0-bg,#ffebeb); color: var(--col-cov0-tx,#c0392b); }
-.cov-1 { background: var(--col-cov1-bg,#c8f5c8); color: var(--col-cov1-tx,#1a6b1a); font-weight: 700; }
-.cov-2 { background: var(--col-cov2-bg,#ffe082); color: var(--col-cov2-tx,#7a5000); font-weight: 700; }
-.cov-3plus { background: var(--col-cov3-bg,#ff8a65); color: var(--col-cov3-tx,#5d1a00); font-weight: 700; }
+.cov-empty      { background: var(--col-cov0-bg,#ffebeb)  !important; color: var(--col-cov0-tx,#c0392b) !important; }
+.cov-1          { background: var(--col-cov1-bg,#c8f5c8)  !important; color: var(--col-cov1-tx,#1a6b1a) !important; font-weight: 700; }
+.cov-2          { background: var(--col-cov2-bg,#ffe082)  !important; color: var(--col-cov2-tx,#7a5000) !important; font-weight: 700; }
+.cov-3plus      { background: var(--col-cov3-bg,#ff8a65)  !important; color: var(--col-cov3-tx,#5d1a00) !important; font-weight: 700; }
 .cov-dayonly-night { background: var(--col-covdn-bg,#e8e8e8) !important; color: var(--col-covdn-tx,#999) !important; }
-[data-theme="dark"] .cov-empty { background: var(--col-cov0-bg); color: var(--col-cov0-tx); }
-[data-theme="dark"] .cov-1 { background: var(--col-cov1-bg); color: var(--col-cov1-tx); }
-[data-theme="dark"] .cov-2 { background: var(--col-cov2-bg); color: var(--col-cov2-tx); }
-[data-theme="dark"] .cov-3plus { background: var(--col-cov3-bg); color: var(--col-cov3-tx); }
-[data-theme="dark"] .cov-dayonly-night { background: var(--col-covdn-bg) !important; color: var(--col-covdn-tx) !important; }
 /* Row hover highlight (schedule cells + sum cells up to Σhod, not name or note) */
 .staff-tbody tr:hover td.sched-cell { filter: brightness(0.88); }
 .staff-tbody tr:hover td.sched-cell.focused { filter: none; }
@@ -387,7 +382,8 @@ tbody tr.row-hidden { display: none !important; }
 [data-theme="dark"] .sched-cell.cell-selected { background: #4a3000 !important; }
 /* row filter */
 tbody tr.row-filtered { display: none; }
-.staff-tbody tr.row-marked .col-name-td { outline: 2px solid var(--accent); outline-offset: -2px; }
+.staff-tbody tr.row-marked .col-name-td { outline: 2px solid #fff; outline-offset: -2px; }
+.staff-tbody tr.row-marked td { box-shadow: inset 0 1px 0 rgba(255,255,255,.45), inset 0 -1px 0 rgba(255,255,255,.45); }
 /* (coverage panel rows removed) */
 
 /* Cell state coloring */
