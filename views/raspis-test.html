@@ -337,9 +337,20 @@ table.sched-tbl {
 .cov-dot-ok   { background: #27ae60; }
 .cov-dot-mis  { background: #e74c3c; }
 .cov-dot-over { background: #e67e22; }
-.cov-row .col-name-td { font-size: 10px; font-weight: 700; padding: 2px 5px; background: var(--surface);
-  display: flex; align-items: center; justify-content: space-between; }
-.cov-tbody .col-name-td { position: sticky; left: 0; z-index: 12 !important; background: var(--surface) !important; }
+/* Vertical sticky lives on the td; horizontal sticky lives on the inner wrapper.
+   Chrome ignores `top` when `left` is also set on the same td (bi-directional sticky bug). */
+.cov-row .col-name-td { font-size: 10px; font-weight: 700; background: var(--surface);
+  padding: 0; overflow: visible; }
+.cov-tbody .col-name-td { position: sticky; /* NO left:0 here */ z-index: 12 !important; background: var(--surface) !important; }
+/* Inner wrapper handles LEFT (horizontal) stickiness */
+.cov-name-inner {
+  position: sticky; left: 0;
+  display: flex; align-items: center; justify-content: space-between;
+  padding: 2px 5px; box-sizing: border-box;
+  width: var(--sched-name-w);
+  background: var(--surface);
+  min-height: var(--sched-row-h);
+}
 /* Note: do NOT add .cov-tbody td { background } here — it would override .cov-1/.cov-empty etc. */
 .cov-row td.cov-cell { font-size: 9px; text-align: center; padding: 0; }
 .cov-empty      { background: var(--col-cov0-bg,#ffebeb)  !important; color: var(--col-cov0-tx,#c0392b) !important; }
@@ -2029,8 +2040,13 @@ function renderScheduleTable(tableId, editable) {
         ns.style.cssText = 'font-size:9px;opacity:.6;font-weight:400;overflow:hidden;text-overflow:ellipsis;';
         leftGroup.appendChild(ns);
       }
-      nameTd.appendChild(leftGroup);
-      nameTd.appendChild(dotWrap);
+      // Wrap content in inner div that owns the horizontal (left:0) sticky.
+      // The td owns the vertical (top:X) sticky separately — Chrome bi-directional sticky bug.
+      const innerDiv = document.createElement('div');
+      innerDiv.className = 'cov-name-inner';
+      innerDiv.appendChild(leftGroup);
+      innerDiv.appendChild(dotWrap);
+      nameTd.appendChild(innerDiv);
       tr.appendChild(nameTd);
       // Day/night cells
       calCols.forEach((col, ci) => {
@@ -2190,9 +2206,9 @@ function renderScheduleTable(tableId, editable) {
     const topPx = hidden ? '-9999px' : (_theadH + _covVisRow * _rowH) + 'px';
     tr.querySelectorAll('td, th').forEach(cell => {
       const _isName = cell.classList.contains('col-name-td');
+      // Only set vertical sticky (top) on td — .cov-name-inner handles horizontal (left:0).
       cell.style.position = 'sticky';
       cell.style.top = topPx;
-      if (_isName) cell.style.left = '0px';
       cell.style.zIndex = _isName ? '12' : '10';
     });
     if (!hidden) _covVisRow++;
@@ -3204,13 +3220,11 @@ function refreshCoverageSticky() {
       const topPx = hidden ? '-9999px' : (theadH + visRow * rowH) + 'px';
       tr.querySelectorAll('td, th').forEach(cell => {
         const isName = cell.classList.contains('col-name-td');
-        // Set ALL three sticky properties as inline styles so the browser applies
-        // both the vertical (top) and horizontal (left) constraints consistently.
-        // Relying on CSS for `left` and JS for `top` causes some browsers to ignore
-        // the vertical constraint on bi-directionally sticky cells.
+        // Only set VERTICAL (top) sticky on the td.
+        // Horizontal (left:0) is handled by the inner .cov-name-inner div,
+        // because Chrome ignores `top` when `left` is also set on the same td.
         cell.style.position = 'sticky';
         cell.style.top = topPx;
-        if (isName) cell.style.left = '0px';
         cell.style.zIndex = isName ? '12' : '10';
       });
       if (!hidden) visRow++;
