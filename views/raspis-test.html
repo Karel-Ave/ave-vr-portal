@@ -209,7 +209,7 @@ table.sched-tbl {
 .sched-tbl .th-dn {
   background: var(--thead-bg); color: var(--thead-text);
   text-align: center; font-size: 10px; padding: 1px 0; width: 18px;
-  position: relative; vertical-align: bottom; padding-top: 36px;
+  position: relative; vertical-align: bottom; padding-top: 26px;
   overflow: visible;
 }
 /* Sum header */
@@ -313,10 +313,10 @@ table.sched-tbl {
 .th-dn-day {
   position: absolute; top: 1px; left: 0; width: 200%;
   text-align: center; pointer-events: none; line-height: 1.2;
-  z-index: 2;
+  z-index: 2; background: transparent;
 }
-.th-day-num { display: block; font-size: 13px; font-weight: 700; }
-.th-day-dow { display: block; font-size: 9px; opacity: 0.8; }
+.th-day-num { display: block; font-size: 12px; font-weight: 700; }
+.th-day-dow { display: block; font-size: 8px; opacity: 0.8; }
 /* d/n letter — only this span gets red, day number area stays clean */
 .th-dn-letter { display: inline-block; line-height: 1.4; padding: 0 3px; border-radius: 3px; }
 .th-dn.dn-uncovered .th-dn-letter { background: #e74c3c !important; color: #fff !important; }
