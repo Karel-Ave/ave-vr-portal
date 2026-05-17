@@ -444,6 +444,46 @@ tbody tr.row-hidden { display: none !important; }
 }
 .stb-input:focus { border-color: var(--accent,#C4A96A); }
 :root:not([data-theme="dark"]) .stb-input { background: rgba(0,0,0,.04); color: var(--text); }
+/* ── Hotel left group & month group in subtoolbar ── */
+#stb-hotels-left { display: flex; align-items: center; gap: 4px; flex: 0 0 50%; min-width: 0; overflow: hidden; }
+#stb-hotel-btns  { display: flex; align-items: center; gap: 4px; flex-wrap: wrap; }
+#stb-month-group { display: none; align-items: center; gap: 4px; flex-shrink: 0; }
+#stb-month-group.show { display: flex; }
+#sel-month-year  { font-size: 12px; cursor: pointer; }
+/* ── F+S modal overlay ── */
+.fonds-overlay {
+  position: fixed; inset: 0; z-index: 9000;
+  align-items: flex-start; justify-content: center;
+  padding-top: 80px; background: rgba(0,0,0,.5);
+}
+.fonds-overlay.show { display: flex; }
+.fonds-modal {
+  background: var(--surface,#1E1E1E); border: 1px solid var(--border);
+  border-radius: 10px; width: 310px; box-shadow: 0 8px 32px rgba(0,0,0,.55);
+  overflow: hidden;
+}
+.fonds-header {
+  display: flex; align-items: center; justify-content: space-between;
+  padding: 11px 15px; border-bottom: 1px solid var(--border);
+}
+.fonds-header span { font-weight: 700; font-size: 13px; }
+.fonds-close {
+  background: none; border: none; color: var(--text-muted); cursor: pointer;
+  font-size: 17px; padding: 0 3px; line-height: 1;
+}
+.fonds-close:hover { color: var(--text); }
+.fonds-body { padding: 14px 15px; display: flex; flex-direction: column; gap: 10px; }
+.fonds-row { display: flex; align-items: center; gap: 8px; }
+.fonds-row label { font-size: 11px; color: var(--text-muted); width: 72px; flex-shrink: 0; }
+.fonds-row input {
+  flex: 1; font-size: 13px; padding: 5px 8px;
+  background: var(--input-bg,rgba(255,255,255,.07)); border: 1px solid var(--border);
+  border-radius: 5px; color: var(--text); font-family: inherit; outline: none;
+  transition: border-color .15s;
+}
+.fonds-row input:focus { border-color: var(--accent,#C4A96A); }
+:root:not([data-theme="dark"]) .fonds-row input { background: rgba(0,0,0,.05); }
+.fonds-footer { padding: 11px 15px; border-top: 1px solid var(--border); display: flex; justify-content: flex-end; }
 /* schedule filters */
 .sched-tbl.hide-night td[data-dn="n"],
 .sched-tbl.hide-night th[data-dn="n"] { display: none; }
@@ -731,36 +771,51 @@ tbody tr.row-filtered { display: none; }
   </div>
 </div>
 
+<!-- ═══════════════════════ F+S MODAL (Fondy a svátky) ══════════════════════════════════ -->
+<div id="fonds-overlay" class="fonds-overlay" style="display:none">
+  <div class="fonds-modal">
+    <div class="fonds-header">
+      <span id="fonds-title">Fondy a svátky</span>
+      <button class="fonds-close" id="btn-fonds-close">✕</button>
+    </div>
+    <div class="fonds-body">
+      <div class="fonds-row">
+        <label>Fond HPP</label>
+        <input type="text" id="inp-fond-hpp" inputmode="decimal">
+      </div>
+      <div class="fonds-row">
+        <label>Fond ZPP</label>
+        <input type="text" id="inp-fond-zpp" inputmode="decimal">
+      </div>
+      <div class="fonds-row">
+        <label>Svátky</label>
+        <input type="text" id="inp-holidays" inputmode="text">
+      </div>
+    </div>
+    <div class="fonds-footer">
+      <button class="tb-btn primary" id="btn-fonds-save">Uložit</button>
+    </div>
+  </div>
+</div>
+
 <!-- ═══════════════════════ SUB-TOOLBAR (Tvorba + Rozpis VR) ════════════════════════════ -->
 <div id="subtoolbar">
   <div class="stb-row" id="stb-row-hotels">
-    <span class="stb-hotel-lbl">Hotel:</span>
-    <button class="stb-btn active" id="stb-vse">VSE</button>
-    <div id="stb-hotel-btns" style="display:contents"></div>
+    <!-- Levá polovina: tlačítka hotelů -->
+    <div id="stb-hotels-left">
+      <span class="stb-hotel-lbl">Hotel:</span>
+      <button class="stb-btn active" id="stb-vse">VSE</button>
+      <div id="stb-hotel-btns"></div>
+    </div>
+    <!-- Od středu: měsíc/rok + F+S (jen v záložce Tvorba) -->
+    <div id="stb-month-group">
+      <select id="sel-month-year" class="stb-input"></select>
+      <button class="stb-btn" id="btn-fonds" title="Fondy a svátky">F+S</button>
+      <div class="stb-sep"></div>
+    </div>
     <div class="stb-spacer"></div>
     <button class="stb-btn" id="stb-hide-sums">Skrýt součty</button>
     <button class="stb-btn" id="stb-save-req">Zapamatuj požadavky</button>
-  </div>
-  <!-- Měsíc/rok/fondy/svátky — viditelné pouze v záložce Tvorba -->
-  <div class="stb-row" id="stb-row-month" style="display:none;">
-    <span class="stb-label">Měsíc:</span>
-    <select id="sel-month" class="stb-input">
-      <option value="1">Leden</option><option value="2">Únor</option>
-      <option value="3">Březen</option><option value="4">Duben</option>
-      <option value="5">Květen</option><option value="6">Červen</option>
-      <option value="7">Červenec</option><option value="8">Srpen</option>
-      <option value="9">Září</option><option value="10">Říjen</option>
-      <option value="11">Listopad</option><option value="12">Prosinec</option>
-    </select>
-    <input type="number" id="inp-year" class="stb-input" style="width:68px" min="2020" max="2050">
-    <div class="stb-sep"></div>
-    <span class="stb-label">Fond HPP:</span>
-    <input type="text" id="inp-fond-hpp" class="stb-input" style="width:52px" placeholder="hod">
-    <span class="stb-label">ZPP:</span>
-    <input type="text" id="inp-fond-zpp" class="stb-input" style="width:52px" placeholder="hod">
-    <div class="stb-sep"></div>
-    <span class="stb-label">Svátky:</span>
-    <input type="text" id="inp-holidays" class="stb-input" style="width:150px" placeholder="1,5,8,…">
   </div>
   <div class="stb-row">
     <button class="stb-btn" id="stb-hide-hotels">Skrýt hotely</button>
@@ -1558,20 +1613,24 @@ const HOTELS_DEFAULT = [
   {letter:'U',name:'',hours:12,dayOnly:true, active:true},
 ];
 
+const MONTH_NAMES = ['','Leden','Únor','Březen','Duben','Květen','Červen',
+                      'Červenec','Srpen','Září','Říjen','Listopad','Prosinec'];
+
 const state = {
   staff: [],
-  schedule: {},   // key: `${si}_${ci}` → string (cell value)
-  extras: {},     // key: si → {hours: string}
-  requirements: {},
+  schedule: {},        // key: `${si}_${ci}` → string (cell value), current month
+  extras: {},          // key: si → {hours: string}, current month
+  requirements: {},    // snapshot of schedule used for req highlighting
   month: new Date().getMonth() + 1,
   year:  new Date().getFullYear(),
   fondHpp: '',
   fondZpp: '',
   holidays: '',
   hrsColorOverride: {}, // {si: true} → force black for that worker
-  hotels: [],     // [{letter, name, hours, dayOnly, active}]
-  hotelOverrides: {}, // legacy compat
-  customHotels: []    // legacy compat
+  hotels: [],           // [{letter, name, hours, dayOnly, active}]
+  hotelOverrides: {},   // legacy compat
+  customHotels: [],     // legacy compat
+  monthlyData: {}       // key: "YYYY-M" → {schedule, extras, requirements, fondHpp, fondZpp, holidays}
 };
 
 /* ══════════════════════════════════════════════════════════════════════════════
@@ -2654,10 +2713,22 @@ function renderStaffTable() {
 
 function buildSaveData() {
   ensureHotels();
+  // Snapshot aktuálního měsíce do monthlyData před serializací
+  const currentKey = `${state.year}-${state.month}`;
+  const mdSnapshot = JSON.parse(JSON.stringify(state.monthlyData || {}));
+  mdSnapshot[currentKey] = {
+    schedule:     JSON.parse(JSON.stringify(state.schedule)),
+    extras:       JSON.parse(JSON.stringify(state.extras)),
+    requirements: JSON.parse(JSON.stringify(state.requirements || {})),
+    fondHpp:  state.fondHpp,
+    fondZpp:  state.fondZpp,
+    holidays: state.holidays
+  };
   return {
     month: state.month,
     year: state.year,
     staff: JSON.parse(JSON.stringify(state.staff)),
+    // Aktuální měsíc na root úrovni (zpětná kompatibilita)
     schedule: JSON.parse(JSON.stringify(state.schedule)),
     extras: JSON.parse(JSON.stringify(state.extras)),
     fondHpp: state.fondHpp,
@@ -2665,6 +2736,7 @@ function buildSaveData() {
     holidays: state.holidays,
     hrsColorOverride: JSON.parse(JSON.stringify(state.hrsColorOverride || {})),
     hotels: JSON.parse(JSON.stringify(state.hotels)),
+    monthlyData: mdSnapshot,
     // legacy fields kept for backward compat
     hotelOverrides: JSON.parse(JSON.stringify(state.hotelOverrides)),
     customHotels: JSON.parse(JSON.stringify(state.customHotels))
@@ -2673,31 +2745,65 @@ function buildSaveData() {
 
 function applyData(data) {
   if (!data) return;
-  if (data.month) state.month = data.month;
-  if (data.year) state.year = data.year;
+
+  // ── Načíst sdílená data (pracovníci, hotely) ──
   if (data.staff) state.staff = data.staff;
-  if (data.schedule) state.schedule = data.schedule;
-  if (data.extras) state.extras = data.extras || {};
-  if (data.fondHpp !== undefined) state.fondHpp = data.fondHpp;
-  if (data.fondZpp !== undefined) state.fondZpp = data.fondZpp;
-  if (data.holidays !== undefined) state.holidays = data.holidays;
   state.hrsColorOverride = data.hrsColorOverride || {};
   if (data.hotels && data.hotels.length) {
     state.hotels = data.hotels;
   } else {
-    // Legacy migration: build from hotelOverrides + customHotels
     state.hotels = [];
     if (data.hotelOverrides) state.hotelOverrides = data.hotelOverrides;
     if (data.customHotels) state.customHotels = data.customHotels;
-    ensureHotels(); // will populate state.hotels from legacy data
+    ensureHotels();
   }
 
-  // sync UI controls
-  document.getElementById('sel-month').value = state.month;
-  document.getElementById('inp-year').value = state.year;
-  document.getElementById('inp-fond-hpp').value = state.fondHpp;
-  document.getElementById('inp-fond-zpp').value = state.fondZpp;
-  document.getElementById('inp-holidays').value = state.holidays;
+  // ── Načíst monthlyData ──
+  state.monthlyData = data.monthlyData || {};
+
+  // Zpětná kompatibilita: starý draft bez monthlyData — uložit root data pod uloženým klíčem
+  if (!data.monthlyData && data.month && data.year) {
+    const legacyKey = `${data.year}-${data.month}`;
+    state.monthlyData[legacyKey] = {
+      schedule:     data.schedule     || {},
+      extras:       data.extras       || {},
+      requirements: data.requirements || {},
+      fondHpp:  data.fondHpp  || '',
+      fondZpp:  data.fondZpp  || '',
+      holidays: data.holidays || ''
+    };
+  }
+
+  // ── Určit, který měsíc zobrazit ──
+  const now = new Date();
+  const realM = now.getMonth() + 1, realY = now.getFullYear();
+  let targetM = realM, targetY = realY;
+  // Pokud uložený měsíc je aktuální nebo budoucí, zobrazit ho
+  if (data.month && data.year) {
+    const isFutureOrNow = data.year > realY || (data.year === realY && data.month >= realM);
+    if (isFutureOrNow) { targetM = data.month; targetY = data.year; }
+  }
+
+  // ── Načíst data cílového měsíce ──
+  state.month = targetM; state.year = targetY;
+  const targetKey = `${targetY}-${targetM}`;
+  const md = state.monthlyData[targetKey];
+  if (md) {
+    state.schedule     = md.schedule     || {};
+    state.extras       = md.extras       || {};
+    state.requirements = md.requirements || {};
+    state.fondHpp  = md.fondHpp  || '';
+    state.fondZpp  = md.fondZpp  || '';
+    state.holidays = md.holidays || '';
+  } else {
+    state.schedule = {}; state.extras = {}; state.requirements = {};
+    state.fondHpp = ''; state.fondZpp = ''; state.holidays = '';
+  }
+
+  // ── Synchronizovat UI ──
+  populateMonthYearSelect();
+  const selMY = document.getElementById('sel-month-year');
+  if (selMY) selMY.value = targetKey;
 }
 
 /* ══════════════════════════════════════════════════════════════════════════════
@@ -2775,6 +2881,90 @@ async function syncRaspisStaff() {
   } catch(e) {
     console.warn('syncRaspisStaff:', e);
   }
+}
+
+/* ══════════════════════════════════════════════════════════════════════════════
+   MONTH-YEAR SELECT + PER-MONTH DATA
+══════════════════════════════════════════════════════════════════════════════ */
+
+/** Naplní sel-month-year opcemi: aktuální reálný měsíc + 11 měsíců dopředu */
+function populateMonthYearSelect() {
+  const sel = document.getElementById('sel-month-year');
+  if (!sel) return;
+  const now  = new Date();
+  const realM = now.getMonth() + 1;
+  const realY = now.getFullYear();
+  sel.innerHTML = '';
+  for (let i = 0; i < 12; i++) {
+    let m = realM + i, y = realY;
+    if (m > 12) { m -= 12; y++; }
+    const opt = document.createElement('option');
+    opt.value = `${y}-${m}`;
+    opt.textContent = `${MONTH_NAMES[m]} ${y}`;
+    sel.appendChild(opt);
+  }
+}
+
+/** Uloží data aktuálního měsíce do monthlyData, načte data nového měsíce a překreslí */
+function switchMonth(newMonth, newYear) {
+  // Uložit aktuální měsíc do monthlyData
+  const currentKey = `${state.year}-${state.month}`;
+  state.monthlyData[currentKey] = {
+    schedule:     JSON.parse(JSON.stringify(state.schedule)),
+    extras:       JSON.parse(JSON.stringify(state.extras)),
+    requirements: JSON.parse(JSON.stringify(state.requirements || {})),
+    fondHpp:  state.fondHpp,
+    fondZpp:  state.fondZpp,
+    holidays: state.holidays
+  };
+  // Přepnout na nový měsíc
+  state.month = newMonth;
+  state.year  = newYear;
+  const newKey = `${newYear}-${newMonth}`;
+  const md = state.monthlyData[newKey];
+  if (md) {
+    state.schedule     = md.schedule     || {};
+    state.extras       = md.extras       || {};
+    state.requirements = md.requirements || {};
+    state.fondHpp  = md.fondHpp  || '';
+    state.fondZpp  = md.fondZpp  || '';
+    state.holidays = md.holidays || '';
+  } else {
+    state.schedule = {}; state.extras = {}; state.requirements = {};
+    state.fondHpp = ''; state.fondZpp = ''; state.holidays = '';
+  }
+  // Překreslit
+  renderScheduleTable('tvorba-tbl', true);
+  buildHotelFilterButtons();
+  scheduleAutoSave();
+}
+
+/* ── F+S modal ── */
+function openFondsModal() {
+  document.getElementById('fonds-title').textContent =
+    `Fondy a svátky — ${MONTH_NAMES[state.month]} ${state.year}`;
+  document.getElementById('inp-fond-hpp').value = state.fondHpp;
+  document.getElementById('inp-fond-zpp').value = state.fondZpp;
+  document.getElementById('inp-holidays').value = state.holidays;
+  const ov = document.getElementById('fonds-overlay');
+  ov.style.display = '';
+  ov.classList.add('show');
+  document.getElementById('inp-fond-hpp').focus();
+}
+
+function closeFondsModal() {
+  const ov = document.getElementById('fonds-overlay');
+  ov.classList.remove('show');
+  ov.style.display = 'none';
+}
+
+function saveFondsModal() {
+  state.fondHpp  = document.getElementById('inp-fond-hpp').value.trim();
+  state.fondZpp  = document.getElementById('inp-fond-zpp').value.trim();
+  state.holidays = document.getElementById('inp-holidays').value.trim();
+  renderScheduleTable('tvorba-tbl', true);
+  scheduleAutoSave();
+  closeFondsModal();
 }
 
 async function loadDraftList() {
@@ -3174,9 +3364,9 @@ function updateSubtoolbar() {
   const stb = document.getElementById('subtoolbar');
   const showStb = active === 'tvorba' || active === 'rozpis';
   stb.classList.toggle('show', showStb);
-  // Řádek měsíce/fondů/svátků jen v Tvorba
-  const monthRow = document.getElementById('stb-row-month');
-  if (monthRow) monthRow.style.display = active === 'tvorba' ? '' : 'none';
+  // Skupina měsíc+F+S jen v Tvorba
+  const monthGroup = document.getElementById('stb-month-group');
+  if (monthGroup) monthGroup.classList.toggle('show', active === 'tvorba');
   if (showStb) {
     const h = stb.offsetHeight;
     document.documentElement.style.setProperty('--stb-h', h + 'px');
@@ -4534,12 +4724,7 @@ function handleXlsImport(e) {
 ══════════════════════════════════════════════════════════════════════════════ */
 
 async function saveSettings() {
-  state.month = parseInt(document.getElementById('sel-month').value, 10);
-  state.year  = parseInt(document.getElementById('inp-year').value, 10);
-  state.fondHpp = document.getElementById('inp-fond-hpp').value;
-  state.fondZpp = document.getElementById('inp-fond-zpp').value;
-  state.holidays = document.getElementById('inp-holidays').value;
-  // Rebuild both tables with new settings (month/year/holidays/hotel names etc.)
+  // Měsíc/rok a fondy jsou nyní řízeny přes subtoolbar/F+S modal — jen uložíme draft
   renderScheduleTable('tvorba-tbl', true);
   renderScheduleTable('raspis-tbl', false);
   buildHotelFilterButtons();
@@ -4653,9 +4838,9 @@ document.addEventListener('DOMContentLoaded', async () => {
   // Initialize hotel list from defaults
   ensureHotels();
 
-  // Set initial month/year
-  document.getElementById('sel-month').value = state.month;
-  document.getElementById('inp-year').value = state.year;
+  // Set initial month/year select
+  populateMonthYearSelect();
+  document.getElementById('sel-month-year').value = `${state.year}-${state.month}`;
 
   await fetchUser();
 
@@ -4794,23 +4979,28 @@ document.addEventListener('DOMContentLoaded', async () => {
   document.getElementById('btn-load-master').addEventListener('click', loadMasterStaff);
   document.getElementById('btn-size-nastaveni').addEventListener('click', showSizeEditor);
 
-  // Settings field changes — okamžitě aplikuj + auto-save
-  ['sel-month','inp-year','inp-fond-hpp','inp-fond-zpp','inp-holidays'].forEach(id => {
-    document.getElementById(id).addEventListener('change', () => {
-      state.month    = parseInt(document.getElementById('sel-month').value, 10) || state.month;
-      state.year     = parseInt(document.getElementById('inp-year').value, 10)  || state.year;
-      state.fondHpp  = document.getElementById('inp-fond-hpp').value;
-      state.fondZpp  = document.getElementById('inp-fond-zpp').value;
-      state.holidays = document.getElementById('inp-holidays').value;
-      if (id === 'sel-month' || id === 'inp-year' || id === 'inp-holidays') {
-        // Změna měsíce/roku/svátků → přestavět celou tabulku
-        renderScheduleTable('tvorba-tbl', true);
-        buildHotelFilterButtons();
-      } else {
-        // Fond HPP/ZPP → přebarvit pouze součtové buňky
-        updateAllSums();
-      }
-      scheduleAutoSave();
+  // Přepnutí měsíce/roku
+  document.getElementById('sel-month-year').addEventListener('change', () => {
+    const val = document.getElementById('sel-month-year').value; // "YYYY-M"
+    const parts = val.split('-');
+    const newYear  = parseInt(parts[0], 10);
+    const newMonth = parseInt(parts[1], 10);
+    if (newYear && newMonth) switchMonth(newMonth, newYear);
+  });
+
+  // F+S tlačítko
+  document.getElementById('btn-fonds').addEventListener('click', openFondsModal);
+  document.getElementById('btn-fonds-close').addEventListener('click', closeFondsModal);
+  document.getElementById('btn-fonds-save').addEventListener('click', saveFondsModal);
+  // Zavřít klikem na pozadí overlaye
+  document.getElementById('fonds-overlay').addEventListener('click', e => {
+    if (e.target === document.getElementById('fonds-overlay')) closeFondsModal();
+  });
+  // Enter v F+S inputech = uložit
+  ['inp-fond-hpp','inp-fond-zpp','inp-holidays'].forEach(id => {
+    document.getElementById(id).addEventListener('keydown', e => {
+      if (e.key === 'Enter') saveFondsModal();
+      if (e.key === 'Escape') closeFondsModal();
     });
   });
 
