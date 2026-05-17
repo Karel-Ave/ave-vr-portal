@@ -10,7 +10,8 @@
 <script src="https://cdn.sheetjs.com/xlsx-0.20.3/package/dist/xlsx.full.min.js"></script>
 <style>
 * { box-sizing: border-box; margin: 0; padding: 0; }
-body { min-height: 100vh; background: var(--bg); font-family: 'Segoe UI', system-ui, sans-serif; color: var(--text); padding-top: 48px; }
+body { min-height: 100vh; background: var(--bg); font-family: 'Segoe UI', system-ui, sans-serif; color: var(--text); padding-top: 48px; opacity: 0; }
+body.rt-ready { opacity: 1; transition: opacity .18s ease; }
 body.with-subtoolbar { padding-top: calc(48px + var(--stb-h,68px)); }
 
 /* ── Topbar ── */
@@ -4674,6 +4675,9 @@ document.addEventListener('DOMContentLoaded', async () => {
 
   // Show tvorba spinner initially hidden
   document.getElementById('tvorba-spinner').style.display = 'none';
+
+  // Vše načteno — zobraz stránku (fade-in), případně signalizuj portálu
+  document.body.classList.add('rt-ready');
 
   // ── Topbar tab buttons ──
   document.querySelectorAll('.tb-tab[data-tab]').forEach(b => {
