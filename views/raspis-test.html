@@ -446,6 +446,7 @@ tbody tr.row-hidden { display: none !important; }
 :root:not([data-theme="dark"]) .stb-input { background: rgba(0,0,0,.04); color: var(--text); }
 /* ── Hotel left group & month group in subtoolbar ── */
 #stb-hotels-left { display: flex; align-items: center; gap: 4px; flex: 0 0 50%; min-width: 0; overflow: hidden; }
+#stb-tools-left  { display: flex; align-items: center; gap: 4px; flex: 0 0 50%; min-width: 0; overflow: hidden; }
 #stb-hotel-btns  { display: flex; align-items: center; gap: 4px; flex-wrap: wrap; }
 #stb-month-group { display: none; align-items: center; gap: 4px; flex-shrink: 0; }
 #stb-month-group.show { display: flex; }
@@ -818,16 +819,19 @@ tbody tr.row-filtered { display: none; }
     <button class="stb-btn" id="stb-save-req">Zapamatuj požadavky</button>
   </div>
   <div class="stb-row">
-    <button class="stb-btn" id="stb-hide-hotels">Skrýt hotely</button>
-    <div class="stb-sep"></div>
-    <button class="stb-btn" id="stb-day-only">Jen denní</button>
-    <button class="stb-btn" id="stb-night-only">Jen noční</button>
-    <button class="stb-btn" id="stb-available">Jen dostupní</button>
-    <button class="stb-btn" id="stb-mark-sel">Označ vybrané</button>
-    <button class="stb-btn" id="btn-show-hidden" style="display:none">👁 Skrytí</button>
-    <div class="stb-sep"></div>
-    <button class="stb-btn" id="stb-copy-mode" title="Přepne do režimu výběru buněk — táhni myší pro výběr, Ctrl+C zkopíruje, Ctrl+V vloží">📋 Kopírovat</button>
-    <div class="stb-spacer"></div>
+    <!-- Levá polovina: filtry — Zpět/Vpřed začínají horizontálně pod výběrem měsíce -->
+    <div id="stb-tools-left">
+      <button class="stb-btn" id="stb-hide-hotels">Skrýt hotely</button>
+      <div class="stb-sep"></div>
+      <button class="stb-btn" id="stb-day-only">Jen denní</button>
+      <button class="stb-btn" id="stb-night-only">Jen noční</button>
+      <button class="stb-btn" id="stb-available">Jen dostupní</button>
+      <button class="stb-btn" id="stb-mark-sel">Označ vybrané</button>
+      <button class="stb-btn" id="btn-show-hidden" style="display:none">👁 Skrytí</button>
+      <div class="stb-sep"></div>
+      <button class="stb-btn" id="stb-copy-mode" title="Přepne do režimu výběru buněk — táhni myší pro výběr, Ctrl+C zkopíruje, Ctrl+V vloží">📋 Kopírovat</button>
+    </div>
+    <!-- Od středu: Zpět / Vpřed -->
     <button class="stb-btn" id="stb-undo">⇐ Zpět</button>
     <button class="stb-btn" id="stb-redo">⇒ Vpřed</button>
     <div class="stb-spacer"></div>
@@ -2902,9 +2906,12 @@ function populateMonthYearSelect() {
   }
 }
 
-/** Uloží data aktuálního měsíce do monthlyData, načte data nového měsíce a překreslí */
-function switchMonth(newMonth, newYear) {
-  // Uložit aktuální měsíc do monthlyData
+/** Uloží data aktuálního měsíce do monthlyData, auto-save na server,
+ *  pak najde nebo vytvoří draft pro nový měsíc a překreslí. */
+async function switchMonth(newMonth, newYear) {
+  const newKey = `${newYear}-${newMonth}`;
+
+  // 1. Uložit aktuální měsíc do monthlyData
   const currentKey = `${state.year}-${state.month}`;
   state.monthlyData[currentKey] = {
     schedule:     JSON.parse(JSON.stringify(state.schedule)),
@@ -2914,26 +2921,61 @@ function switchMonth(newMonth, newYear) {
     fondZpp:  state.fondZpp,
     holidays: state.holidays
   };
-  // Přepnout na nový měsíc
+
+  // 2. Auto-save aktuálního draftu na server (tiše)
+  await saveDraft(true);
+
+  // 3. Přepnout state na nový měsíc
   state.month = newMonth;
   state.year  = newYear;
-  const newKey = `${newYear}-${newMonth}`;
-  const md = state.monthlyData[newKey];
-  if (md) {
-    state.schedule     = md.schedule     || {};
-    state.extras       = md.extras       || {};
-    state.requirements = md.requirements || {};
-    state.fondHpp  = md.fondHpp  || '';
-    state.fondZpp  = md.fondZpp  || '';
-    state.holidays = md.holidays || '';
-  } else {
-    state.schedule = {}; state.extras = {}; state.requirements = {};
-    state.fondHpp = ''; state.fondZpp = ''; state.holidays = '';
+
+  // 4. Hledat existující draft pro nový měsíc
+  const loaded = await findAndLoadMonthDraft(newMonth, newYear);
+
+  if (!loaded) {
+    // Žádný draft na serveru — použij in-memory data nebo prázdné
+    const md = state.monthlyData[newKey];
+    if (md) {
+      state.schedule     = md.schedule     || {};
+      state.extras       = md.extras       || {};
+      state.requirements = md.requirements || {};
+      state.fondHpp  = md.fondHpp  || '';
+      state.fondZpp  = md.fondZpp  || '';
+      state.holidays = md.holidays || '';
+    } else {
+      state.schedule = {}; state.extras = {}; state.requirements = {};
+      state.fondHpp = ''; state.fondZpp = ''; state.holidays = '';
+    }
+    currentDraftId = null; // vytvoří se nový draft při příštím uložení
+    scheduleAutoSave();
+    toast(`Nový draft: ${MONTH_NAMES[newMonth - 1]} ${newYear}`);
   }
-  // Překreslit
+
+  // 5. Překreslit
+  const selMY = document.getElementById('sel-month-year');
+  if (selMY) selMY.value = newKey;
   renderScheduleTable('tvorba-tbl', true);
   buildHotelFilterButtons();
-  scheduleAutoSave();
+}
+
+/** Najde na serveru draft pro daný měsíc+rok; pokud existuje, načte ho. Vrací true/false. */
+async function findAndLoadMonthDraft(month, year) {
+  try {
+    const r = await fetch('/api/rt/drafts', {credentials:'include'});
+    if (!r.ok) return false;
+    const list = await r.json();
+    // Server má UNIQUE constraint (user_id, month, year) — nejvýše jeden draft na měsíc
+    const match = list.find(d => d.month === month && d.year === year);
+    if (!match) return false;
+    await loadDraft(match.id || match._id);
+    // applyData mohla změnit state.month/year — opravit na cílový měsíc
+    state.month = month; state.year = year;
+    await loadDraftList();
+    toast(`Načten: ${MONTH_NAMES[month - 1]} ${year}`);
+    return true;
+  } catch(e) {
+    return false;
+  }
 }
 
 /* ── F+S modal ── */
@@ -4977,12 +5019,12 @@ document.addEventListener('DOMContentLoaded', async () => {
   document.getElementById('btn-size-nastaveni').addEventListener('click', showSizeEditor);
 
   // Přepnutí měsíce/roku
-  document.getElementById('sel-month-year').addEventListener('change', () => {
+  document.getElementById('sel-month-year').addEventListener('change', async () => {
     const val = document.getElementById('sel-month-year').value; // "YYYY-M"
     const parts = val.split('-');
     const newYear  = parseInt(parts[0], 10);
     const newMonth = parseInt(parts[1], 10);
-    if (newYear && newMonth) switchMonth(newMonth, newYear);
+    if (newYear && newMonth) await switchMonth(newMonth, newYear);
   });
 
   // F+S tlačítko
