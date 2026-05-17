@@ -2180,16 +2180,20 @@ function renderScheduleTable(tableId, editable) {
   tbl.appendChild(staffTbody);
 
   // Coverage rows sticky — cells positioned below the single header row.
-  // Measure actual thead height (padding-top:26px on th-dn makes it taller than --sched-row-h).
+  // Measure actual thead height (th-dn has padding-top:26px → taller than --sched-row-h).
+  // If table is in a hidden panel offsetHeight is 0; switchTab will call refreshCoverageSticky()
+  // once the panel becomes visible and the real height can be measured.
   const _theadH = thead.offsetHeight || _rowH;
   let _covVisRow = 0;
   Array.from(covTbody.querySelectorAll('tr')).forEach(tr => {
     const hidden = tr.classList.contains('row-filtered');
     const topPx = hidden ? '-9999px' : (_theadH + _covVisRow * _rowH) + 'px';
     tr.querySelectorAll('td, th').forEach(cell => {
+      const _isName = cell.classList.contains('col-name-td');
+      cell.style.position = 'sticky';
       cell.style.top = topPx;
-      if (!cell.classList.contains('col-name-td')) cell.style.position = 'sticky';
-      cell.style.zIndex = cell.classList.contains('col-name-td') ? '12' : '10';
+      if (_isName) cell.style.left = '0px';
+      cell.style.zIndex = _isName ? '12' : '10';
     });
     if (!hidden) _covVisRow++;
   });
@@ -3190,16 +3194,24 @@ function refreshCoverageSticky() {
     const covTbody = tbl.querySelector('tbody.cov-tbody');
     if (!covTbody || covTbody.style.display === 'none') return;
     // Measure actual thead height — th-dn has padding-top:26px so it's taller than rowH.
-    // Fall back to rowH if table isn't laid out yet (e.g. hidden tab).
+    // If the table is in a hidden tab panel offsetHeight is 0 — skip and let switchTab retry.
     const thead = tbl.querySelector('thead');
-    const theadH = (thead && thead.offsetHeight) ? thead.offsetHeight : rowH;
+    const theadH = thead ? thead.offsetHeight : 0;
+    if (!theadH) return;
     let visRow = 0;
     Array.from(covTbody.querySelectorAll('tr')).forEach(tr => {
       const hidden = tr.classList.contains('row-filtered');
+      const topPx = hidden ? '-9999px' : (theadH + visRow * rowH) + 'px';
       tr.querySelectorAll('td, th').forEach(cell => {
-        cell.style.top = hidden ? '-9999px' : (theadH + visRow * rowH) + 'px';
-        if (!cell.classList.contains('col-name-td')) cell.style.position = 'sticky';
-        cell.style.zIndex = cell.classList.contains('col-name-td') ? '12' : '10';
+        const isName = cell.classList.contains('col-name-td');
+        // Set ALL three sticky properties as inline styles so the browser applies
+        // both the vertical (top) and horizontal (left) constraints consistently.
+        // Relying on CSS for `left` and JS for `top` causes some browsers to ignore
+        // the vertical constraint on bi-directionally sticky cells.
+        cell.style.position = 'sticky';
+        cell.style.top = topPx;
+        if (isName) cell.style.left = '0px';
+        cell.style.zIndex = isName ? '12' : '10';
       });
       if (!hidden) visRow++;
     });
@@ -4437,9 +4449,17 @@ function switchTab(name) {
         refreshCoverageSticky();
         spinner.style.display = 'none';
       }, 10);
+    } else if (!window._initRendering) {
+      // Table already rendered — panel just became visible, recalculate with real thead height.
+      // (When the panel was hidden, thead.offsetHeight was 0 so positions were wrong.)
+      refreshCoverageSticky();
     }
   } else if (name === 'rozpis') {
     pollLock();
+    if (!window._initRendering) {
+      // Same: panel just became visible, recalculate coverage sticky positions.
+      refreshCoverageSticky();
+    }
   } else if (name === 'nastaveni') {
     renderStaffTable();
   }
