@@ -501,6 +501,22 @@ tbody tr.row-filtered { display: none; }
 .btn-row-act:hover { background: var(--accent); color: #fff; border-color: transparent; }
 .btn-row-del:hover { background: #e74c3c; color: #fff; border-color: transparent; }
 
+/* ── Synchronizace ze Správy uživatelů ── */
+.staff-sync-badge {
+  font-size: 8px; font-weight: 700; padding: 1px 4px; border-radius: 3px;
+  background: #e8f0fb; color: #3a6ecc; border: 1px solid #b8ccee;
+  vertical-align: middle; margin-left: 3px; cursor: default;
+}
+[data-theme="dark"] .staff-sync-badge { background: #1a2540; color: #6a9eee; border-color: #2a4070; }
+.row-inactive { opacity: 0.4; }
+.row-inactive input, .row-inactive select, .row-inactive textarea { pointer-events: none; }
+.row-inactive .col-save .btn-row-del { pointer-events: auto; opacity: 1; }
+.staff-inactive-badge {
+  font-size: 8px; font-weight: 700; padding: 1px 4px; border-radius: 3px;
+  background: var(--surface-alt); color: var(--text-muted); border: 1px solid var(--border);
+  vertical-align: middle; margin-left: 3px; cursor: default;
+}
+
 /* ── Dates picker popup (same style as #regular-picker) ── */
 #dates-picker {
   position: fixed; z-index: 3000; background: var(--surface);
@@ -2105,6 +2121,13 @@ function renderScheduleTable(tableId, editable) {
       const af = s.activeFrom;
       if (af.year > state.year || (af.year === state.year && af.month > state.month)) return;
     }
+    // Skip if activeUntil is before this month
+    if (s.activeUntil) {
+      const au = s.activeUntil;
+      if (au.year < state.year || (au.year === state.year && au.month < state.month)) return;
+    }
+    // Skip workers deactivated in Správa uživatelů
+    if (s.inactive) return;
 
     const tr = document.createElement('tr');
     tr.dataset.si = si;
@@ -2446,10 +2469,25 @@ function renderStaffTable() {
   state.staff.forEach((s, si) => {
     const tr = document.createElement('tr');
     tr.dataset.si = si;
+    if (s.inactive) tr.classList.add('row-inactive');
 
     // #
     const numTd = document.createElement('td');
     numTd.className = 'col-num'; numTd.textContent = si + 1;
+    if (s.userId) {
+      const syncBadge = document.createElement('span');
+      syncBadge.className = 'staff-sync-badge';
+      syncBadge.textContent = 'SU';
+      syncBadge.title = 'Spravováno ze Správy uživatelů';
+      numTd.appendChild(syncBadge);
+    }
+    if (s.inactive) {
+      const inaBadge = document.createElement('span');
+      inaBadge.className = 'staff-inactive-badge';
+      inaBadge.textContent = 'neaktivní';
+      inaBadge.title = 'Deaktivováno ve Správě uživatelů';
+      numTd.appendChild(inaBadge);
+    }
     tr.appendChild(numTd);
 
     // Name (colored bg)
@@ -2460,7 +2498,13 @@ function renderStaffTable() {
     const nameInp = document.createElement('input');
     nameInp.type = 'text'; nameInp.value = s.name || '';
     nameInp.placeholder = '';
-    nameInp.addEventListener('input', () => { s.name = nameInp.value; });
+    if (s.userId) {
+      // Jméno přichází ze Správy uživatelů — nelze editovat lokálně
+      nameInp.readOnly = true;
+      nameInp.title = 'Jméno se synchronizuje ze Správy uživatelů';
+    } else {
+      nameInp.addEventListener('input', () => { s.name = nameInp.value; });
+    }
     nameTd.appendChild(nameInp);
     tr.appendChild(nameTd);
 
@@ -2589,7 +2633,7 @@ function renderStaffTable() {
       sortStaffAlpha();
       renderStaffTable();
     });
-    saveTd.appendChild(editBtn);
+    if (!s.inactive) saveTd.appendChild(editBtn);
     saveTd.appendChild(delBtn);
     tr.appendChild(saveTd);
 
@@ -2666,6 +2710,64 @@ function scheduleAutoSave() {
   clearTimeout(autoSaveTimer);
   setAutosaveInd('Čekám…');
   autoSaveTimer = setTimeout(() => saveDraft(true), 4000);
+}
+
+/* ══════════════════════════════════════════════════════════════════════════════
+   SYNC RASPIS STAFF — synchronizace pracovníků ze Správy uživatelů
+   Přidává nové, aktualizuje jméno/data, označuje deaktivované jako inactive.
+   Manuální záznamy (bez userId) se vůbec nedotýká.
+══════════════════════════════════════════════════════════════════════════════ */
+async function syncRaspisStaff() {
+  try {
+    const r = await fetch('/api/raspis-staff', {credentials: 'include'});
+    if (!r.ok) return;
+    const data = await r.json();
+    if (!data.ok) return;
+
+    // Pracujeme jen s těmi, kdo mají userId (uloženi v Správa uživatelů)
+    const apiStaff = (data.staff || []).filter(s => s.userId);
+    const activeIds = new Set(apiStaff.map(s => s.userId));
+    let changed = false;
+
+    // 1. Přidej nebo aktualizuj pracovníky z API
+    for (const as of apiStaff) {
+      const ex = state.staff.find(s => s.userId === as.userId);
+      if (ex) {
+        if (ex.name !== as.displayName) { ex.name = as.displayName; changed = true; }
+        const afNew = JSON.stringify(as.activeFrom  || null);
+        const auNew = JSON.stringify(as.activeUntil || null);
+        if (JSON.stringify(ex.activeFrom  || null) !== afNew) { ex.activeFrom  = as.activeFrom  || null; changed = true; }
+        if (JSON.stringify(ex.activeUntil || null) !== auNew) { ex.activeUntil = as.activeUntil || null; changed = true; }
+        if (ex.inactive) { delete ex.inactive; changed = true; }
+      } else {
+        state.staff.push({
+          userId:      as.userId,
+          name:        as.displayName || '',
+          activeFrom:  as.activeFrom  || null,
+          activeUntil: as.activeUntil || null,
+          contract: '', maxHrs: '', regular: '',
+          hotel: '', dates: '', noteM: '', noteP: '', type: '',
+        });
+        changed = true;
+      }
+    }
+
+    // 2. Označ deaktivované (mají userId, ale nejsou v API) jako neaktivní
+    state.staff.forEach(s => {
+      if (s.userId && !activeIds.has(s.userId) && !s.inactive) {
+        s.inactive = true;
+        changed = true;
+      }
+    });
+
+    if (changed) {
+      sortStaffAlpha();
+      renderStaffTable();
+      scheduleAutoSave();
+    }
+  } catch(e) {
+    console.warn('syncRaspisStaff:', e);
+  }
 }
 
 async function loadDraftList() {
@@ -4549,6 +4651,9 @@ document.addEventListener('DOMContentLoaded', async () => {
       await loadDraft(firstId);
     }
   }
+
+  // Sync pracovníků ze Správy uživatelů (po načtení draftu, aby se zachovala lokální data)
+  await syncRaspisStaff();
 
   // Clear init flag — normal tab switching re-renders are now allowed
   window._initRendering = false;
