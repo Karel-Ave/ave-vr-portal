@@ -306,9 +306,10 @@ table.sched-tbl {
 .sched-tbl .sum-bold { font-weight: 700; }
 .sched-tbl .sum-extra { cursor: pointer; }
 .sched-tbl .sum-extra:hover { background: var(--surface-alt) !important; }
-.col-hrs-green { color: #27ae60; font-weight: 700; }
-.col-hrs-red   { color: #e74c3c; font-weight: 700; }
-.col-hrs-orange{ color: #e67e22; font-weight: 700; }
+.col-hrs-green { color: #27ae60; font-weight: 700; cursor: pointer; }
+.col-hrs-red   { color: #e74c3c; font-weight: 700; cursor: pointer; }
+.sched-tbl .sum-hrs { cursor: pointer; }
+[title~="fond"] { cursor: pointer; }
 
 /* Sticky single header row */
 .sched-tbl thead th { position: sticky; top: 0; z-index: 20; border-bottom: 2px solid var(--thead-border,#3a3a3a) !important; }
@@ -331,12 +332,13 @@ table.sched-tbl {
 .sched-tbl.copy-mode .sched-cell { cursor: crosshair !important; }
 .sched-tbl.copy-mode { user-select: none; -webkit-user-select: none; }
 /* Coverage panel rows (dots in name cell) */
-.cov-dot-wrap { float: right; display: flex; gap: 2px; align-items: center; margin-left: 4px; }
+.cov-dot-wrap { display: flex; gap: 2px; align-items: center; margin-left: 4px; flex-shrink: 0; }
 .cov-dot { width: 7px; height: 7px; border-radius: 50%; display: inline-block; flex-shrink: 0; }
 .cov-dot-ok   { background: #27ae60; }
 .cov-dot-mis  { background: #e74c3c; }
 .cov-dot-over { background: #e67e22; }
-.cov-row .col-name-td { font-size: 10px; font-weight: 700; padding: 2px 5px; background: var(--surface); }
+.cov-row .col-name-td { font-size: 10px; font-weight: 700; padding: 2px 5px; background: var(--surface);
+  display: flex; align-items: center; justify-content: space-between; }
 .cov-tbody .col-name-td { position: sticky; left: 0; z-index: 12 !important; background: var(--surface) !important; }
 /* Note: do NOT add .cov-tbody td { background } here — it would override .cov-1/.cov-empty etc. */
 .cov-row td.cov-cell { font-size: 9px; text-align: center; padding: 0; }
@@ -1529,6 +1531,7 @@ const state = {
   fondHpp: '',
   fondZpp: '',
   holidays: '',
+  hrsColorOverride: {}, // {si: true} → force black for that worker
   hotels: [],     // [{letter, name, hours, dayOnly, active}]
   hotelOverrides: {}, // legacy compat
   customHotels: []    // legacy compat
@@ -2146,20 +2149,22 @@ function renderScheduleTable(tableId, editable) {
         td.addEventListener('mouseenter', e => showExtraTip(si, e.clientX, e.clientY));
         td.addEventListener('mouseleave', hideExtraTip);
       } else if (idx === 6) {
-        // Σhod colored
-        const fond = s.contract === 'HPP' ? parseFloat(state.fondHpp)
-          : s.contract === 'ZPP' ? parseFloat(state.fondZpp) : null;
-        const maxH = parseFloat(s.maxHrs) || fond || null;
+        // Σhod — coloured by fond/maxHrs, click toggles override
         const hrs = sums.totalHrs;
-        let cls = '';
-        if (maxH !== null && !isNaN(maxH)) {
-          if (hrs > maxH) cls = 'col-hrs-red';
-          else if (hrs === maxH) cls = 'col-hrs-green';
-          else cls = 'col-hrs-orange';
-        }
+        const cls = getHrsClass(si, hrs);
         td.classList.add('sum-bold');
         if (cls) td.classList.add(cls);
+        td.title = 'Kliknutím přepneš zvýraznění dle fondu';
         td.textContent = hrs % 1 === 0 ? hrs : hrs.toFixed(1);
+        if (editable) {
+          td.addEventListener('click', () => {
+            if (!state.hrsColorOverride) state.hrsColorOverride = {};
+            if (state.hrsColorOverride[si]) delete state.hrsColorOverride[si];
+            else state.hrsColorOverride[si] = true;
+            updateSumRow(si);
+            scheduleAutoSave();
+          });
+        }
       } else {
         td.textContent = v;
       }
@@ -2193,6 +2198,26 @@ function renderScheduleTable(tableId, editable) {
    UPDATE SUMS
 ══════════════════════════════════════════════════════════════════════════════ */
 
+/* ── Hours colour helper ─────────────────────────────────────────────────
+   Returns '' (black/default), 'col-hrs-green' (under fond), or
+   'col-hrs-red' (over upper bound).
+   Upper bound = maxHrs if set, otherwise fond + 12.
+   hrsColorOverride[si] = true → always '' (user forced black).
+────────────────────────────────────────────────────────────────────── */
+function getHrsClass(si, hrs) {
+  if (state.hrsColorOverride && state.hrsColorOverride[si]) return '';
+  const s = state.staff[si];
+  if (!s) return '';
+  const fond = s.contract === 'HPP' ? parseFloat(state.fondHpp)
+             : s.contract === 'ZPP' ? parseFloat(state.fondZpp) : null;
+  if (fond === null || isNaN(fond) || fond <= 0) return '';
+  const maxH = parseFloat(s.maxHrs);
+  const upper = (maxH > 0 && !isNaN(maxH)) ? maxH : fond + 12;
+  if (hrs < fond)    return 'col-hrs-green';
+  if (hrs > upper)   return 'col-hrs-red';
+  return '';
+}
+
 function updateSumRow(si) {
   const calCols = getCalCols(state.month, state.year);
   const sums = calcSums(si, calCols, state);
@@ -2210,16 +2235,11 @@ function updateSumRow(si) {
       if (!td) return;
       const vals = [sums.dw, sums.nw, sums.dk, sums.nk, sums.total, '', sums.totalHrs];
       if (idx === 6) {
-        const fond = s.contract === 'HPP' ? parseFloat(state.fondHpp)
-          : s.contract === 'ZPP' ? parseFloat(state.fondZpp) : null;
-        const maxH = parseFloat(s.maxHrs) || fond || null;
         const hrs = sums.totalHrs;
-        td.className = 'sum-cell sum-bold';
-        if (maxH !== null && !isNaN(maxH)) {
-          if (hrs > maxH) td.classList.add('col-hrs-red');
-          else if (hrs === maxH) td.classList.add('col-hrs-green');
-          else td.classList.add('col-hrs-orange');
-        }
+        td.className = 'sum-cell sum-bold sum-hrs';
+        const cls = getHrsClass(si, hrs);
+        if (cls) td.classList.add(cls);
+        td.title = 'Kliknutím přepneš zvýraznění dle fondu';
         td.textContent = hrs % 1 === 0 ? hrs : hrs.toFixed(1);
       } else {
         td.textContent = vals[idx];
@@ -2544,6 +2564,7 @@ function buildSaveData() {
     fondHpp: state.fondHpp,
     fondZpp: state.fondZpp,
     holidays: state.holidays,
+    hrsColorOverride: JSON.parse(JSON.stringify(state.hrsColorOverride || {})),
     hotels: JSON.parse(JSON.stringify(state.hotels)),
     // legacy fields kept for backward compat
     hotelOverrides: JSON.parse(JSON.stringify(state.hotelOverrides)),
@@ -2561,6 +2582,7 @@ function applyData(data) {
   if (data.fondHpp !== undefined) state.fondHpp = data.fondHpp;
   if (data.fondZpp !== undefined) state.fondZpp = data.fondZpp;
   if (data.holidays !== undefined) state.holidays = data.holidays;
+  state.hrsColorOverride = data.hrsColorOverride || {};
   if (data.hotels && data.hotels.length) {
     state.hotels = data.hotels;
   } else {
@@ -4577,6 +4599,8 @@ document.addEventListener('DOMContentLoaded', async () => {
       state.fondHpp = document.getElementById('inp-fond-hpp').value;
       state.fondZpp = document.getElementById('inp-fond-zpp').value;
       state.holidays = document.getElementById('inp-holidays').value;
+      // Re-colour Σhod cells in real-time when fond changes
+      if (id === 'inp-fond-hpp' || id === 'inp-fond-zpp') updateAllSums();
     });
   });
   // Holidays change → immediately re-render schedule table
