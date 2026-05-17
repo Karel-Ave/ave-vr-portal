@@ -1863,6 +1863,22 @@ function updateCoverageRows() {
       const nightT = _isDayOnly ? 0 : calCols.filter(c => c.dn === 'n').length;
       const dayC   = calCols.reduce((sum, c, ci) => c.dn === 'd' ? sum + state.staff.filter((_, si) => state.schedule[`${si}_${ci}`] === letter).length : sum, 0);
       const nightC = _isDayOnly ? 0 : calCols.reduce((sum, c, ci) => c.dn === 'n' ? sum + state.staff.filter((_, si) => state.schedule[`${si}_${ci}`] === letter).length : sum, 0);
+      // Update hotel name text in the left group (may have changed via hotel manager)
+      const leftGroup = tr.querySelector('.cov-name-inner > span');
+      if (leftGroup) {
+        const hotelName = hotelInfo && hotelInfo.name ? hotelInfo.name : '';
+        let nameSpan = leftGroup.children[1]; // second child = name span (first = strong/letter)
+        if (hotelName) {
+          if (!nameSpan) {
+            nameSpan = document.createElement('span');
+            nameSpan.style.cssText = 'font-size:9px;opacity:.6;font-weight:400;overflow:hidden;text-overflow:ellipsis;';
+            leftGroup.appendChild(nameSpan);
+          }
+          nameSpan.textContent = hotelName;
+        } else if (nameSpan) {
+          nameSpan.remove();
+        }
+      }
       // Update dots in name cell
       const dDot = tr.querySelector('.cov-dot:nth-child(1)');
       const nDot = tr.querySelector('.cov-dot:nth-child(2)');
@@ -4081,6 +4097,9 @@ function saveHotelManager() {
   updateAllSums();
   buildHotelFilterButtons();
   updateCoverageRows();
+  // Persist hotel changes immediately — without this the changes are only in memory
+  // and are lost on page reload if the user never clicks "Uložit nastavení".
+  scheduleAutoSave();
 }
 
 /* ══════════════════════════════════════════════════════════════════════════════
@@ -4389,8 +4408,9 @@ async function saveSettings() {
   state.fondHpp = document.getElementById('inp-fond-hpp').value;
   state.fondZpp = document.getElementById('inp-fond-zpp').value;
   state.holidays = document.getElementById('inp-holidays').value;
-  // Rebuild tables with new month/year
+  // Rebuild both tables with new settings (month/year/holidays/hotel names etc.)
   renderScheduleTable('tvorba-tbl', true);
+  renderScheduleTable('raspis-tbl', false);
   buildHotelFilterButtons();
   await saveDraft(false);
   toast('Nastavení uloženo');
