@@ -4329,8 +4329,8 @@ function addStaff() {
 ══════════════════════════════════════════════════════════════════════════════ */
 
 function switchTab(name) {
-  // Persist active tab in URL hash so F5 restores position
-  history.replaceState(null, '', location.pathname + location.search + '#' + name);
+  // Persist active tab so F5 stays on same tab
+  try { sessionStorage.setItem('rt-active-tab', name); } catch(e) {}
   document.querySelectorAll('.tb-tab').forEach(b => b.classList.toggle('active', b.dataset.tab === name));
   document.querySelectorAll('.tab-panel').forEach(p => p.classList.remove('active'));
   document.querySelectorAll('.tb-actions').forEach(a => a.classList.add('hidden'));
@@ -4737,10 +4737,10 @@ document.addEventListener('DOMContentLoaded', async () => {
     }
   });
 
-  // Restore active tab from URL hash (persists across F5)
+  // Restore active tab from sessionStorage (persists across F5, clears on tab close)
   {
-    const savedTab = location.hash.replace('#', '');
-    if (['nastaveni','tvorba','rozpis'].includes(savedTab)) switchTab(savedTab);
+    const savedTab = sessionStorage.getItem('rt-active-tab');
+    if (savedTab && ['nastaveni','tvorba','rozpis'].includes(savedTab)) switchTab(savedTab);
   }
 
   // Tooltip delegation for schedule tables
