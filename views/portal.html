@@ -692,6 +692,24 @@
     }
   });
 
+  // ── Early restore: synchronously hide dashboard before any async fetch ──
+  // Runs immediately so the user never sees the card grid flash before the app loads.
+  (function() {
+    const validHrefs = ALL_CARDS.filter(c => c.href).map(c => c.href);
+    const hashApp   = location.hash.slice(1);
+    const hashUrl   = hashApp ? (hashApp.startsWith('/') ? hashApp : '/' + hashApp) : null;
+    const storedUrl = (() => { try { return sessionStorage.getItem('portal-last-app'); } catch(e) { return null; } })();
+    const url = (hashUrl && validHrefs.includes(hashUrl)) ? hashUrl
+              : (storedUrl && validHrefs.includes(storedUrl)) ? storedUrl
+              : null;
+    if (url) {
+      document.getElementById('cards-view').style.display = 'none';
+      document.getElementById('app-loading').classList.add('visible');
+      // Store for the async IIFE to pick up
+      window._portalRestoreUrl = url;
+    }
+  })();
+
   // ── Init: fetch user + permissions + app order, render cards ────────────
   (async () => {
     const [user, perms, orderData] = await Promise.all([
@@ -749,15 +767,8 @@
     }
 
     // ── Restore last app after F5 ────────────────────────────────────────
-    // Check URL hash first (set by loadApp), then sessionStorage as fallback
-    const validHrefs = ALL_CARDS.filter(c => c.href).map(c => c.href);
-    const hashApp = location.hash.slice(1);   // e.g. "raspis-test"
-    const hashUrl = hashApp ? (hashApp.startsWith('/') ? hashApp : '/' + hashApp) : null;
-    const storedUrl = (() => { try { return sessionStorage.getItem('portal-last-app'); } catch(e) { return null; } })();
-    const restoreUrl = (hashUrl && validHrefs.includes(hashUrl)) ? hashUrl
-                     : (storedUrl && validHrefs.includes(storedUrl)) ? storedUrl
-                     : null;
-    if (restoreUrl) loadApp(restoreUrl);
+    // URL was already validated synchronously above; just call loadApp().
+    if (window._portalRestoreUrl) loadApp(window._portalRestoreUrl);
   })();
 
   // ── Password change ───────────────────────────────────────────────────────
