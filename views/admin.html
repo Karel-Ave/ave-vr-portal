@@ -98,6 +98,22 @@
   .reset-btn { font-size: 10px; padding: 1px 6px; color: var(--text-muted); border: 1px solid var(--border); border-radius: 3px; background: none; cursor: pointer; margin-left: 6px; }
   .reset-btn:hover { background: var(--surface-alt); }
 
+  /* ── Raspis Test sekce v uživatelském modálu ── */
+  .raspis-section { border: 1px solid var(--border); border-radius: 8px; margin-bottom: 14px; overflow: hidden; }
+  .raspis-header { display: flex; align-items: center; gap: 10px; padding: 8px 12px; background: var(--surface-alt); cursor: pointer; user-select: none; transition: background .12s; }
+  .raspis-header:hover { background: var(--row-hover); }
+  .raspis-header-label { flex: 1; font-size: 10px; font-weight: 700; color: var(--text-muted); text-transform: uppercase; letter-spacing: .07em; }
+  .raspis-expand { font-size: 10px; color: var(--text-muted); transition: transform .2s; }
+  .raspis-expand.open { transform: rotate(90deg); }
+  .raspis-body { padding: 12px; border-top: 1px solid var(--border); background: var(--surface); }
+  .raspis-body .form-group { margin-bottom: 10px; }
+  .raspis-body .form-group:last-child { margin-bottom: 0; }
+  .raspis-row { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+  .date-pair { display: flex; gap: 5px; }
+  .date-pair select { flex: 1; min-width: 0; }
+  .rt-badge { display: inline-block; font-size: 9px; font-weight: 700; padding: 1px 5px; border-radius: 3px; background: #e8f8ef; color: #2d7a52; border: 1px solid #b3dfcc; vertical-align: middle; margin-left: 5px; }
+  [data-theme="dark"] .rt-badge { background: #1a3328; color: #5dba8c; border-color: #2d5a46; }
+
   /* Modals */
   .overlay { display: none; position: fixed; inset: 0; background: var(--overlay-bg); z-index: 1000; align-items: center; justify-content: center; }
   .overlay.show { display: flex; }
@@ -284,6 +300,40 @@
       <label>Skupina</label>
       <select id="u-role"></select>
     </div>
+
+    <!-- Raspis Test sekce -->
+    <div class="raspis-section">
+      <div class="raspis-header" onclick="toggleRaspisSection()">
+        <span class="raspis-header-label">Raspis Test</span>
+        <div class="toggle" onclick="toggleRaspisActive(event)" title="Zobrazit v Raspis Test">
+          <div class="toggle-track" id="raspis-active-track"></div>
+        </div>
+        <span class="raspis-expand" id="raspis-expand">▶</span>
+      </div>
+      <div class="raspis-body" id="raspis-body" style="display:none;">
+        <div class="form-group">
+          <label>Zobrazované jméno v rozpisu</label>
+          <input type="text" id="raspis-name" placeholder="Příjmení, Jméno">
+        </div>
+        <div class="raspis-row">
+          <div class="form-group">
+            <label>Aktivní od</label>
+            <div class="date-pair">
+              <select id="raspis-from-month"></select>
+              <select id="raspis-from-year"></select>
+            </div>
+          </div>
+          <div class="form-group">
+            <label>Aktivní do <span style="font-weight:400;color:var(--text-muted)">(nepovinné)</span></label>
+            <div class="date-pair">
+              <select id="raspis-until-month"></select>
+              <select id="raspis-until-year"></select>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
     <div class="msg" id="user-msg"></div>
     <div class="modal-btns">
       <button class="btn-secondary" onclick="closeUserModal()">Zrušit</button>
@@ -404,9 +454,10 @@
         const grp = allGroups.find(g => g.name === u.role);
         const grpLabel = grp ? esc(grp.displayName) : esc(u.role);
         const roleClass = u.role === 'admin' ? 'role-admin' : u.role === 'vedoucí' ? 'role-vedouci' : u.role === 'widget' ? 'role-widget' : 'role-other';
+        const raspisActive = (() => { try { const ov = u.perm_overrides ? (typeof u.perm_overrides === 'string' ? JSON.parse(u.perm_overrides) : u.perm_overrides) : null; return ov?.raspis_staff?.active === true; } catch(e) { return false; } })();
         return `<tr>
           <td style="color:#888;font-size:12px">${i + 1}</td>
-          <td style="font-weight:500;">${esc(u.name)}</td>
+          <td style="font-weight:500;">${esc(u.name)}${raspisActive ? '<span class="rt-badge">RT</span>' : ''}</td>
           <td style="color:#555;font-family:monospace;font-size:12px">${esc(u.username)}</td>
           <td><span class="role-badge ${roleClass}">${grpLabel}</span></td>
           <td style="color:#777;font-size:12px">${formatDate(u.created_at)}</td>
@@ -443,11 +494,12 @@
     document.getElementById('pw-hint-label').style.display = 'none';
     populateRoleSelect(document.getElementById('u-role'), 'vedoucí');
     clearMsg('user-msg');
+    resetRaspisSection();
     document.getElementById('user-overlay').classList.add('show');
     setTimeout(() => document.getElementById('u-name').focus(), 50);
   }
 
-  function openEditModal(id, name, username, role) {
+  async function openEditModal(id, name, username, role) {
     currentUserId = id;
     document.getElementById('modal-title').textContent = 'Upravit uživatele';
     document.getElementById('u-name').value = name;
@@ -457,6 +509,12 @@
     document.getElementById('pw-hint-label').style.display = 'inline';
     populateRoleSelect(document.getElementById('u-role'), role);
     clearMsg('user-msg');
+    // Načti Raspis Test nastavení z perm_overrides
+    resetRaspisSection(name);
+    try {
+      const { overrides } = await fetch(`/api/admin/users/${id}/overrides`).then(r => r.json());
+      if (overrides && overrides.raspis_staff) populateRaspisFields(overrides.raspis_staff);
+    } catch(e) {}
     document.getElementById('user-overlay').classList.add('show');
     setTimeout(() => document.getElementById('u-name').focus(), 50);
   }
@@ -481,7 +539,12 @@
       r = await fetch(`/api/users/${currentUserId}`, { method: 'PATCH', headers: {'Content-Type':'application/json'}, body: JSON.stringify(body) });
     }
     const data = await r.json();
-    if (data.ok) { closeUserModal(); loadUsers(); } else { setMsg(msg, 'err', data.msg || 'Chyba.'); }
+    if (!data.ok) { setMsg(msg, 'err', data.msg || 'Chyba.'); return; }
+    // Ulož Raspis Test nastavení do perm_overrides
+    const userId = currentUserId !== null ? currentUserId : data.id;
+    if (userId) await saveRaspisOverride(userId);
+    closeUserModal();
+    loadUsers();
   }
 
   async function deleteUser(id, name) {
@@ -819,6 +882,123 @@
     const el = typeof id === 'string' ? document.getElementById(id) : id;
     el.className = 'msg'; el.textContent = '';
   }
+
+  // ── RASPIS TEST sekce v uživatelském modálu ───────────────────────────────────
+  const MONTHS_CS = ['Leden','Únor','Březen','Duben','Květen','Červen',
+                     'Červenec','Srpen','Září','Říjen','Listopad','Prosinec'];
+
+  function initRaspisSelects() {
+    const now = new Date();
+    const curYear = now.getFullYear();
+    // Měsíce (1–12)
+    ['raspis-from-month','raspis-until-month'].forEach(sid => {
+      const sel = document.getElementById(sid);
+      if (!sel) return;
+      sel.innerHTML = (sid.includes('until') ? '<option value="">—</option>' : '') +
+        MONTHS_CS.map((m, i) => `<option value="${i+1}">${m}</option>`).join('');
+    });
+    // Roky (aktuální-1 … aktuální+4)
+    ['raspis-from-year','raspis-until-year'].forEach(sid => {
+      const sel = document.getElementById(sid);
+      if (!sel) return;
+      let html = sid.includes('until') ? '<option value="">—</option>' : '';
+      for (let y = curYear - 1; y <= curYear + 4; y++) html += `<option value="${y}">${y}</option>`;
+      sel.innerHTML = html;
+    });
+  }
+
+  function resetRaspisSection(defaultName) {
+    const now = new Date();
+    document.getElementById('raspis-active-track').classList.remove('on');
+    document.getElementById('raspis-body').style.display = 'none';
+    document.getElementById('raspis-expand').classList.remove('open');
+    document.getElementById('raspis-name').value = defaultName || '';
+    document.getElementById('raspis-from-month').value = now.getMonth() + 1;
+    document.getElementById('raspis-from-year').value = now.getFullYear();
+    document.getElementById('raspis-until-month').value = '';
+    document.getElementById('raspis-until-year').value = '';
+  }
+
+  function populateRaspisFields(rs) {
+    if (!rs) return;
+    document.getElementById('raspis-name').value = rs.displayName || '';
+    if (rs.activeFrom) {
+      document.getElementById('raspis-from-month').value = rs.activeFrom.month;
+      document.getElementById('raspis-from-year').value  = rs.activeFrom.year;
+    }
+    if (rs.activeUntil) {
+      document.getElementById('raspis-until-month').value = rs.activeUntil.month;
+      document.getElementById('raspis-until-year').value  = rs.activeUntil.year;
+    } else {
+      document.getElementById('raspis-until-month').value = '';
+      document.getElementById('raspis-until-year').value  = '';
+    }
+    if (rs.active) {
+      document.getElementById('raspis-active-track').classList.add('on');
+      document.getElementById('raspis-body').style.display = '';
+      document.getElementById('raspis-expand').classList.add('open');
+    }
+  }
+
+  function toggleRaspisActive(e) {
+    e.stopPropagation();
+    const track = document.getElementById('raspis-active-track');
+    const body  = document.getElementById('raspis-body');
+    const exp   = document.getElementById('raspis-expand');
+    const wasOn = track.classList.contains('on');
+    track.classList.toggle('on', !wasOn);
+    if (!wasOn) {
+      // Zapnout → rozbalit sekci, doplnit jméno pokud prázdné
+      body.style.display = '';
+      exp.classList.add('open');
+      const nameField = document.getElementById('raspis-name');
+      if (!nameField.value) nameField.value = document.getElementById('u-name').value;
+    }
+  }
+
+  function toggleRaspisSection() {
+    const body = document.getElementById('raspis-body');
+    const exp  = document.getElementById('raspis-expand');
+    const open = body.style.display !== 'none' && body.style.display !== '';
+    body.style.display = open ? 'none' : '';
+    exp.classList.toggle('open', !open);
+  }
+
+  async function saveRaspisOverride(userId) {
+    const active      = document.getElementById('raspis-active-track').classList.contains('on');
+    const displayName = document.getElementById('raspis-name').value.trim();
+    const fMonth = parseInt(document.getElementById('raspis-from-month').value)  || null;
+    const fYear  = parseInt(document.getElementById('raspis-from-year').value)   || null;
+    const uMonth = parseInt(document.getElementById('raspis-until-month').value) || null;
+    const uYear  = parseInt(document.getElementById('raspis-until-year').value)  || null;
+
+    // Načti stávající overrides, abychom nepřepsali oprávnění
+    let current = {};
+    try {
+      const { overrides } = await fetch(`/api/admin/users/${userId}/overrides`).then(r => r.json());
+      current = overrides || {};
+    } catch(e) {}
+
+    if (active || displayName) {
+      current.raspis_staff = {
+        active,
+        displayName,
+        activeFrom:  (fMonth && fYear)  ? { month: fMonth,  year: fYear  } : null,
+        activeUntil: (uMonth && uYear)  ? { month: uMonth,  year: uYear  } : null
+      };
+    } else {
+      delete current.raspis_staff;
+    }
+
+    await fetch(`/api/admin/users/${userId}/overrides`, {
+      method: 'PUT',
+      headers: {'Content-Type':'application/json'},
+      body: JSON.stringify({ overrides: Object.keys(current).length ? current : null })
+    });
+  }
+
+  // Init selects jednou při načtení
+  initRaspisSelects();
 
   ['user-overlay','pw-overlay','overrides-overlay','addgroup-overlay'].forEach(id => {
     document.getElementById(id).addEventListener('click', e => {

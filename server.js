@@ -266,7 +266,7 @@ app.get('/api/users', requireLogin, requireAdmin, async (req, res) => {
   try {
     const db = getPool();
     const { rows } = await db.query(
-      'SELECT id, name, username, role, created_at FROM users ORDER BY id'
+      'SELECT id, name, username, role, created_at, perm_overrides FROM users ORDER BY id'
     );
     res.json(rows);
   } catch (err) {
@@ -289,11 +289,11 @@ app.post('/api/users', requireLogin, requireAdmin, async (req, res) => {
     if (!validRoles.some(r => r.name === role)) {
       return res.json({ ok: false, msg: 'Neplatná skupina.' });
     }
-    await db.query(
-      'INSERT INTO users (name, username, password_hash, role) VALUES ($1, $2, $3, $4)',
+    const { rows: inserted } = await db.query(
+      'INSERT INTO users (name, username, password_hash, role) VALUES ($1, $2, $3, $4) RETURNING id',
       [name.trim(), username.trim(), bcrypt.hashSync(password, 10), role]
     );
-    res.json({ ok: true });
+    res.json({ ok: true, id: inserted[0].id });
   } catch (err) {
     if (err.code === '23505') return res.json({ ok: false, msg: 'Uživatelské jméno již existuje.' });
     console.error('Chyba vytvoření uživatele:', err);
@@ -3084,6 +3084,54 @@ app.post('/api/master-staff', requireLogin, async (req, res) => {
   } catch (err) {
     console.error('Chyba uložení master_staff:', err);
     res.json({ ok: false, msg: 'Chyba serveru.' });
+  }
+});
+
+// ══════════════════════════════════════════════════════════════════════════════
+// RASPIS STAFF — sloučený seznam pracovníků z Správa uživatelů + manuálních záznamů
+// ══════════════════════════════════════════════════════════════════════════════
+
+// GET /api/raspis-staff — vrátí pracovníky označené v Správa uživatelů jako aktivní
+// + manuální záznamy z master_staff (bez userId)
+app.get('/api/raspis-staff', requireLogin, async (req, res) => {
+  try {
+    const db = getPool();
+
+    // 1. Uživatelé s raspis_staff.active = true v perm_overrides
+    const { rows: users } = await db.query(
+      'SELECT id, name, perm_overrides FROM users WHERE perm_overrides IS NOT NULL'
+    );
+
+    const raspisUsers = [];
+    for (const u of users) {
+      let overrides = null;
+      try {
+        overrides = typeof u.perm_overrides === 'string'
+          ? JSON.parse(u.perm_overrides)
+          : u.perm_overrides;
+      } catch (e) { continue; }
+      const rs = overrides?.raspis_staff;
+      if (rs && rs.active) {
+        raspisUsers.push({
+          userId: u.id,
+          displayName: rs.displayName || u.name,
+          activeFrom:  rs.activeFrom  || null,
+          activeUntil: rs.activeUntil || null
+        });
+      }
+    }
+
+    // 2. Manuální záznamy z master_staff (ty bez userId patří čistě do master_staff)
+    const { rows: msRows } = await db.query('SELECT data FROM master_staff WHERE id = 1');
+    const masterStaff = msRows.length
+      ? (typeof msRows[0].data === 'string' ? JSON.parse(msRows[0].data) : msRows[0].data)
+      : [];
+    const manualStaff = (masterStaff || []).filter(s => !s.userId);
+
+    res.json({ ok: true, staff: [...raspisUsers, ...manualStaff] });
+  } catch (err) {
+    console.error('Chyba /api/raspis-staff:', err);
+    res.json({ ok: false, staff: [], msg: 'Chyba serveru.' });
   }
 });
 
