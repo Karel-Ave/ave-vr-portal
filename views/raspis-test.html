@@ -2394,6 +2394,10 @@ function renderScheduleTable(tableId, editable) {
     if (!hidden) _covVisRow++;
   });
 
+  // Sync hotel panel visibility with current showHotels state
+  // (renderScheduleTable always creates a visible covTbody — applyRowFilters hides it if needed)
+  applyRowFilters();
+
   if (editable) {
     setupKeyboardNav(tbl);
   }
@@ -5220,6 +5224,9 @@ document.addEventListener('DOMContentLoaded', async () => {
   // Clear init flag — normal tab switching re-renders are now allowed
   window._initRendering = false;
 
+  // Init hotel button to match showHotels = false default BEFORE restoreStbState,
+  // so toggleHotelRows() inside restoreStbState can correctly flip it if sessionStorage differs.
+  { const _btn = document.getElementById('stb-hide-hotels'); _btn.textContent = 'Zobrazit hotely'; _btn.classList.add('active'); }
   // Restore subtoolbar button states (after draft loaded → hotel buttons exist, tables rendered)
   restoreStbState();
 
@@ -5262,8 +5269,6 @@ document.addEventListener('DOMContentLoaded', async () => {
     saveStbState();
   });
   document.getElementById('stb-hide-hotels').addEventListener('click', toggleHotelRows);
-  // Init button state to match showHotels = false default
-  { const _btn = document.getElementById('stb-hide-hotels'); _btn.textContent = 'Zobrazit hotely'; _btn.classList.add('active'); }
   document.getElementById('stb-copy-mode').addEventListener('click', toggleCopyMode);
   document.getElementById('stb-day-only').addEventListener('click', () => filterByShift('day'));
   document.getElementById('stb-night-only').addEventListener('click', () => filterByShift('night'));
