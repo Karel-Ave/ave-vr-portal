@@ -2369,8 +2369,9 @@ function renderScheduleTable(tableId, editable) {
 
     staffTbody.appendChild(tr);
   });
-  tbl.appendChild(covTbody);
+  // staffTbody first in DOM, covTbody second → covTbody paints on top of staff rows (later DOM = higher paint order)
   tbl.appendChild(staffTbody);
+  tbl.appendChild(covTbody);
 
   // Coverage rows sticky — cells positioned below the single header row.
   // Measure actual thead height (th-dn has padding-top:26px → taller than --sched-row-h).
@@ -2386,7 +2387,9 @@ function renderScheduleTable(tableId, editable) {
       // Only set vertical sticky (top) on td — .cov-name-inner handles horizontal (left:0).
       cell.style.position = 'sticky';
       cell.style.top = topPx;
-      cell.style.zIndex = _isName ? '12' : '10';
+      cell.style.zIndex = _isName ? '17' : '15';
+      // Ensure solid background so staff rows don't bleed through
+      if (!cell.style.background) cell.style.background = 'var(--surface)';
     });
     if (!hidden) _covVisRow++;
   });
@@ -3522,7 +3525,7 @@ let filterHotels = new Set();  // empty = VSE, else set of letter strings
 let markedWorkers = new Set();  // Set of si indices that remain visible across hotel filters
 let _markMode    = false;       // true = "Označ vybrané" mode active (click name → mark, not hide)
 let filterShift  = null;  // null | 'day' | 'night' | 'available'
-let showHotels   = true;
+let showHotels   = false;
 // ── Copy/paste mode ──
 let _copyMode    = false;
 
@@ -3540,8 +3543,9 @@ function restoreStbState() {
     // sumsMode
     const sm = sessionStorage.getItem('rt-stb-sumsMode');
     if (sm && sm !== 'all') { sumsMode = 'all'; setSumsMode(sm); }
-    // showHotels
-    if (sessionStorage.getItem('rt-stb-showHotels') === 'false' && showHotels) { toggleHotelRows(); }
+    // showHotels — toggle only if stored state differs from current default (false)
+    const _sh = sessionStorage.getItem('rt-stb-showHotels');
+    if (_sh !== null && (_sh === 'true') !== showHotels) { toggleHotelRows(); }
     // filterShift
     const fs = sessionStorage.getItem('rt-stb-filterShift');
     if (fs) { filterShift = null; filterByShift(fs); }
@@ -5258,6 +5262,8 @@ document.addEventListener('DOMContentLoaded', async () => {
     saveStbState();
   });
   document.getElementById('stb-hide-hotels').addEventListener('click', toggleHotelRows);
+  // Init button state to match showHotels = false default
+  { const _btn = document.getElementById('stb-hide-hotels'); _btn.textContent = 'Zobrazit hotely'; _btn.classList.add('active'); }
   document.getElementById('stb-copy-mode').addEventListener('click', toggleCopyMode);
   document.getElementById('stb-day-only').addEventListener('click', () => filterByShift('day'));
   document.getElementById('stb-night-only').addEventListener('click', () => filterByShift('night'));
