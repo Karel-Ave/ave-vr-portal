@@ -397,11 +397,7 @@
   <div class="modal">
     <h2>Přidat skupinu</h2>
     <div class="form-group">
-      <label>Klíč skupiny (interní, bez mezer)</label>
-      <input type="text" id="new-group-key" placeholder="pr. vedouci2">
-    </div>
-    <div class="form-group">
-      <label>Zobrazovaný název</label>
+      <label>Název skupiny</label>
       <input type="text" id="new-group-name" placeholder="pr. Vedoucí 2">
     </div>
     <div class="form-group">
@@ -865,11 +861,11 @@
   function closeAddGroupModal() { document.getElementById('addgroup-overlay').classList.remove('show'); }
 
   async function saveNewGroup() {
-    const name = document.getElementById('new-group-key').value.trim().toLowerCase().replace(/\s+/g,'_');
     const displayName = document.getElementById('new-group-name').value.trim();
+    const name = displayName.toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g,'').replace(/\s+/g,'_').replace(/[^a-z0-9_]/g,'');
     const sublist = document.getElementById('new-group-sublist').value;
     const msg = document.getElementById('addgroup-msg');
-    if (!name || !displayName) { setMsg(msg, 'err', 'Vyplňte oba údaje.'); return; }
+    if (!displayName || !name) { setMsg(msg, 'err', 'Zadejte název skupiny.'); return; }
     const r = await fetch('/api/admin/groups', { method: 'POST', headers: {'Content-Type':'application/json'}, body: JSON.stringify({ name, displayName, sublist }) });
     const data = await r.json();
     if (data.ok) { closeAddGroupModal(); await loadGroups(); } else setMsg(msg, 'err', data.msg || 'Chyba.');
