@@ -2864,6 +2864,10 @@ function buildSaveData() {
   return {
     month: state.month,
     year: state.year,
+    // staffOrder: stable ordering of ALL staff (userId for portal users, null for special).
+    // Used on reload to reconstruct state.staff in the same order so schedule `si_ci` keys
+    // map to the correct people even if the API returns portal users in a different order.
+    staffOrder: state.staff.map(s => s.userId || null),
     staff: JSON.parse(JSON.stringify(state.staff.filter(s => !s.userId))),
     portalCustomData: (() => {
       const pcd = {};
@@ -2893,6 +2897,13 @@ function buildSaveData() {
 
 function applyData(data) {
   if (!data) return;
+
+  // ── Uložit staffOrder pro syncRaspisStaff ──
+  // staffOrder = pole userId (nebo null pro speciální) v pořadí, v jakém byl rozvrh uložen.
+  // syncRaspisStaff() podle toho rekonstruuje state.staff ve stejném pořadí, aby si_ci klíče
+  // rozvrhu odpovídaly správným lidem (jinak API může vrátit jiné pořadí → sortStaffAlpha
+  // přemapuje klíče chybně → směny se přisunou jiným pracovníkům).
+  state._staffOrder = Array.isArray(data.staffOrder) ? data.staffOrder : null;
 
   // ── Sdílená data (pracovníci, hotely) ──
   // Portáloví uživatelé (userId) zůstanou v state.staff — jen jim aktualizujeme data z portalCustomData.
@@ -3011,12 +3022,26 @@ async function syncRaspisStaff() {
     if (!data.ok) return;
 
     // Remove all existing portal (userId) entries — always reload fresh from API
-    state.staff = state.staff.filter(s => !s.userId);
+    const _nonPortal = state.staff.filter(s => !s.userId); // keep special workers
 
     const apiStaff = (data.staff || []).filter(s => s.userId);
-    for (const as of apiStaff) {
+    const apiMap = new Map(apiStaff.map(as => [as.userId, as]));
+
+    // Build portal-user entries in the SAVED ORDER (state._staffOrder from applyData).
+    // If the API returns users in a different order than the draft was saved in, and we
+    // add them in API order, sortStaffAlpha() will remap schedule keys based on the WRONG
+    // old→new mapping → schedule appears assigned to wrong workers after reload.
+    // Solution: insert portal users in the same order they had when the schedule was saved.
+    const _savedOrder = state._staffOrder || [];
+    const _addedIds = new Set();
+    const _portalInOrder = [];
+
+    _savedOrder.forEach(uid => {
+      if (!uid) return; // null slot = special worker (handled via _nonPortal)
+      const as = apiMap.get(uid);
+      if (!as) return; // user deactivated — skip
       const custom = state.portalCustomData?.[as.userId] || {};
-      state.staff.push({
+      _portalInOrder.push({
         userId:   as.userId,
         name:     as.displayName || '',
         login:    as.login       || '',
@@ -3031,9 +3056,37 @@ async function syncRaspisStaff() {
         regular:  custom.regular || '',
         hotel:    custom.hotel   || '',
         monthlyOverrides: custom.monthlyOverrides ? JSON.parse(JSON.stringify(custom.monthlyOverrides)) : {},
-        inactive: false, // API vrací pouze aktivní uživatele (filtruje rs.active === true na serveru)
+        inactive: false,
+      });
+      _addedIds.add(uid);
+    });
+
+    // Append any portal users not yet in the saved order (new employees added since last save)
+    for (const as of apiStaff) {
+      if (_addedIds.has(as.userId)) continue;
+      const custom = state.portalCustomData?.[as.userId] || {};
+      _portalInOrder.push({
+        userId:   as.userId,
+        name:     as.displayName || '',
+        login:    as.login       || '',
+        type:     as.type        || '',
+        contract: as.contract    || '',
+        maxHrs:   custom.maxHrs  || '',
+        noteM:    custom.noteM   || '',
+        noteP:    custom.noteP   || '',
+        x:        custom.x       || '',
+        xa:       custom.xa      || '',
+        dates:    custom.dates   || '',
+        regular:  custom.regular || '',
+        hotel:    custom.hotel   || '',
+        monthlyOverrides: custom.monthlyOverrides ? JSON.parse(JSON.stringify(custom.monthlyOverrides)) : {},
+        inactive: false,
       });
     }
+
+    // Reconstruct state.staff: special workers first (preserving their positions), then portal users
+    // in saved order. sortStaffAlpha will only need to remap truly new employees appended at the end.
+    state.staff = _nonPortal.concat(_portalInOrder);
 
     sortStaffAlpha();
     renderStaffTable();
@@ -5041,18 +5094,23 @@ function handleXlsImport(e) {
       const newStaff = [];
       const newSchedule = {};
 
-      staffRows.forEach((row, si) => {
+      // newSi = index into newStaff (consecutive, skips blank trailing rows).
+      // Must use newSi (not the forEach si) for schedule keys so that
+      // newSchedule[`${newSi}_ci`] always corresponds to newStaff[newSi].
+      let newSi = 0;
+      staffRows.forEach((row, _xlsRowIdx) => {
         if (!row[0] && row.slice(1, calCols.length + 1).every(v => v === '')) return;
-        const staffEntry = { ...state.staff[si] } || {};
-        staffEntry.name = row[0] || staffEntry.name || `pracovník ${si+1}`;
+        const staffEntry = { ...state.staff[newSi] } || {};
+        staffEntry.name = row[0] || staffEntry.name || `pracovník ${newSi+1}`;
         // noteP is last col after sums (4 sum cols + 3 extra = 7)
         const noteCol = 1 + calCols.length + 7;
         staffEntry.noteP = row[noteCol] || staffEntry.noteP || '';
         newStaff.push(staffEntry);
         calCols.forEach((_, ci) => {
           const val = String(row[1 + ci] || '').trim();
-          if (val) newSchedule[`${si}_${ci}`] = val;
+          if (val) newSchedule[`${newSi}_${ci}`] = val;
         });
+        newSi++;
       });
 
       if (!newStaff.length) { toast('Nenalezeni žádní pracovníci', true); return; }
