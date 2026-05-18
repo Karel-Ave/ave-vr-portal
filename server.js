@@ -3129,7 +3129,9 @@ app.get('/api/raspis-staff', requireLogin, async (req, res) => {
     const masterStaff = msRows.length
       ? (typeof msRows[0].data === 'string' ? JSON.parse(msRows[0].data) : msRows[0].data)
       : [];
-    const manualStaff = (masterStaff || []).filter(s => !s.userId);
+    // Přeskočit master_staff záznamy, jejichž login už pokrývá portálový účet (jinak by se zobrazili dvakrát)
+    const portalLogins = new Set(raspisUsers.map(u => u.login).filter(Boolean));
+    const manualStaff = (masterStaff || []).filter(s => !s.userId && !portalLogins.has(s.login));
 
     res.json({ ok: true, staff: [...raspisUsers, ...manualStaff] });
   } catch (err) {
