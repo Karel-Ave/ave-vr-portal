@@ -353,17 +353,17 @@ app.delete('/api/users/:id', requireLogin, requireAdmin, async (req, res) => {
 app.get('/api/admin/groups', requireLogin, requireAdmin, async (req, res) => {
   try {
     const db = getPool();
-    const { rows } = await db.query('SELECT name, display_name, perms FROM permission_groups ORDER BY name');
-    res.json(rows.map(r => ({ name: r.name, displayName: r.display_name, perms: JSON.parse(r.perms || '{}') })));
+    const { rows } = await db.query('SELECT name, display_name, perms, sublist FROM permission_groups ORDER BY name');
+    res.json(rows.map(r => ({ name: r.name, displayName: r.display_name, perms: JSON.parse(r.perms || '{}'), sublist: r.sublist || 'VR' })));
   } catch(err) { res.json([]); }
 });
 
 app.post('/api/admin/groups', requireLogin, requireAdmin, async (req, res) => {
-  const { name, displayName } = req.body;
+  const { name, displayName, sublist } = req.body;
   if (!name || !displayName) return res.json({ ok: false, msg: 'Chybí data.' });
   try {
     const db = getPool();
-    await db.query('INSERT INTO permission_groups (name, display_name) VALUES ($1, $2)', [name, displayName]);
+    await db.query('INSERT INTO permission_groups (name, display_name, sublist) VALUES ($1, $2, $3)', [name, displayName, sublist || 'VR']);
     res.json({ ok: true });
   } catch(err) { res.json({ ok: false, msg: 'Skupina s tímto klíčem již existuje.' }); }
 });

@@ -50,9 +50,16 @@
   td { padding: 10px 14px; vertical-align: middle; font-size: 13px; }
   .td-actions { text-align: right; white-space: nowrap; }
   .role-badge { display: inline-block; padding: 2px 10px; border-radius: 20px; font-size: 11px; font-weight: 600; }
-  .role-admin   { background: #fff8cc; color: #7a6200; border: 1px solid #d4b800; }
-  .role-vedouci { background: #e8f0ff; color: #2a5caa; border: 1px solid #a0b8e0; }
-  .role-widget  { background: #ede8ff; color: #5b3fa8; border: 1px solid #b39de0; }
+  .role-admin      { background: #fff8cc; color: #7a6200; border: 1px solid #d4b800; }
+  .role-vedouci    { background: #e8f0ff; color: #2a5caa; border: 1px solid #a0b8e0; }
+  .role-widget     { background: #ede8ff; color: #5b3fa8; border: 1px solid #b39de0; }
+  .role-receptionist { background: #e8f8ef; color: #1e6e44; border: 1px solid #8ecfad; }
+  .role-other      { background: #f0f0f0; color: #555; border: 1px solid #ccc; }
+  /* Podlisty */
+  .sublist-tabs { display:flex; gap:4px; margin-bottom:14px; border-bottom:2px solid var(--border); padding-bottom:0; flex-wrap:wrap; }
+  .sublist-btn  { padding:6px 18px; border:1px solid transparent; border-bottom:none; border-radius:6px 6px 0 0; cursor:pointer; font-size:13px; font-weight:500; background:transparent; color:var(--text-muted); transition:background .15s,color .15s; position:relative; bottom:-2px; }
+  .sublist-btn:hover { background:var(--surface-alt); color:var(--text); }
+  .sublist-btn.active { background:var(--surface); color:var(--accent); border-color:var(--border); border-bottom-color:var(--surface); font-weight:700; }
   .role-other   { background: var(--surface-alt); color: var(--text-muted); border: 1px solid var(--border); }
   .empty-row td { text-align: center; color: var(--text-muted); padding: 32px; font-size: 13px; }
 
@@ -227,6 +234,12 @@
       <h1>Uživatelé</h1>
       <button class="btn-add" onclick="openAddModal()">+ Přidat uživatele</button>
     </div>
+    <div class="sublist-tabs" id="sublist-tabs">
+      <button class="sublist-btn active" onclick="selectSublist('VR')">VR</button>
+      <button class="sublist-btn" onclick="selectSublist('PB6')">PB6</button>
+      <button class="sublist-btn" onclick="selectSublist('Recepční')">Recepční</button>
+      <button class="sublist-btn" onclick="selectSublist('Speciální')">Speciální</button>
+    </div>
     <div class="table-wrap">
       <table>
         <thead>
@@ -391,6 +404,15 @@
       <label>Zobrazovaný název</label>
       <input type="text" id="new-group-name" placeholder="pr. Vedoucí 2">
     </div>
+    <div class="form-group">
+      <label>Podlist</label>
+      <select id="new-group-sublist">
+        <option value="VR">VR</option>
+        <option value="PB6">PB6</option>
+        <option value="Recepční">Recepční</option>
+        <option value="Speciální">Speciální</option>
+      </select>
+    </div>
     <div class="msg" id="addgroup-msg"></div>
     <div class="modal-btns">
       <button class="btn-secondary" onclick="closeAddGroupModal()">Zrušit</button>
@@ -465,31 +487,60 @@
     return new Date(iso).toLocaleDateString('cs-CZ', { day: '2-digit', month: '2-digit', year: 'numeric' });
   }
 
+  let allUsers = [];
+  let currentSublist = 'VR';
+
+  function selectSublist(name) {
+    currentSublist = name;
+    document.querySelectorAll('.sublist-btn').forEach(b =>
+      b.classList.toggle('active', b.textContent === name)
+    );
+    renderUsersTable();
+  }
+
+  function roleClass(role) {
+    if (role === 'admin')    return 'role-admin';
+    if (role === 'vedoucí')  return 'role-vedouci';
+    if (role === 'widget')   return 'role-widget';
+    if (role === 'recepční') return 'role-receptionist';
+    return 'role-other';
+  }
+
+  function renderUsersTable() {
+    const tbody = document.getElementById('users-tbody');
+    // Skupiny patřící do aktuálního podlistu
+    const sublistGroups = new Set(allGroups.filter(g => (g.sublist || 'VR') === currentSublist).map(g => g.name));
+    // Pokud žádné skupiny v podlistu, zobraz prázdno
+    const filtered = allUsers.filter(u => sublistGroups.has(u.role));
+    if (!filtered.length) {
+      tbody.innerHTML = '<tr class="empty-row"><td colspan="6">Žádní uživatelé v tomto podlistu.</td></tr>';
+      return;
+    }
+    tbody.innerHTML = filtered.map((u, i) => {
+      const grp = allGroups.find(g => g.name === u.role);
+      const grpLabel = grp ? esc(grp.displayName) : esc(u.role);
+      return `<tr>
+        <td style="color:#888;font-size:12px">${i + 1}</td>
+        <td style="font-weight:500;">${esc(u.name)}</td>
+        <td style="color:#555;font-family:monospace;font-size:12px">${esc(u.username)}</td>
+        <td><span class="role-badge ${roleClass(u.role)}">${grpLabel}</span></td>
+        <td style="color:#777;font-size:12px">${formatDate(u.created_at)}</td>
+        <td class="td-actions">
+          <button class="btn-action" onclick="openEditModal(${u.id},'${esc(u.name)}','${esc(u.username)}','${esc(u.role)}')">Upravit</button>
+          <button class="btn-action" onclick="openOverridesModal(${u.id},'${esc(u.name)}','${esc(u.role)}')">Oprávnění</button>
+          ${u.id !== myId ? `<button class="btn-action danger" onclick="deleteUser(${u.id},'${esc(u.name)}')">Smazat</button>` : ''}
+        </td>
+      </tr>`;
+    }).join('');
+  }
+
   async function loadUsers() {
     const tbody = document.getElementById('users-tbody');
     try {
       const r = await fetch('/api/users');
       if (!r.ok) { tbody.innerHTML = '<tr class="empty-row"><td colspan="6">Chyba načtení.</td></tr>'; return; }
-      const users = await r.json();
-      if (!users.length) { tbody.innerHTML = '<tr class="empty-row"><td colspan="6">Žádní uživatelé.</td></tr>'; return; }
-      tbody.innerHTML = users.map((u, i) => {
-        const grp = allGroups.find(g => g.name === u.role);
-        const grpLabel = grp ? esc(grp.displayName) : esc(u.role);
-        const roleClass = u.role === 'admin' ? 'role-admin' : u.role === 'vedoucí' ? 'role-vedouci' : u.role === 'widget' ? 'role-widget' : 'role-other';
-        const raspisActive = (() => { try { const ov = u.perm_overrides ? (typeof u.perm_overrides === 'string' ? JSON.parse(u.perm_overrides) : u.perm_overrides) : null; return ov?.raspis_staff?.active === true; } catch(e) { return false; } })();
-        return `<tr>
-          <td style="color:#888;font-size:12px">${i + 1}</td>
-          <td style="font-weight:500;">${esc(u.name)}${raspisActive ? '<span class="rt-badge">RT</span>' : ''}</td>
-          <td style="color:#555;font-family:monospace;font-size:12px">${esc(u.username)}</td>
-          <td><span class="role-badge ${roleClass}">${grpLabel}</span></td>
-          <td style="color:#777;font-size:12px">${formatDate(u.created_at)}</td>
-          <td class="td-actions">
-            <button class="btn-action" onclick="openEditModal(${u.id},'${esc(u.name)}','${esc(u.username)}','${esc(u.role)}')">Upravit</button>
-            <button class="btn-action" onclick="openOverridesModal(${u.id},'${esc(u.name)}','${esc(u.role)}')">Oprávnění</button>
-            ${u.id !== myId ? `<button class="btn-action danger" onclick="deleteUser(${u.id},'${esc(u.name)}')">Smazat</button>` : ''}
-          </td>
-        </tr>`;
-      }).join('');
+      allUsers = await r.json();
+      renderUsersTable();
     } catch { tbody.innerHTML = '<tr class="empty-row"><td colspan="6">Chyba načtení.</td></tr>'; }
   }
 
@@ -499,7 +550,7 @@
 
   function populateRoleSelect(sel, selected) {
     sel.innerHTML = '';
-    const groups = allGroups.length ? allGroups : [{ name: 'admin', displayName: 'Admin' }, { name: 'vedoucí', displayName: 'VR' }];
+    const groups = allGroups.length ? allGroups : [{ name: 'admin', displayName: 'Admin' }, { name: 'vedoucí', displayName: 'VR' }, { name: 'recepční', displayName: 'Recepční' }];
     groups.forEach(g => {
       const o = document.createElement('option');
       o.value = g.name; o.textContent = g.displayName;
@@ -691,6 +742,7 @@
   async function loadGroups() {
     try { allGroups = await fetch('/api/admin/groups').then(r => r.json()); } catch(e) { allGroups = []; }
     renderGroupsList();
+    if (allUsers.length) renderUsersTable(); // přefiltruj uživatele s novými skupinami
   }
 
   function renderGroupsList() {
@@ -815,9 +867,10 @@
   async function saveNewGroup() {
     const name = document.getElementById('new-group-key').value.trim().toLowerCase().replace(/\s+/g,'_');
     const displayName = document.getElementById('new-group-name').value.trim();
+    const sublist = document.getElementById('new-group-sublist').value;
     const msg = document.getElementById('addgroup-msg');
     if (!name || !displayName) { setMsg(msg, 'err', 'Vyplňte oba údaje.'); return; }
-    const r = await fetch('/api/admin/groups', { method: 'POST', headers: {'Content-Type':'application/json'}, body: JSON.stringify({ name, displayName }) });
+    const r = await fetch('/api/admin/groups', { method: 'POST', headers: {'Content-Type':'application/json'}, body: JSON.stringify({ name, displayName, sublist }) });
     const data = await r.json();
     if (data.ok) { closeAddGroupModal(); await loadGroups(); } else setMsg(msg, 'err', data.msg || 'Chyba.');
   }

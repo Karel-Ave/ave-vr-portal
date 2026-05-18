@@ -218,6 +218,8 @@ async function init() {
       perms        TEXT NOT NULL DEFAULT '{}'
     )
   `);
+  // Přidej sloupec sublist (podlist), pokud ještě neexistuje
+  await db.query(`ALTER TABLE permission_groups ADD COLUMN IF NOT EXISTS sublist VARCHAR(50) DEFAULT 'VR'`);
 
   // Individuální přepisy oprávnění pro uživatele
   await db.query(`ALTER TABLE users ADD COLUMN IF NOT EXISTS perm_overrides TEXT DEFAULT NULL`);
@@ -226,7 +228,12 @@ async function init() {
   const adminPerms  = JSON.stringify({ raspis: { enabled: true, buttons: { import: true, delete: true, trash: true, edit: true, export: true } } });
   const vedPerms    = JSON.stringify({ raspis: { enabled: true, buttons: { import: false, delete: false, trash: false, edit: true, export: true } } });
   const widgetPerms = JSON.stringify({});
-  await db.query(`INSERT INTO permission_groups (name, display_name, perms) VALUES ('admin','Admin',$1),('vedoucí','VR',$2),('widget','Widget',$3) ON CONFLICT (name) DO NOTHING`, [adminPerms, vedPerms, widgetPerms]);
+  const recepPerms  = JSON.stringify({ raspis: { enabled: true, buttons: { import: false, delete: false, trash: false, edit: false, export: false } } });
+  await db.query(`INSERT INTO permission_groups (name, display_name, perms, sublist) VALUES ('admin','Admin',$1,'VR'),('vedoucí','VR',$2,'VR'),('widget','Widget',$3,'Speciální'),('recepční','Recepční',$4,'Recepční') ON CONFLICT (name) DO NOTHING`, [adminPerms, vedPerms, widgetPerms, recepPerms]);
+  // Nastav sublists pro existující skupiny (pokud ještě mají DEFAULT hodnotu nebo NULL)
+  await db.query(`UPDATE permission_groups SET sublist='VR'        WHERE name IN ('admin','vedoucí') AND (sublist IS NULL OR sublist='VR')`);
+  await db.query(`UPDATE permission_groups SET sublist='Speciální' WHERE name='widget'   AND (sublist IS NULL OR sublist='VR')`);
+  await db.query(`UPDATE permission_groups SET sublist='Recepční'  WHERE name='recepční' AND (sublist IS NULL OR sublist='VR')`);
 
   // ── Zprávy pro uživatele ──────────────────────────────────────────────────
   await db.query(`
@@ -574,6 +581,18 @@ async function init() {
       }
       console.log('Seed: vytvořeno', RECEPTIONIST_SEED.length, 'účtů recepčních.');
     }
+  }
+
+  // ── Migrace: přesun recepčních z role vedoucí → recepční ─────────────────
+  {
+    const { rows: migRows } = await db.query(
+      `UPDATE users SET role = 'recepční'
+       WHERE role = 'vedoucí'
+         AND perm_overrides IS NOT NULL
+         AND perm_overrides::text LIKE '%"raspis_staff"%'
+       RETURNING id`
+    );
+    if (migRows.length > 0) console.log(`Migrace: ${migRows.length} recepčních přesunuto do skupiny recepční.`);
   }
 
   // ── Oprava překlepů v jménech recepčních ──────────────────────────────────
