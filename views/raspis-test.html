@@ -2744,16 +2744,19 @@ function renderStaffTable() {
       editBtn.addEventListener('click', () => showEditStaffModal(si));
       if (!s.inactive) saveTd.appendChild(editBtn);
     }
-    const delBtn = document.createElement('button');
-    delBtn.textContent = '✕'; delBtn.className = 'btn-row-act btn-row-del';
-    delBtn.title = s.userId ? 'Deaktivovat (správa v Správě uživatelů)' : 'Odebrat';
-    delBtn.addEventListener('click', () => {
-      if (!confirm(`Odebrat pracovníka "${s.name || si+1}"?`)) return;
-      state.staff.splice(si, 1);
-      sortStaffAlpha();
-      renderStaffTable();
-    });
-    saveTd.appendChild(delBtn);
+    // Tlačítko smazat: jen pro manuální záznamy (bez userId) nebo speciální pracovníky
+    if (!s.userId || SPECIAL_TYPES.has(s.type)) {
+      const delBtn = document.createElement('button');
+      delBtn.textContent = '✕'; delBtn.className = 'btn-row-act btn-row-del';
+      delBtn.title = 'Odebrat';
+      delBtn.addEventListener('click', () => {
+        if (!confirm(`Odebrat pracovníka "${s.name || si+1}"?`)) return;
+        state.staff.splice(si, 1);
+        sortStaffAlpha();
+        renderStaffTable();
+      });
+      saveTd.appendChild(delBtn);
+    }
     tr.appendChild(saveTd);
 
     tbody.appendChild(tr);
@@ -2945,16 +2948,26 @@ async function syncRaspisStaff() {
       }
     });
 
-    // 3. Slouč a odstraň staré ruční záznamy (bez userId), jejichž login nyní pokrývá portálový účet
+    // 3. Slouč a odstraň staré ruční záznamy (bez userId), jejichž jméno/login nyní pokrývá portálový účet
     //    Přenese noteM, noteP, maxHrs, x, xa, hotel, dates, regular ze starého záznamu do su záznamu,
     //    remapuje state.schedule a state.extras, pak starý záznam odebere.
     const portalByLogin = new Map();
-    state.staff.forEach((s, idx) => { if (s.userId && s.login) portalByLogin.set(s.login, idx); });
+    const portalByName  = new Map();
+    state.staff.forEach((s, idx) => {
+      if (s.userId) {
+        if (s.login) portalByLogin.set(s.login, idx);
+        if (s.name)  portalByName.set(s.name.trim(), idx);
+      }
+    });
 
     const removalSet = new Set();
     state.staff.forEach((s, idx) => {
-      if (!s.userId && s.login && portalByLogin.has(s.login)) {
-        const suIdx = portalByLogin.get(s.login);
+      if (s.userId) return; // přeskoč portálové záznamy
+      const suIdx = (s.login && portalByLogin.has(s.login))
+        ? portalByLogin.get(s.login)
+        : (s.name && portalByName.has(s.name.trim()) ? portalByName.get(s.name.trim()) : -1);
+      if (suIdx === -1) return;
+      {
         const su = state.staff[suIdx];
         // Přenes lokální pole, která su záznam ještě nemá
         ['noteM','noteP','maxHrs','regular','hotel','dates','x','xa'].forEach(f => {
