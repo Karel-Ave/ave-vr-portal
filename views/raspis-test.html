@@ -377,7 +377,7 @@ table.sched-tbl {
    Chrome ignores `top` when `left` is also set on the same td (bi-directional sticky bug). */
 .cov-row .col-name-td { font-size: 10px; font-weight: 700; background: var(--surface);
   padding: 0; overflow: visible; }
-.cov-tbody .col-name-td { position: sticky; /* NO left:0 here */ z-index: 12 !important; background: var(--surface) !important; }
+.cov-tbody .col-name-td { position: sticky; /* NO left:0 here */ z-index: 12 !important; background: var(--surface) !important; overflow: visible !important; }
 /* Inner wrapper handles LEFT (horizontal) stickiness */
 .cov-name-inner {
   position: sticky; left: 0;
@@ -386,6 +386,7 @@ table.sched-tbl {
   width: var(--sched-name-w);
   background: var(--surface);
   min-height: var(--sched-row-h);
+  border-right: 2px solid var(--border);
 }
 /* Note: do NOT add .cov-tbody td { background } here — it would override .cov-1/.cov-empty etc. */
 .cov-row td.cov-cell { font-size: 9px; text-align: center; padding: 0; }
@@ -5049,6 +5050,7 @@ function handleXlsImport(e) {
       updateRequirementClasses();
       buildHotelFilterButtons();
       historySave();
+      scheduleAutoSave();
       toast(`Import dokončen (${newStaff.length} pracovníků)`);
     } catch(err) {
       console.error('Import error:', err);
