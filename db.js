@@ -480,7 +480,7 @@ async function init() {
   // ── Receptionist user accounts migration ─────────────────────────────────────
   {
     const { rows: recCheck } = await db.query("SELECT COUNT(*) AS cnt FROM users WHERE username = 'MABS'");
-    if (parseInt(recCheck.rows[0].cnt, 10) === 0) {
+    if (parseInt(recCheck[0].cnt, 10) === 0) {
       const bcrypt = require('bcryptjs');
       const RECEPTIONIST_SEED = [
         ['MABS',    'Absolon Marek',           'Denní', 'DPP'],
