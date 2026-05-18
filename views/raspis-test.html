@@ -66,6 +66,7 @@ body.with-subtoolbar { padding-top: calc(48px + var(--stb-h,68px)); }
 /* Tab actions groups */
 .tb-actions { display: flex; align-items: center; gap: 5px; }
 .tb-actions.hidden { display: none; }
+#tb-act-nastaveni { position: absolute; left: 50%; transform: translateX(-50%); }
 
 .tab-panel { display: none; }
 .tab-panel.active { display: block; }
@@ -717,9 +718,9 @@ tbody tr.row-filtered { display: none; }
 
   <!-- Nastavení actions -->
   <div class="tb-actions" id="tb-act-nastaveni">
+    <button class="tb-btn" id="btn-hotel-manager">🏨 Hotely</button>
     <button class="tb-btn" id="btn-add-staff">+ Přidat Ostatní</button>
     <button class="tb-btn" id="btn-clear-actual">Smazat aktuální</button>
-    <button class="tb-btn" id="btn-hotel-manager">🏨 Hotely</button>
   </div>
 
   <!-- Tvorba actions -->
@@ -870,7 +871,7 @@ tbody tr.row-filtered { display: none; }
 <div class="overlay" id="overlay-add-staff">
   <div class="modal" style="width:min(520px,100%)">
     <div class="modal-header">
-      <h3>+ Přidat pracovníka</h3>
+      <h3>+ Přidat Ostatní</h3>
       <button class="modal-close" id="add-staff-close">✕</button>
     </div>
     <div class="modal-body">
@@ -916,32 +917,33 @@ tbody tr.row-filtered { display: none; }
 <div class="overlay" id="overlay-edit-staff">
   <div class="modal" style="width:min(520px,100%)">
     <div class="modal-header">
-      <h3>✏ Upravit pracovníka</h3>
+      <h3>✏ Upravit Ostatní</h3>
       <button class="modal-close" id="edit-staff-close">✕</button>
     </div>
     <div class="modal-body">
       <div class="fields-2">
-        <div class="field"><label>Jméno</label><input type="text" id="es-name" placeholder="Jméno příjmení"></div>
-        <div class="field"><label>Login</label><input type="text" id="es-login" placeholder="login..."></div>
-        <div class="field"><label>Typ směn</label>
+        <div class="field" style="grid-column:1/-1"><label>Jméno</label><input type="text" id="es-name" placeholder="Jméno příjmení"></div>
+        <div class="field" style="grid-column:1/-1"><label>Zobrazit v rozpisu od</label>
+          <div style="display:flex;gap:6px">
+            <select id="es-active-month" style="flex:1">
+              <option value="1">Leden</option><option value="2">Únor</option>
+              <option value="3">Březen</option><option value="4">Duben</option>
+              <option value="5">Květen</option><option value="6">Červen</option>
+              <option value="7">Červenec</option><option value="8">Srpen</option>
+              <option value="9">Září</option><option value="10">Říjen</option>
+              <option value="11">Listopad</option><option value="12">Prosinec</option>
+            </select>
+            <input type="number" id="es-active-year" style="width:74px" min="2020" max="2099">
+          </div>
+        </div>
+        <div class="field" style="grid-column:1/-1"><label>Typ směn</label>
           <select id="es-type">
-            <option value="">— žádný —</option>
-            <option>Denní</option><option>Noční</option><option>Obojí</option>
-            <option>Vedoucí</option><option>Pohotovost</option><option>Speciální</option>
+            <option value="Vedoucí">Vedoucí</option>
+            <option value="Pohotovost">Pohotovost</option>
+            <option value="Speciální">Speciální</option>
           </select>
         </div>
-        <div class="field"><label>Smlouva</label>
-          <select id="es-contract">
-            <option value="">—</option>
-            <option>HPP</option><option>ZPP</option><option>DPČ</option><option>DPP</option>
-          </select>
-        </div>
-        <div class="field"><label>Max. hodin</label><input type="text" id="es-maxhrs"></div>
-        <div class="field"><label>Stálé volno</label><input type="text" id="es-regular" placeholder="po-d,út-n,sv"></div>
-        <div class="field"><label>Nemůže aktuálně</label><input type="text" id="es-dates" placeholder="1, 3-5, 20"></div>
       </div>
-      <div class="field"><label>Poznámka aktuální</label><textarea id="es-notem" rows="2" style="resize:vertical"></textarea></div>
-      <div class="field"><label>Poznámka trvalá</label><textarea id="es-notep" rows="2" style="resize:vertical"></textarea></div>
     </div>
     <div class="modal-footer">
       <button class="btn btn-secondary" id="edit-staff-cancel">Zrušit</button>
@@ -4034,14 +4036,11 @@ function showEditStaffModal(si) {
   _editSi = si;
   const s = state.staff[si];
   document.getElementById('es-name').value = s.name || '';
-  document.getElementById('es-login').value = s.login || '';
-  document.getElementById('es-type').value = s.type || '';
-  document.getElementById('es-contract').value = s.contract || '';
-  document.getElementById('es-maxhrs').value = s.maxHrs || '';
-  document.getElementById('es-regular').value = s.regular || '';
-  document.getElementById('es-dates').value = s.dates || '';
-  document.getElementById('es-notem').value = s.noteM || '';
-  document.getElementById('es-notep').value = s.noteP || '';
+  document.getElementById('es-type').value = s.type || 'Vedoucí';
+  // Zobrazit v rozpisu od
+  const af = s.activeFrom || {};
+  document.getElementById('es-active-month').value = af.month || new Date().getMonth() + 1;
+  document.getElementById('es-active-year').value  = af.year  || new Date().getFullYear();
   document.getElementById('overlay-edit-staff').classList.add('show');
   setTimeout(() => document.getElementById('es-name').focus(), 100);
 }
@@ -4051,15 +4050,12 @@ function confirmEditStaff() {
   const name = document.getElementById('es-name').value.trim();
   if (!name) { toast('Zadejte jméno', true); return; }
   const s = state.staff[_editSi];
-  s.name     = name;
-  s.login    = document.getElementById('es-login').value;
-  s.type     = document.getElementById('es-type').value;
-  s.contract = document.getElementById('es-contract').value;
-  s.maxHrs   = document.getElementById('es-maxhrs').value;
-  s.regular  = document.getElementById('es-regular').value;
-  s.dates    = document.getElementById('es-dates').value;
-  s.noteM    = document.getElementById('es-notem').value;
-  s.noteP    = document.getElementById('es-notep').value;
+  s.name       = name;
+  s.type       = document.getElementById('es-type').value;
+  s.activeFrom = {
+    month: parseInt(document.getElementById('es-active-month').value, 10),
+    year:  parseInt(document.getElementById('es-active-year').value,  10)
+  };
   document.getElementById('overlay-edit-staff').classList.remove('show');
   sortStaffAlpha();
   renderStaffTable();
