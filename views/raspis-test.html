@@ -788,10 +788,11 @@ tbody tr.row-filtered { display: none; }
           <option value="11">Listopad</option><option value="12">Prosinec</option>
         </select>
         <input type="number" id="override-year-inp" min="2020" max="2099" onchange="setOverrideMonth()" style="width:68px;padding:3px 6px;font-size:12px;border:1px solid var(--border);border-radius:4px;background:var(--surface);color:var(--text);">
+        <button id="btn-clear-month-overrides" class="mode-btn" style="color:#c00;border-color:#fcc;margin-left:6px;" onclick="clearMonthOverrides()" title="Smazat všechny přepisy pro tento měsíc">🗑 Smazat přepisy</button>
       </div>
     </div>
     <div id="override-info" style="display:none;">
-      🗓 Editujete <strong>přepisy</strong> pro <strong id="override-info-label"></strong> — hodnoty v <span style="background:rgba(255,200,0,0.3);padding:0 3px;border-radius:2px;">žlutě podbarvených</span> polích platí jen pro tento měsíc.
+      🗓 Editujete <strong>přepisy</strong> pro <strong id="override-info-label"></strong> — <span style="background:rgba(255,200,0,0.3);padding:0 3px;border-radius:2px;">žlutě podbarvená</span> pole platí jen pro tento měsíc, ostatní ukazují výchozí hodnotu.
     </div>
     <div class="staff-table-wrap">
       <table class="staff-tbl" id="staff-tbl">
@@ -925,11 +926,11 @@ tbody tr.row-filtered { display: none; }
             <input type="number" id="ns-active-year" style="width:74px" min="2020" max="2099">
           </div>
         </div>
-        <div class="field"><label>Typ směn</label>
+        <div class="field"><label>Typ</label>
           <select id="ns-type">
-            <option value="">— žádný —</option>
-            <option>Denní</option><option>Noční</option><option>Obojí</option>
-            <option>Vedoucí</option><option>Pohotovost</option><option>Speciální</option>
+            <option value="Vedoucí">Vedoucí</option>
+            <option value="Pohotovost">Pohotovost</option>
+            <option value="Speciální">Speciální</option>
           </select>
         </div>
         <div class="field"><label>Smlouva</label>
@@ -3009,13 +3010,18 @@ async function syncRaspisStaff() {
     // 3. Slouč a odstraň staré ruční záznamy (bez userId), jejichž jméno/login nyní pokrývá portálový účet
     //    Přenese noteM, noteP, maxHrs, x, xa, hotel, dates, regular ze starého záznamu do su záznamu,
     //    remapuje state.schedule a state.extras, pak starý záznam odebere.
-    //    Matching je case-insensitive pro login, trim-sensitive pro jméno.
-    const portalByLogin = new Map(); // key: login.toUpperCase()
-    const portalByName  = new Map();
+    //    Matching: case-insensitive login, exact name, nebo normalized name (bez diakritiky).
+    const normN = str => str.normalize('NFD').replace(/[̀-ͯ]/g,'').toLowerCase().replace(/\s+/g,' ').trim();
+    const portalByLogin    = new Map(); // key: login.toUpperCase()
+    const portalByName     = new Map(); // key: s.name.trim()
+    const portalByNormName = new Map(); // key: normN(s.name)
     state.staff.forEach((s, idx) => {
       if (s.userId) {
         if (s.login) portalByLogin.set(s.login.toUpperCase(), idx);
-        if (s.name)  portalByName.set(s.name.trim(), idx);
+        if (s.name) {
+          portalByName.set(s.name.trim(), idx);
+          portalByNormName.set(normN(s.name), idx);
+        }
       }
     });
 
@@ -3025,7 +3031,11 @@ async function syncRaspisStaff() {
       const loginKey = s.login ? s.login.toUpperCase() : null;
       const suIdx = (loginKey && portalByLogin.has(loginKey))
         ? portalByLogin.get(loginKey)
-        : (s.name && portalByName.has(s.name.trim()) ? portalByName.get(s.name.trim()) : -1);
+        : (s.name && portalByName.has(s.name.trim()))
+          ? portalByName.get(s.name.trim())
+          : (s.name && portalByNormName.has(normN(s.name)))
+            ? portalByNormName.get(normN(s.name))
+            : -1;
       if (suIdx === -1) return;
       {
         const su = state.staff[suIdx];
@@ -3072,6 +3082,22 @@ async function syncRaspisStaff() {
           removalSet.add(idx);
           changed = true;
         }
+      });
+    }
+
+    // 5. Osiřelé záznamy: ruční záznamy (bez userId) bez loginu, ne-speciálního typu =
+    //    relikty starého systému (recepční), pro které existuje portálový účet.
+    //    Pokud nemají login, nemůžeme je spolehlivě přiřadit → odstraníme je bezpečně.
+    {
+      const SPECIAL_SET = new Set(['Vedoucí', 'Pohotovost', 'Speciální']);
+      state.staff.forEach((s, idx) => {
+        if (removalSet.has(idx)) return; // již v removalSetu
+        if (s.userId) return;            // portálový uživatel
+        if (SPECIAL_SET.has(s.type)) return; // speciální pracovník
+        if (s.login) return;             // má login → možná záměrný ruční záznam
+        // Bez userId, bez loginu, ne-speciální → osiřelý relikt starého systému
+        removalSet.add(idx);
+        changed = true;
       });
     }
 
@@ -4699,6 +4725,26 @@ function updateModeMonthLabel() {
   const mSel = document.getElementById('override-month-sel');
   const ySel = document.getElementById('override-year-inp');
   if (mSel && nastaveniMode !== 'monthly') { /* nechej jak je */ }
+}
+
+function clearMonthOverrides() {
+  const key = getMonthKey();
+  const mName = `${MONTH_NAMES_LONG[overrideModeMonth]} ${overrideModeYear}`;
+  const hasAny = state.staff.some(s => {
+    const ov = s.monthlyOverrides?.[key];
+    return ov && Object.keys(ov).length > 0;
+  });
+  if (!hasAny) { toast(`Žádné přepisy pro ${mName}`, false); return; }
+  if (!confirm(`Smazat všechny přepisy pro ${mName}?\n\nBuňky se vrátí na výchozí hodnoty. Tato akce je nevratná.`)) return;
+  state.staff.forEach(s => {
+    if (s.monthlyOverrides?.[key]) {
+      delete s.monthlyOverrides[key];
+      if (s.monthlyOverrides && !Object.keys(s.monthlyOverrides).length) delete s.monthlyOverrides;
+    }
+  });
+  renderStaffTable();
+  scheduleAutoSave();
+  toast(`Přepisy pro ${mName} smazány`);
 }
 
 function sortStaff() {
