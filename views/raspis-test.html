@@ -786,7 +786,8 @@ tbody tr.row-filtered { display: none; }
           <option value="11">Listopad</option><option value="12">Prosinec</option>
         </select>
         <input type="number" id="override-year-inp" min="2020" max="2099" onchange="setOverrideMonth()" style="width:68px;padding:3px 6px;font-size:12px;border:1px solid var(--border);border-radius:4px;background:var(--surface);color:var(--text);">
-        <button id="btn-clear-month-overrides" class="mode-btn" style="color:#c00;border-color:#fcc;margin-left:6px;" onclick="clearMonthOverrides()" title="Smazat všechny přepisy pro tento měsíc">🗑 Smazat přepisy</button>
+        <button id="btn-set-as-default" class="mode-btn" style="margin-left:6px;" onclick="setOverridesAsDefault()" title="Zkopíruje přepisy tohoto měsíce do výchozích hodnot a přepisy smaže">✔ Nastavit jako výchozí</button>
+        <button id="btn-clear-month-overrides" class="mode-btn" style="color:#c00;border-color:#fcc;" onclick="clearMonthOverrides()" title="Smazat přepisy pro tento měsíc">🗑 Smazat přepis</button>
       </div>
     </div>
     <div id="override-info" style="display:none;">
@@ -4637,6 +4638,33 @@ function clearMonthOverrides() {
   renderStaffTable();
   scheduleAutoSave();
   toast(`Přepisy pro ${mName} smazány`);
+}
+
+function setOverridesAsDefault() {
+  const key = getMonthKey();
+  const mName = `${MONTH_NAMES_LONG[overrideModeMonth]} ${overrideModeYear}`;
+  const hasAny = state.staff.some(s => {
+    const ov = s.monthlyOverrides?.[key];
+    return ov && Object.keys(ov).length > 0;
+  });
+  if (!hasAny) { toast(`Žádné přepisy pro ${mName}`, false); return; }
+  if (!confirm(`Přepisy pro ${mName} se zkopírují do výchozích hodnot a přepisy se smažou.\n\nPokračovat?`)) return;
+  const FIELDS = ['maxHrs','noteM','noteP','x','xa','dates','regular','hotel'];
+  state.staff.forEach(s => {
+    const ov = s.monthlyOverrides?.[key];
+    if (!ov) return;
+    FIELDS.forEach(f => { if (ov[f] !== undefined) s[f] = ov[f]; });
+    // Sync zpět do portalCustomData pro portálové uživatele
+    if (s.userId) {
+      if (!state.portalCustomData[s.userId]) state.portalCustomData[s.userId] = {};
+      FIELDS.forEach(f => { state.portalCustomData[s.userId][f] = s[f] || ''; });
+    }
+    delete s.monthlyOverrides[key];
+    if (!Object.keys(s.monthlyOverrides).length) delete s.monthlyOverrides;
+  });
+  renderStaffTable();
+  scheduleAutoSave();
+  toast(`Přepisy pro ${mName} nastaveny jako výchozí`);
 }
 
 function sortStaff() {
