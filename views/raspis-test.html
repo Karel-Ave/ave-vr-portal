@@ -3020,6 +3020,7 @@ async function syncRaspisStaff() {
 
     sortStaffAlpha();
     renderStaffTable();
+    renderScheduleTable('tvorba-tbl', true);
     scheduleAutoSave();
   } catch(e) {
     console.warn('syncRaspisStaff:', e);
