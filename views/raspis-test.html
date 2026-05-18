@@ -3212,8 +3212,8 @@ async function loadSchedule(key) {
   document.getElementById('rozpis-tbl').style.display = 'none';
   document.getElementById('rozpis-empty').style.display = 'none';
   try {
-    const r = await fetch(`/api/rt/schedules/${key}`, {credentials:'include'});
-    if (!r.ok) throw new Error();
+    const r = await fetch(`/api/rt/schedules/${encodeURIComponent(key)}`, {credentials:'include'});
+    if (!r.ok) throw new Error(`HTTP ${r.status}`);
     const response = await r.json();
     // Server vrací { ok:true, entry: { key, month, year, label, data: JSON_string } }
     let scheduleData;
@@ -3223,6 +3223,7 @@ async function loadSchedule(key) {
     } else {
       scheduleData = response.data || response;
     }
+    if (!scheduleData) throw new Error('Prázdná data');
     applyData(scheduleData);
     spinner.style.display = 'none';
     renderScheduleTable('rozpis-tbl', false);
@@ -3234,6 +3235,7 @@ async function loadSchedule(key) {
     showRozpisEmpty(false);
     currentPubKey = key;
   } catch(e) {
+    console.error('[loadSchedule] chyba:', e);
     spinner.style.display = 'none';
     showRozpisEmpty(true);
   }
