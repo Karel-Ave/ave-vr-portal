@@ -2371,9 +2371,11 @@ function renderScheduleTable(tableId, editable) {
 
     staffTbody.appendChild(tr);
   });
-  // staffTbody first in DOM, covTbody second → covTbody paints on top of staff rows (later DOM = higher paint order)
-  tbl.appendChild(staffTbody);
+  // covTbody FIRST in DOM → natural position is at top of table (below thead).
+  // Sticky top:theadH keeps them pinned at the top while staff rows scroll underneath.
+  // z-index 17/15 + solid background on cells prevents staff rows from bleeding through.
   tbl.appendChild(covTbody);
+  tbl.appendChild(staffTbody);
 
   // Coverage rows sticky — cells positioned below the single header row.
   // Measure actual thead height (th-dn has padding-top:26px → taller than --sched-row-h).
@@ -3777,7 +3779,8 @@ function refreshCoverageSticky() {
         // because Chrome ignores `top` when `left` is also set on the same td.
         cell.style.position = 'sticky';
         cell.style.top = topPx;
-        cell.style.zIndex = isName ? '12' : '10';
+        cell.style.zIndex = isName ? '17' : '15';
+        if (!cell.style.background) cell.style.background = 'var(--surface)';
       });
       if (!hidden) visRow++;
     });
