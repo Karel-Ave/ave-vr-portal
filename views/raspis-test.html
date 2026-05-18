@@ -2945,6 +2945,64 @@ async function syncRaspisStaff() {
       }
     });
 
+    // 3. Slouč a odstraň staré ruční záznamy (bez userId), jejichž login nyní pokrývá portálový účet
+    //    Přenese noteM, noteP, maxHrs, x, xa, hotel, dates, regular ze starého záznamu do su záznamu,
+    //    remapuje state.schedule a state.extras, pak starý záznam odebere.
+    const portalByLogin = new Map();
+    state.staff.forEach((s, idx) => { if (s.userId && s.login) portalByLogin.set(s.login, idx); });
+
+    const removalSet = new Set();
+    state.staff.forEach((s, idx) => {
+      if (!s.userId && s.login && portalByLogin.has(s.login)) {
+        const suIdx = portalByLogin.get(s.login);
+        const su = state.staff[suIdx];
+        // Přenes lokální pole, která su záznam ještě nemá
+        ['noteM','noteP','maxHrs','regular','hotel','dates','x','xa'].forEach(f => {
+          if (!su[f] && s[f]) su[f] = s[f];
+        });
+        // Přenes extras (x/xa data keyed by index)
+        if (state.extras && state.extras[String(idx)] !== undefined) {
+          if (!state.extras[String(suIdx)]) state.extras[String(suIdx)] = state.extras[String(idx)];
+          delete state.extras[String(idx)];
+        }
+        // Přenes směny ze schedule (přepíše jen pokud su pozice je prázdná)
+        Object.keys(state.schedule || {}).forEach(key => {
+          const us = key.indexOf('_');
+          if (+key.slice(0, us) === idx) {
+            const ci = key.slice(us + 1);
+            const newKey = `${suIdx}_${ci}`;
+            if (!state.schedule[newKey]) state.schedule[newKey] = state.schedule[key];
+            delete state.schedule[key];
+          }
+        });
+        removalSet.add(idx);
+        changed = true;
+      }
+    });
+
+    if (removalSet.size > 0) {
+      // Sestav mapování starý index → nový index (po odstranění)
+      const oldToNew = {};
+      let ni = 0;
+      state.staff.forEach((_, oi) => { if (!removalSet.has(oi)) oldToNew[oi] = ni++; });
+      // Remapuj schedule
+      const newSched = {};
+      Object.entries(state.schedule || {}).forEach(([key, val]) => {
+        const us = key.indexOf('_');
+        const newSi = oldToNew[+key.slice(0, us)];
+        if (newSi !== undefined) newSched[`${newSi}_${key.slice(us + 1)}`] = val;
+      });
+      // Remapuj extras
+      const newExtras = {};
+      Object.entries(state.extras || {}).forEach(([siStr, val]) => {
+        const newSi = oldToNew[+siStr];
+        if (newSi !== undefined) newExtras[String(newSi)] = val;
+      });
+      state.staff    = state.staff.filter((_, oi) => !removalSet.has(oi));
+      state.schedule = newSched;
+      state.extras   = newExtras;
+    }
+
     if (changed) {
       sortStaffAlpha();
       renderStaffTable();
