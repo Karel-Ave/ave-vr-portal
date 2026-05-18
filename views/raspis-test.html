@@ -126,11 +126,13 @@ table.staff-tbl {
 .staff-section-sep td { padding: 0; }
 
 /* Nastavení mode bar */
-#nastaveni-mode-bar { display:flex; align-items:center; gap:8px; padding:8px 0 6px; flex-wrap:wrap; }
+#nastaveni-mode-bar { display:flex; align-items:center; gap:8px; padding:8px 0 6px; flex-wrap:wrap; justify-content:center; }
 .mode-label { font-size:12px; color:var(--text-muted); }
-.mode-btn { padding:4px 14px; border:1px solid var(--border); border-radius:5px; cursor:pointer; font-size:12px; background:var(--surface); color:var(--text-muted); transition:all .15s; }
+.mode-btn { padding:5px 18px; border:1px solid var(--border); border-radius:5px; cursor:pointer; font-size:12px; background:var(--surface); color:var(--text-muted); transition:all .15s; }
 .mode-btn.active { background:var(--accent); color:#fff; border-color:var(--accent); font-weight:600; }
 .mode-btn:hover:not(.active) { background:var(--surface-alt); }
+#override-info { margin:0 0 8px; padding:6px 14px; border-radius:5px; font-size:12px; color:var(--text-muted); background:rgba(255,200,0,0.12); border:1px solid rgba(180,140,0,0.25); text-align:center; }
+[data-theme="dark"] #override-info { background:rgba(180,140,0,0.18); border-color:rgba(220,170,0,0.3); }
 /* Override-highlighted cells */
 .override-cell { background: rgba(255,200,0,0.18) !important; position:relative; }
 [data-theme="dark"] .override-cell { background: rgba(180,140,0,0.22) !important; }
@@ -773,7 +775,6 @@ tbody tr.row-filtered { display: none; }
 <div class="tab-panel" id="tab-nastaveni">
   <div class="wrap">
     <div id="nastaveni-mode-bar">
-      <span class="mode-label">Editace hodnot:</span>
       <button id="mode-default-btn" class="mode-btn active" onclick="setNastaveniMode('default')">📌 Výchozí</button>
       <button id="mode-monthly-btn" class="mode-btn" onclick="setNastaveniMode('monthly')">🗓 Přepisy</button>
       <div id="override-month-controls" style="display:none;align-items:center;gap:4px;">
@@ -788,6 +789,9 @@ tbody tr.row-filtered { display: none; }
         </select>
         <input type="number" id="override-year-inp" min="2020" max="2099" onchange="setOverrideMonth()" style="width:68px;padding:3px 6px;font-size:12px;border:1px solid var(--border);border-radius:4px;background:var(--surface);color:var(--text);">
       </div>
+    </div>
+    <div id="override-info" style="display:none;">
+      🗓 Editujete <strong>přepisy</strong> pro <strong id="override-info-label"></strong> — hodnoty v <span style="background:rgba(255,200,0,0.3);padding:0 3px;border-radius:2px;">žlutě podbarvených</span> polích platí jen pro tento měsíc.
     </div>
     <div class="staff-table-wrap">
       <table class="staff-tbl" id="staff-tbl">
@@ -3005,11 +3009,12 @@ async function syncRaspisStaff() {
     // 3. Slouč a odstraň staré ruční záznamy (bez userId), jejichž jméno/login nyní pokrývá portálový účet
     //    Přenese noteM, noteP, maxHrs, x, xa, hotel, dates, regular ze starého záznamu do su záznamu,
     //    remapuje state.schedule a state.extras, pak starý záznam odebere.
-    const portalByLogin = new Map();
+    //    Matching je case-insensitive pro login, trim-sensitive pro jméno.
+    const portalByLogin = new Map(); // key: login.toUpperCase()
     const portalByName  = new Map();
     state.staff.forEach((s, idx) => {
       if (s.userId) {
-        if (s.login) portalByLogin.set(s.login, idx);
+        if (s.login) portalByLogin.set(s.login.toUpperCase(), idx);
         if (s.name)  portalByName.set(s.name.trim(), idx);
       }
     });
@@ -3017,8 +3022,9 @@ async function syncRaspisStaff() {
     const removalSet = new Set();
     state.staff.forEach((s, idx) => {
       if (s.userId) return; // přeskoč portálové záznamy
-      const suIdx = (s.login && portalByLogin.has(s.login))
-        ? portalByLogin.get(s.login)
+      const loginKey = s.login ? s.login.toUpperCase() : null;
+      const suIdx = (loginKey && portalByLogin.has(loginKey))
+        ? portalByLogin.get(loginKey)
         : (s.name && portalByName.has(s.name.trim()) ? portalByName.get(s.name.trim()) : -1);
       if (suIdx === -1) return;
       {
@@ -3046,6 +3052,28 @@ async function syncRaspisStaff() {
         changed = true;
       }
     });
+
+    // 4. Bezpečnostní čištění: odstraň jakékoliv zbývající ruční záznamy (bez userId),
+    //    jejichž login (case-insensitive) shoduje s portálovým uživatelem — i kdyby step 3 selhal.
+    {
+      const portalLoginSet = new Set(
+        state.staff.filter(s => s.userId && s.login).map(s => s.login.toUpperCase())
+      );
+      state.staff.forEach((s, idx) => {
+        if (s.userId) return;
+        if (s.login && portalLoginSet.has(s.login.toUpperCase())) {
+          // Přenes data do portálového záznamu (pokud je nemá)
+          const su = state.staff.find(p => p.userId && p.login && p.login.toUpperCase() === s.login.toUpperCase());
+          if (su) {
+            ['noteM','noteP','maxHrs','regular','hotel','dates','x','xa'].forEach(f => {
+              if (!su[f] && s[f]) su[f] = s[f];
+            });
+          }
+          removalSet.add(idx);
+          changed = true;
+        }
+      });
+    }
 
     if (removalSet.size > 0) {
       // Sestav mapování starý index → nový index (po odstranění)
@@ -4629,6 +4657,13 @@ function clearMonthlyOverride(s, field) {
   scheduleAutoSave();
 }
 
+const MONTH_NAMES_LONG = ['','Leden','Únor','Březen','Duben','Květen','Červen','Červenec','Srpen','Září','Říjen','Listopad','Prosinec'];
+
+function updateOverrideInfoLabel() {
+  const lbl = document.getElementById('override-info-label');
+  if (lbl) lbl.textContent = `${MONTH_NAMES_LONG[overrideModeMonth]} ${overrideModeYear}`;
+}
+
 function setNastaveniMode(mode) {
   nastaveniMode = mode;
   if (mode === 'monthly') {
@@ -4644,6 +4679,9 @@ function setNastaveniMode(mode) {
   document.getElementById('mode-monthly-btn').classList.toggle('active', mode === 'monthly');
   const ctrl = document.getElementById('override-month-controls');
   if (ctrl) ctrl.style.display = mode === 'monthly' ? 'flex' : 'none';
+  const info = document.getElementById('override-info');
+  if (info) info.style.display = mode === 'monthly' ? 'block' : 'none';
+  if (mode === 'monthly') updateOverrideInfoLabel();
   renderStaffTable();
 }
 
@@ -4652,6 +4690,7 @@ function setOverrideMonth() {
   const ySel = document.getElementById('override-year-inp');
   overrideModeMonth = parseInt(mSel.value, 10);
   overrideModeYear  = parseInt(ySel.value, 10) || state.year;
+  updateOverrideInfoLabel();
   renderStaffTable();
 }
 
