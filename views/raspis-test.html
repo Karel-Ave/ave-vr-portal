@@ -2674,12 +2674,12 @@ function renderStaffTable() {
     maxInp.type = 'text'; maxInp.value = maxVal || '';
     maxInp.placeholder = '';
     if (!maxOvr && nastaveniMode === 'monthly') maxInp.style.color = 'var(--text-muted)';
-    maxInp.addEventListener('input', () => { setFieldValue(s, 'maxHrs', maxInp.value); updateSumRow(si); });
+    maxInp.addEventListener('input', () => { setFieldValue(s, 'maxHrs', maxInp.value); const _si = state.staff.findIndex(x => x.userId === s.userId); if (_si >= 0) updateSumRow(_si); });
     maxTd.appendChild(maxInp);
     if (maxOvr && nastaveniMode === 'monthly') {
       const clr = document.createElement('button');
       clr.className = 'btn-ovr-clear'; clr.textContent = '×'; clr.title = 'Smazat přepis';
-      clr.addEventListener('click', e => { e.stopPropagation(); clearMonthlyOverride(s, 'maxHrs'); renderStaffTable(); updateSumRow(si); });
+      clr.addEventListener('click', e => { e.stopPropagation(); clearMonthlyOverride(s, 'maxHrs'); renderStaffTable(); });
       maxTd.appendChild(clr);
     }
     tr.appendChild(maxTd);
@@ -2693,7 +2693,10 @@ function renderStaffTable() {
     regBtn.title = s.regular ? `Stálé volno: ${s.regular}` : '';
     regBtn.addEventListener('click', ev => {
       ev.stopPropagation();
-      openRegularPicker(si, regBtn, ev.currentTarget);
+      const _uid = s.userId;
+      const _si = state.staff.findIndex(x => x.userId === _uid);
+      if (_si < 0) return;
+      openRegularPicker(_si, regBtn, ev.currentTarget);
     });
     regTd.appendChild(regBtn);
     tr.appendChild(regTd);
@@ -2707,7 +2710,10 @@ function renderStaffTable() {
     datesBtn.textContent = s.dates ? '●' : '○';
     datesBtn.addEventListener('click', e => {
       e.stopPropagation();
-      openDatesPicker(si, datesBtn);
+      const _uid = s.userId;
+      const _si = state.staff.findIndex(x => x.userId === _uid);
+      if (_si < 0) return;
+      openDatesPicker(_si, datesBtn);
     });
     datesTd.appendChild(datesBtn);
     tr.appendChild(datesTd);
@@ -2804,14 +2810,22 @@ function renderStaffTable() {
     const editBtn = document.createElement('button');
     editBtn.textContent = '✏'; editBtn.className = 'btn-row-act';
     editBtn.title = 'Upravit';
-    editBtn.addEventListener('click', () => showEditStaffModal(si));
+    editBtn.addEventListener('click', () => {
+      const _n = s.name, _t = s.type;
+      const _si = state.staff.findIndex(x => !x.userId && x.name === _n && x.type === _t);
+      if (_si < 0) return;
+      showEditStaffModal(_si);
+    });
     saveTd.appendChild(editBtn);
     const delBtn = document.createElement('button');
     delBtn.textContent = '✕'; delBtn.className = 'btn-row-act btn-row-del';
     delBtn.title = 'Odebrat';
     delBtn.addEventListener('click', () => {
       if (!confirm(`Odebrat pracovníka "${s.name || si+1}"?`)) return;
-      state.staff.splice(si, 1);
+      const _n = s.name, _t = s.type;
+      const _si = state.staff.findIndex(x => !x.userId && x.name === _n && x.type === _t);
+      if (_si < 0) return;
+      state.staff.splice(_si, 1);
       sortStaffAlpha();
       renderStaffTable();
     });
