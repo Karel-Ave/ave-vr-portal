@@ -2887,13 +2887,29 @@ function applyData(data) {
   if (!data) return;
 
   // ── Sdílená data (pracovníci, hotely) ──
-  // Načti POUZE speciální pracovníky (bez userId) — portáloví uživatelé se vždy stahují čerstvě z API.
-  // Starý draft mohl obsahovat záznamy bez userId, které nejsou speciálního typu → zahodíme je.
+  // Portáloví uživatelé (userId) zůstanou v state.staff — jen jim aktualizujeme data z portalCustomData.
+  // Speciální pracovníci (bez userId) se nahradí záznamy z draftu.
+  // Staré záznamy bez userId, které nejsou speciálního typu, zahodíme.
   {
     const SPECIAL_LOAD = new Set(['Vedoucí', 'Pohotovost', 'Speciální']);
-    state.staff = (data.staff || []).filter(s => !s.userId && SPECIAL_LOAD.has(s.type));
+    const newSpecial = (data.staff || []).filter(s => !s.userId && SPECIAL_LOAD.has(s.type));
+    // Zachovat existující portálové uživatele; nahradit speciální pracovníky
+    state.staff = state.staff.filter(s => s.userId).concat(newSpecial);
   }
   state.portalCustomData = data.portalCustomData || {};
+  // Aplikovat načtená portalCustomData na portálové uživatele v state.staff
+  state.staff.filter(s => s.userId).forEach(s => {
+    const custom = state.portalCustomData[s.userId] || {};
+    s.maxHrs = custom.maxHrs || '';
+    s.noteM  = custom.noteM  || '';
+    s.noteP  = custom.noteP  || '';
+    s.x      = custom.x      || '';
+    s.xa     = custom.xa     || '';
+    s.dates  = custom.dates  || '';
+    s.regular = custom.regular || '';
+    s.hotel  = custom.hotel  || '';
+    s.monthlyOverrides = custom.monthlyOverrides ? JSON.parse(JSON.stringify(custom.monthlyOverrides)) : {};
+  });
   state.hrsColorOverride = data.hrsColorOverride || {};
   if (data.hotels && data.hotels.length) {
     state.hotels = data.hotels;
@@ -3161,6 +3177,7 @@ async function loadDraft(id) {
     applyData(data.data || data);
     currentDraftId = id;
     dirtyFlag = false;
+    sortStaffAlpha();
     renderStaffTable();
     renderScheduleTable('tvorba-tbl', true);
     updateDuplicateClasses();
