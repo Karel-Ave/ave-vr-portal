@@ -124,6 +124,19 @@ table.staff-tbl {
 .staff-tbl .col-note textarea:focus { outline: 1px solid var(--accent); border-radius: 3px; resize: vertical; }
 .staff-tbl .col-save { width: 60px; text-align: center; }
 .staff-section-sep td { padding: 0; }
+
+/* Nastavení mode bar */
+#nastaveni-mode-bar { display:flex; align-items:center; gap:8px; padding:8px 0 6px; flex-wrap:wrap; }
+.mode-label { font-size:12px; color:var(--text-muted); }
+.mode-btn { padding:4px 14px; border:1px solid var(--border); border-radius:5px; cursor:pointer; font-size:12px; background:var(--surface); color:var(--text-muted); transition:all .15s; }
+.mode-btn.active { background:var(--accent); color:#fff; border-color:var(--accent); font-weight:600; }
+.mode-btn:hover:not(.active) { background:var(--surface-alt); }
+/* Override-highlighted cells */
+.override-cell { background: rgba(255,200,0,0.18) !important; position:relative; }
+[data-theme="dark"] .override-cell { background: rgba(180,140,0,0.22) !important; }
+/* Clear override button */
+.btn-ovr-clear { font-size:9px; padding:0 2px; border:none; background:none; color:var(--accent); cursor:pointer; opacity:0.7; vertical-align:middle; margin-left:2px; flex-shrink:0; }
+.btn-ovr-clear:hover { opacity:1; }
 .staff-section-header {
   background: var(--surface-alt);
   padding: 5px 8px !important;
@@ -759,6 +772,11 @@ tbody tr.row-filtered { display: none; }
 <!-- ═══════════════════════════ TAB: NASTAVENÍ ════════════════════════════════════════════ -->
 <div class="tab-panel" id="tab-nastaveni">
   <div class="wrap">
+    <div id="nastaveni-mode-bar">
+      <span class="mode-label">Editace hodnot:</span>
+      <button id="mode-default-btn" class="mode-btn active" onclick="setNastaveniMode('default')">📌 Výchozí</button>
+      <button id="mode-monthly-btn" class="mode-btn" onclick="setNastaveniMode('monthly')">🗓 Přepisy — <span id="mode-month-label">Kvě 2026</span></button>
+    </div>
     <div class="staff-table-wrap">
       <table class="staff-tbl" id="staff-tbl">
         <thead>
@@ -2664,11 +2682,20 @@ function renderStaffTable() {
     // MaxHrs
     const maxTd = document.createElement('td');
     maxTd.className = 'col-maxhrs';
+    const { val: maxVal, overridden: maxOvr } = getEffective(s, 'maxHrs');
+    if (maxOvr) maxTd.classList.add('override-cell');
     const maxInp = document.createElement('input');
-    maxInp.type = 'text'; maxInp.value = s.maxHrs || '';
+    maxInp.type = 'text'; maxInp.value = maxVal || '';
     maxInp.placeholder = '';
-    maxInp.addEventListener('input', () => { s.maxHrs = maxInp.value; updateSumRow(si); });
+    if (!maxOvr && nastaveniMode === 'monthly') maxInp.style.color = 'var(--text-muted)';
+    maxInp.addEventListener('input', () => { setFieldValue(s, 'maxHrs', maxInp.value); updateSumRow(si); });
     maxTd.appendChild(maxInp);
+    if (maxOvr && nastaveniMode === 'monthly') {
+      const clr = document.createElement('button');
+      clr.className = 'btn-ovr-clear'; clr.textContent = '×'; clr.title = 'Smazat přepis';
+      clr.addEventListener('click', e => { e.stopPropagation(); clearMonthlyOverride(s, 'maxHrs'); renderStaffTable(); updateSumRow(si); });
+      maxTd.appendChild(clr);
+    }
     tr.appendChild(maxTd);
 
     // Regular (stálé volno) — indicator button
@@ -2702,29 +2729,49 @@ function renderStaffTable() {
     // Note actual (noteM)
     const noteMTd = document.createElement('td');
     noteMTd.className = 'col-note';
+    const { val: noteMVal, overridden: noteMOvr } = getEffective(s, 'noteM');
+    if (noteMOvr) noteMTd.classList.add('override-cell');
     const noteMArea = document.createElement('textarea');
-    noteMArea.rows = 1; noteMArea.value = s.noteM || '';
+    noteMArea.rows = 1; noteMArea.value = noteMVal || '';
     noteMArea.placeholder = '';
+    if (!noteMOvr && nastaveniMode === 'monthly') noteMArea.style.color = 'var(--text-muted)';
     noteMArea.addEventListener('input', () => {
-      s.noteM = noteMArea.value;
+      setFieldValue(s, 'noteM', noteMArea.value);
       noteMArea.style.height = 'auto';
       noteMArea.style.height = noteMArea.scrollHeight + 'px';
     });
     noteMTd.appendChild(noteMArea);
+    if (noteMOvr && nastaveniMode === 'monthly') {
+      const clr = document.createElement('button');
+      clr.className = 'btn-ovr-clear'; clr.textContent = '×'; clr.title = 'Smazat přepis';
+      clr.style.display = 'block'; clr.style.marginTop = '2px';
+      clr.addEventListener('click', e => { e.stopPropagation(); clearMonthlyOverride(s, 'noteM'); renderStaffTable(); });
+      noteMTd.appendChild(clr);
+    }
     tr.appendChild(noteMTd);
 
     // Note permanent (noteP)
     const notePTd = document.createElement('td');
     notePTd.className = 'col-note';
+    const { val: notePVal, overridden: notePOvr } = getEffective(s, 'noteP');
+    if (notePOvr) notePTd.classList.add('override-cell');
     const notePArea = document.createElement('textarea');
-    notePArea.rows = 1; notePArea.value = s.noteP || '';
+    notePArea.rows = 1; notePArea.value = notePVal || '';
     notePArea.placeholder = '';
+    if (!notePOvr && nastaveniMode === 'monthly') notePArea.style.color = 'var(--text-muted)';
     notePArea.addEventListener('input', () => {
-      s.noteP = notePArea.value;
+      setFieldValue(s, 'noteP', notePArea.value);
       notePArea.style.height = 'auto';
       notePArea.style.height = notePArea.scrollHeight + 'px';
     });
     notePTd.appendChild(notePArea);
+    if (notePOvr && nastaveniMode === 'monthly') {
+      const clr = document.createElement('button');
+      clr.className = 'btn-ovr-clear'; clr.textContent = '×'; clr.title = 'Smazat přepis';
+      clr.style.display = 'block'; clr.style.marginTop = '2px';
+      clr.addEventListener('click', e => { e.stopPropagation(); clearMonthlyOverride(s, 'noteP'); renderStaffTable(); });
+      notePTd.appendChild(clr);
+    }
     tr.appendChild(notePTd);
 
     // Edit / delete row buttons
@@ -3065,6 +3112,7 @@ async function switchMonth(newMonth, newYear) {
   // 3. Přepnout state na nový měsíc
   state.month = newMonth;
   state.year  = newYear;
+  updateModeMonthLabel();
 
   // 4. Hledat existující draft pro nový měsíc
   const loaded = await findAndLoadMonthDraft(newMonth, newYear);
@@ -3556,6 +3604,7 @@ let _copySelSi1  = null, _copySelCi1 = null;
 let _copySelSi2  = null, _copySelCi2 = null;
 let _copyDragging = false;
 let sumsMode     = 'all'; // 'all' | 'hidden' | 'hoursonly'
+let nastaveniMode = 'default'; // 'default' | 'monthly'
 
 function updateSubtoolbar() {
   const tab = document.querySelector('.tb-tab.active');
@@ -4528,6 +4577,52 @@ function sortStaffAlpha() {
   return true;
 }
 
+const MONTH_SHORT = ['','Led','Úno','Bře','Dub','Kvě','Čvn','Čvc','Srp','Zář','Říj','Lis','Pro'];
+
+function getMonthKey() { return `${state.year}-${state.month}`; }
+
+function getEffective(s, field) {
+  if (nastaveniMode === 'monthly') {
+    const ov = s.monthlyOverrides?.[getMonthKey()];
+    if (ov && ov[field] !== undefined) return { val: ov[field], overridden: true };
+  }
+  return { val: s[field], overridden: false };
+}
+
+function setFieldValue(s, field, value) {
+  if (nastaveniMode === 'monthly') {
+    if (!s.monthlyOverrides) s.monthlyOverrides = {};
+    const key = getMonthKey();
+    if (!s.monthlyOverrides[key]) s.monthlyOverrides[key] = {};
+    s.monthlyOverrides[key][field] = value;
+  } else {
+    s[field] = value;
+  }
+  scheduleAutoSave();
+}
+
+function clearMonthlyOverride(s, field) {
+  const key = getMonthKey();
+  if (s.monthlyOverrides?.[key]) {
+    delete s.monthlyOverrides[key][field];
+    if (!Object.keys(s.monthlyOverrides[key]).length) delete s.monthlyOverrides[key];
+    if (!Object.keys(s.monthlyOverrides).length) delete s.monthlyOverrides;
+  }
+  scheduleAutoSave();
+}
+
+function setNastaveniMode(mode) {
+  nastaveniMode = mode;
+  document.getElementById('mode-default-btn').classList.toggle('active', mode === 'default');
+  document.getElementById('mode-monthly-btn').classList.toggle('active', mode === 'monthly');
+  renderStaffTable();
+}
+
+function updateModeMonthLabel() {
+  const el = document.getElementById('mode-month-label');
+  if (el) el.textContent = `${MONTH_SHORT[state.month] || state.month} ${state.year}`;
+}
+
 function sortStaff() {
   sortStaffAlpha();
   renderStaffTable();
@@ -5067,6 +5162,9 @@ document.addEventListener('DOMContentLoaded', async () => {
 
   // Sync pracovníků ze Správy uživatelů (po načtení draftu, aby se zachovala lokální data)
   await syncRaspisStaff();
+
+  // Set correct month label in nastaveni mode bar
+  updateModeMonthLabel();
 
   // Clear init flag — normal tab switching re-renders are now allowed
   window._initRendering = false;
