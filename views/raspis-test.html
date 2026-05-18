@@ -2567,13 +2567,6 @@ function renderStaffTable() {
     // #
     const numTd = document.createElement('td');
     numTd.className = 'col-num'; numTd.textContent = si + 1;
-    if (s.userId) {
-      const syncBadge = document.createElement('span');
-      syncBadge.className = 'staff-sync-badge';
-      syncBadge.textContent = 'SU';
-      syncBadge.title = 'Spravováno ze Správy uživatelů';
-      numTd.appendChild(syncBadge);
-    }
     if (s.inactive) {
       const inaBadge = document.createElement('span');
       inaBadge.className = 'staff-inactive-badge';

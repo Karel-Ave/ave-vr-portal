@@ -486,7 +486,7 @@ async function init() {
         ['MABS',    'Absolon Marek',           'Denní', 'DPP'],
         ['ANTD',    'Antipin Dmitrii',          'Noční', 'HPP'],
         ['AUGP',    'Augustin Patrik',          'Denní', 'HPP'],
-        ['BAID',    'Baiduk Dmytrii',           'Obojí', 'HPP'],
+        ['BAID',    'Baidiuk Dmytrii',          'Obojí', 'HPP'],
         ['MINA',    'Bartošková Mína',          'Denní', 'DPP'],
         ['LIZA',    'Bendos Elizaveta',         'Obojí', 'HPP'],
         ['BST',     'Beránek Stanislav',        'Denní', 'HPP'],
@@ -536,7 +536,7 @@ async function init() {
         ['SMJ',     'Smrčková Jitka',           'Denní', 'ZPP'],
         ['SEZ',     'Smutná Petra',             'Denní', 'HPP'],
         ['OLES',    'Stalchenko Oleksandra',    'Obojí', 'HPP'],
-        ['STEN',    'Stéblová Natálie',         'Denní', 'DPP'],
+        ['STEN',    'Stéblová Natálie',          'Denní', 'DPP'],
         ['IVAS',    'Stempak Ivan',             'Noční', 'DPČ'],
         ['SMEI',    'Šmejkalová Iva',           'Noční', 'HPP'],
         ['STEO',    'Štěpánek Ondřej',          'Denní', 'HPP'],
@@ -573,6 +573,31 @@ async function init() {
         }
       }
       console.log('Seed: vytvořeno', RECEPTIONIST_SEED.length, 'účtů recepčních.');
+    }
+  }
+
+  // ── Oprava překlepů v jménech recepčních ──────────────────────────────────
+  {
+    const namefixes = [
+      ['Baiduk Dmytrii',   'Baidiuk Dmytrii',  'BAID'],
+      ['Steblová Natálie', 'Stéblová Natálie',  'STEN'],
+    ];
+    for (const [oldName, newName, login] of namefixes) {
+      const { rows } = await db.query(
+        `SELECT id, perm_overrides FROM users WHERE username = $1`, [login]
+      );
+      if (rows.length && rows[0].perm_overrides) {
+        let ov = typeof rows[0].perm_overrides === 'string'
+          ? JSON.parse(rows[0].perm_overrides) : rows[0].perm_overrides;
+        if (ov?.raspis_staff?.displayName === oldName) {
+          ov.raspis_staff.displayName = newName;
+          await db.query(
+            `UPDATE users SET name = $1, perm_overrides = $2 WHERE id = $3`,
+            [newName, JSON.stringify(ov), rows[0].id]
+          );
+          console.log(`Opraveno jméno: ${oldName} → ${newName}`);
+        }
+      }
     }
   }
 
