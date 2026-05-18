@@ -377,7 +377,7 @@ table.sched-tbl {
    Chrome ignores `top` when `left` is also set on the same td (bi-directional sticky bug). */
 .cov-row .col-name-td { font-size: 10px; font-weight: 700; background: var(--surface);
   padding: 0; overflow: visible; }
-.cov-tbody .col-name-td { position: sticky; left: auto !important; /* Override .sched-tbl .col-name-td left:0 — Chrome ignores top when left is set (bi-directional sticky bug) */ z-index: 12 !important; background: var(--surface) !important; overflow: visible !important; }
+.cov-tbody .col-name-td { position: sticky; left: auto !important; /* Override .sched-tbl .col-name-td left:0 — Chrome ignores top when left is set (bi-directional sticky bug) */ z-index: 20 !important; /* Must be > date-cell z-index(15) so name cell stacks on top; CSS !important beats inline style */ background: var(--surface) !important; overflow: visible !important; }
 /* Inner wrapper handles LEFT (horizontal) stickiness */
 .cov-name-inner {
   position: sticky; left: 0;
@@ -392,8 +392,8 @@ table.sched-tbl {
 .sched-tbl.hotels-hidden tbody.cov-tbody { display: none !important; }
 /* Note: do NOT add .cov-tbody td { background } here — it would override .cov-1/.cov-empty etc. */
 .cov-row td.cov-cell { font-size: 9px; text-align: center; padding: 0; border-left: none !important; border-right: none !important; }
-/* Sum columns (Dv, Nv...) in hotel panel: hide borders and solid background to prevent bleed-through */
-.cov-row td.sum-cell { border: none !important; background: var(--surface) !important; }
+/* Sum columns (Dv, Nv...) in hotel panel: hide borders, var(--bg) matches note-column area (transparent note cells show --bg) to the right of Σh */
+.cov-row td.sum-cell { border: none !important; background: var(--bg) !important; }
 .cov-empty      { background: var(--col-cov0-bg,#ffebeb)  !important; color: var(--col-cov0-tx,#c0392b) !important; }
 .cov-1          { background: var(--col-cov1-bg,#c8f5c8)  !important; color: var(--col-cov1-tx,#1a6b1a) !important; font-weight: 700; }
 .cov-2          { background: var(--col-cov2-bg,#ffe082)  !important; color: var(--col-cov2-tx,#7a5000) !important; font-weight: 700; }
