@@ -794,6 +794,7 @@ tbody tr.row-filtered { display: none; }
     <div id="override-info" style="display:none;">
       🗓 Editujete <strong>přepisy</strong> pro <strong id="override-info-label"></strong> — <span style="background:rgba(255,200,0,0.3);padding:0 3px;border-radius:2px;">žlutě podbarvená</span> pole platí jen pro tento měsíc, ostatní ukazují výchozí hodnotu.
     </div>
+    <!-- Recepční table: login, max.hod, notes — no action buttons -->
     <div class="staff-table-wrap">
       <table class="staff-tbl" id="staff-tbl">
         <thead>
@@ -808,10 +809,26 @@ tbody tr.row-filtered { display: none; }
             <th class="col-dates" title="Nemůže aktuálně">xA</th>
             <th class="col-note">Pozn. aktuální</th>
             <th class="col-note">Pozn. trvalá</th>
-            <th class="col-save"></th>
           </tr>
         </thead>
         <tbody id="staff-tbody"></tbody>
+      </table>
+    </div>
+    <!-- Ostatní pracovníci: just name + type + action buttons -->
+    <div class="staff-section-sep" style="padding:12px 0 4px;">
+      <span style="font-size:12px;font-weight:600;color:var(--text-muted);text-transform:uppercase;letter-spacing:.06em;">Ostatní pracovníci</span>
+    </div>
+    <div class="staff-table-wrap">
+      <table class="staff-tbl" id="staff-tbl-special">
+        <thead>
+          <tr>
+            <th class="col-num">#</th>
+            <th class="col-name">Jméno</th>
+            <th class="col-type">Typ</th>
+            <th class="col-save"></th>
+          </tr>
+        </thead>
+        <tbody id="staff-tbody-special"></tbody>
       </table>
     </div>
   </div>
@@ -1665,6 +1682,7 @@ const HOTELS_DEFAULT = [
 
 const state = {
   staff: [],
+  portalCustomData: {}, // key: userId → {maxHrs, noteM, noteP, x, xa, dates, regular, hotel, monthlyOverrides}
   schedule: {},        // key: `${si}_${ci}` → string (cell value), current month
   extras: {},          // key: si → {hours: string}, current month
   requirements: {},    // snapshot of schedule used for req highlighting
@@ -2577,25 +2595,20 @@ function setCellValue(si, ci, val) {
 ══════════════════════════════════════════════════════════════════════════════ */
 
 function renderStaffTable() {
-  const SPECIAL_TYPES = new Set(['Vedoucí', 'Pohotovost', 'Speciální']);
-  // Speciální pracovník = typ Vedoucí/Pohotovost/Speciální (bez ohledu na userId)
-  const isSpecial = s => SPECIAL_TYPES.has(s.type);
-
   const tbody = document.getElementById('staff-tbody');
+  const tbodySpecial = document.getElementById('staff-tbody-special');
   tbody.innerHTML = '';
-  let separatorInserted = false;
+  tbodySpecial.innerHTML = '';
 
-  state.staff.forEach((s, si) => {
-    // Insert separator before first special worker
-    if (!separatorInserted && isSpecial(s)) {
-      separatorInserted = true;
-      const sepTr = document.createElement('tr');
-      sepTr.className = 'staff-section-sep';
-      sepTr.innerHTML = `<td colspan="11" class="staff-section-header">
-        <span>Ostatní pracovníci</span>
-      </td>`;
-      tbody.appendChild(sepTr);
-    }
+  // Split staff into portal users (recepční) and special workers (ostatní)
+  const portalStaff  = state.staff.filter(s =>  s.userId);
+  const specialStaff = state.staff.filter(s => !s.userId);
+
+  // ── Recepční table ──────────────────────────────────────────────────────────
+  let portalRowNum = 0;
+  portalStaff.forEach(s => {
+    const si = state.staff.indexOf(s);
+    portalRowNum++;
 
     const tr = document.createElement('tr');
     tr.dataset.si = si;
@@ -2603,7 +2616,7 @@ function renderStaffTable() {
 
     // #
     const numTd = document.createElement('td');
-    numTd.className = 'col-num'; numTd.textContent = si + 1;
+    numTd.className = 'col-num'; numTd.textContent = portalRowNum;
     if (s.inactive) {
       const inaBadge = document.createElement('span');
       inaBadge.className = 'staff-inactive-badge';
@@ -2613,90 +2626,49 @@ function renderStaffTable() {
     }
     tr.appendChild(numTd);
 
-    // Name (colored bg)
+    // Name (colored bg, read-only)
     const nameTd = document.createElement('td');
     nameTd.className = 'col-name';
     const tc = TYPE_COLORS[s.type] || '';
     if (tc) { nameTd.style.background = tc; }
     const nameInp = document.createElement('input');
     nameInp.type = 'text'; nameInp.value = s.name || '';
-    nameInp.placeholder = '';
-    if (s.userId) {
-      nameInp.readOnly = true;
-      nameInp.title = 'Jméno se synchronizuje ze Správy uživatelů';
-    } else {
-      nameInp.addEventListener('input', () => { s.name = nameInp.value; });
-    }
+    nameInp.readOnly = true;
+    nameInp.title = 'Jméno se synchronizuje ze Správy uživatelů';
     nameTd.appendChild(nameInp);
     tr.appendChild(nameTd);
 
-    // Login — read-only for userId entries
+    // Login — read-only span
     const loginTd = document.createElement('td');
     loginTd.className = 'col-login';
-    if (s.userId) {
-      const loginSpan = document.createElement('span');
-      loginSpan.textContent = s.login || '';
-      loginSpan.style.cssText = 'font-size:11px;color:var(--text-muted);padding:0 2px;font-family:monospace;';
-      loginSpan.title = 'Login se spravuje ve Správě uživatelů';
-      loginTd.appendChild(loginSpan);
-    } else {
-      const loginInp = document.createElement('input');
-      loginInp.type = 'text'; loginInp.value = s.login || '';
-      loginInp.style.textTransform = 'uppercase'; loginInp.maxLength = 10;
-      loginInp.addEventListener('input', () => { s.login = loginInp.value; });
-      loginTd.appendChild(loginInp);
-    }
+    const loginSpan = document.createElement('span');
+    loginSpan.textContent = s.login || '';
+    loginSpan.style.cssText = 'font-size:11px;color:var(--text-muted);padding:0 2px;font-family:monospace;';
+    loginSpan.title = 'Login se spravuje ve Správě uživatelů';
+    loginTd.appendChild(loginSpan);
     tr.appendChild(loginTd);
 
-    // Type — read-only for userId entries
+    // Type — read-only span
     const typeTd = document.createElement('td');
     typeTd.className = 'col-type';
-    if (s.userId) {
-      const typeSpan = document.createElement('span');
-      typeSpan.textContent = s.type || '';
-      typeSpan.style.cssText = 'font-size:11px;color:var(--text-muted);padding:0 2px;';
-      typeSpan.title = 'Typ se spravuje ve Správě uživatelů';
-      typeTd.appendChild(typeSpan);
-    } else {
-      const typeSel = document.createElement('select');
-      STAFF_TYPES.forEach(t => {
-        const opt = document.createElement('option');
-        opt.value = t; opt.textContent = t || '(žádný)';
-        if (s.type === t) opt.selected = true;
-        typeSel.appendChild(opt);
-      });
-      typeSel.addEventListener('change', () => {
-        s.type = typeSel.value;
-        const c2 = TYPE_COLORS[s.type] || '';
-        nameTd.style.background = c2;
-      });
-      typeTd.appendChild(typeSel);
-    }
+    const typeSpan = document.createElement('span');
+    typeSpan.textContent = s.type || '';
+    typeSpan.style.cssText = 'font-size:11px;color:var(--text-muted);padding:0 2px;';
+    typeSpan.title = 'Typ se spravuje ve Správě uživatelů';
+    typeTd.appendChild(typeSpan);
     tr.appendChild(typeTd);
 
-    // Contract — read-only for userId entries
+    // Contract — read-only span
     const conTd = document.createElement('td');
     conTd.className = 'col-contract';
-    if (s.userId) {
-      const conSpan = document.createElement('span');
-      conSpan.textContent = s.contract || '';
-      conSpan.style.cssText = 'font-size:11px;color:var(--text-muted);padding:0 2px;';
-      conSpan.title = 'Smlouva se spravuje ve Správě uživatelů';
-      conTd.appendChild(conSpan);
-    } else {
-      const conSel = document.createElement('select');
-      CONTRACTS.forEach(c => {
-        const opt = document.createElement('option');
-        opt.value = c; opt.textContent = c || '—';
-        if (s.contract === c) opt.selected = true;
-        conSel.appendChild(opt);
-      });
-      conSel.addEventListener('change', () => { s.contract = conSel.value; updateSumRow(si); });
-      conTd.appendChild(conSel);
-    }
+    const conSpan = document.createElement('span');
+    conSpan.textContent = s.contract || '';
+    conSpan.style.cssText = 'font-size:11px;color:var(--text-muted);padding:0 2px;';
+    conSpan.title = 'Smlouva se spravuje ve Správě uživatelů';
+    conTd.appendChild(conSpan);
     tr.appendChild(conTd);
 
-    // MaxHrs
+    // MaxHrs — editable
     const maxTd = document.createElement('td');
     maxTd.className = 'col-maxhrs';
     const { val: maxVal, overridden: maxOvr } = getEffective(s, 'maxHrs');
@@ -2729,7 +2701,7 @@ function renderStaffTable() {
     regTd.appendChild(regBtn);
     tr.appendChild(regTd);
 
-    // Dates (nemůže aktuálně) — indicator button + popup
+    // Dates (nemůže aktuálně) — indicator button
     const datesTd = document.createElement('td');
     datesTd.className = 'col-dates';
     const datesBtn = document.createElement('button');
@@ -2791,45 +2763,67 @@ function renderStaffTable() {
     }
     tr.appendChild(notePTd);
 
-    // Edit / delete row buttons
-    const saveTd = document.createElement('td');
-    saveTd.className = 'col-save';
-    saveTd.style.whiteSpace = 'nowrap';
-    if (!s.userId || SPECIAL_TYPES.has(s.type)) {
-      // Edit: vždy pro záznamy bez portálového účtu + vždy pro speciální pracovníky
-      const editBtn = document.createElement('button');
-      editBtn.textContent = '✏'; editBtn.className = 'btn-row-act';
-      editBtn.title = 'Upravit';
-      editBtn.addEventListener('click', () => showEditStaffModal(si));
-      if (!s.inactive) saveTd.appendChild(editBtn);
-    }
-    // Tlačítko smazat: jen pro manuální záznamy (bez userId) nebo speciální pracovníky
-    if (!s.userId || SPECIAL_TYPES.has(s.type)) {
-      const delBtn = document.createElement('button');
-      delBtn.textContent = '✕'; delBtn.className = 'btn-row-act btn-row-del';
-      delBtn.title = 'Odebrat';
-      delBtn.addEventListener('click', () => {
-        if (!confirm(`Odebrat pracovníka "${s.name || si+1}"?`)) return;
-        state.staff.splice(si, 1);
-        sortStaffAlpha();
-        renderStaffTable();
-      });
-      saveTd.appendChild(delBtn);
-    }
-    tr.appendChild(saveTd);
-
+    // No action buttons for recepční
     tbody.appendChild(tr);
   });
 
-  // If no special workers exist yet, still show the section header
-  if (!separatorInserted) {
-    const sepTr = document.createElement('tr');
-    sepTr.className = 'staff-section-sep';
-    sepTr.innerHTML = `<td colspan="11" class="staff-section-header">
-      <span>Ostatní pracovníci</span>
-    </td>`;
-    tbody.appendChild(sepTr);
-  }
+  // ── Ostatní pracovníci table ────────────────────────────────────────────────
+  let specialRowNum = 0;
+  specialStaff.forEach(s => {
+    const si = state.staff.indexOf(s);
+    specialRowNum++;
+
+    const tr = document.createElement('tr');
+    tr.dataset.si = si;
+
+    // #
+    const numTd = document.createElement('td');
+    numTd.className = 'col-num'; numTd.textContent = specialRowNum;
+    tr.appendChild(numTd);
+
+    // Name (colored bg, read-only span — name changed via edit modal)
+    const nameTd = document.createElement('td');
+    nameTd.className = 'col-name';
+    const tc2 = TYPE_COLORS[s.type] || '';
+    if (tc2) { nameTd.style.background = tc2; }
+    const nameSpan = document.createElement('span');
+    nameSpan.textContent = s.name || '';
+    nameSpan.style.cssText = 'display:inline-block;padding:0 2px;';
+    nameTd.appendChild(nameSpan);
+    tr.appendChild(nameTd);
+
+    // Type — read-only span
+    const typeTd = document.createElement('td');
+    typeTd.className = 'col-type';
+    const typeSpan2 = document.createElement('span');
+    typeSpan2.textContent = s.type || '';
+    typeSpan2.style.cssText = 'font-size:11px;color:var(--text-muted);padding:0 2px;';
+    typeTd.appendChild(typeSpan2);
+    tr.appendChild(typeTd);
+
+    // Akce: edit + delete
+    const saveTd = document.createElement('td');
+    saveTd.className = 'col-save';
+    saveTd.style.whiteSpace = 'nowrap';
+    const editBtn = document.createElement('button');
+    editBtn.textContent = '✏'; editBtn.className = 'btn-row-act';
+    editBtn.title = 'Upravit';
+    editBtn.addEventListener('click', () => showEditStaffModal(si));
+    saveTd.appendChild(editBtn);
+    const delBtn = document.createElement('button');
+    delBtn.textContent = '✕'; delBtn.className = 'btn-row-act btn-row-del';
+    delBtn.title = 'Odebrat';
+    delBtn.addEventListener('click', () => {
+      if (!confirm(`Odebrat pracovníka "${s.name || si+1}"?`)) return;
+      state.staff.splice(si, 1);
+      sortStaffAlpha();
+      renderStaffTable();
+    });
+    saveTd.appendChild(delBtn);
+    tr.appendChild(saveTd);
+
+    tbodySpecial.appendChild(tr);
+  });
 }
 
 /* ══════════════════════════════════════════════════════════════════════════════
@@ -2852,7 +2846,18 @@ function buildSaveData() {
   return {
     month: state.month,
     year: state.year,
-    staff: JSON.parse(JSON.stringify(state.staff)),
+    staff: JSON.parse(JSON.stringify(state.staff.filter(s => !s.userId))),
+    portalCustomData: (() => {
+      const pcd = {};
+      state.staff.filter(s => s.userId).forEach(s => {
+        pcd[s.userId] = {
+          maxHrs: s.maxHrs || '', noteM: s.noteM || '', noteP: s.noteP || '',
+          x: s.x || '', xa: s.xa || '', dates: s.dates || '', regular: s.regular || '',
+          hotel: s.hotel || '', monthlyOverrides: s.monthlyOverrides || {},
+        };
+      });
+      return pcd;
+    })(),
     // Aktuální měsíc na root úrovni (zpětná kompatibilita)
     schedule: JSON.parse(JSON.stringify(state.schedule)),
     extras: JSON.parse(JSON.stringify(state.extras)),
@@ -2873,6 +2878,7 @@ function applyData(data) {
 
   // ── Sdílená data (pracovníci, hotely) ──
   if (data.staff) state.staff = data.staff;
+  state.portalCustomData = data.portalCustomData || {};
   state.hrsColorOverride = data.hrsColorOverride || {};
   if (data.hotels && data.hotels.length) {
     state.hotels = data.hotels;
@@ -2955,8 +2961,8 @@ function scheduleAutoSave() {
 
 /* ══════════════════════════════════════════════════════════════════════════════
    SYNC RASPIS STAFF — synchronizace pracovníků ze Správy uživatelů
-   Přidává nové, aktualizuje jméno/data, označuje deaktivované jako inactive.
-   Manuální záznamy (bez userId) se vůbec nedotýká.
+   Portaloví uživatelé (s userId) se NIKDY neukládají do draftu.
+   Jejich vlastní data (maxHrs, poznámky, atd.) jsou uložena v portalCustomData.
 ══════════════════════════════════════════════════════════════════════════════ */
 async function syncRaspisStaff() {
   try {
@@ -2965,170 +2971,34 @@ async function syncRaspisStaff() {
     const data = await r.json();
     if (!data.ok) return;
 
-    // Pracujeme jen s těmi, kdo mají userId (uloženi v Správa uživatelů)
+    // Remove all existing portal (userId) entries — always reload fresh from API
+    state.staff = state.staff.filter(s => !s.userId);
+
     const apiStaff = (data.staff || []).filter(s => s.userId);
-    const activeIds = new Set(apiStaff.map(s => s.userId));
-    let changed = false;
-
-    // 1. Přidej nebo aktualizuj pracovníky z API
     for (const as of apiStaff) {
-      const ex = state.staff.find(s => s.userId === as.userId);
-      if (ex) {
-        if (ex.name !== as.displayName) { ex.name = as.displayName; changed = true; }
-        const afNew = JSON.stringify(as.activeFrom  || null);
-        const auNew = JSON.stringify(as.activeUntil || null);
-        if (JSON.stringify(ex.activeFrom  || null) !== afNew) { ex.activeFrom  = as.activeFrom  || null; changed = true; }
-        if (JSON.stringify(ex.activeUntil || null) !== auNew) { ex.activeUntil = as.activeUntil || null; changed = true; }
-        if (ex.inactive) { delete ex.inactive; changed = true; }
-        if (ex.login    !== (as.login    || '')) { ex.login    = as.login    || ''; changed = true; }
-        if (ex.type     !== (as.type     || '')) { ex.type     = as.type     || ''; changed = true; }
-        if (ex.contract !== (as.contract || '')) { ex.contract = as.contract || ''; changed = true; }
-      } else {
-        state.staff.push({
-          userId:      as.userId,
-          name:        as.displayName || '',
-          login:       as.login       || '',
-          type:        as.type        || '',
-          contract:    as.contract    || '',
-          activeFrom:  as.activeFrom  || null,
-          activeUntil: as.activeUntil || null,
-          maxHrs: '', regular: '',
-          hotel: '', dates: '', noteM: '', noteP: '',
-        });
-        changed = true;
-      }
-    }
-
-    // 2. Označ deaktivované (mají userId, ale nejsou v API) jako neaktivní
-    state.staff.forEach(s => {
-      if (s.userId && !activeIds.has(s.userId) && !s.inactive) {
-        s.inactive = true;
-        changed = true;
-      }
-    });
-
-    // 3. Slouč a odstraň staré ruční záznamy (bez userId), jejichž jméno/login nyní pokrývá portálový účet
-    //    Přenese noteM, noteP, maxHrs, x, xa, hotel, dates, regular ze starého záznamu do su záznamu,
-    //    remapuje state.schedule a state.extras, pak starý záznam odebere.
-    //    Matching: case-insensitive login, exact name, nebo normalized name (bez diakritiky).
-    const normN = str => str.normalize('NFD').replace(/[̀-ͯ]/g,'').toLowerCase().replace(/\s+/g,' ').trim();
-    const portalByLogin    = new Map(); // key: login.toUpperCase()
-    const portalByName     = new Map(); // key: s.name.trim()
-    const portalByNormName = new Map(); // key: normN(s.name)
-    state.staff.forEach((s, idx) => {
-      if (s.userId) {
-        if (s.login) portalByLogin.set(s.login.toUpperCase(), idx);
-        if (s.name) {
-          portalByName.set(s.name.trim(), idx);
-          portalByNormName.set(normN(s.name), idx);
-        }
-      }
-    });
-
-    const removalSet = new Set();
-    state.staff.forEach((s, idx) => {
-      if (s.userId) return; // přeskoč portálové záznamy
-      const loginKey = s.login ? s.login.toUpperCase() : null;
-      const suIdx = (loginKey && portalByLogin.has(loginKey))
-        ? portalByLogin.get(loginKey)
-        : (s.name && portalByName.has(s.name.trim()))
-          ? portalByName.get(s.name.trim())
-          : (s.name && portalByNormName.has(normN(s.name)))
-            ? portalByNormName.get(normN(s.name))
-            : -1;
-      if (suIdx === -1) return;
-      {
-        const su = state.staff[suIdx];
-        // Přenes lokální pole, která su záznam ještě nemá
-        ['noteM','noteP','maxHrs','regular','hotel','dates','x','xa'].forEach(f => {
-          if (!su[f] && s[f]) su[f] = s[f];
-        });
-        // Přenes extras (x/xa data keyed by index)
-        if (state.extras && state.extras[String(idx)] !== undefined) {
-          if (!state.extras[String(suIdx)]) state.extras[String(suIdx)] = state.extras[String(idx)];
-          delete state.extras[String(idx)];
-        }
-        // Přenes směny ze schedule (přepíše jen pokud su pozice je prázdná)
-        Object.keys(state.schedule || {}).forEach(key => {
-          const us = key.indexOf('_');
-          if (+key.slice(0, us) === idx) {
-            const ci = key.slice(us + 1);
-            const newKey = `${suIdx}_${ci}`;
-            if (!state.schedule[newKey]) state.schedule[newKey] = state.schedule[key];
-            delete state.schedule[key];
-          }
-        });
-        removalSet.add(idx);
-        changed = true;
-      }
-    });
-
-    // 4. Bezpečnostní čištění: odstraň jakékoliv zbývající ruční záznamy (bez userId),
-    //    jejichž login (case-insensitive) shoduje s portálovým uživatelem — i kdyby step 3 selhal.
-    {
-      const portalLoginSet = new Set(
-        state.staff.filter(s => s.userId && s.login).map(s => s.login.toUpperCase())
-      );
-      state.staff.forEach((s, idx) => {
-        if (s.userId) return;
-        if (s.login && portalLoginSet.has(s.login.toUpperCase())) {
-          // Přenes data do portálového záznamu (pokud je nemá)
-          const su = state.staff.find(p => p.userId && p.login && p.login.toUpperCase() === s.login.toUpperCase());
-          if (su) {
-            ['noteM','noteP','maxHrs','regular','hotel','dates','x','xa'].forEach(f => {
-              if (!su[f] && s[f]) su[f] = s[f];
-            });
-          }
-          removalSet.add(idx);
-          changed = true;
-        }
+      const custom = state.portalCustomData?.[as.userId] || {};
+      state.staff.push({
+        userId:   as.userId,
+        name:     as.displayName || '',
+        login:    as.login       || '',
+        type:     as.type        || '',
+        contract: as.contract    || '',
+        maxHrs:   custom.maxHrs  || '',
+        noteM:    custom.noteM   || '',
+        noteP:    custom.noteP   || '',
+        x:        custom.x       || '',
+        xa:       custom.xa      || '',
+        dates:    custom.dates   || '',
+        regular:  custom.regular || '',
+        hotel:    custom.hotel   || '',
+        monthlyOverrides: custom.monthlyOverrides ? JSON.parse(JSON.stringify(custom.monthlyOverrides)) : {},
+        inactive: !as.active,
       });
     }
 
-    // 5. Osiřelé záznamy: ruční záznamy (bez userId) bez loginu, ne-speciálního typu =
-    //    relikty starého systému (recepční), pro které existuje portálový účet.
-    //    Pokud nemají login, nemůžeme je spolehlivě přiřadit → odstraníme je bezpečně.
-    {
-      const SPECIAL_SET = new Set(['Vedoucí', 'Pohotovost', 'Speciální']);
-      state.staff.forEach((s, idx) => {
-        if (removalSet.has(idx)) return; // již v removalSetu
-        if (s.userId) return;            // portálový uživatel
-        if (SPECIAL_SET.has(s.type)) return; // speciální pracovník
-        if (s.login) return;             // má login → možná záměrný ruční záznam
-        // Bez userId, bez loginu, ne-speciální → osiřelý relikt starého systému
-        removalSet.add(idx);
-        changed = true;
-      });
-    }
-
-    if (removalSet.size > 0) {
-      // Sestav mapování starý index → nový index (po odstranění)
-      const oldToNew = {};
-      let ni = 0;
-      state.staff.forEach((_, oi) => { if (!removalSet.has(oi)) oldToNew[oi] = ni++; });
-      // Remapuj schedule
-      const newSched = {};
-      Object.entries(state.schedule || {}).forEach(([key, val]) => {
-        const us = key.indexOf('_');
-        const newSi = oldToNew[+key.slice(0, us)];
-        if (newSi !== undefined) newSched[`${newSi}_${key.slice(us + 1)}`] = val;
-      });
-      // Remapuj extras
-      const newExtras = {};
-      Object.entries(state.extras || {}).forEach(([siStr, val]) => {
-        const newSi = oldToNew[+siStr];
-        if (newSi !== undefined) newExtras[String(newSi)] = val;
-      });
-      state.staff    = state.staff.filter((_, oi) => !removalSet.has(oi));
-      state.schedule = newSched;
-      state.extras   = newExtras;
-    }
-
-    if (changed) {
-      sortStaffAlpha();
-      renderStaffTable();
-      scheduleAutoSave();
-    }
+    sortStaffAlpha();
+    renderStaffTable();
+    scheduleAutoSave();
   } catch(e) {
     console.warn('syncRaspisStaff:', e);
   }
