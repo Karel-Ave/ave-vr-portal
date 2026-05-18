@@ -818,12 +818,12 @@ tbody tr.row-filtered { display: none; }
     <div class="staff-section-sep" style="padding:12px 0 4px;">
       <span style="font-size:12px;font-weight:600;color:var(--text-muted);text-transform:uppercase;letter-spacing:.06em;">Ostatní pracovníci</span>
     </div>
-    <div class="staff-table-wrap">
-      <table class="staff-tbl" id="staff-tbl-special">
+    <div class="staff-table-wrap" style="width:fit-content;min-width:0;overflow-x:visible;">
+      <table class="staff-tbl" id="staff-tbl-special" style="width:auto;min-width:0;">
         <thead>
           <tr>
             <th class="col-num">#</th>
-            <th class="col-name">Jméno</th>
+            <th style="min-width:180px;text-align:left;padding:7px 8px;">Jméno</th>
             <th class="col-type">Typ</th>
             <th class="col-save"></th>
           </tr>
@@ -2600,14 +2600,11 @@ function renderStaffTable() {
   tbody.innerHTML = '';
   tbodySpecial.innerHTML = '';
 
-  // Split staff into portal users (recepční) and special workers (ostatní)
-  const portalStaff  = state.staff.filter(s =>  s.userId);
-  const specialStaff = state.staff.filter(s => !s.userId);
-
+  // Iterujeme přímo přes state.staff — si je vždy správný index (žádný indexOf)
   // ── Recepční table ──────────────────────────────────────────────────────────
   let portalRowNum = 0;
-  portalStaff.forEach(s => {
-    const si = state.staff.indexOf(s);
+  state.staff.forEach((s, si) => {
+    if (!s.userId) return; // skip special workers
     portalRowNum++;
 
     const tr = document.createElement('tr');
@@ -2769,8 +2766,8 @@ function renderStaffTable() {
 
   // ── Ostatní pracovníci table ────────────────────────────────────────────────
   let specialRowNum = 0;
-  specialStaff.forEach(s => {
-    const si = state.staff.indexOf(s);
+  state.staff.forEach((s, si) => {
+    if (s.userId) return; // skip portal users
     specialRowNum++;
 
     const tr = document.createElement('tr');
@@ -2783,12 +2780,11 @@ function renderStaffTable() {
 
     // Name (colored bg, read-only span — name changed via edit modal)
     const nameTd = document.createElement('td');
-    nameTd.className = 'col-name';
+    nameTd.style.cssText = 'min-width:180px;white-space:nowrap;padding:3px 6px;';
     const tc2 = TYPE_COLORS[s.type] || '';
     if (tc2) { nameTd.style.background = tc2; }
     const nameSpan = document.createElement('span');
     nameSpan.textContent = s.name || '';
-    nameSpan.style.cssText = 'display:inline-block;padding:0 2px;';
     nameTd.appendChild(nameSpan);
     tr.appendChild(nameTd);
 
