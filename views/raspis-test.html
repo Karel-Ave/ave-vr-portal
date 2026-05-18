@@ -775,7 +775,19 @@ tbody tr.row-filtered { display: none; }
     <div id="nastaveni-mode-bar">
       <span class="mode-label">Editace hodnot:</span>
       <button id="mode-default-btn" class="mode-btn active" onclick="setNastaveniMode('default')">📌 Výchozí</button>
-      <button id="mode-monthly-btn" class="mode-btn" onclick="setNastaveniMode('monthly')">🗓 Přepisy — <span id="mode-month-label">Kvě 2026</span></button>
+      <button id="mode-monthly-btn" class="mode-btn" onclick="setNastaveniMode('monthly')">🗓 Přepisy</button>
+      <div id="override-month-controls" style="display:none;align-items:center;gap:4px;">
+        <span class="mode-label">pro</span>
+        <select id="override-month-sel" onchange="setOverrideMonth()" style="padding:3px 6px;font-size:12px;border:1px solid var(--border);border-radius:4px;background:var(--surface);color:var(--text);">
+          <option value="1">Leden</option><option value="2">Únor</option>
+          <option value="3">Březen</option><option value="4">Duben</option>
+          <option value="5">Květen</option><option value="6">Červen</option>
+          <option value="7">Červenec</option><option value="8">Srpen</option>
+          <option value="9">Září</option><option value="10">Říjen</option>
+          <option value="11">Listopad</option><option value="12">Prosinec</option>
+        </select>
+        <input type="number" id="override-year-inp" min="2020" max="2099" onchange="setOverrideMonth()" style="width:68px;padding:3px 6px;font-size:12px;border:1px solid var(--border);border-radius:4px;background:var(--surface);color:var(--text);">
+      </div>
     </div>
     <div class="staff-table-wrap">
       <table class="staff-tbl" id="staff-tbl">
@@ -3604,7 +3616,9 @@ let _copySelSi1  = null, _copySelCi1 = null;
 let _copySelSi2  = null, _copySelCi2 = null;
 let _copyDragging = false;
 let sumsMode     = 'all'; // 'all' | 'hidden' | 'hoursonly'
-let nastaveniMode = 'default'; // 'default' | 'monthly'
+let nastaveniMode     = 'default'; // 'default' | 'monthly'
+let overrideModeMonth = 1;
+let overrideModeYear  = 2026;
 
 function updateSubtoolbar() {
   const tab = document.querySelector('.tb-tab.active');
@@ -4579,7 +4593,11 @@ function sortStaffAlpha() {
 
 const MONTH_SHORT = ['','Led','Úno','Bře','Dub','Kvě','Čvn','Čvc','Srp','Zář','Říj','Lis','Pro'];
 
-function getMonthKey() { return `${state.year}-${state.month}`; }
+function getMonthKey() {
+  return nastaveniMode === 'monthly'
+    ? `${overrideModeYear}-${overrideModeMonth}`
+    : `${state.year}-${state.month}`;
+}
 
 function getEffective(s, field) {
   if (nastaveniMode === 'monthly') {
@@ -4613,14 +4631,35 @@ function clearMonthlyOverride(s, field) {
 
 function setNastaveniMode(mode) {
   nastaveniMode = mode;
+  if (mode === 'monthly') {
+    // Výchozí: nastavit na aktuální měsíc rozpisu
+    overrideModeMonth = state.month;
+    overrideModeYear  = state.year;
+    const mSel = document.getElementById('override-month-sel');
+    const ySel = document.getElementById('override-year-inp');
+    if (mSel) mSel.value = overrideModeMonth;
+    if (ySel) ySel.value = overrideModeYear;
+  }
   document.getElementById('mode-default-btn').classList.toggle('active', mode === 'default');
   document.getElementById('mode-monthly-btn').classList.toggle('active', mode === 'monthly');
+  const ctrl = document.getElementById('override-month-controls');
+  if (ctrl) ctrl.style.display = mode === 'monthly' ? 'flex' : 'none';
+  renderStaffTable();
+}
+
+function setOverrideMonth() {
+  const mSel = document.getElementById('override-month-sel');
+  const ySel = document.getElementById('override-year-inp');
+  overrideModeMonth = parseInt(mSel.value, 10);
+  overrideModeYear  = parseInt(ySel.value, 10) || state.year;
   renderStaffTable();
 }
 
 function updateModeMonthLabel() {
-  const el = document.getElementById('mode-month-label');
-  if (el) el.textContent = `${MONTH_SHORT[state.month] || state.month} ${state.year}`;
+  // aktualizuj selector pokud existuje
+  const mSel = document.getElementById('override-month-sel');
+  const ySel = document.getElementById('override-year-inp');
+  if (mSel && nastaveniMode !== 'monthly') { /* nechej jak je */ }
 }
 
 function sortStaff() {
