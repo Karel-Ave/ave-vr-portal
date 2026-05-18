@@ -388,6 +388,8 @@ table.sched-tbl {
   min-height: var(--sched-row-h);
   border-right: 2px solid var(--border);
 }
+/* Hotel panel hidden via class on table (more reliable than inline display on tbody) */
+.sched-tbl.hotels-hidden tbody.cov-tbody { display: none !important; }
 /* Note: do NOT add .cov-tbody td { background } here — it would override .cov-1/.cov-empty etc. */
 .cov-row td.cov-cell { font-size: 9px; text-align: center; padding: 0; }
 .cov-empty      { background: var(--col-cov0-bg,#ffebeb)  !important; color: var(--col-cov0-tx,#c0392b) !important; }
@@ -2394,9 +2396,9 @@ function renderScheduleTable(tableId, editable) {
     if (!hidden) _covVisRow++;
   });
 
-  // Sync hotel panel visibility with current showHotels state
-  // (renderScheduleTable always creates a visible covTbody — applyRowFilters hides it if needed)
-  applyRowFilters();
+  // Sync hotel panel visibility — class on table is the single source of truth
+  // (CSS rule .sched-tbl.hotels-hidden tbody.cov-tbody { display:none } handles it)
+  tbl.classList.toggle('hotels-hidden', !showHotels);
 
   if (editable) {
     setupKeyboardNav(tbl);
@@ -3758,7 +3760,7 @@ function refreshCoverageSticky() {
     const tbl = document.getElementById(tblId);
     if (!tbl) return;
     const covTbody = tbl.querySelector('tbody.cov-tbody');
-    if (!covTbody || covTbody.style.display === 'none') return;
+    if (!covTbody || tbl.classList.contains('hotels-hidden')) return;
     // Measure actual thead height — th-dn has padding-top:26px so it's taller than rowH.
     // If the table is in a hidden tab panel offsetHeight is 0 — skip and let switchTab retry.
     const thead = tbl.querySelector('thead');
@@ -3807,11 +3809,11 @@ function applyRowFilters() {
       }
       tr.classList.toggle('row-filtered', hide);
     });
-    // Coverage rows: hide all if showHotels=false, else filter by active hotel filter
-    const covTbodyEl = tbl.querySelector('tbody.cov-tbody');
-    if (covTbodyEl) {
-      covTbodyEl.style.display = !showHotels ? 'none' : '';
-      if (showHotels) {
+    // Coverage rows: toggle class on table — CSS handles display:none on covTbody
+    tbl.classList.toggle('hotels-hidden', !showHotels);
+    if (showHotels) {
+      const covTbodyEl = tbl.querySelector('tbody.cov-tbody');
+      if (covTbodyEl) {
         covTbodyEl.querySelectorAll('tr.cov-row').forEach(tr => {
           const letter = tr.dataset.covLetter;
           tr.classList.toggle('row-filtered', filterHotels.size > 0 && !filterHotels.has(letter));
