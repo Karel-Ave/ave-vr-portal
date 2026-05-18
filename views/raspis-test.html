@@ -391,7 +391,7 @@ table.sched-tbl {
 /* Hotel panel hidden via class on table (more reliable than inline display on tbody) */
 .sched-tbl.hotels-hidden tbody.cov-tbody { display: none !important; }
 /* Note: do NOT add .cov-tbody td { background } here — it would override .cov-1/.cov-empty etc. */
-.cov-row td.cov-cell { font-size: 9px; text-align: center; padding: 0; border-left: none; border-right: none; }
+.cov-row td.cov-cell { font-size: 9px; text-align: center; padding: 0; border-left: none !important; border-right: none !important; }
 .cov-empty      { background: var(--col-cov0-bg,#ffebeb)  !important; color: var(--col-cov0-tx,#c0392b) !important; }
 .cov-1          { background: var(--col-cov1-bg,#c8f5c8)  !important; color: var(--col-cov1-tx,#1a6b1a) !important; font-weight: 700; }
 .cov-2          { background: var(--col-cov2-bg,#ffe082)  !important; color: var(--col-cov2-tx,#7a5000) !important; font-weight: 700; }
@@ -2389,8 +2389,11 @@ function renderScheduleTable(tableId, editable) {
     tr.querySelectorAll('td, th').forEach(cell => {
       const _isName = cell.classList.contains('col-name-td');
       // Only set vertical sticky (top) on td — .cov-name-inner handles horizontal (left:0).
+      // Explicitly set left:auto to prevent Chrome bi-directional sticky bug
+      // (Chrome ignores top when left is set on the same element).
       cell.style.position = 'sticky';
       cell.style.top = topPx;
+      if (_isName) cell.style.left = 'auto';
       cell.style.zIndex = _isName ? '17' : '15';
       // Ensure solid background so staff rows don't bleed through
       if (!cell.style.background) cell.style.background = 'var(--surface)';
@@ -3551,9 +3554,8 @@ function restoreStbState() {
     // sumsMode
     const sm = sessionStorage.getItem('rt-stb-sumsMode');
     if (sm && sm !== 'all') { sumsMode = 'all'; setSumsMode(sm); }
-    // showHotels — toggle only if stored state differs from current default (false)
-    const _sh = sessionStorage.getItem('rt-stb-showHotels');
-    if (_sh !== null && (_sh === 'true') !== showHotels) { toggleHotelRows(); }
+    // showHotels — always start hidden regardless of session storage
+    // (user explicitly wants hotels panel hidden on every page load)
     // filterShift
     const fs = sessionStorage.getItem('rt-stb-filterShift');
     if (fs) { filterShift = null; filterByShift(fs); }
@@ -3779,6 +3781,7 @@ function refreshCoverageSticky() {
         // because Chrome ignores `top` when `left` is also set on the same td.
         cell.style.position = 'sticky';
         cell.style.top = topPx;
+        if (isName) cell.style.left = 'auto';
         cell.style.zIndex = isName ? '17' : '15';
         if (!cell.style.background) cell.style.background = 'var(--surface)';
       });
