@@ -788,8 +788,6 @@ tbody tr.row-filtered { display: none; }
         <input type="number" id="override-year-inp" min="2020" max="2099" onchange="setOverrideMonth()" style="width:68px;padding:3px 6px;font-size:12px;border:1px solid var(--border);border-radius:4px;background:var(--surface);color:var(--text);">
         <button id="btn-clear-month-overrides" class="mode-btn" style="color:#c00;border-color:#fcc;margin-left:6px;" onclick="clearMonthOverrides()" title="Smazat všechny přepisy pro tento měsíc">🗑 Smazat přepisy</button>
       </div>
-      <span style="border-left:1px solid var(--border);height:20px;"></span>
-      <button class="mode-btn" id="btn-clear-actual" title="Smazat Pozn. aktuální a Nemůže aktuálně u všech pracovníků" style="color:var(--text-muted);">🧹 Smazat aktuální</button>
     </div>
     <div id="override-info" style="display:none;">
       🗓 Editujete <strong>přepisy</strong> pro <strong id="override-info-label"></strong> — <span style="background:rgba(255,200,0,0.3);padding:0 3px;border-radius:2px;">žlutě podbarvená</span> pole platí jen pro tento měsíc, ostatní ukazují výchozí hodnotu.
@@ -814,10 +812,9 @@ tbody tr.row-filtered { display: none; }
         <tbody id="staff-tbody"></tbody>
       </table>
     </div>
-    <!-- Ostatní pracovníci: just name + type + action buttons -->
-    <div class="staff-section-sep" style="padding:12px 0 4px;display:flex;align-items:center;gap:10px;">
-      <span style="font-size:12px;font-weight:600;color:var(--text-muted);text-transform:uppercase;letter-spacing:.06em;">Ostatní pracovníci</span>
-      <button id="btn-add-staff" class="mode-btn" style="padding:3px 12px;font-size:11px;" title="Přidat nového pracovníka do Ostatní">+ Nový</button>
+    <!-- Ostatní: just name + type + action buttons -->
+    <div class="staff-section-sep" style="padding:12px 0 4px;">
+      <span style="font-size:12px;font-weight:600;color:var(--text-muted);text-transform:uppercase;letter-spacing:.06em;">Ostatní</span>
     </div>
     <div class="staff-table-wrap" style="width:fit-content;min-width:0;overflow-x:visible;">
       <table class="staff-tbl" id="staff-tbl-special" style="width:auto;min-width:0;">
@@ -826,7 +823,7 @@ tbody tr.row-filtered { display: none; }
             <th class="col-num">#</th>
             <th style="min-width:180px;text-align:left;padding:7px 8px;">Jméno</th>
             <th class="col-type">Typ</th>
-            <th class="col-save"></th>
+            <th class="col-save"><button id="btn-add-staff" class="mode-btn" style="padding:2px 8px;font-size:11px;" title="Přidat nového pracovníka">+ Nový</button></th>
           </tr>
         </thead>
         <tbody id="staff-tbody-special"></tbody>
@@ -2675,7 +2672,11 @@ function renderStaffTable() {
     maxInp.type = 'text'; maxInp.value = maxVal || '';
     maxInp.placeholder = '';
     if (!maxOvr && nastaveniMode === 'monthly') maxInp.style.color = 'var(--text-muted)';
-    maxInp.addEventListener('input', () => { setFieldValue(s, 'maxHrs', maxInp.value); const _si = state.staff.findIndex(x => x.userId === s.userId); if (_si >= 0) updateSumRow(_si); });
+    maxInp.addEventListener('input', () => {
+      setFieldValue(s, 'maxHrs', maxInp.value);
+      const _si = state.staff.findIndex(x => x.userId === s.userId); if (_si >= 0) updateSumRow(_si);
+      if (nastaveniMode === 'monthly') { const ov = getEffective(s, 'maxHrs'); maxTd.classList.toggle('override-cell', ov.overridden); maxInp.style.color = ov.overridden ? '' : 'var(--text-muted)'; }
+    });
     maxTd.appendChild(maxInp);
     if (maxOvr && nastaveniMode === 'monthly') {
       const clr = document.createElement('button');
@@ -2732,15 +2733,9 @@ function renderStaffTable() {
       setFieldValue(s, 'noteM', noteMArea.value);
       noteMArea.style.height = 'auto';
       noteMArea.style.height = noteMArea.scrollHeight + 'px';
+      if (nastaveniMode === 'monthly') { const ov = getEffective(s, 'noteM'); noteMTd.classList.toggle('override-cell', ov.overridden); noteMArea.style.color = ov.overridden ? '' : 'var(--text-muted)'; }
     });
     noteMTd.appendChild(noteMArea);
-    if (noteMOvr && nastaveniMode === 'monthly') {
-      const clr = document.createElement('button');
-      clr.className = 'btn-ovr-clear'; clr.textContent = '×'; clr.title = 'Smazat přepis';
-      clr.style.display = 'block'; clr.style.marginTop = '2px';
-      clr.addEventListener('click', e => { e.stopPropagation(); clearMonthlyOverride(s, 'noteM'); renderStaffTable(); });
-      noteMTd.appendChild(clr);
-    }
     tr.appendChild(noteMTd);
 
     // Note permanent (noteP)
@@ -2756,15 +2751,9 @@ function renderStaffTable() {
       setFieldValue(s, 'noteP', notePArea.value);
       notePArea.style.height = 'auto';
       notePArea.style.height = notePArea.scrollHeight + 'px';
+      if (nastaveniMode === 'monthly') { const ov = getEffective(s, 'noteP'); notePTd.classList.toggle('override-cell', ov.overridden); notePArea.style.color = ov.overridden ? '' : 'var(--text-muted)'; }
     });
     notePTd.appendChild(notePArea);
-    if (notePOvr && nastaveniMode === 'monthly') {
-      const clr = document.createElement('button');
-      clr.className = 'btn-ovr-clear'; clr.textContent = '×'; clr.title = 'Smazat přepis';
-      clr.style.display = 'block'; clr.style.marginTop = '2px';
-      clr.addEventListener('click', e => { e.stopPropagation(); clearMonthlyOverride(s, 'noteP'); renderStaffTable(); });
-      notePTd.appendChild(clr);
-    }
     tr.appendChild(notePTd);
 
     // No action buttons for recepční
@@ -5305,7 +5294,6 @@ document.addEventListener('DOMContentLoaded', async () => {
 
   // ── Nastavení actions ──
   document.getElementById('btn-add-staff').addEventListener('click', addStaff);
-  document.getElementById('btn-clear-actual').addEventListener('click', clearActual);
   document.getElementById('btn-hotel-manager').addEventListener('click', showHotelManager);
 
   // Přepnutí měsíce/roku
