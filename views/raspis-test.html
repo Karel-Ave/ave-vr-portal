@@ -2877,7 +2877,12 @@ function applyData(data) {
   if (!data) return;
 
   // ── Sdílená data (pracovníci, hotely) ──
-  if (data.staff) state.staff = data.staff;
+  // Načti POUZE speciální pracovníky (bez userId) — portáloví uživatelé se vždy stahují čerstvě z API.
+  // Starý draft mohl obsahovat záznamy bez userId, které nejsou speciálního typu → zahodíme je.
+  {
+    const SPECIAL_LOAD = new Set(['Vedoucí', 'Pohotovost', 'Speciální']);
+    state.staff = (data.staff || []).filter(s => !s.userId && SPECIAL_LOAD.has(s.type));
+  }
   state.portalCustomData = data.portalCustomData || {};
   state.hrsColorOverride = data.hrsColorOverride || {};
   if (data.hotels && data.hotels.length) {
@@ -2992,7 +2997,7 @@ async function syncRaspisStaff() {
         regular:  custom.regular || '',
         hotel:    custom.hotel   || '',
         monthlyOverrides: custom.monthlyOverrides ? JSON.parse(JSON.stringify(custom.monthlyOverrides)) : {},
-        inactive: !as.active,
+        inactive: false, // API vrací pouze aktivní uživatele (filtruje rs.active === true na serveru)
       });
     }
 
