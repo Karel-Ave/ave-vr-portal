@@ -720,8 +720,6 @@ tbody tr.row-filtered { display: none; }
     <button class="tb-btn" id="btn-add-staff">+ Přidat Ostatní</button>
     <button class="tb-btn" id="btn-clear-actual">Smazat aktuální</button>
     <button class="tb-btn" id="btn-hotel-manager">🏨 Hotely</button>
-    <button class="tb-btn" id="btn-load-master">Načíst z master</button>
-    <button class="tb-btn" id="btn-size-nastaveni" title="Nastavení velikosti tabulky">⊞ Velikost</button>
   </div>
 
   <!-- Tvorba actions -->
@@ -736,7 +734,6 @@ tbody tr.row-filtered { display: none; }
     <button class="tb-btn" id="btn-draft-trash">Koš</button>
     <span id="autosave-ind"></span>
     <input type="file" id="xls-file-input" accept=".xls,.xlsx" style="display:none">
-    <button class="tb-btn" id="btn-size-tvorba" title="Nastavení velikosti tabulky">⊞ Velikost</button>
   </div>
 
   <!-- Rozpis VR actions -->
@@ -752,7 +749,6 @@ tbody tr.row-filtered { display: none; }
     <button class="tb-btn" id="btn-lock">🔒 Zamknout</button>
     <span id="lock-info"></span>
     <button class="tb-btn" id="btn-export-xlsx">Export .xlsx</button>
-    <button class="tb-btn" id="btn-size-rozpis" title="Nastavení velikosti tabulky">⊞ Velikost</button>
   </div>
 
   <div class="tb-spacer"></div>
@@ -2545,7 +2541,8 @@ function setCellValue(si, ci, val) {
 
 function renderStaffTable() {
   const SPECIAL_TYPES = new Set(['Vedoucí', 'Pohotovost', 'Speciální']);
-  const isSpecial = s => !s.userId && SPECIAL_TYPES.has(s.type);
+  // Speciální pracovník = typ Vedoucí/Pohotovost/Speciální (bez ohledu na userId)
+  const isSpecial = s => SPECIAL_TYPES.has(s.type);
 
   const tbody = document.getElementById('staff-tbody');
   tbody.innerHTML = '';
@@ -2739,7 +2736,8 @@ function renderStaffTable() {
     const saveTd = document.createElement('td');
     saveTd.className = 'col-save';
     saveTd.style.whiteSpace = 'nowrap';
-    if (!s.userId) {
+    if (!s.userId || SPECIAL_TYPES.has(s.type)) {
+      // Edit: vždy pro záznamy bez portálového účtu + vždy pro speciální pracovníky
       const editBtn = document.createElement('button');
       editBtn.textContent = '✏'; editBtn.className = 'btn-row-act';
       editBtn.title = 'Upravit';
@@ -5124,8 +5122,6 @@ document.addEventListener('DOMContentLoaded', async () => {
   document.getElementById('btn-add-staff').addEventListener('click', addStaff);
   document.getElementById('btn-clear-actual').addEventListener('click', clearActual);
   document.getElementById('btn-hotel-manager').addEventListener('click', showHotelManager);
-  document.getElementById('btn-load-master').addEventListener('click', loadMasterStaff);
-  document.getElementById('btn-size-nastaveni').addEventListener('click', showSizeEditor);
 
   // Přepnutí měsíce/roku
   document.getElementById('sel-month-year').addEventListener('change', async () => {
@@ -5170,7 +5166,6 @@ document.addEventListener('DOMContentLoaded', async () => {
   document.getElementById('btn-template-dl').addEventListener('click', downloadTemplate);
   document.getElementById('btn-import-xls').addEventListener('click', importXls);
   document.getElementById('xls-file-input').addEventListener('change', handleXlsImport);
-  document.getElementById('btn-size-tvorba').addEventListener('click', showSizeEditor);
 
   // ── Rozpis VR actions ──
   document.getElementById('pub-sel').addEventListener('change', e => {
@@ -5186,7 +5181,6 @@ document.addEventListener('DOMContentLoaded', async () => {
     if (lockOwned) releaseLock(); else acquireLock();
   });
   document.getElementById('btn-export-xlsx').addEventListener('click', exportXlsx);
-  document.getElementById('btn-size-rozpis').addEventListener('click', showSizeEditor);
 
   // ── Trash modal (drafts) ──
   document.getElementById('trash-close').addEventListener('click', () => {
@@ -5276,8 +5270,7 @@ document.addEventListener('DOMContentLoaded', async () => {
   document.addEventListener('click', e => {
     if (!sizePanelOpen) return;
     const panel = document.getElementById('size-panel');
-    if (!panel.contains(e.target) &&
-        !e.target.matches('#btn-size-nastaveni,#btn-size-tvorba,#btn-size-rozpis')) {
+    if (!panel.contains(e.target)) {
       panel.classList.remove('show');
       sizePanelOpen = false;
     }
