@@ -731,12 +731,8 @@ tbody tr.row-filtered { display: none; }
 
   <div class="tb-sep"></div>
 
-  <!-- Nastavení actions -->
-  <div class="tb-actions" id="tb-act-nastaveni">
-    <button class="tb-btn" id="btn-hotel-manager">🏨 Hotely</button>
-    <button class="tb-btn" id="btn-add-staff">+ Přidat Ostatní</button>
-    <button class="tb-btn" id="btn-clear-actual">Smazat aktuální</button>
-  </div>
+  <!-- Nastavení actions — prázdné, tlačítka přesunuta do mode baru a Ostatní sekce -->
+  <div class="tb-actions hidden" id="tb-act-nastaveni"></div>
 
   <!-- Tvorba actions -->
   <div class="tb-actions hidden" id="tb-act-tvorba">
@@ -775,6 +771,8 @@ tbody tr.row-filtered { display: none; }
 <div class="tab-panel" id="tab-nastaveni">
   <div class="wrap">
     <div id="nastaveni-mode-bar">
+      <button class="mode-btn" id="btn-hotel-manager">🏨 Hotely</button>
+      <span style="border-left:1px solid var(--border);height:20px;"></span>
       <button id="mode-default-btn" class="mode-btn active" onclick="setNastaveniMode('default')">📌 Výchozí</button>
       <button id="mode-monthly-btn" class="mode-btn" onclick="setNastaveniMode('monthly')">🗓 Přepisy</button>
       <div id="override-month-controls" style="display:none;align-items:center;gap:4px;">
@@ -790,6 +788,8 @@ tbody tr.row-filtered { display: none; }
         <input type="number" id="override-year-inp" min="2020" max="2099" onchange="setOverrideMonth()" style="width:68px;padding:3px 6px;font-size:12px;border:1px solid var(--border);border-radius:4px;background:var(--surface);color:var(--text);">
         <button id="btn-clear-month-overrides" class="mode-btn" style="color:#c00;border-color:#fcc;margin-left:6px;" onclick="clearMonthOverrides()" title="Smazat všechny přepisy pro tento měsíc">🗑 Smazat přepisy</button>
       </div>
+      <span style="border-left:1px solid var(--border);height:20px;"></span>
+      <button class="mode-btn" id="btn-clear-actual" title="Smazat Pozn. aktuální a Nemůže aktuálně u všech pracovníků" style="color:var(--text-muted);">🧹 Smazat aktuální</button>
     </div>
     <div id="override-info" style="display:none;">
       🗓 Editujete <strong>přepisy</strong> pro <strong id="override-info-label"></strong> — <span style="background:rgba(255,200,0,0.3);padding:0 3px;border-radius:2px;">žlutě podbarvená</span> pole platí jen pro tento měsíc, ostatní ukazují výchozí hodnotu.
@@ -815,8 +815,9 @@ tbody tr.row-filtered { display: none; }
       </table>
     </div>
     <!-- Ostatní pracovníci: just name + type + action buttons -->
-    <div class="staff-section-sep" style="padding:12px 0 4px;">
+    <div class="staff-section-sep" style="padding:12px 0 4px;display:flex;align-items:center;gap:10px;">
       <span style="font-size:12px;font-weight:600;color:var(--text-muted);text-transform:uppercase;letter-spacing:.06em;">Ostatní pracovníci</span>
+      <button id="btn-add-staff" class="mode-btn" style="padding:3px 12px;font-size:11px;" title="Přidat nového pracovníka do Ostatní">+ Nový</button>
     </div>
     <div class="staff-table-wrap" style="width:fit-content;min-width:0;overflow-x:visible;">
       <table class="staff-tbl" id="staff-tbl-special" style="width:auto;min-width:0;">
