@@ -550,7 +550,7 @@ async function init() {
         ['VRAM',    'Vránek Matyáš',            'Denní', 'DPP'],
       ];
       for (const [login, name, type, contract] of RECEPTIONIST_SEED) {
-        const hash = bcrypt.hashSync(login + '123', 10);
+        const hash = await bcrypt.hash(login + '123', 10);
         const { rows: ins } = await db.query(
           `INSERT INTO users (name, username, password_hash, role)
            VALUES ($1, $2, $3, 'vedoucí')
