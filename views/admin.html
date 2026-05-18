@@ -317,6 +317,28 @@
         </div>
         <div class="raspis-row">
           <div class="form-group">
+            <label>Login kód <span style="font-weight:400;color:var(--text-muted)">(MABS, ANTD…)</span></label>
+            <input type="text" id="raspis-login" placeholder="pr. MABS" style="text-transform:uppercase">
+          </div>
+          <div class="form-group" style="display:flex;gap:8px;">
+            <div style="flex:1">
+              <label>Typ</label>
+              <select id="raspis-type">
+                <option value="">— žádný —</option>
+                <option>Denní</option><option>Noční</option><option>Obojí</option>
+              </select>
+            </div>
+            <div style="flex:1">
+              <label>Smlouva</label>
+              <select id="raspis-contract">
+                <option value="">—</option>
+                <option>HPP</option><option>ZPP</option><option>DPČ</option><option>DPP</option>
+              </select>
+            </div>
+          </div>
+        </div>
+        <div class="raspis-row">
+          <div class="form-group">
             <label>Aktivní od</label>
             <div class="date-pair">
               <select id="raspis-from-month"></select>
@@ -913,6 +935,9 @@
     document.getElementById('raspis-body').style.display = 'none';
     document.getElementById('raspis-expand').classList.remove('open');
     document.getElementById('raspis-name').value = defaultName || '';
+    document.getElementById('raspis-login').value = '';
+    document.getElementById('raspis-type').value = '';
+    document.getElementById('raspis-contract').value = '';
     document.getElementById('raspis-from-month').value = now.getMonth() + 1;
     document.getElementById('raspis-from-year').value = now.getFullYear();
     document.getElementById('raspis-until-month').value = '';
@@ -922,6 +947,9 @@
   function populateRaspisFields(rs) {
     if (!rs) return;
     document.getElementById('raspis-name').value = rs.displayName || '';
+    document.getElementById('raspis-login').value = rs.login || '';
+    document.getElementById('raspis-type').value = rs.type || '';
+    document.getElementById('raspis-contract').value = rs.contract || '';
     if (rs.activeFrom) {
       document.getElementById('raspis-from-month').value = rs.activeFrom.month;
       document.getElementById('raspis-from-year').value  = rs.activeFrom.year;
@@ -983,6 +1011,9 @@
       current.raspis_staff = {
         active,
         displayName,
+        login:       document.getElementById('raspis-login').value.trim().toUpperCase(),
+        type:        document.getElementById('raspis-type').value,
+        contract:    document.getElementById('raspis-contract').value,
         activeFrom:  (fMonth && fYear)  ? { month: fMonth,  year: fYear  } : null,
         activeUntil: (uMonth && uYear)  ? { month: uMonth,  year: uYear  } : null
       };

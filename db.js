@@ -477,6 +477,105 @@ async function init() {
     console.log('Vytvořen výchozí admin: Karel-Ave / Karel.AVE');
   }
 
+  // ── Receptionist user accounts migration ─────────────────────────────────────
+  {
+    const { rows: recCheck } = await db.query("SELECT COUNT(*) AS cnt FROM users WHERE username = 'MABS'");
+    if (parseInt(recCheck.rows[0].cnt, 10) === 0) {
+      const bcrypt = require('bcryptjs');
+      const RECEPTIONIST_SEED = [
+        ['MABS',    'Absolon Marek',           'Denní', 'DPP'],
+        ['ANTD',    'Antipin Dmitrii',          'Noční', 'HPP'],
+        ['AUGP',    'Augustin Patrik',          'Denní', 'HPP'],
+        ['BAID',    'Baiduk Dmytrii',           'Obojí', 'HPP'],
+        ['MINA',    'Bartošková Mína',          'Denní', 'DPP'],
+        ['LIZA',    'Bendos Elizaveta',         'Obojí', 'HPP'],
+        ['BST',     'Beránek Stanislav',        'Denní', 'HPP'],
+        ['BERN',    'Bernat Luboš',             'Denní', 'DPČ'],
+        ['BICI',    'Bičišťová Klaudie',        'Denní', 'HPP'],
+        ['RADEK',   'Blahout Radek',            'Denní', 'HPP'],
+        ['BOGD',    'Bogdanovich Olesia',       'Noční', 'ZPP'],
+        ['BRIS',    'Brisudová Anna',           'Noční', 'ZPP'],
+        ['BRO',     'Brovko Vjačeslav',         'Denní', 'HPP'],
+        ['BURD',    'Burda Tomáš',              'Noční', 'HPP'],
+        ['GLEB',    'Buslaev Gleb',             'Denní', 'DPP'],
+        ['CIPL',    'Ciple Anna Maria',         'Noční', 'HPP'],
+        ['CAD',     'Čada Štěpán',              'Denní', 'HPP'],
+        ['CEH',     'Čermáková Helena',         'Denní', 'ZPP'],
+        ['CERN',    'Černocká Marie',           'Denní', 'DPČ'],
+        ['DOGM',    'Dognal Mark',              'Noční', 'HPP'],
+        ['DUBI',    'Dubinina Viktorie',        'Noční', 'HPP'],
+        ['FAL',     'Fialová Alena',            'Denní', 'HPP'],
+        ['FORT',    'Fořt David',               'Noční', 'HPP'],
+        ['HOP',     'Hoppeová Klára',           'Denní', 'HPP'],
+        ['HUDK',    'Hudečková Kateřina',       'Denní', 'DPČ'],
+        ['GIUS',    'Ielitro Giuseppe',         'Denní', 'HPP'],
+        ['SASHA',   'Ivanov Alexandr',          'Noční', 'HPP'],
+        ['JANAJ',   'Juklová Jana',             'Denní', 'ZPP'],
+        ['KLIM',    'Klimchenko Darya',         'Denní', 'HPP'],
+        ['KOCH',    'Kochurikhina Valeriia',    'Noční', 'HPP'],
+        ['KONO',    'Konovalenko Yuriy',        'Denní', 'HPP'],
+        ['KRJ',     'Korejs Martin',            'Noční', 'HPP'],
+        ['KOAL',    'Kovářová Alice',           'Denní', 'HPP'],
+        ['KUK',     'Kukelková Martina',        'Denní', 'HPP'],
+        ['KUUL',    'Kuular Saiana',            'Noční', 'HPP'],
+        ['LESL',    'Lesnichenka Liza',         'Denní', 'DPČ'],
+        ['LINH',    'Linhartová Jana',          'Denní', 'ZPP'],
+        ['LITV',    'Litvínov Vladimír',        'Obojí', 'HPP'],
+        ['MAKH',    'Makhanova Malika',         'Noční', 'HPP'],
+        ['MOTE',    'Motejlková Barbora',       'Denní', 'HPP'],
+        ['JAROSLAV','Nechvátal Jaroslav',       'Noční', 'HPP'],
+        ['NERM',    'Nermesanová Manuela',      'Obojí', 'HPP'],
+        ['NGUY',    'Nguyen Thi Nhung',         'Noční', 'ZPP'],
+        ['ROMANA',  'Nováková Romana',          'Denní', 'HPP'],
+        ['PAVE',    'Pavelka Filip',            'Denní', 'HPP'],
+        ['PESS',    'Pešek Stanislav',          'Noční', 'DPČ'],
+        ['POLA',    'Polášková Blanka',         'Denní', 'HPP'],
+        ['PROA',    'Prokhorian Anna',          'Denní', 'HPP'],
+        ['SKR',     'Skřivánek Jan',            'Denní', 'HPP'],
+        ['SMOK',    'Smolová Kristýna',         'Noční', 'DPČ'],
+        ['SMJ',     'Smrčková Jitka',           'Denní', 'ZPP'],
+        ['SEZ',     'Smutná Petra',             'Denní', 'HPP'],
+        ['OLES',    'Stalchenko Oleksandra',    'Obojí', 'HPP'],
+        ['STEN',    'Stéblová Natálie',         'Denní', 'DPP'],
+        ['IVAS',    'Stempak Ivan',             'Noční', 'DPČ'],
+        ['SMEI',    'Šmejkalová Iva',           'Noční', 'HPP'],
+        ['STEO',    'Štěpánek Ondřej',          'Denní', 'HPP'],
+        ['JUN',     'Štochlová Gabriela',       'Denní', 'HPP'],
+        ['TATA',    'Tatara Juraj',             'Denní', 'ZPP'],
+        ['THA',     'Tremlová Hana',            'Denní', 'HPP'],
+        ['TSAR',    'Tsarkov Valentin',         'Noční', 'HPP'],
+        ['VALE',    'Valeyeva Kristina',        'Denní', 'HPP'],
+        ['ALEKS',   'Viktorenkov Aleksei',      'Noční', 'HPP'],
+        ['VORO',    'Voropaeva Anastasiia',     'Obojí', 'HPP'],
+        ['VRAM',    'Vránek Matyáš',            'Denní', 'DPP'],
+      ];
+      for (const [login, name, type, contract] of RECEPTIONIST_SEED) {
+        const hash = bcrypt.hashSync(login + '123', 10);
+        const { rows: ins } = await db.query(
+          `INSERT INTO users (name, username, password_hash, role)
+           VALUES ($1, $2, $3, 'vedoucí')
+           ON CONFLICT (username) DO NOTHING
+           RETURNING id`,
+          [name, login, hash]
+        );
+        if (ins.length > 0) {
+          const overrides = JSON.stringify({
+            raspis_staff: {
+              active: true,
+              displayName: name,
+              login,
+              type,
+              contract,
+              activeFrom: { month: 5, year: 2026 }
+            }
+          });
+          await db.query('UPDATE users SET perm_overrides = $1 WHERE id = $2', [overrides, ins[0].id]);
+        }
+      }
+      console.log('Seed: vytvořeno', RECEPTIONIST_SEED.length, 'účtů recepčních.');
+    }
+  }
+
   console.log('Databáze připravena.');
 }
 

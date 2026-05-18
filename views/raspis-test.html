@@ -122,6 +122,18 @@ table.staff-tbl {
 }
 .staff-tbl .col-note textarea:focus { outline: 1px solid var(--accent); border-radius: 3px; resize: vertical; }
 .staff-tbl .col-save { width: 60px; text-align: center; }
+.staff-section-sep td { padding: 0; }
+.staff-section-header {
+  background: var(--surface-alt);
+  padding: 5px 8px !important;
+  font-size: 10px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: .06em;
+  color: var(--text-muted);
+  border-top: 2px solid var(--border);
+  user-select: none;
+}
 
 /* Size editor panel */
 .size-panel {
@@ -705,7 +717,7 @@ tbody tr.row-filtered { display: none; }
 
   <!-- Nastavení actions -->
   <div class="tb-actions" id="tb-act-nastaveni">
-    <button class="tb-btn" id="btn-add-staff">+ Přidat</button>
+    <button class="tb-btn" id="btn-add-staff">+ Přidat Ostatní</button>
     <button class="tb-btn" id="btn-clear-actual">Smazat aktuální</button>
     <button class="tb-btn" id="btn-hotel-manager">🏨 Hotely</button>
     <button class="tb-btn" id="btn-load-master">Načíst z master</button>
@@ -2532,9 +2544,25 @@ function setCellValue(si, ci, val) {
 ══════════════════════════════════════════════════════════════════════════════ */
 
 function renderStaffTable() {
+  const SPECIAL_TYPES = new Set(['Vedoucí', 'Pohotovost', 'Speciální']);
+  const isSpecial = s => !s.userId && SPECIAL_TYPES.has(s.type);
+
   const tbody = document.getElementById('staff-tbody');
   tbody.innerHTML = '';
+  let separatorInserted = false;
+
   state.staff.forEach((s, si) => {
+    // Insert separator before first special worker
+    if (!separatorInserted && isSpecial(s)) {
+      separatorInserted = true;
+      const sepTr = document.createElement('tr');
+      sepTr.className = 'staff-section-sep';
+      sepTr.innerHTML = `<td colspan="11" class="staff-section-header">
+        <span>Ostatní pracovníci</span>
+      </td>`;
+      tbody.appendChild(sepTr);
+    }
+
     const tr = document.createElement('tr');
     tr.dataset.si = si;
     if (s.inactive) tr.classList.add('row-inactive');
@@ -2567,7 +2595,6 @@ function renderStaffTable() {
     nameInp.type = 'text'; nameInp.value = s.name || '';
     nameInp.placeholder = '';
     if (s.userId) {
-      // Jméno přichází ze Správy uživatelů — nelze editovat lokálně
       nameInp.readOnly = true;
       nameInp.title = 'Jméno se synchronizuje ze Správy uživatelů';
     } else {
@@ -2576,46 +2603,70 @@ function renderStaffTable() {
     nameTd.appendChild(nameInp);
     tr.appendChild(nameTd);
 
-    // Login
+    // Login — read-only for userId entries
     const loginTd = document.createElement('td');
     loginTd.className = 'col-login';
-    const loginInp = document.createElement('input');
-    loginInp.type = 'text'; loginInp.value = s.login || '';
-    loginInp.style.textTransform = 'uppercase'; loginInp.maxLength = 10;
-    loginInp.addEventListener('input', () => { s.login = loginInp.value; });
-    loginTd.appendChild(loginInp);
+    if (s.userId) {
+      const loginSpan = document.createElement('span');
+      loginSpan.textContent = s.login || '';
+      loginSpan.style.cssText = 'font-size:11px;color:var(--text-muted);padding:0 2px;font-family:monospace;';
+      loginSpan.title = 'Login se spravuje ve Správě uživatelů';
+      loginTd.appendChild(loginSpan);
+    } else {
+      const loginInp = document.createElement('input');
+      loginInp.type = 'text'; loginInp.value = s.login || '';
+      loginInp.style.textTransform = 'uppercase'; loginInp.maxLength = 10;
+      loginInp.addEventListener('input', () => { s.login = loginInp.value; });
+      loginTd.appendChild(loginInp);
+    }
     tr.appendChild(loginTd);
 
-    // Type
+    // Type — read-only for userId entries
     const typeTd = document.createElement('td');
     typeTd.className = 'col-type';
-    const typeSel = document.createElement('select');
-    STAFF_TYPES.forEach(t => {
-      const opt = document.createElement('option');
-      opt.value = t; opt.textContent = t || '(žádný)';
-      if (s.type === t) opt.selected = true;
-      typeSel.appendChild(opt);
-    });
-    typeSel.addEventListener('change', () => {
-      s.type = typeSel.value;
-      const c2 = TYPE_COLORS[s.type] || '';
-      nameTd.style.background = c2;
-    });
-    typeTd.appendChild(typeSel);
+    if (s.userId) {
+      const typeSpan = document.createElement('span');
+      typeSpan.textContent = s.type || '';
+      typeSpan.style.cssText = 'font-size:11px;color:var(--text-muted);padding:0 2px;';
+      typeSpan.title = 'Typ se spravuje ve Správě uživatelů';
+      typeTd.appendChild(typeSpan);
+    } else {
+      const typeSel = document.createElement('select');
+      STAFF_TYPES.forEach(t => {
+        const opt = document.createElement('option');
+        opt.value = t; opt.textContent = t || '(žádný)';
+        if (s.type === t) opt.selected = true;
+        typeSel.appendChild(opt);
+      });
+      typeSel.addEventListener('change', () => {
+        s.type = typeSel.value;
+        const c2 = TYPE_COLORS[s.type] || '';
+        nameTd.style.background = c2;
+      });
+      typeTd.appendChild(typeSel);
+    }
     tr.appendChild(typeTd);
 
-    // Contract
+    // Contract — read-only for userId entries
     const conTd = document.createElement('td');
     conTd.className = 'col-contract';
-    const conSel = document.createElement('select');
-    CONTRACTS.forEach(c => {
-      const opt = document.createElement('option');
-      opt.value = c; opt.textContent = c || '—';
-      if (s.contract === c) opt.selected = true;
-      conSel.appendChild(opt);
-    });
-    conSel.addEventListener('change', () => { s.contract = conSel.value; updateSumRow(si); });
-    conTd.appendChild(conSel);
+    if (s.userId) {
+      const conSpan = document.createElement('span');
+      conSpan.textContent = s.contract || '';
+      conSpan.style.cssText = 'font-size:11px;color:var(--text-muted);padding:0 2px;';
+      conSpan.title = 'Smlouva se spravuje ve Správě uživatelů';
+      conTd.appendChild(conSpan);
+    } else {
+      const conSel = document.createElement('select');
+      CONTRACTS.forEach(c => {
+        const opt = document.createElement('option');
+        opt.value = c; opt.textContent = c || '—';
+        if (s.contract === c) opt.selected = true;
+        conSel.appendChild(opt);
+      });
+      conSel.addEventListener('change', () => { s.contract = conSel.value; updateSumRow(si); });
+      conTd.appendChild(conSel);
+    }
     tr.appendChild(conTd);
 
     // MaxHrs
@@ -2688,25 +2739,37 @@ function renderStaffTable() {
     const saveTd = document.createElement('td');
     saveTd.className = 'col-save';
     saveTd.style.whiteSpace = 'nowrap';
-    const editBtn = document.createElement('button');
-    editBtn.textContent = '✏'; editBtn.className = 'btn-row-act';
-    editBtn.title = 'Upravit';
-    editBtn.addEventListener('click', () => showEditStaffModal(si));
+    if (!s.userId) {
+      const editBtn = document.createElement('button');
+      editBtn.textContent = '✏'; editBtn.className = 'btn-row-act';
+      editBtn.title = 'Upravit';
+      editBtn.addEventListener('click', () => showEditStaffModal(si));
+      if (!s.inactive) saveTd.appendChild(editBtn);
+    }
     const delBtn = document.createElement('button');
     delBtn.textContent = '✕'; delBtn.className = 'btn-row-act btn-row-del';
-    delBtn.title = 'Odebrat';
+    delBtn.title = s.userId ? 'Deaktivovat (správa v Správě uživatelů)' : 'Odebrat';
     delBtn.addEventListener('click', () => {
       if (!confirm(`Odebrat pracovníka "${s.name || si+1}"?`)) return;
       state.staff.splice(si, 1);
       sortStaffAlpha();
       renderStaffTable();
     });
-    if (!s.inactive) saveTd.appendChild(editBtn);
     saveTd.appendChild(delBtn);
     tr.appendChild(saveTd);
 
     tbody.appendChild(tr);
   });
+
+  // If no special workers exist yet, still show the section header
+  if (!separatorInserted) {
+    const sepTr = document.createElement('tr');
+    sepTr.className = 'staff-section-sep';
+    sepTr.innerHTML = `<td colspan="11" class="staff-section-header">
+      <span>Ostatní pracovníci</span>
+    </td>`;
+    tbody.appendChild(sepTr);
+  }
 }
 
 /* ══════════════════════════════════════════════════════════════════════════════
@@ -2857,14 +2920,20 @@ async function syncRaspisStaff() {
         if (JSON.stringify(ex.activeFrom  || null) !== afNew) { ex.activeFrom  = as.activeFrom  || null; changed = true; }
         if (JSON.stringify(ex.activeUntil || null) !== auNew) { ex.activeUntil = as.activeUntil || null; changed = true; }
         if (ex.inactive) { delete ex.inactive; changed = true; }
+        if (ex.login    !== (as.login    || '')) { ex.login    = as.login    || ''; changed = true; }
+        if (ex.type     !== (as.type     || '')) { ex.type     = as.type     || ''; changed = true; }
+        if (ex.contract !== (as.contract || '')) { ex.contract = as.contract || ''; changed = true; }
       } else {
         state.staff.push({
           userId:      as.userId,
           name:        as.displayName || '',
+          login:       as.login       || '',
+          type:        as.type        || '',
+          contract:    as.contract    || '',
           activeFrom:  as.activeFrom  || null,
           activeUntil: as.activeUntil || null,
-          contract: '', maxHrs: '', regular: '',
-          hotel: '', dates: '', noteM: '', noteP: '', type: '',
+          maxHrs: '', regular: '',
+          hotel: '', dates: '', noteM: '', noteP: '',
         });
         changed = true;
       }
@@ -4330,6 +4399,15 @@ function showAddStaffModal() {
   document.getElementById('ns-contract').value = '';
   document.getElementById('ns-active-month').value = state.month;
   document.getElementById('ns-active-year').value = state.year;
+  // Omez typ na Ostatní pracovníky (Vedoucí/Pohotovost/Speciální)
+  const nsType = document.getElementById('ns-type');
+  nsType.innerHTML = '<option value="">— vyberte —</option><option>Vedoucí</option><option>Pohotovost</option><option>Speciální</option>';
+  // Skryj login pole (Ostatní nemají login)
+  const nsLoginField = document.getElementById('ns-login').closest('.field');
+  if (nsLoginField) nsLoginField.style.display = 'none';
+  // Skryj smlouvu
+  const nsContractField = document.getElementById('ns-contract').closest('.field');
+  if (nsContractField) nsContractField.style.display = 'none';
   document.getElementById('overlay-add-staff').classList.add('show');
   setTimeout(() => document.getElementById('ns-name').focus(), 100);
 }

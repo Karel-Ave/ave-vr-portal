@@ -3113,8 +3113,11 @@ app.get('/api/raspis-staff', requireLogin, async (req, res) => {
       const rs = overrides?.raspis_staff;
       if (rs && rs.active) {
         raspisUsers.push({
-          userId: u.id,
+          userId:      u.id,
           displayName: rs.displayName || u.name,
+          login:       rs.login       || '',
+          type:        rs.type        || '',
+          contract:    rs.contract    || '',
           activeFrom:  rs.activeFrom  || null,
           activeUntil: rs.activeUntil || null
         });
