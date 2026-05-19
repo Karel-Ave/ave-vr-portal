@@ -4588,6 +4588,7 @@ function confirmAddStaff() {
   sortStaffAlpha();
   renderStaffTable();
   toast(`Přidán: ${name}`);
+  scheduleAutoSave(); // Okamžitě naplánuj uložení, aby pracovník zůstal i po reloadu
 }
 
 /* ══════════════════════════════════════════════════════════════════════════════
@@ -5110,11 +5111,36 @@ function handleXlsImport(e) {
       // newSi = index into newStaff (consecutive, skips blank trailing rows).
       // Must use newSi (not the forEach si) for schedule keys so that
       // newSchedule[`${newSi}_ci`] always corresponds to newStaff[newSi].
+
+      // Build name→entry lookup of ALL current staff (for robust name-based matching).
+      // Name matching prevents wrong userId/type being spread when positions differ between
+      // the XLS and state.staff (e.g. externally created XLS or after adding/removing workers).
+      const _staffByName = new Map();
+      state.staff.forEach(s => {
+        const key = (s.name || '').trim().toLowerCase();
+        if (key) _staffByName.set(key, s);
+      });
+
+      const _xlsNamesLower = new Set(); // track which names appeared in XLS
+
       let newSi = 0;
       staffRows.forEach((row, _xlsRowIdx) => {
         if (!row[0] && row.slice(1, calCols.length + 1).every(v => v === '')) return;
-        const staffEntry = { ...state.staff[newSi] } || {};
-        staffEntry.name = row[0] || staffEntry.name || `pracovník ${newSi+1}`;
+        const xlsName = String(row[0] || '').trim();
+        _xlsNamesLower.add(xlsName.toLowerCase());
+
+        // Try name-based match first; fall back to position-based only as last resort.
+        const _matched = _staffByName.get(xlsName.toLowerCase());
+        const staffEntry = _matched ? { ..._matched } : { ...(state.staff[newSi] || {}) };
+
+        // If the position-fallback accidentally spread a portal user onto a non-portal row
+        // (different person), wipe the userId so this row is treated as a fresh worker.
+        if (!_matched && staffEntry.userId) {
+          const posName = (state.staff[newSi]?.name || '').trim().toLowerCase();
+          if (posName !== xlsName.toLowerCase()) delete staffEntry.userId;
+        }
+
+        staffEntry.name = xlsName || staffEntry.name || `pracovník ${newSi + 1}`;
         // noteP is last col after sums (4 sum cols + 3 extra = 7)
         const noteCol = 1 + calCols.length + 7;
         staffEntry.noteP = row[noteCol] || staffEntry.noteP || '';
@@ -5124,6 +5150,15 @@ function handleXlsImport(e) {
           if (val) newSchedule[`${newSi}_${ci}`] = val;
         });
         newSi++;
+      });
+
+      // Preserve non-portal workers (e.g. Vedoucí/Pohotovost added in Nastavení) that were
+      // NOT present in the imported XLS.  They keep their metadata but get no shifts (the
+      // XLS schedule does not include them), which is correct.
+      state.staff.filter(s => !s.userId).forEach(s => {
+        if (!_xlsNamesLower.has((s.name || '').trim().toLowerCase())) {
+          newStaff.push({ ...s });
+        }
       });
 
       if (!newStaff.length) { toast('Nenalezeni žádní pracovníci', true); return; }
