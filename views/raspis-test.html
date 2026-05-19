@@ -3073,7 +3073,6 @@ async function syncRaspisStaff() {
       };
     };
 
-    const _portalInOrder = [];
     const _addedIds = new Set();
 
     const _savedOrder = Array.isArray(state._staffOrder) && state._staffOrder.length > 0
@@ -3081,35 +3080,63 @@ async function syncRaspisStaff() {
       : null;
 
     if (_savedOrder) {
-      // Path 1: use the exact saved order (new drafts with staffOrder field)
-      _savedOrder.forEach(uid => {
-        if (!uid) return; // null = special worker slot, handled via _nonPortal
-        const as = apiMap.get(uid);
-        if (!as) return;  // deactivated user — skip
-        _portalInOrder.push(_makeEntry(as));
-        _addedIds.add(uid);
-      });
+      // Path 1: reconstruct state.staff in EXACT saved order.
+      // CRITICAL: schedule keys si_ci use the saved position indices. We must
+      // reconstruct each slot at the same index — portal users at their uid
+      // positions, special workers (null) at their original null positions.
+      // The old code used _nonPortal.concat(_portalInOrder) which put all
+      // special workers FIRST, then portal users, shifting all portal indices
+      // by M (number of special workers). sortStaffAlpha then mapped old index
+      // 0 (special worker) → alphabetical pos, but schedule key "0_ci" held
+      // the FIRST portal user's data → scramble.
+      const newStaff = [];
+      let _nonPortalIdx = 0;
+      for (const uid of _savedOrder) {
+        if (!uid) {
+          // null = special worker slot → place next worker from _nonPortal
+          if (_nonPortalIdx < _nonPortal.length) {
+            newStaff.push(_nonPortal[_nonPortalIdx++]);
+          }
+          // else: saved a null slot but no matching special worker — skip
+        } else {
+          const as = apiMap.get(uid);
+          if (as) {
+            newStaff.push(_makeEntry(as));
+            _addedIds.add(uid);
+          }
+          // deactivated user: skip slot — schedule key shifts down by 1 for
+          // everyone below, which is unavoidable without stable persistent IDs
+        }
+      }
+      // Safety: append any leftover special workers (shouldn't happen in normal flow)
+      while (_nonPortalIdx < _nonPortal.length) {
+        newStaff.push(_nonPortal[_nonPortalIdx++]);
+      }
+      // Append newly hired portal users not yet in the saved order
+      for (const as of apiStaff) {
+        if (!_addedIds.has(as.userId)) {
+          newStaff.push(_makeEntry(as));
+        }
+      }
+      state.staff = newStaff;
     } else {
-      // Path 2 (fallback for old drafts): add in alphabetical order so that
-      // sortStaffAlpha() below is a NO-OP and does NOT remap schedule keys.
-      // Schedule was always saved after sortStaffAlpha → it's in alphabetical
-      // order → adding users in alphabetical order = correct index alignment.
+      // Path 2 (fallback for old drafts without staffOrder): add portal users in
+      // alphabetical order so sortStaffAlpha() is a NO-OP and does NOT remap keys.
+      // Special workers are appended after portal users (also alphabetically sorted
+      // in the old concat approach); sortStaffAlpha will move them to correct pos.
       const _sorted = [...apiStaff].sort((a, b) =>
         (a.displayName || '').localeCompare(b.displayName || '', 'cs'));
+      const _portalInOrder = [];
       _sorted.forEach(as => {
         _portalInOrder.push(_makeEntry(as));
         _addedIds.add(as.userId);
       });
+      // Append new portal users not in sorted list (shouldn't be any in fallback)
+      for (const as of apiStaff) {
+        if (!_addedIds.has(as.userId)) _portalInOrder.push(_makeEntry(as));
+      }
+      state.staff = _nonPortal.concat(_portalInOrder);
     }
-
-    // Append any NEW portal users not yet in the saved order (hired since last save).
-    // They go to the end; sortStaffAlpha will slot them into the right position.
-    for (const as of apiStaff) {
-      if (_addedIds.has(as.userId)) continue;
-      _portalInOrder.push(_makeEntry(as));
-    }
-
-    state.staff = _nonPortal.concat(_portalInOrder);
 
     sortStaffAlpha(); // no-op if already in correct order; only remaps truly new employees
     renderStaffTable();
@@ -4520,6 +4547,11 @@ function initColorEditorListeners() {
     saveColorProfileStorage();
     applyColorProfile();
     document.getElementById('overlay-colors').classList.remove('show');
+    // Re-render all tables so name-cell TYPE_COLORS inline backgrounds update immediately
+    renderStaffTable();
+    renderScheduleTable('tvorba-tbl', true);
+    renderScheduleTable('raspis-tbl', false);
+    buildHotelFilterButtons();
     toast('Barvy uloženy');
   });
 
@@ -5290,7 +5322,10 @@ function switchTab(name) {
   } else if (name === 'rozpis') {
     pollLock();
     if (!window._initRendering) {
-      // Same: panel just became visible, recalculate coverage sticky positions.
+      // Re-render the Rozpis VR table so name-cell inline TYPE_COLORS backgrounds
+      // always reflect the latest color profile (they can't be updated via CSS
+      // variables alone because they're set as inline style.background on render).
+      renderScheduleTable('raspis-tbl', false);
       refreshCoverageSticky();
     }
   } else if (name === 'nastaveni') {
