@@ -507,7 +507,12 @@
     // Skupiny patřící do aktuálního podlistu
     const sublistGroups = new Set(allGroups.filter(g => (g.sublist || 'VR') === currentSublist).map(g => g.name));
     // Pokud žádné skupiny v podlistu, zobraz prázdno
-    const filtered = allUsers.filter(u => sublistGroups.has(u.role));
+    const filtered = allUsers
+      .filter(u => sublistGroups.has(u.role))
+      .sort((a, b) =>
+        (a.name || '').localeCompare(b.name || '', 'cs', { sensitivity: 'base' }) ||
+        (a.username || '').localeCompare(b.username || '', 'cs', { sensitivity: 'base' })
+      );
     if (!filtered.length) {
       tbody.innerHTML = '<tr class="empty-row"><td colspan="6">Žádní uživatelé v tomto podlistu.</td></tr>';
       return;

@@ -747,6 +747,7 @@ tbody tr.row-filtered { display: none; }
     <button class="tb-btn primary" id="btn-publish">Publikovat</button>
     <button class="tb-btn" id="btn-template-dl">⬇ Šablona</button>
     <button class="tb-btn" id="btn-import-xls">⬆ Nahrát rozpis</button>
+    <button class="tb-btn" id="btn-import-unmatched" style="display:none">Neznámá jména</button>
     <button class="tb-btn" id="btn-draft-delete">🗑 Smazat</button>
     <button class="tb-btn" id="btn-draft-trash">Koš</button>
     <span id="autosave-ind"></span>
@@ -833,6 +834,23 @@ tbody tr.row-filtered { display: none; }
           </tr>
         </thead>
         <tbody id="staff-tbody-special"></tbody>
+      </table>
+    </div>
+    <!-- Neuložení: jména z XLS, která nejsou v Nastavení -->
+    <div class="staff-section-sep" id="unmatched-section-sep" style="padding:12px 0 4px;display:none;">
+      <span style="font-size:12px;font-weight:600;color:#e67e22;text-transform:uppercase;letter-spacing:.06em;">⚠ Neuložení</span>
+      <span style="font-size:11px;color:var(--text-muted);margin-left:8px;">Tato jména byla v nahraném XLS, ale nejsou v Nastavení</span>
+    </div>
+    <div class="staff-table-wrap" id="unmatched-table-wrap" style="width:fit-content;min-width:0;overflow-x:visible;display:none;">
+      <table class="staff-tbl" id="staff-tbl-unmatched" style="width:auto;min-width:0;">
+        <thead>
+          <tr>
+            <th class="col-num">#</th>
+            <th style="min-width:180px;text-align:left;padding:7px 8px;">Jméno</th>
+            <th style="min-width:120px;padding:7px 8px;"></th>
+          </tr>
+        </thead>
+        <tbody id="staff-tbody-unmatched"></tbody>
       </table>
     </div>
   </div>
@@ -965,6 +983,89 @@ tbody tr.row-filtered { display: none; }
     <div class="modal-footer">
       <button class="btn btn-secondary" id="add-staff-cancel">Zrušit</button>
       <button class="btn btn-primary" id="add-staff-confirm">Přidat</button>
+    </div>
+  </div>
+</div>
+
+<!-- ═══════════════════════ MODAL: Přidat uživatele webu (z Neuložených) ═══════════════════ -->
+<div class="overlay" id="overlay-add-web-user">
+  <div class="modal" style="width:min(560px,100%)">
+    <div class="modal-header">
+      <h3>👤 Přidat uživatele webu</h3>
+      <button class="modal-close" id="add-web-user-close">✕</button>
+    </div>
+    <div class="modal-body">
+      <div class="fields-2">
+        <div class="field" style="grid-column:1/-1"><label>Celé jméno</label><input type="text" id="wu-name" placeholder="Jméno Příjmení"></div>
+        <div class="field"><label>Login (uživatelské jméno)</label><input type="text" id="wu-username" placeholder="login..."></div>
+        <div class="field"><label>Heslo</label><input type="password" id="wu-password" placeholder="min. 6 znaků"></div>
+        <div class="field" style="grid-column:1/-1"><label>Skupina (oprávnění)</label>
+          <select id="wu-role"><option value="">Načítám...</option></select>
+        </div>
+        <div class="field" style="grid-column:1/-1">
+          <label style="display:flex;align-items:center;gap:8px;cursor:pointer;">
+            <input type="checkbox" id="wu-in-raspis" style="width:16px;height:16px;">
+            Zobrazit v Raspisu (přidat do Nastavení jako recepční)
+          </label>
+        </div>
+        <div id="wu-raspis-fields" style="grid-column:1/-1;display:none;">
+          <div class="fields-2">
+            <div class="field"><label>Typ směn</label>
+              <select id="wu-type">
+                <option value="Denní">Denní</option>
+                <option value="Noční">Noční</option>
+                <option value="Obojí">Obojí</option>
+                <option value="Vedoucí">Vedoucí</option>
+                <option value="Speciální">Speciální</option>
+                <option value="Pohotovost">Pohotovost</option>
+              </select>
+            </div>
+            <div class="field"><label>Smlouva</label>
+              <select id="wu-contract">
+                <option value="">—</option>
+                <option>HPP</option><option>ZPP</option><option>DPČ</option><option>DPP</option>
+              </select>
+            </div>
+            <div class="field" style="grid-column:1/-1"><label>Zobrazit od</label>
+              <div style="display:flex;gap:6px">
+                <select id="wu-active-month" style="flex:1">
+                  <option value="1">Leden</option><option value="2">Únor</option>
+                  <option value="3">Březen</option><option value="4">Duben</option>
+                  <option value="5">Květen</option><option value="6">Červen</option>
+                  <option value="7">Červenec</option><option value="8">Srpen</option>
+                  <option value="9">Září</option><option value="10">Říjen</option>
+                  <option value="11">Listopad</option><option value="12">Prosinec</option>
+                </select>
+                <input type="number" id="wu-active-year" style="width:74px" min="2020" max="2099">
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+      <div id="wu-error" style="color:#e74c3c;font-size:12px;margin-top:8px;display:none;"></div>
+    </div>
+    <div class="modal-footer">
+      <button class="btn btn-secondary" id="add-web-user-cancel">Zrušit</button>
+      <button class="btn btn-primary" id="add-web-user-confirm">Vytvořit uživatele</button>
+    </div>
+  </div>
+</div>
+
+<!-- ═══════════════════════ MODAL: Neznámá jména po importu XLS ═══════════════════ -->
+<div class="overlay" id="overlay-import-unmatched">
+  <div class="modal" style="width:min(520px,calc(100vw - 24px));max-height:calc(100vh - 24px);">
+    <div class="modal-header">
+      <h3>Neznámá jména v XLS</h3>
+      <button class="modal-close" id="import-unmatched-close">✕</button>
+    </div>
+    <div class="modal-body">
+      <div style="font-size:12px;color:var(--text-muted);margin-bottom:10px;">
+        Tato jména nejsou v Nastavení. Směny zůstaly v Tvorbě podle XLS; tady je můžete rovnou zařadit.
+      </div>
+      <div id="import-unmatched-body" style="display:flex;flex-direction:column;gap:8px;"></div>
+    </div>
+    <div class="modal-footer">
+      <button class="btn btn-secondary" id="import-unmatched-later">Zavřít</button>
     </div>
   </div>
 </div>
@@ -1709,7 +1810,10 @@ const state = {
   hotels: [],           // [{letter, name, hours, dayOnly, active}]
   hotelOverrides: {},   // legacy compat
   customHotels: [],     // legacy compat
-  monthlyData: {}       // key: "YYYY-M" → {schedule, extras, requirements, fondHpp, fondZpp, holidays}
+  monthlyData: {},      // key: "YYYY-M" → {schedule, extras, requirements, fondHpp, fondZpp, holidays}
+  unmatchedXls: [],     // [{name, schedule:{ci:val}}] — jména z XLS, která nebyla nalezena v Nastavení
+  allPortalUsers: [],   // všichni portáloví pracovníci z API — pro zobrazení v Nastavení (NEPOUŽÍVÁ se pro Tvorbu)
+  allSpecialStaff: []   // ne-portáloví pracovníci z Nastavení — samostatně od řádků v Tvorbě
 };
 
 /* ══════════════════════════════════════════════════════════════════════════════
@@ -2284,9 +2388,16 @@ function renderScheduleTable(tableId, editable) {
     nameTd.textContent = s.name || `(pracovník ${si+1})`;
     const tc = TYPE_COLORS[s.type] || '';
     if (tc) { nameTd.style.background = tc; nameTd.style.color = '#222'; }
+    if (s.unmatchedXls) {
+      nameTd.style.fontStyle = 'italic';
+      nameTd.style.color = 'var(--text-muted)';
+      nameTd.title = 'Toto jméno je z XLS a není v Nastavení';
+    }
     if (editable) {
       nameTd.style.cursor = 'pointer';
-      nameTd.title = 'Kliknutím skryješ řádek';
+      nameTd.title = s.unmatchedXls
+        ? 'Toto jméno je z XLS a není v Nastavení'
+        : 'Kliknutím skryješ řádek';
       nameTd.addEventListener('click', () => {
         if (_markMode) {
           // Mark mode: toggle worker selection (outline), never hide
@@ -2388,6 +2499,57 @@ function renderScheduleTable(tableId, editable) {
   // z-index 17/15 + solid background on cells prevents staff rows from bleeding through.
   tbl.appendChild(covTbody);
   tbl.appendChild(staffTbody);
+
+  // ── Řádky pro Neuložené (jména z XLS, která nejsou v Nastavení) — VŽDY za staffTbody ──
+  if ((state.unmatchedXls || []).some(u => !state.staff.some(s =>
+    s.unmatchedXls && (s.name || '').trim().toLowerCase() === (u.name || '').trim().toLowerCase()
+  ))) {
+    const unmatchedTbody = document.createElement('tbody');
+    unmatchedTbody.className = 'staff-tbody unmatched-tbody';
+    // Oddělovací řádek
+    const sepTr = document.createElement('tr');
+    const sepTd = document.createElement('td');
+    sepTd.colSpan = 999;
+    sepTd.style.cssText = 'padding:3px 6px;font-size:10px;font-weight:600;color:var(--text-muted);' +
+      'text-transform:uppercase;letter-spacing:.06em;background:var(--bg-card);border:none;';
+    sepTd.textContent = '⚠ Neuložení – tato jména nejsou v Nastavení';
+    sepTr.appendChild(sepTd);
+    unmatchedTbody.appendChild(sepTr);
+
+    state.unmatchedXls.forEach((u, ui) => {
+      const tr = document.createElement('tr');
+      tr.dataset.ui = ui;
+      tr.style.opacity = '0.75';
+
+      const nameTd = document.createElement('td');
+      nameTd.className = 'col-name-td';
+      nameTd.dataset.ui = ui;
+      nameTd.textContent = u.name || `(neuložený ${ui+1})`;
+      nameTd.style.cssText = 'background:var(--bg-card);color:var(--text-muted);font-style:italic;';
+      nameTd.title = 'Tento pracovník není v Nastavení — přidej ho v záložce Nastavení';
+      tr.appendChild(nameTd);
+
+      calCols.forEach((col, ci) => {
+        const td = document.createElement('td');
+        td.className = 'sched-cell';
+        td.dataset.dn = col.dn;
+        if (isWeekend(col, state.month, state.year)) td.classList.add('weekend');
+        const val = (u.schedule || {})[ci] || '';
+        if (val) td.textContent = val;
+        td.style.cursor = 'default';
+        td.title = 'Nelze upravovat — pracovník není v Nastavení';
+        tr.appendChild(td);
+      });
+
+      // Prázdné sum buňky
+      SUM_HEADS.forEach(() => {
+        const td = document.createElement('td'); td.className = 'sum-cell'; tr.appendChild(td);
+      });
+
+      unmatchedTbody.appendChild(tr);
+    });
+    tbl.appendChild(unmatchedTbody);
+  }
 
   // Coverage rows sticky — cells positioned below the single header row.
   // Measure actual thead height (th-dn has padding-top:26px → taller than --sched-row-h).
@@ -2626,15 +2788,20 @@ function renderStaffTable() {
   tbody.innerHTML = '';
   tbodySpecial.innerHTML = '';
 
-  // Iterujeme přímo přes state.staff — si je vždy správný index (žádný indexOf)
-  // ── Recepční table ──────────────────────────────────────────────────────────
+  // ── Recepční table — data z state.allPortalUsers (všichni portáloví pracovníci z API) ──
+  // Pokud allPortalUsers ještě není naplněno (syncRaspisStaff ještě neproběhl),
+  // padneme na state.staff.filter(s => s.userId) jako zálohu.
+  const _portalSource = (state.allPortalUsers && state.allPortalUsers.length > 0)
+    ? state.allPortalUsers
+    : state.staff.filter(s => s.userId);
+  _portalSource.sort((a, b) => (a.name || '').localeCompare(b.name || '', 'cs'));
   let portalRowNum = 0;
-  state.staff.forEach((s, si) => {
-    if (!s.userId) return; // skip special workers
+  _portalSource.forEach((s, ai) => {
     portalRowNum++;
 
     const tr = document.createElement('tr');
-    tr.dataset.si = si;
+    const stateSi = state.staff.findIndex(x => x.userId === s.userId);
+    if (stateSi >= 0) tr.dataset.si = stateSi;
     if (s.inactive) tr.classList.add('row-inactive');
 
     // #
@@ -2790,8 +2957,9 @@ function renderStaffTable() {
 
   // ── Ostatní pracovníci table ────────────────────────────────────────────────
   let specialRowNum = 0;
-  state.staff.forEach((s, si) => {
-    if (s.userId) return; // skip portal users
+  const _specialSource = [...(state.allSpecialStaff || [])]
+    .sort((a, b) => (a.name || '').localeCompare(b.name || '', 'cs'));
+  _specialSource.forEach((s, si) => {
     specialRowNum++;
 
     const tr = document.createElement('tr');
@@ -2830,7 +2998,7 @@ function renderStaffTable() {
     editBtn.title = 'Upravit';
     editBtn.addEventListener('click', () => {
       const _n = s.name, _t = s.type;
-      const _si = state.staff.findIndex(x => !x.userId && x.name === _n && x.type === _t);
+      const _si = state.allSpecialStaff.findIndex(x => !x.userId && x.name === _n && x.type === _t);
       if (_si < 0) return;
       showEditStaffModal(_si);
     });
@@ -2841,18 +3009,66 @@ function renderStaffTable() {
     delBtn.addEventListener('click', () => {
       if (!confirm(`Odebrat pracovníka "${s.name || si+1}"?`)) return;
       const _n = s.name, _t = s.type;
-      const _si = state.staff.findIndex(x => !x.userId && x.name === _n && x.type === _t);
+      const _si = state.allSpecialStaff.findIndex(x => !x.userId && x.name === _n && x.type === _t);
       if (_si < 0) return;
-      state.staff.splice(_si, 1);
-      sortStaffAlpha();
+      state.allSpecialStaff.splice(_si, 1);
       renderStaffTable();
-      scheduleAutoSave();
-      saveMasterStaff(); // uložit do master_staff — přežije smazání draftu
+      saveSpecialStaff(); // uložit per-user speciální pracovníky — přežijí smazání draftu
     });
     saveTd.appendChild(delBtn);
     tr.appendChild(saveTd);
 
     tbodySpecial.appendChild(tr);
+  });
+
+  // ── NEULOŽENÍ sekce ──
+  const tbodyUnmatched = document.getElementById('staff-tbody-unmatched');
+  const unmatchedSep   = document.getElementById('unmatched-section-sep');
+  const unmatchedWrap  = document.getElementById('unmatched-table-wrap');
+  if (!tbodyUnmatched) return;
+
+  tbodyUnmatched.innerHTML = '';
+  unmatchedSep.style.display  = 'none';
+  unmatchedWrap.style.display = 'none';
+  return;
+
+  (state.unmatchedXls || []).forEach((u, ui) => {
+    const tr = document.createElement('tr');
+
+    // # číslo
+    const numTd = document.createElement('td');
+    numTd.className = 'col-num';
+    numTd.textContent = ui + 1;
+    tr.appendChild(numTd);
+
+    // Jméno
+    const nameTd = document.createElement('td');
+    nameTd.style.cssText = 'padding:6px 8px;font-style:italic;color:var(--text-muted);';
+    nameTd.textContent = u.name;
+    tr.appendChild(nameTd);
+
+    // Akce
+    const actionTd = document.createElement('td');
+    actionTd.style.cssText = 'padding:4px 6px;white-space:nowrap;';
+
+    const btnOstalni = document.createElement('button');
+    btnOstalni.className = 'mode-btn';
+    btnOstalni.style.cssText = 'font-size:11px;padding:2px 7px;margin-right:4px;';
+    btnOstalni.textContent = '+ Ostatní';
+    btnOstalni.title = 'Přidat jako Ostatní pracovník (zachová směny)';
+    btnOstalni.addEventListener('click', () => addUnmatchedToOstalni(ui));
+    actionTd.appendChild(btnOstalni);
+
+    const btnWebUser = document.createElement('button');
+    btnWebUser.className = 'mode-btn';
+    btnWebUser.style.cssText = 'font-size:11px;padding:2px 7px;';
+    btnWebUser.textContent = '+ Uživatel webu';
+    btnWebUser.title = 'Přidat jako nový uživatel portálu (zachová směny)';
+    btnWebUser.addEventListener('click', () => openAddWebUserOverlay(ui));
+    actionTd.appendChild(btnWebUser);
+
+    tr.appendChild(actionTd);
+    tbodyUnmatched.appendChild(tr);
   });
 }
 
@@ -2880,10 +3096,13 @@ function buildSaveData() {
     // Used on reload to reconstruct state.staff in the same order so schedule `si_ci` keys
     // map to the correct people even if the API returns portal users in a different order.
     staffOrder: state.staff.map(s => s.userId || null),
-    staff: JSON.parse(JSON.stringify(state.staff.filter(s => !s.userId))),
+    staff: JSON.parse(JSON.stringify(state.staff)),
     portalCustomData: (() => {
       const pcd = {};
-      state.staff.filter(s => s.userId).forEach(s => {
+      const portalRows = new Map();
+      (state.allPortalUsers || []).filter(s => s.userId).forEach(s => portalRows.set(s.userId, s));
+      state.staff.filter(s => s.userId).forEach(s => portalRows.set(s.userId, s));
+      portalRows.forEach(s => {
         pcd[s.userId] = {
           maxHrs: s.maxHrs || '', noteM: s.noteM || '', noteP: s.noteP || '',
           x: s.x || '', xa: s.xa || '', dates: s.dates || '', regular: s.regular || '',
@@ -2903,7 +3122,8 @@ function buildSaveData() {
     monthlyData: mdSnapshot,
     // legacy fields kept for backward compat
     hotelOverrides: JSON.parse(JSON.stringify(state.hotelOverrides)),
-    customHotels: JSON.parse(JSON.stringify(state.customHotels))
+    customHotels: JSON.parse(JSON.stringify(state.customHotels)),
+    unmatchedXls: JSON.parse(JSON.stringify(state.unmatchedXls || []))
   };
 }
 
@@ -2917,16 +3137,10 @@ function applyData(data) {
   // přemapuje klíče chybně → směny se přisunou jiným pracovníkům).
   state._staffOrder = Array.isArray(data.staffOrder) ? data.staffOrder : null;
 
-  // ── Sdílená data (pracovníci, hotely) ──
-  // Portáloví uživatelé (userId) zůstanou v state.staff — jen jim aktualizujeme data z portalCustomData.
-  // Speciální pracovníci (bez userId) se nahradí záznamy z draftu.
-  // Staré záznamy bez userId, které nejsou speciálního typu, zahodíme.
-  {
-    const SPECIAL_LOAD = new Set(['Vedoucí', 'Pohotovost', 'Speciální']);
-    const newSpecial = (data.staff || []).filter(s => !s.userId && SPECIAL_LOAD.has(s.type));
-    // Zachovat existující portálové uživatele; nahradit speciální pracovníky
-    state.staff = state.staff.filter(s => s.userId).concat(newSpecial);
-  }
+  // ── Řádky Tvorby ──
+  // Tvorba je samostatný rozpis. Nastavení se do ní nekopíruje automaticky;
+  // řádky vznikají načtením draftu nebo importem XLS.
+  state.staff = Array.isArray(data.staff) ? JSON.parse(JSON.stringify(data.staff)) : [];
   state.portalCustomData = data.portalCustomData || {};
   // Aplikovat načtená portalCustomData na portálové uživatele v state.staff
   state.staff.filter(s => s.userId).forEach(s => {
@@ -2992,6 +3206,9 @@ function applyData(data) {
     state.holidays = data.holidays || '';
   }
 
+  // ── Neuložení pracovníci z XLS ──
+  state.unmatchedXls = Array.isArray(data.unmatchedXls) ? data.unmatchedXls : [];
+
   // ── UI: sel-month-year ──
   populateMonthYearSelect();
   const selMY = document.getElementById('sel-month-year');
@@ -2999,6 +3216,7 @@ function applyData(data) {
   if (selMY && selMY.querySelector(`option[value="${savedKey}"]`)) {
     selMY.value = savedKey;
   }
+  updateImportUnmatchedButton();
 }
 
 /* ══════════════════════════════════════════════════════════════════════════════
@@ -3022,23 +3240,322 @@ function scheduleAutoSave() {
 }
 
 /**
- * Uloží speciální (ne-portálové) pracovníky do master_staff na serveru.
- * Tato data přežijí smazání draftu — nejsou vázána na žádný měsíc.
+ * Uloží speciální (ne-portálové) pracovníky do /api/rt/special-staff na serveru.
+ * Data jsou uložena per-user v rt_drafts (month=0, year=0) — přežijí smazání libovolného
+ * měsíčního draftu a NEJSOU ovlivněna globálním master_staff (který patří jiným modulům).
  * Volá se po přidání, úpravě nebo smazání pracovníka v Nastavení.
  */
-async function saveMasterStaff() {
-  const nonPortal = state.staff.filter(s => !s.userId);
+async function saveSpecialStaff() {
+  const nonPortal = [...(state.allSpecialStaff || [])]
+    .sort((a, b) => (a.name || '').localeCompare(b.name || '', 'cs'));
+  state.allSpecialStaff = nonPortal;
   try {
-    const r = await fetch('/api/master-staff', {
+    const r = await fetch('/api/rt/special-staff', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       credentials: 'include',
       body: JSON.stringify({ staff: nonPortal })
     });
     const d = await r.json();
-    if (!d.ok) console.warn('saveMasterStaff:', d.msg || 'error');
+    if (!d.ok) console.warn('saveSpecialStaff:', d.msg || 'error');
   } catch(e) {
-    console.warn('saveMasterStaff error:', e);
+    console.warn('saveSpecialStaff error:', e);
+  }
+}
+
+/* ══════════════════════════════════════════════════════════════════════════════
+   NEULOŽENÍ — pracovníci z XLS, kteří nejsou v Nastavení
+══════════════════════════════════════════════════════════════════════════════ */
+
+function closeImportUnmatchedOverlay() {
+  const ov = document.getElementById('overlay-import-unmatched');
+  if (ov) ov.classList.remove('show');
+}
+
+function updateImportUnmatchedButton() {
+  const btn = document.getElementById('btn-import-unmatched');
+  if (!btn) return;
+  const count = (state.unmatchedXls || []).length;
+  btn.style.display = count ? '' : 'none';
+  btn.textContent = count ? `Neznámá jména (${count})` : 'Neznámá jména';
+}
+
+function renderImportUnmatchedOverlay() {
+  const tbody = document.getElementById('import-unmatched-body');
+  const ov = document.getElementById('overlay-import-unmatched');
+  if (!tbody || !ov) return;
+
+  tbody.innerHTML = '';
+  const list = state.unmatchedXls || [];
+  updateImportUnmatchedButton();
+  if (!list.length) {
+    closeImportUnmatchedOverlay();
+    return;
+  }
+
+  list.forEach((u, ui) => {
+    const row = document.createElement('div');
+    row.style.cssText = 'display:grid;grid-template-columns:28px minmax(0,1fr) auto;gap:8px;align-items:center;padding:8px;border:1px solid var(--border);border-radius:6px;background:var(--bg-card);';
+
+    const num = document.createElement('div');
+    num.style.cssText = 'font-size:12px;color:var(--text-muted);text-align:center;';
+    num.textContent = ui + 1;
+    row.appendChild(num);
+
+    const name = document.createElement('div');
+    name.style.cssText = 'font-style:italic;color:var(--text-muted);min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;';
+    name.textContent = u.name || '';
+    row.appendChild(name);
+
+    const actions = document.createElement('div');
+    actions.style.cssText = 'display:flex;gap:6px;white-space:nowrap;';
+
+    const btnOstatni = document.createElement('button');
+    btnOstatni.className = 'mode-btn';
+    btnOstatni.style.cssText = 'font-size:11px;padding:3px 7px;';
+    btnOstatni.textContent = '+ Ostatní';
+    btnOstatni.title = 'Přidat do Ostatní v Nastavení';
+    btnOstatni.addEventListener('click', () => addUnmatchedToOstalni(ui));
+    actions.appendChild(btnOstatni);
+
+    const btnWeb = document.createElement('button');
+    btnWeb.className = 'mode-btn';
+    btnWeb.style.cssText = 'font-size:11px;padding:3px 7px;';
+    btnWeb.textContent = '+ Uživatel webu';
+    btnWeb.title = 'Vytvořit nového uživatele portálu';
+    btnWeb.addEventListener('click', () => {
+      closeImportUnmatchedOverlay();
+      openAddWebUserOverlay(ui);
+    });
+    actions.appendChild(btnWeb);
+
+    row.appendChild(actions);
+    tbody.appendChild(row);
+  });
+}
+
+function showImportUnmatchedOverlay() {
+  renderImportUnmatchedOverlay();
+  const ov = document.getElementById('overlay-import-unmatched');
+  if (ov && (state.unmatchedXls || []).length) ov.classList.add('show');
+}
+
+/**
+ * Přidá neuloženého pracovníka (z XLS) jako Ostatní v Nastavení.
+ * Zachová jeho směny z XLS.
+ */
+function addUnmatchedToOstalni(ui) {
+  const entry = state.unmatchedXls[ui];
+  if (!entry) return;
+  const pendingShifts = { ...(entry.schedule || {}) };
+
+  const now = new Date();
+  const newWorker = {
+    name:     entry.name,
+    type:     'Speciální',
+    login:    '',
+    contract: '',
+    maxHrs: '', noteM: '', noteP: '', x: '', xa: '', dates: '', regular: '', hotel: '',
+    activeFrom: { month: now.getMonth() + 1, year: now.getFullYear() },
+    monthlyOverrides: {}
+  };
+  state.allSpecialStaff.push(newWorker);
+
+  // Pokud je řádek z XLS právě v Tvorbě, jen ho obohať metadaty z Nastavení.
+  // Nepřidáváme nový řádek, aby se rozpis nezdvojil.
+  const newSi = state.staff.findIndex(s =>
+    (s.name || '').trim().toLowerCase() === (entry.name || '').trim().toLowerCase()
+  );
+  if (newSi >= 0) {
+    state.staff[newSi] = { ...state.staff[newSi], ...newWorker, unmatchedXls: false };
+    Object.entries(pendingShifts).forEach(([ci, val]) => {
+      if (val) state.schedule[`${newSi}_${ci}`] = val;
+    });
+  }
+
+  state.unmatchedXls.splice(ui, 1);
+  updateImportUnmatchedButton();
+  saveSpecialStaff();
+  scheduleAutoSave();
+  renderStaffTable();
+  renderScheduleTable('tvorba-tbl', true);
+  renderImportUnmatchedOverlay();
+  toast(`Přidán do Ostatní: ${entry.name}`);
+}
+
+/** Otevře modal pro přidání uživatele webu, předvyplní jméno. */
+async function openAddWebUserOverlay(ui) {
+  window._addWebUserUi = ui;
+  const entry = state.unmatchedXls[ui];
+  if (!entry) return;
+
+  // Pre-fill name
+  document.getElementById('wu-name').value = entry.name;
+  document.getElementById('wu-username').value = '';
+  document.getElementById('wu-password').value = '';
+  document.getElementById('wu-in-raspis').checked = true;
+  document.getElementById('wu-raspis-fields').style.display = '';
+  document.getElementById('wu-error').style.display = 'none';
+  document.getElementById('wu-error').textContent = '';
+
+  // Nastav výchozí datum "od" = aktuální měsíc
+  const now = new Date();
+  document.getElementById('wu-active-month').value = String(now.getMonth() + 1);
+  document.getElementById('wu-active-year').value  = String(now.getFullYear());
+
+  // Načti seznam skupin
+  const roleSelect = document.getElementById('wu-role');
+  roleSelect.innerHTML = '<option value="">Načítám...</option>';
+  try {
+    const r = await fetch('/api/admin/groups', { credentials: 'include' });
+    const groups = await r.json();
+    roleSelect.innerHTML = groups.map(g =>
+      `<option value="${g.name}">${g.displayName || g.name}</option>`
+    ).join('');
+  } catch(e) {
+    roleSelect.innerHTML = '<option value="receptionist">receptionist</option>';
+  }
+
+  document.getElementById('overlay-add-web-user').classList.add('show');
+}
+
+/** Vytvoří uživatele webu a volitelně ho zařadí do Raspisu. */
+async function confirmAddWebUser() {
+  const ui       = window._addWebUserUi;
+  const entry    = state.unmatchedXls[ui];
+  if (!entry) return;
+
+  const name      = document.getElementById('wu-name').value.trim();
+  const username  = document.getElementById('wu-username').value.trim();
+  const password  = document.getElementById('wu-password').value;
+  const role      = document.getElementById('wu-role').value;
+  const inRaspis  = document.getElementById('wu-in-raspis').checked;
+  const errDiv    = document.getElementById('wu-error');
+
+  errDiv.style.display = 'none';
+  if (!name || !username || !password || !role) {
+    errDiv.textContent = 'Vyplňte všechna povinná pole.';
+    errDiv.style.display = '';
+    return;
+  }
+
+  const confirmBtn = document.getElementById('add-web-user-confirm');
+  confirmBtn.disabled = true;
+  confirmBtn.textContent = 'Ukládám...';
+
+  try {
+    // 1. Vytvoř uživatele
+    const createResp = await fetch('/api/users', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      credentials: 'include',
+      body: JSON.stringify({ name, username, password, role })
+    });
+    const created = await createResp.json();
+    if (!created.ok) {
+      errDiv.textContent = created.msg || 'Chyba vytvoření uživatele.';
+      errDiv.style.display = '';
+      return;
+    }
+    const newUserId = created.id;
+
+    // 2. Nastav perm_overrides pro Raspis (pokud je zaškrtnuto)
+    if (inRaspis) {
+      const type     = document.getElementById('wu-type').value;
+      const contract = document.getElementById('wu-contract').value;
+      const activeMonth = parseInt(document.getElementById('wu-active-month').value, 10);
+      const activeYear  = parseInt(document.getElementById('wu-active-year').value,  10);
+      const overrides = {
+        raspis_staff: {
+          active:      true,
+          displayName: name,
+          login:       username,
+          type,
+          contract,
+          activeFrom:  `${activeYear}-${String(activeMonth).padStart(2,'0')}`,
+          activeUntil: null
+        }
+      };
+      await fetch(`/api/admin/users/${newUserId}/overrides`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        credentials: 'include',
+        body: JSON.stringify({ overrides })
+      });
+    }
+
+    // 3. Uložíme si směny před tím, než smažeme z unmatchedXls
+    const pendingShifts = { ...(entry.schedule || {}) };
+    state.unmatchedXls.splice(ui, 1);
+    updateImportUnmatchedButton();
+
+    document.getElementById('overlay-add-web-user').classList.remove('show');
+    toast(`Uživatel "${name}" vytvořen`);
+
+    // 4. Načteme čerstvá data ze serveru (CÍLENĚ — NEvoláme syncRaspisStaff,
+    //    aby se do state.staff nedostali jiní portáloví uživatelé mimo XLS).
+    const freshResp = await fetch('/api/raspis-staff', { credentials: 'include' });
+    if (freshResp.ok) {
+      const freshData = await freshResp.json();
+      if (freshData.ok) {
+        const allApiStaff = (freshData.staff || []).filter(s => s.userId);
+        // Aktualizuj allPortalUsers (pro Nastavení)
+        state.allPortalUsers = allApiStaff.map(as => {
+          const custom = state.portalCustomData?.[as.userId] || {};
+          return {
+            userId: as.userId, name: as.displayName || '', login: as.login || '',
+            type: as.type || '', contract: as.contract || '',
+            maxHrs: custom.maxHrs || '', noteM: custom.noteM || '', noteP: custom.noteP || '',
+            x: custom.x || '', xa: custom.xa || '', dates: custom.dates || '',
+            regular: custom.regular || '', hotel: custom.hotel || '',
+            monthlyOverrides: custom.monthlyOverrides ? JSON.parse(JSON.stringify(custom.monthlyOverrides)) : {},
+            inactive: false
+          };
+        });
+
+        // 5. Přidej nového uživatele do state.staff (pro Tvorbu) — POUZE tohoto
+        if (inRaspis) {
+          const newApiEntry = allApiStaff.find(s => s.userId === newUserId);
+          if (newApiEntry) {
+            const custom = state.portalCustomData?.[newUserId] || {};
+            const newStaffEntry = {
+              userId: newApiEntry.userId, name: newApiEntry.displayName || '',
+              login: newApiEntry.login || '', type: newApiEntry.type || '',
+              contract: newApiEntry.contract || '',
+              maxHrs: custom.maxHrs || '', noteM: custom.noteM || '', noteP: custom.noteP || '',
+              x: custom.x || '', xa: custom.xa || '', dates: custom.dates || '',
+              regular: custom.regular || '', hotel: custom.hotel || '',
+              monthlyOverrides: {}, inactive: false
+            };
+            const existingSi = state.staff.findIndex(s =>
+              (s.name || '').trim().toLowerCase() === (entry.name || '').trim().toLowerCase()
+            );
+            if (existingSi >= 0) state.staff[existingSi] = newStaffEntry;
+            else state.staff.push(newStaffEntry);
+
+            // 6. Aplikuj zachované směny na jeho pozici v Tvorbě
+            const newSi = state.staff.findIndex(s => s.userId === newUserId);
+            if (newSi >= 0 && Object.keys(pendingShifts).length > 0) {
+              Object.entries(pendingShifts).forEach(([ci, val]) => {
+                if (val) state.schedule[`${newSi}_${ci}`] = val;
+              });
+            }
+          }
+        }
+      }
+    }
+
+    renderStaffTable();
+    renderScheduleTable('tvorba-tbl', true);
+    renderImportUnmatchedOverlay();
+    if ((state.unmatchedXls || []).length) showImportUnmatchedOverlay();
+    scheduleAutoSave();
+  } catch(e) {
+    errDiv.textContent = 'Chyba komunikace se serverem.';
+    errDiv.style.display = '';
+  } finally {
+    confirmBtn.disabled = false;
+    confirmBtn.textContent = 'Vytvořit uživatele';
   }
 }
 
@@ -3049,41 +3566,41 @@ async function saveMasterStaff() {
 ══════════════════════════════════════════════════════════════════════════════ */
 async function syncRaspisStaff() {
   try {
-    const r = await fetch('/api/raspis-staff', {credentials: 'include'});
-    if (!r.ok) return;
-    const data = await r.json();
+    // Načteme portálové pracovníky a speciální (Ostatní) souběžně
+    const [staffResp, specialResp] = await Promise.all([
+      fetch('/api/raspis-staff',      { credentials: 'include' }),
+      fetch('/api/rt/special-staff',  { credentials: 'include' })
+    ]);
+    if (!staffResp.ok) return;
+    const data = await staffResp.json();
     if (!data.ok) return;
 
-    // Non-portal workers (Vedoucí/Pohotovost/Speciální/Ostatní) come from master_staff
-    // which is already included in the /api/raspis-staff response.
-    // Using the API as source of truth means they survive draft deletion.
-    const apiNonPortal = (data.staff || []).filter(s => !s.userId);
-    const apiStaff     = (data.staff || []).filter(s =>  s.userId);
+    // Z /api/raspis-staff berme POUZE portálové pracovníky (s userId).
+    // master_staff je globální sdílená tabulka (jiné moduly) — záměrně ho
+    // tady nečteme, aby nedošlo ke zdvojení nebo záměně pracovníků.
+    const apiStaff = (data.staff || []).filter(s => s.userId);
 
-    // Fallback: if master_staff is empty (first load after migration from draft-based
-    // storage), use workers already in state.staff from the draft, then migrate them.
-    const _hasDraftWorkers = apiNonPortal.length === 0 && state.staff.some(s => !s.userId);
-    const _nonPortal = apiNonPortal.length > 0
-      ? apiNonPortal
-      : state.staff.filter(s => !s.userId);
+    // Ne-portáloví pracovníci (Vedoucí/Pohotovost/Speciální/Ostatní) jsou
+    // uloženi per-user v /api/rt/special-staff (rt_drafts month=0, year=0).
+    let _nonPortal = [];
+    if (specialResp.ok) {
+      const specialData = await specialResp.json();
+      if (specialData.ok && Array.isArray(specialData.staff)) {
+        _nonPortal = specialData.staff;
+      }
+    }
 
-    // One-time migration: push draft workers to master_staff so they survive next time
-    if (_hasDraftWorkers) saveMasterStaff();
-    const apiMap   = new Map(apiStaff.map(as => [as.userId, as]));
-
-    // ── Determine the insertion order for portal users ──────────────────────
-    // CRITICAL: schedule keys `si_ci` index into state.staff. The schedule was
-    // saved with staff in a specific order (always alphabetical, since
-    // sortStaffAlpha() is called after every edit). We must reconstruct portal
-    // users in that SAME order before calling sortStaffAlpha() — otherwise
-    // sortStaffAlpha maps old→new indices based on a wrong "current order" and
-    // scrambles the schedule (shifts end up on the wrong workers).
-    //
-    // Priority:
-    //  1. state._staffOrder (saved in draft by buildSaveData) — exact userId list
-    //  2. Fallback: sort API users alphabetically (matches canonical schedule order)
-    //     Works for drafts saved before staffOrder was introduced, because those
-    //     drafts were ALSO saved after sortStaffAlpha → alphabetical order.
+    // Migrace: pokud special-staff ještě nemá záznamy, ale draft obsahuje
+    // ne-portálové pracovníky (starý formát), migrujeme je do nového úložiště.
+    const _specialTypes = new Set(['Vedoucí', 'Pohotovost', 'Speciální']);
+    const _hasDraftWorkers = _nonPortal.length === 0 && state.staff.some(s =>
+      !s.userId && !s.unmatchedXls && _specialTypes.has(s.type)
+    );
+    if (_hasDraftWorkers) {
+      _nonPortal = state.staff.filter(s => !s.userId && !s.unmatchedXls && _specialTypes.has(s.type));
+      state.allSpecialStaff = _nonPortal;
+      saveSpecialStaff(); // fire-and-forget: jednou uložit do nového úložiště
+    }
 
     const _makeEntry = as => {
       const custom = state.portalCustomData?.[as.userId] || {};
@@ -3107,75 +3624,35 @@ async function syncRaspisStaff() {
       };
     };
 
-    const _addedIds = new Set();
+    // ── Uložit VŠECHNY portálové pracovníky pro Nastavení ───────────────────────
+    // state.allPortalUsers slouží renderStaffTable — zobrazuje VŠECHNY portálové
+    // pracovníky bez ohledu na to, zda jsou v aktuálním XLS draftu.
+    state.allPortalUsers = apiStaff.map(as => _makeEntry(as));
+    state.allSpecialStaff = _nonPortal;
 
-    const _savedOrder = Array.isArray(state._staffOrder) && state._staffOrder.length > 0
-      ? state._staffOrder
-      : null;
+    // Tvorbu nikdy nenaplňujeme automaticky z Nastavení. Jen obohatíme řádky,
+    // které v Tvorbě už jsou (z draftu nebo XLS), pokud se shodují podle userId/jména.
+    const portalById = new Map(state.allPortalUsers.map(s => [s.userId, s]));
+    const settingsByName = new Map();
+    state.allSpecialStaff.forEach(s => {
+      const key = (s.name || '').trim().toLowerCase();
+      if (key) settingsByName.set(key, s);
+    });
+    state.allPortalUsers.forEach(s => {
+      const key = (s.name || '').trim().toLowerCase();
+      if (key) settingsByName.set(key, s);
+    });
 
-    if (_savedOrder) {
-      // Path 1: reconstruct state.staff in EXACT saved order.
-      // CRITICAL: schedule keys si_ci use the saved position indices. We must
-      // reconstruct each slot at the same index — portal users at their uid
-      // positions, special workers (null) at their original null positions.
-      // The old code used _nonPortal.concat(_portalInOrder) which put all
-      // special workers FIRST, then portal users, shifting all portal indices
-      // by M (number of special workers). sortStaffAlpha then mapped old index
-      // 0 (special worker) → alphabetical pos, but schedule key "0_ci" held
-      // the FIRST portal user's data → scramble.
-      const newStaff = [];
-      let _nonPortalIdx = 0;
-      for (const uid of _savedOrder) {
-        if (!uid) {
-          // null = special worker slot → place next worker from _nonPortal
-          if (_nonPortalIdx < _nonPortal.length) {
-            newStaff.push(_nonPortal[_nonPortalIdx++]);
-          }
-          // else: saved a null slot but no matching special worker — skip
-        } else {
-          const as = apiMap.get(uid);
-          if (as) {
-            newStaff.push(_makeEntry(as));
-            _addedIds.add(uid);
-          }
-          // deactivated user: skip slot — schedule key shifts down by 1 for
-          // everyone below, which is unavoidable without stable persistent IDs
-        }
-      }
-      // Safety: append any leftover special workers (shouldn't happen in normal flow)
-      while (_nonPortalIdx < _nonPortal.length) {
-        newStaff.push(_nonPortal[_nonPortalIdx++]);
-      }
-      // Append newly hired portal users not yet in the saved order
-      for (const as of apiStaff) {
-        if (!_addedIds.has(as.userId)) {
-          newStaff.push(_makeEntry(as));
-        }
-      }
-      state.staff = newStaff;
-    } else {
-      // Path 2 (fallback for old drafts without staffOrder): add portal users in
-      // alphabetical order so sortStaffAlpha() is a NO-OP and does NOT remap keys.
-      // Special workers are appended after portal users (also alphabetically sorted
-      // in the old concat approach); sortStaffAlpha will move them to correct pos.
-      const _sorted = [...apiStaff].sort((a, b) =>
-        (a.displayName || '').localeCompare(b.displayName || '', 'cs'));
-      const _portalInOrder = [];
-      _sorted.forEach(as => {
-        _portalInOrder.push(_makeEntry(as));
-        _addedIds.add(as.userId);
-      });
-      // Append new portal users not in sorted list (shouldn't be any in fallback)
-      for (const as of apiStaff) {
-        if (!_addedIds.has(as.userId)) _portalInOrder.push(_makeEntry(as));
-      }
-      state.staff = _nonPortal.concat(_portalInOrder);
-    }
+    state.staff = (state.staff || []).map(row => {
+      const byId = row.userId ? portalById.get(row.userId) : null;
+      const byName = settingsByName.get((row.name || '').trim().toLowerCase());
+      const matched = byId || byName;
+      if (!matched) return { ...row, unmatchedXls: row.unmatchedXls || true };
+      return { ...row, ...matched, name: row.name || matched.name || matched.displayName || '', unmatchedXls: false };
+    });
 
-    sortStaffAlpha(); // no-op if already in correct order; only remaps truly new employees
     renderStaffTable();
     renderScheduleTable('tvorba-tbl', true);
-    scheduleAutoSave();
   } catch(e) {
     console.warn('syncRaspisStaff:', e);
   }
@@ -3232,7 +3709,9 @@ async function switchMonth(newMonth, newYear) {
 
   if (!loaded) {
     // Žádný draft na serveru — vždy prázdné (server je zdrojem pravdy)
+    state.staff = [];
     state.schedule = {}; state.extras = {}; state.requirements = {};
+    state.unmatchedXls = [];
     state.fondHpp = ''; state.fondZpp = ''; state.holidays = '';
     currentDraftId = null; // vytvoří se nový draft při příštím uložení
     scheduleAutoSave();
@@ -3364,13 +3843,19 @@ async function saveDraft(silent) {
 
 function newDraft() {
   if (dirtyFlag && !confirm('Neuložené změny budou ztraceny. Pokračovat?')) return;
+  state.staff = [];
   state.schedule = {};
   state.extras = {};
+  state.requirements = {};
+  state.unmatchedXls = [];
+  updateImportUnmatchedButton();
+  delete state.monthlyData[`${state.year}-${state.month}`];
   currentDraftId = null;
   dirtyFlag = false;
   history = []; historyIndex = -1;
   setAutosaveInd('');
   document.getElementById('rt-draft-sel').value = '';
+  renderStaffTable();
   renderScheduleTable('tvorba-tbl', true);
   toast('Nový koncept');
 }
@@ -3390,13 +3875,18 @@ async function deleteCurrentDraft() {
     const d = await r.json();
     if (!d.ok) throw new Error();
     // Resetovat stav — prázdný draft pro aktuální měsíc
+    state.staff = [];
     state.schedule = {}; state.extras = {}; state.requirements = {};
+    state.unmatchedXls = [];
+    updateImportUnmatchedButton();
+    delete state.monthlyData[`${state.year}-${state.month}`];
     state.fondHpp = ''; state.fondZpp = ''; state.holidays = '';
     currentDraftId = null; dirtyFlag = false;
     clearTimeout(autoSaveTimer);
     setAutosaveInd('');
     history = []; historyIndex = -1;
     await loadDraftList();
+    renderStaffTable();
     renderScheduleTable('tvorba-tbl', true);
     buildHotelFilterButtons();
     toast(`Smazáno: ${mn} ${state.year}`);
@@ -4201,7 +4691,7 @@ let _editSi = null;
 
 function showEditStaffModal(si) {
   _editSi = si;
-  const s = state.staff[si];
+  const s = state.allSpecialStaff[si];
   document.getElementById('es-name').value = s.name || '';
   document.getElementById('es-type').value = s.type || 'Vedoucí';
   // Zobrazit v rozpisu od
@@ -4216,7 +4706,7 @@ function confirmEditStaff() {
   if (_editSi === null) return;
   const name = document.getElementById('es-name').value.trim();
   if (!name) { toast('Zadejte jméno', true); return; }
-  const s = state.staff[_editSi];
+  const s = state.allSpecialStaff[_editSi];
   s.name       = name;
   s.type       = document.getElementById('es-type').value;
   s.activeFrom = {
@@ -4224,12 +4714,10 @@ function confirmEditStaff() {
     year:  parseInt(document.getElementById('es-active-year').value,  10)
   };
   document.getElementById('overlay-edit-staff').classList.remove('show');
-  sortStaffAlpha();
   renderStaffTable();
   renderScheduleTable('tvorba-tbl', true);
   toast(`Uloženo: ${name}`);
-  scheduleAutoSave();
-  saveMasterStaff(); // uložit do master_staff — přežije smazání draftu
+  saveSpecialStaff(); // uložit per-user speciální pracovníky — přežijí smazání draftu
 }
 
 /* ══════════════════════════════════════════════════════════════════════════════
@@ -4649,7 +5137,7 @@ function showAddStaffModal() {
 function confirmAddStaff() {
   const name = document.getElementById('ns-name').value.trim();
   if (!name) { toast('Zadejte jméno', true); return; }
-  state.staff.push({
+  state.allSpecialStaff.push({
     name,
     login:    document.getElementById('ns-login').value,
     type:     document.getElementById('ns-type').value,
@@ -4665,11 +5153,9 @@ function confirmAddStaff() {
     },
   });
   document.getElementById('overlay-add-staff').classList.remove('show');
-  sortStaffAlpha();
   renderStaffTable();
   toast(`Přidán: ${name}`);
-  scheduleAutoSave();
-  saveMasterStaff(); // uložit do master_staff — přežije smazání draftu
+  saveSpecialStaff(); // uložit per-user speciální pracovníky — přežijí smazání draftu
 }
 
 /* ══════════════════════════════════════════════════════════════════════════════
@@ -5193,16 +5679,25 @@ function handleXlsImport(e) {
       // Must use newSi (not the forEach si) for schedule keys so that
       // newSchedule[`${newSi}_ci`] always corresponds to newStaff[newSi].
 
-      // Build name→entry lookup of ALL current staff (for robust name-based matching).
-      // Name matching prevents wrong userId/type being spread when positions differ between
-      // the XLS and state.staff (e.g. externally created XLS or after adding/removing workers).
+      // Build name→entry lookup pro name-based matching.
+      // Primární zdroj: state.allPortalUsers (VŠICHNI portáloví pracovníci z portálu).
+      // Sekundární zdroj: state.staff (ne-portáloví pracovníci — Ostatní, Vedoucí atd.).
+      // Díky tomu XLS import najde shodu i pro uživatele, kteří ještě nejsou v Tvorba,
+      // ale jsou registrováni na portálu.
       const _staffByName = new Map();
-      state.staff.forEach(s => {
+      // 1. Ne-portáloví pracovníci z Nastavení (Ostatní, Vedoucí…)
+      (state.allSpecialStaff || []).forEach(s => {
+        const key = (s.name || '').trim().toLowerCase();
+        if (key) _staffByName.set(key, s);
+      });
+      // 2. Portáloví pracovníci z allPortalUsers (má přednost, přepíše state.staff pokud kolize)
+      (state.allPortalUsers || []).forEach(s => {
         const key = (s.name || '').trim().toLowerCase();
         if (key) _staffByName.set(key, s);
       });
 
       const _xlsNamesLower = new Set(); // track which names appeared in XLS
+      const newUnmatched = [];          // jména z XLS, která nejsou v Nastavení
 
       let newSi = 0;
       staffRows.forEach((row, _xlsRowIdx) => {
@@ -5210,17 +5705,36 @@ function handleXlsImport(e) {
         const xlsName = String(row[0] || '').trim();
         _xlsNamesLower.add(xlsName.toLowerCase());
 
-        // Try name-based match first; fall back to position-based only as last resort.
+        // Hledáme přesnou shodu jména v Nastavení (portáloví i ostatní).
         const _matched = _staffByName.get(xlsName.toLowerCase());
-        const staffEntry = _matched ? { ..._matched } : { ...(state.staff[newSi] || {}) };
 
-        // If the position-fallback accidentally spread a portal user onto a non-portal row
-        // (different person), wipe the userId so this row is treated as a fresh worker.
-        if (!_matched && staffEntry.userId) {
-          const posName = (state.staff[newSi]?.name || '').trim().toLowerCase();
-          if (posName !== xlsName.toLowerCase()) delete staffEntry.userId;
+        if (!_matched) {
+          // Jméno není v Nastavení → řádek z XLS zůstane v Tvorbě bez metadat z Nastavení.
+          const unmatchedShifts = {};
+          calCols.forEach((_, ci) => {
+            const val = String(row[1 + ci] || '').trim();
+            if (val) unmatchedShifts[ci] = val;
+          });
+          newUnmatched.push({ name: xlsName, schedule: unmatchedShifts });
+          const staffEntry = {
+            name: xlsName || `pracovník ${newSi + 1}`,
+            type: '',
+            login: '',
+            contract: '',
+            maxHrs: '', noteM: '', noteP: '', x: '', xa: '', dates: '', regular: '', hotel: '',
+            monthlyOverrides: {},
+            unmatchedXls: true
+          };
+          newStaff.push(staffEntry);
+          calCols.forEach((_, ci) => {
+            const val = String(row[1 + ci] || '').trim();
+            if (val) newSchedule[`${newSi}_${ci}`] = val;
+          });
+          newSi++;
+          return;
         }
 
+        const staffEntry = { ..._matched };
         staffEntry.name = xlsName || staffEntry.name || `pracovník ${newSi + 1}`;
         // noteP is last col after sums (4 sum cols + 3 extra = 7)
         const noteCol = 1 + calCols.length + 7;
@@ -5233,21 +5747,25 @@ function handleXlsImport(e) {
         newSi++;
       });
 
-      // Preserve non-portal workers (e.g. Vedoucí/Pohotovost added in Nastavení) that were
-      // NOT present in the imported XLS.  They keep their metadata but get no shifts (the
-      // XLS schedule does not include them), which is correct.
-      state.staff.filter(s => !s.userId).forEach(s => {
-        if (!_xlsNamesLower.has((s.name || '').trim().toLowerCase())) {
-          newStaff.push({ ...s });
-        }
-      });
+      // Sloučíme nově nalezené neuložené s těmi, co už existují (aby se nepřepisovaly při reimportu).
+      // Pokud už záznam se stejným jménem existuje, zachováme ho (může mít víc směn).
+      const _existingUnmatched = new Map((state.unmatchedXls || []).map(u => [u.name.toLowerCase(), u]));
+      newUnmatched.forEach(u => { _existingUnmatched.set(u.name.toLowerCase(), u); });
+      const mergedUnmatched = [..._existingUnmatched.values()];
+      // Odstraníme případné neuložené, jejichž jméno teď bylo nalezeno v Nastavení
+      const finalUnmatched = mergedUnmatched.filter(u => !_staffByName.has(u.name.toLowerCase()));
 
-      if (!newStaff.length) { toast('Nenalezeni žádní pracovníci', true); return; }
+      if (!newStaff.length && !finalUnmatched.length) { toast('Nenalezeni žádní pracovníci', true); return; }
 
-      if (!confirm(`Import nahradí rozvrh pro ${newStaff.length} pracovníků. Pokračovat?`)) return;
+      const unmatchedMsg = finalUnmatched.length
+        ? `\n\n⚠ ${finalUnmatched.length} jmen z XLS nebylo nalezeno v Nastavení a bude zobrazeno jako Neuložení:\n${finalUnmatched.map(u => '• ' + u.name).join('\n')}`
+        : '';
+      if (!confirm(`Import nahradí rozvrh pro ${newStaff.length} pracovníků. Pokračovat?${unmatchedMsg}`)) return;
 
       state.staff = newStaff;
       state.schedule = newSchedule;
+      state.unmatchedXls = finalUnmatched;
+      updateImportUnmatchedButton();
       renderStaffTable();
       renderScheduleTable('tvorba-tbl', true);
       updateDuplicateClasses();
@@ -5260,6 +5778,7 @@ function handleXlsImport(e) {
       setAutosaveInd('Ukládám import…');
       await saveDraft(true);
       toast(`Import uložen (${newStaff.length} pracovníků)`);
+      if (finalUnmatched.length) showImportUnmatchedOverlay();
     } catch(err) {
       console.error('Import error:', err);
       toast('Chyba při importu souboru', true);
@@ -5292,14 +5811,14 @@ async function loadMasterStaff() {
     const list = result.staff || result || [];
     if (!list || !list.length) { toast('Master nemá žádné pracovníky', true); return; }
     if (!confirm(`Načíst ${list.length} pracovníků z master? Stávající seznam bude nahrazen.`)) return;
-    state.staff = list.map(s => ({
+    state.allSpecialStaff = list.map(s => ({
       name: s.name || '', login: s.login || '', type: s.type || '', contract: s.contract || '',
       maxHrs: s.maxHrs || '', regular: s.regular || '',
       dates: s.dates || '', noteM: s.noteM || '', noteP: s.noteP || ''
     }));
     renderStaffTable();
-    scheduleAutoSave();
-    toast(`Načteno ${state.staff.length} pracovníků z master`);
+    saveSpecialStaff();
+    toast(`Načteno ${state.allSpecialStaff.length} pracovníků z master`);
   } catch(e) {
     toast('Chyba načtení z master', true);
   }
@@ -5526,6 +6045,28 @@ document.addEventListener('DOMContentLoaded', async () => {
     if (e.key === 'Enter') confirmAddStaff();
   });
 
+  // ── Add web user modal ──
+  ['add-web-user-close','add-web-user-cancel'].forEach(id => {
+    document.getElementById(id).addEventListener('click', () => {
+      document.getElementById('overlay-add-web-user').classList.remove('show');
+    });
+  });
+  document.getElementById('add-web-user-confirm').addEventListener('click', confirmAddWebUser);
+  document.getElementById('overlay-add-web-user').addEventListener('click', e => {
+    if (e.target === e.currentTarget) e.currentTarget.classList.remove('show');
+  });
+  document.getElementById('wu-in-raspis').addEventListener('change', e => {
+    document.getElementById('wu-raspis-fields').style.display = e.target.checked ? '' : 'none';
+  });
+
+  // ── Import unmatched modal ──
+  ['import-unmatched-close','import-unmatched-later'].forEach(id => {
+    document.getElementById(id).addEventListener('click', closeImportUnmatchedOverlay);
+  });
+  document.getElementById('overlay-import-unmatched').addEventListener('click', e => {
+    if (e.target === e.currentTarget) closeImportUnmatchedOverlay();
+  });
+
   // ── Edit staff modal ──
   document.getElementById('edit-staff-confirm').addEventListener('click', confirmEditStaff);
   ['edit-staff-close','edit-staff-cancel'].forEach(id => {
@@ -5584,6 +6125,7 @@ document.addEventListener('DOMContentLoaded', async () => {
   document.getElementById('btn-template-dl').addEventListener('click', downloadTemplate);
   document.getElementById('btn-import-xls').addEventListener('click', importXls);
   document.getElementById('xls-file-input').addEventListener('change', handleXlsImport);
+  document.getElementById('btn-import-unmatched').addEventListener('click', showImportUnmatchedOverlay);
 
   // ── Rozpis VR actions ──
   document.getElementById('pub-sel').addEventListener('change', e => {

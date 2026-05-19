@@ -266,7 +266,7 @@ app.get('/api/users', requireLogin, requireAdmin, async (req, res) => {
   try {
     const db = getPool();
     const { rows } = await db.query(
-      'SELECT id, name, username, role, created_at, perm_overrides FROM users ORDER BY id'
+      'SELECT id, name, username, role, created_at, perm_overrides FROM users ORDER BY LOWER(name), LOWER(username), id'
     );
     res.json(rows);
   } catch (err) {
@@ -3150,8 +3150,9 @@ app.get('/api/raspis-staff', requireLogin, async (req, res) => {
 app.get('/api/rt/drafts', requireLogin, async (req, res) => {
   try {
     const db = getPool();
+    // month = 0 je rezervováno pro special-staff (přežívající záznamy) — nezobrazovat v seznamu konceptů
     const { rows } = await db.query(
-      'SELECT id, month, year, saved_at FROM rt_drafts WHERE user_id = $1 ORDER BY year DESC, month DESC',
+      'SELECT id, month, year, saved_at FROM rt_drafts WHERE user_id = $1 AND month > 0 ORDER BY year DESC, month DESC',
       [req.session.user.id]
     );
     res.json(rows.map(r => ({
@@ -3230,6 +3231,45 @@ app.post('/api/rt/drafts/restore/:id', requireLogin, async (req, res) => {
     await db.query('DELETE FROM rt_drafts_trash WHERE id = $1', [id]);
     res.json({ ok: true });
   } catch (err) { console.error(err); res.json({ ok: false }); }
+});
+
+// ── Special Staff — ne-portáloví pracovníci, per-user, přežívají smazání draftu ─
+// Ukládá se do rt_drafts s month=0, year=0 (nikdy se nezobrazí v seznamu konceptů).
+
+app.get('/api/rt/special-staff', requireLogin, async (req, res) => {
+  try {
+    const db = getPool();
+    const { rows } = await db.query(
+      'SELECT data FROM rt_drafts WHERE user_id = $1 AND month = 0 AND year = 0',
+      [req.session.user.id]
+    );
+    if (!rows.length) return res.json({ ok: true, staff: [] });
+    let parsed;
+    try { parsed = JSON.parse(rows[0].data); } catch(e) { parsed = rows[0].data; }
+    const staff = Array.isArray(parsed?.staff) ? parsed.staff : [];
+    res.json({ ok: true, staff });
+  } catch (err) {
+    console.error('Chyba GET /api/rt/special-staff:', err);
+    res.json({ ok: false, staff: [], msg: 'Chyba serveru.' });
+  }
+});
+
+app.post('/api/rt/special-staff', requireLogin, async (req, res) => {
+  const { staff } = req.body;
+  if (!Array.isArray(staff)) return res.json({ ok: false, msg: 'Neplatná data.' });
+  try {
+    const db = getPool();
+    await db.query(
+      `INSERT INTO rt_drafts (user_id, month, year, data, saved_at)
+       VALUES ($1, 0, 0, $2, NOW())
+       ON CONFLICT (user_id, month, year) DO UPDATE SET data = $2, saved_at = NOW()`,
+      [req.session.user.id, JSON.stringify({ staff })]
+    );
+    res.json({ ok: true });
+  } catch (err) {
+    console.error('Chyba POST /api/rt/special-staff:', err);
+    res.json({ ok: false, msg: 'Chyba serveru.' });
+  }
 });
 
 // ── Publikované rozpisy ───────────────────────────────────────────────────────
