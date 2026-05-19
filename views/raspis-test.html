@@ -3021,74 +3021,87 @@ async function syncRaspisStaff() {
     const data = await r.json();
     if (!data.ok) return;
 
-    // Remove all existing portal (userId) entries — always reload fresh from API
-    const _nonPortal = state.staff.filter(s => !s.userId); // keep special workers
+    // Keep special workers (no userId) — they are not from API
+    const _nonPortal = state.staff.filter(s => !s.userId);
 
     const apiStaff = (data.staff || []).filter(s => s.userId);
-    const apiMap = new Map(apiStaff.map(as => [as.userId, as]));
+    const apiMap   = new Map(apiStaff.map(as => [as.userId, as]));
 
-    // Build portal-user entries in the SAVED ORDER (state._staffOrder from applyData).
-    // If the API returns users in a different order than the draft was saved in, and we
-    // add them in API order, sortStaffAlpha() will remap schedule keys based on the WRONG
-    // old→new mapping → schedule appears assigned to wrong workers after reload.
-    // Solution: insert portal users in the same order they had when the schedule was saved.
-    const _savedOrder = state._staffOrder || [];
-    const _addedIds = new Set();
+    // ── Determine the insertion order for portal users ──────────────────────
+    // CRITICAL: schedule keys `si_ci` index into state.staff. The schedule was
+    // saved with staff in a specific order (always alphabetical, since
+    // sortStaffAlpha() is called after every edit). We must reconstruct portal
+    // users in that SAME order before calling sortStaffAlpha() — otherwise
+    // sortStaffAlpha maps old→new indices based on a wrong "current order" and
+    // scrambles the schedule (shifts end up on the wrong workers).
+    //
+    // Priority:
+    //  1. state._staffOrder (saved in draft by buildSaveData) — exact userId list
+    //  2. Fallback: sort API users alphabetically (matches canonical schedule order)
+    //     Works for drafts saved before staffOrder was introduced, because those
+    //     drafts were ALSO saved after sortStaffAlpha → alphabetical order.
+
+    const _makeEntry = as => {
+      const custom = state.portalCustomData?.[as.userId] || {};
+      return {
+        userId:   as.userId,
+        name:     as.displayName || '',
+        login:    as.login       || '',
+        type:     as.type        || '',
+        contract: as.contract    || '',
+        maxHrs:   custom.maxHrs  || '',
+        noteM:    custom.noteM   || '',
+        noteP:    custom.noteP   || '',
+        x:        custom.x       || '',
+        xa:       custom.xa      || '',
+        dates:    custom.dates   || '',
+        regular:  custom.regular || '',
+        hotel:    custom.hotel   || '',
+        monthlyOverrides: custom.monthlyOverrides
+          ? JSON.parse(JSON.stringify(custom.monthlyOverrides)) : {},
+        inactive: false,
+      };
+    };
+
     const _portalInOrder = [];
+    const _addedIds = new Set();
 
-    _savedOrder.forEach(uid => {
-      if (!uid) return; // null slot = special worker (handled via _nonPortal)
-      const as = apiMap.get(uid);
-      if (!as) return; // user deactivated — skip
-      const custom = state.portalCustomData?.[as.userId] || {};
-      _portalInOrder.push({
-        userId:   as.userId,
-        name:     as.displayName || '',
-        login:    as.login       || '',
-        type:     as.type        || '',
-        contract: as.contract    || '',
-        maxHrs:   custom.maxHrs  || '',
-        noteM:    custom.noteM   || '',
-        noteP:    custom.noteP   || '',
-        x:        custom.x       || '',
-        xa:       custom.xa      || '',
-        dates:    custom.dates   || '',
-        regular:  custom.regular || '',
-        hotel:    custom.hotel   || '',
-        monthlyOverrides: custom.monthlyOverrides ? JSON.parse(JSON.stringify(custom.monthlyOverrides)) : {},
-        inactive: false,
+    const _savedOrder = Array.isArray(state._staffOrder) && state._staffOrder.length > 0
+      ? state._staffOrder
+      : null;
+
+    if (_savedOrder) {
+      // Path 1: use the exact saved order (new drafts with staffOrder field)
+      _savedOrder.forEach(uid => {
+        if (!uid) return; // null = special worker slot, handled via _nonPortal
+        const as = apiMap.get(uid);
+        if (!as) return;  // deactivated user — skip
+        _portalInOrder.push(_makeEntry(as));
+        _addedIds.add(uid);
       });
-      _addedIds.add(uid);
-    });
-
-    // Append any portal users not yet in the saved order (new employees added since last save)
-    for (const as of apiStaff) {
-      if (_addedIds.has(as.userId)) continue;
-      const custom = state.portalCustomData?.[as.userId] || {};
-      _portalInOrder.push({
-        userId:   as.userId,
-        name:     as.displayName || '',
-        login:    as.login       || '',
-        type:     as.type        || '',
-        contract: as.contract    || '',
-        maxHrs:   custom.maxHrs  || '',
-        noteM:    custom.noteM   || '',
-        noteP:    custom.noteP   || '',
-        x:        custom.x       || '',
-        xa:       custom.xa      || '',
-        dates:    custom.dates   || '',
-        regular:  custom.regular || '',
-        hotel:    custom.hotel   || '',
-        monthlyOverrides: custom.monthlyOverrides ? JSON.parse(JSON.stringify(custom.monthlyOverrides)) : {},
-        inactive: false,
+    } else {
+      // Path 2 (fallback for old drafts): add in alphabetical order so that
+      // sortStaffAlpha() below is a NO-OP and does NOT remap schedule keys.
+      // Schedule was always saved after sortStaffAlpha → it's in alphabetical
+      // order → adding users in alphabetical order = correct index alignment.
+      const _sorted = [...apiStaff].sort((a, b) =>
+        (a.displayName || '').localeCompare(b.displayName || '', 'cs'));
+      _sorted.forEach(as => {
+        _portalInOrder.push(_makeEntry(as));
+        _addedIds.add(as.userId);
       });
     }
 
-    // Reconstruct state.staff: special workers first (preserving their positions), then portal users
-    // in saved order. sortStaffAlpha will only need to remap truly new employees appended at the end.
+    // Append any NEW portal users not yet in the saved order (hired since last save).
+    // They go to the end; sortStaffAlpha will slot them into the right position.
+    for (const as of apiStaff) {
+      if (_addedIds.has(as.userId)) continue;
+      _portalInOrder.push(_makeEntry(as));
+    }
+
     state.staff = _nonPortal.concat(_portalInOrder);
 
-    sortStaffAlpha();
+    sortStaffAlpha(); // no-op if already in correct order; only remaps truly new employees
     renderStaffTable();
     renderScheduleTable('tvorba-tbl', true);
     scheduleAutoSave();
@@ -5079,7 +5092,7 @@ function handleXlsImport(e) {
   if (typeof XLSX === 'undefined') { toast('SheetJS se nenačetl', true); return; }
 
   const reader = new FileReader();
-  reader.onload = evt => {
+  reader.onload = async evt => {
     try {
       const wb = XLSX.read(evt.target.result, { type: 'array' });
       const ws = wb.Sheets[wb.SheetNames[0]];
@@ -5126,8 +5139,11 @@ function handleXlsImport(e) {
       updateRequirementClasses();
       buildHotelFilterButtons();
       historySave();
-      scheduleAutoSave();
-      toast(`Import dokončen (${newStaff.length} pracovníků)`);
+      // Save immediately (not via 4-second autosave timer) so that navigating away
+      // right after import does not lose the data or staffOrder on the server.
+      setAutosaveInd('Ukládám import…');
+      await saveDraft(true);
+      toast(`Import uložen (${newStaff.length} pracovníků)`);
     } catch(err) {
       console.error('Import error:', err);
       toast('Chyba při importu souboru', true);
