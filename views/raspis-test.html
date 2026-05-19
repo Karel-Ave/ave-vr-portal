@@ -2846,6 +2846,8 @@ function renderStaffTable() {
       state.staff.splice(_si, 1);
       sortStaffAlpha();
       renderStaffTable();
+      scheduleAutoSave();
+      saveMasterStaff(); // uložit do master_staff — přežije smazání draftu
     });
     saveTd.appendChild(delBtn);
     tr.appendChild(saveTd);
@@ -3019,6 +3021,27 @@ function scheduleAutoSave() {
   autoSaveTimer = setTimeout(() => saveDraft(true), 4000);
 }
 
+/**
+ * Uloží speciální (ne-portálové) pracovníky do master_staff na serveru.
+ * Tato data přežijí smazání draftu — nejsou vázána na žádný měsíc.
+ * Volá se po přidání, úpravě nebo smazání pracovníka v Nastavení.
+ */
+async function saveMasterStaff() {
+  const nonPortal = state.staff.filter(s => !s.userId);
+  try {
+    const r = await fetch('/api/master-staff', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      credentials: 'include',
+      body: JSON.stringify({ staff: nonPortal })
+    });
+    const d = await r.json();
+    if (!d.ok) console.warn('saveMasterStaff:', d.msg || 'error');
+  } catch(e) {
+    console.warn('saveMasterStaff error:', e);
+  }
+}
+
 /* ══════════════════════════════════════════════════════════════════════════════
    SYNC RASPIS STAFF — synchronizace pracovníků ze Správy uživatelů
    Portaloví uživatelé (s userId) se NIKDY neukládají do draftu.
@@ -3031,10 +3054,21 @@ async function syncRaspisStaff() {
     const data = await r.json();
     if (!data.ok) return;
 
-    // Keep special workers (no userId) — they are not from API
-    const _nonPortal = state.staff.filter(s => !s.userId);
+    // Non-portal workers (Vedoucí/Pohotovost/Speciální/Ostatní) come from master_staff
+    // which is already included in the /api/raspis-staff response.
+    // Using the API as source of truth means they survive draft deletion.
+    const apiNonPortal = (data.staff || []).filter(s => !s.userId);
+    const apiStaff     = (data.staff || []).filter(s =>  s.userId);
 
-    const apiStaff = (data.staff || []).filter(s => s.userId);
+    // Fallback: if master_staff is empty (first load after migration from draft-based
+    // storage), use workers already in state.staff from the draft, then migrate them.
+    const _hasDraftWorkers = apiNonPortal.length === 0 && state.staff.some(s => !s.userId);
+    const _nonPortal = apiNonPortal.length > 0
+      ? apiNonPortal
+      : state.staff.filter(s => !s.userId);
+
+    // One-time migration: push draft workers to master_staff so they survive next time
+    if (_hasDraftWorkers) saveMasterStaff();
     const apiMap   = new Map(apiStaff.map(as => [as.userId, as]));
 
     // ── Determine the insertion order for portal users ──────────────────────
@@ -4194,6 +4228,8 @@ function confirmEditStaff() {
   renderStaffTable();
   renderScheduleTable('tvorba-tbl', true);
   toast(`Uloženo: ${name}`);
+  scheduleAutoSave();
+  saveMasterStaff(); // uložit do master_staff — přežije smazání draftu
 }
 
 /* ══════════════════════════════════════════════════════════════════════════════
@@ -4632,7 +4668,8 @@ function confirmAddStaff() {
   sortStaffAlpha();
   renderStaffTable();
   toast(`Přidán: ${name}`);
-  scheduleAutoSave(); // Okamžitě naplánuj uložení, aby pracovník zůstal i po reloadu
+  scheduleAutoSave();
+  saveMasterStaff(); // uložit do master_staff — přežije smazání draftu
 }
 
 /* ══════════════════════════════════════════════════════════════════════════════
