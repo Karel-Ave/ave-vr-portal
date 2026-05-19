@@ -1210,6 +1210,11 @@ tbody tr.row-filtered { display: none; }
             <label>Barva <input type="color" class="col-inp" data-th="light" data-k="tSpe"></label>
             <span class="color-swatch" id="sw-light-tSpe" style="color:#222">Speciální</span>
           </div>
+          <div class="color-row2">
+            <span class="color-lbl">Pohotovost</span>
+            <label>Barva <input type="color" class="col-inp" data-th="light" data-k="tPoh"></label>
+            <span class="color-swatch" id="sw-light-tPoh" style="color:#222">Pohotovost</span>
+          </div>
         </div>
         <div class="color-group">
           <h4>Pokrytí (počet lidí na hotel/den)</h4>
@@ -1320,6 +1325,11 @@ tbody tr.row-filtered { display: none; }
             <span class="color-lbl">Speciální</span>
             <label>Barva <input type="color" class="col-inp" data-th="dark" data-k="tSpe"></label>
             <span class="color-swatch" id="sw-dark-tSpe">Speciální</span>
+          </div>
+          <div class="color-row2">
+            <span class="color-lbl">Pohotovost</span>
+            <label>Barva <input type="color" class="col-inp" data-th="dark" data-k="tPoh"></label>
+            <span class="color-swatch" id="sw-dark-tPoh">Pohotovost</span>
           </div>
         </div>
         <div class="color-group">
@@ -1648,7 +1658,7 @@ const CONTRACTS   = ['','HPP','ZPP','DPČ','DPP'];
 
 let TYPE_COLORS = {
   'Denní':'#F8FF35','Noční':'#4DC3F5','Obojí':'#A8E05A',
-  'Vedoucí':'#FFB347','Speciální':'#FF8585'
+  'Vedoucí':'#FFB347','Speciální':'#FF8585','Pohotovost':'#C8A0DC'
 };
 
 const STATIC_HOLIDAYS = {
@@ -4209,7 +4219,7 @@ const COLOR_DEFAULTS = {
     knBg:'#5b9dc9', knTx:'#ffffff',
     dupBg:'#ffccaa', dupTx:'#7a3000',
     tDen:'#F8FF35', tNoc:'#4DC3F5', tOba:'#A8E05A',
-    tVed:'#FFB347', tSpe:'#FF8585',
+    tVed:'#FFB347', tSpe:'#FF8585', tPoh:'#C8A0DC',
     cov0Bg:'#ffebeb', cov0Tx:'#c0392b',
     cov1Bg:'#c8f5c8', cov1Tx:'#1a6b1a',
     cov2Bg:'#ffe082', cov2Tx:'#7a5000',
@@ -4225,7 +4235,7 @@ const COLOR_DEFAULTS = {
     knBg:'#0f2840', knTx:'#9cd4f0',
     dupBg:'#5a3000', dupTx:'#ffccaa',
     tDen:'#F8FF35', tNoc:'#4DC3F5', tOba:'#A8E05A',
-    tVed:'#FFB347', tSpe:'#FF8585',
+    tVed:'#FFB347', tSpe:'#FF8585', tPoh:'#C8A0DC',
     cov0Bg:'#4a0000', cov0Tx:'#ff8a65',
     cov1Bg:'#1a4a1a', cov1Tx:'#7fff7f',
     cov2Bg:'#4a3a00', cov2Tx:'#ffe082',
@@ -4251,7 +4261,7 @@ const COLOR_VAR_MAP = {
   wdBg:'--col-wd-bg', wdTx:'--col-wd-tx', wnBg:'--col-wn-bg', wnTx:'--col-wn-tx',
   kdBg:'--col-kd-bg', kdTx:'--col-kd-tx', knBg:'--col-kn-bg', knTx:'--col-kn-tx',
   dupBg:'--col-dup-bg', dupTx:'--col-dup-tx',
-  tDen:'--col-type-den', tNoc:'--col-type-noc', tOba:'--col-type-oba', tVed:'--col-type-ved', tSpe:'--col-type-spe',
+  tDen:'--col-type-den', tNoc:'--col-type-noc', tOba:'--col-type-oba', tVed:'--col-type-ved', tSpe:'--col-type-spe', tPoh:'--col-type-poh',
   cov0Bg:'--col-cov0-bg', cov0Tx:'--col-cov0-tx', cov1Bg:'--col-cov1-bg', cov1Tx:'--col-cov1-tx',
   cov2Bg:'--col-cov2-bg', cov2Tx:'--col-cov2-tx', cov3Bg:'--col-cov3-bg', cov3Tx:'--col-cov3-tx',
   covdnBg:'--col-covdn-bg', covdnTx:'--col-covdn-tx', emptyBg:'--col-empty-bg',
@@ -4298,7 +4308,7 @@ function applyColorProfile() {
       --col-kn-bg:${l.knBg}; --col-kn-tx:${l.knTx};
       --col-dup-bg:${l.dupBg}; --col-dup-tx:${l.dupTx};
       --col-type-den:${l.tDen}; --col-type-noc:${l.tNoc};
-      --col-type-oba:${l.tOba}; --col-type-ved:${l.tVed}; --col-type-spe:${l.tSpe};
+      --col-type-oba:${l.tOba}; --col-type-ved:${l.tVed}; --col-type-spe:${l.tSpe}; --col-type-poh:${l.tPoh};
       --col-cov0-bg:${l.cov0Bg}; --col-cov0-tx:${l.cov0Tx};
       --col-cov1-bg:${l.cov1Bg}; --col-cov1-tx:${l.cov1Tx};
       --col-cov2-bg:${l.cov2Bg}; --col-cov2-tx:${l.cov2Tx};
@@ -4315,7 +4325,7 @@ function applyColorProfile() {
       --col-kn-bg:${d.knBg}; --col-kn-tx:${d.knTx};
       --col-dup-bg:${d.dupBg}; --col-dup-tx:${d.dupTx};
       --col-type-den:${d.tDen}; --col-type-noc:${d.tNoc};
-      --col-type-oba:${d.tOba}; --col-type-ved:${d.tVed}; --col-type-spe:${d.tSpe};
+      --col-type-oba:${d.tOba}; --col-type-ved:${d.tVed}; --col-type-spe:${d.tSpe}; --col-type-poh:${d.tPoh};
       --col-cov0-bg:${d.cov0Bg}; --col-cov0-tx:${d.cov0Tx};
       --col-cov1-bg:${d.cov1Bg}; --col-cov1-tx:${d.cov1Tx};
       --col-cov2-bg:${d.cov2Bg}; --col-cov2-tx:${d.cov2Tx};
@@ -4337,11 +4347,12 @@ function applyColorProfile() {
   // Sync TYPE_COLORS to current theme
   const isDark = document.documentElement.getAttribute('data-theme') === 'dark';
   const cp = isDark ? d : l;
-  TYPE_COLORS['Denní']    = cp.tDen;
-  TYPE_COLORS['Noční']    = cp.tNoc;
-  TYPE_COLORS['Obojí']    = cp.tOba;
-  TYPE_COLORS['Vedoucí']  = cp.tVed;
-  TYPE_COLORS['Speciální']= cp.tSpe;
+  TYPE_COLORS['Denní']     = cp.tDen;
+  TYPE_COLORS['Noční']     = cp.tNoc;
+  TYPE_COLORS['Obojí']     = cp.tOba;
+  TYPE_COLORS['Vedoucí']   = cp.tVed;
+  TYPE_COLORS['Speciální'] = cp.tSpe;
+  TYPE_COLORS['Pohotovost']= cp.tPoh;
 }
 
 let _colorEditorTheme = 'light'; // which tab is active
@@ -4425,6 +4436,7 @@ function updateColorSwatches(theme) {
   S(`sw-${theme}-tOba`, cp.tOba, '#222');
   S(`sw-${theme}-tVed`, cp.tVed, '#222');
   S(`sw-${theme}-tSpe`, cp.tSpe, '#222');
+  S(`sw-${theme}-tPoh`, cp.tPoh, '#222');
   S(`sw-${theme}-cov0`, cp.cov0Bg, cp.cov0Tx);
   S(`sw-${theme}-cov1`, cp.cov1Bg, cp.cov1Tx);
   S(`sw-${theme}-cov2`, cp.cov2Bg, cp.cov2Tx);
