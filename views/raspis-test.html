@@ -623,11 +623,13 @@ tbody tr.row-hidden { display: none !important; }
 .fonds-row input:focus { border-color: var(--accent,#C4A96A); }
 :root:not([data-theme="dark"]) .fonds-row input { background: rgba(0,0,0,.05); }
 .fonds-footer { padding: 11px 15px; border-top: 1px solid var(--border); display: flex; justify-content: flex-end; }
-/* schedule filters */
+/* d/n focus filters */
 .sched-tbl.hide-night td[data-dn="n"],
 .sched-tbl.hide-night th[data-dn="n"] { display: none; }
 .sched-tbl.hide-day td[data-dn="d"],
 .sched-tbl.hide-day th[data-dn="d"] { display: none; }
+.sched-tbl td.sched-cell.shift-before { border-left: 3px solid #ffd400 !important; }
+.sched-tbl td.sched-cell.shift-after { border-right: 3px solid #ffd400 !important; }
 .sched-tbl .th-dn[data-dn="n"] .th-dn-day { display: none; width: 100%; }
 .sched-tbl.hide-day .th-dn[data-dn="n"] .th-dn-day { display: block; }
 .sched-tbl.hide-night .th-dn[data-dn="d"] .th-dn-day { width: 100%; }
@@ -2154,6 +2156,7 @@ function refreshScheduleAfterHistory() {
   updateCoverageRows();
   updateRequirementClasses();
   updatePManyCells();
+  updateShiftContextBorders();
   scheduleAutoSave();
 }
 
@@ -2784,6 +2787,7 @@ function renderScheduleTable(tableId, editable) {
   tbl.classList.toggle('hotels-hidden', !showHotels);
   tbl.classList.toggle('hide-night', colShiftMode === 'day');
   tbl.classList.toggle('hide-day', colShiftMode === 'night');
+  updateShiftContextBorders();
   fineTuneScheduleFit(tbl);
 
   if (editable) {
@@ -2916,20 +2920,39 @@ function setupKeyboardNav(tbl) {
   const calCols = getCalCols(state.month, state.year);
   const numCols = calCols.length;
   const numRows = state.staff.length;
+  const isVisibleCi = ci => {
+    const col = calCols[ci];
+    if (!col) return false;
+    if (colShiftMode === 'day') return col.dn === 'd';
+    if (colShiftMode === 'night') return col.dn === 'n';
+    return true;
+  };
+  const moveCell = (startSi, startCi, dir) => {
+    let si = startSi;
+    let ci = startCi;
+    for (let guard = 0; guard < numRows * numCols; guard++) {
+      ci += dir;
+      if (ci >= numCols) { ci = 0; si++; }
+      if (ci < 0) { ci = numCols - 1; si--; }
+      if (si < 0 || si >= numRows) return { si: startSi, ci: startCi };
+      if (isVisibleCi(ci)) return { si, ci };
+    }
+    return { si: startSi, ci: startCi };
+  };
 
   _navHandler = e => {
     if (!focusedCell) return;
     const {si, ci} = focusedCell;
     let handled = false;
 
-    if (e.key === 'ArrowRight' || e.key === 'Tab') {
+    if (e.key === 'ArrowRight' || (e.key === 'Tab' && !e.shiftKey)) {
       handled = true;
-      if (ci + 1 < numCols) focusCell(si, ci + 1);
-      else if (si + 1 < numRows) focusCell(si + 1, 0);
+      const next = moveCell(si, ci, 1);
+      focusCell(next.si, next.ci);
     } else if (e.key === 'ArrowLeft' || (e.key === 'Tab' && e.shiftKey)) {
       handled = true;
-      if (ci - 1 >= 0) focusCell(si, ci - 1);
-      else if (si - 1 >= 0) focusCell(si - 1, numCols - 1);
+      const prev = moveCell(si, ci, -1);
+      focusCell(prev.si, prev.ci);
     } else if (e.key === 'ArrowDown' || e.key === 'Enter') {
       handled = true;
       if (si + 1 < numRows) focusCell(si + 1, ci);
@@ -2951,8 +2974,9 @@ function setupKeyboardNav(tbl) {
       e.preventDefault();
       const newVal = smartCase(e.key);
       setCellValue(si, ci, newVal);
-      const nextSi = (ci + 1 < numCols) ? si : (si + 1 < numRows ? si + 1 : si);
-      const nextCi = (ci + 1 < numCols) ? ci + 1 : (si + 1 < numRows ? 0 : ci);
+      const next = moveCell(si, ci, 1);
+      const nextSi = next.si;
+      const nextCi = next.ci;
       setTimeout(() => focusCell(nextSi, nextCi), 0);
       return; // preventDefault already called above
     }
@@ -2985,6 +3009,7 @@ function setCellValue(si, ci, val) {
   updateCoverageRows();
   updateRequirementClasses();
   updatePManyCells();
+  updateShiftContextBorders();
   scheduleAutoSave();
 }
 
@@ -4527,6 +4552,42 @@ function updateDuplicateClasses() {
   });
 }
 
+function updateShiftContextBorders() {
+  const calCols = getCalCols(state.month, state.year);
+  ['tvorba-tbl','rozpis-tbl'].forEach(tblId => {
+    const tbl = document.getElementById(tblId);
+    if (!tbl) return;
+    tbl.querySelectorAll('.staff-tbody .sched-cell[data-si][data-ci]').forEach(td => {
+      td.classList.remove('shift-before', 'shift-after');
+      td.removeAttribute('title');
+    });
+    if (colShiftMode === 'all') return;
+    state.staff.forEach((_, si) => {
+      for (let ci = 0; ci < calCols.length; ci += 2) {
+        const dCol = calCols[ci];
+        const nCol = calCols[ci + 1];
+        if (!dCol || !nCol || dCol.dn !== 'd' || nCol.dn !== 'n') continue;
+        const dayVal = state.schedule[`${si}_${ci}`] || '';
+        const nightVal = state.schedule[`${si}_${ci + 1}`] || '';
+        if (colShiftMode === 'day' && nightVal) {
+          const td = tbl.querySelector(`.staff-tbody .sched-cell[data-si="${si}"][data-ci="${ci}"]`);
+          if (td) {
+            td.classList.add('shift-after');
+            td.title = `Noční po: ${nightVal}`;
+          }
+        }
+        if (colShiftMode === 'night' && dayVal) {
+          const td = tbl.querySelector(`.staff-tbody .sched-cell[data-si="${si}"][data-ci="${ci + 1}"]`);
+          if (td) {
+            td.classList.add('shift-before');
+            td.title = `Denní před: ${dayVal}`;
+          }
+        }
+      }
+    });
+  });
+}
+
 function buildHotelFilterButtons() {
   const container = document.getElementById('stb-hotel-btns');
   container.innerHTML = '';
@@ -4582,6 +4643,7 @@ function setColumnShiftMode(mode) {
   });
   document.getElementById('stb-cols-day')?.classList.toggle('active', colShiftMode === 'day');
   document.getElementById('stb-cols-night')?.classList.toggle('active', colShiftMode === 'night');
+  updateShiftContextBorders();
   fitScheduleToViewport();
   const tbl = document.querySelector('.tab-panel.active .sched-tbl');
   if (tbl) fineTuneScheduleFit(tbl);
