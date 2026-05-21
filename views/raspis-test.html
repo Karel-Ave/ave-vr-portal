@@ -2125,8 +2125,23 @@ function historyReset() {
   historySave();
 }
 
+function getHiddenRowsSnapshot() {
+  return Array.from(document.querySelectorAll('#tvorba-tbl .staff-tbody tr.row-hidden[data-si]'))
+    .map(tr => +tr.dataset.si)
+    .filter(Number.isFinite);
+}
+
+function makeHistorySnapshot() {
+  return {
+    schedule: state.schedule || {},
+    hiddenRows: getHiddenRowsSnapshot(),
+    markedWorkers: Array.from(markedWorkers || []),
+    markMode: !!_markMode
+  };
+}
+
 function historySave() {
-  const snap = JSON.stringify(state.schedule);
+  const snap = JSON.stringify(makeHistorySnapshot());
   if (historyIndex >= 0 && history[historyIndex] === snap) return;
   history = history.slice(0, historyIndex + 1);
   history.push(snap);
@@ -2137,15 +2152,48 @@ function historySave() {
 function historyUndo() {
   if (historyIndex <= 0) return;
   historyIndex--;
-  state.schedule = JSON.parse(history[historyIndex]);
-  refreshScheduleAfterHistory();
+  applyHistorySnapshot(JSON.parse(history[historyIndex]));
 }
 
 function historyRedo() {
   if (historyIndex >= history.length - 1) return;
   historyIndex++;
-  state.schedule = JSON.parse(history[historyIndex]);
+  applyHistorySnapshot(JSON.parse(history[historyIndex]));
+}
+
+function applyHistorySnapshot(snap) {
+  if (!snap) return;
+  if (snap.schedule) state.schedule = snap.schedule;
+  else state.schedule = snap;
+
+  _markMode = !!snap.markMode;
+  markedWorkers = new Set(snap.markedWorkers || []);
   refreshScheduleAfterHistory();
+  applyHistoryUiState(snap);
+}
+
+function applyHistoryUiState(snap) {
+  const hiddenRows = new Set(snap.hiddenRows || []);
+  document.querySelectorAll('#tvorba-tbl .staff-tbody tr[data-si]').forEach(tr => {
+    const si = +tr.dataset.si;
+    tr.classList.toggle('row-hidden', hiddenRows.has(si));
+    tr.classList.toggle('row-marked', markedWorkers.has(si));
+  });
+  document.querySelectorAll('#rozpis-tbl .staff-tbody tr[data-si]').forEach(tr => {
+    const si = +tr.dataset.si;
+    tr.classList.toggle('row-marked', markedWorkers.has(si));
+  });
+  const hiddenBtn = document.getElementById('btn-show-hidden');
+  if (hiddenBtn) hiddenBtn.style.display = hiddenRows.size ? '' : 'none';
+  const markBtn = document.getElementById('stb-mark-sel');
+  if (markBtn) {
+    markBtn.classList.toggle('active', _markMode);
+    markBtn.textContent = _markMode ? '✓ Označování' : 'Označ vybrané';
+  }
+  document.querySelectorAll('.staff-tbody td.col-name-td[data-si]').forEach(td => {
+    td.title = _markMode ? 'Kliknutím označíš / odznačíš pracovníka' : 'Kliknutím skryješ řádek';
+  });
+  applyRowFilters();
 }
 
 function refreshScheduleAfterHistory() {
@@ -2157,6 +2205,7 @@ function refreshScheduleAfterHistory() {
   updateRequirementClasses();
   updatePManyCells();
   updateShiftContextBorders();
+  updateCellSelection();
   scheduleAutoSave();
 }
 
@@ -2610,6 +2659,7 @@ function renderScheduleTable(tableId, editable) {
             tr.classList.add('row-marked');
           }
           applyRowFilters();
+          historySave();
         } else {
           // Normal mode: hide/show the row
           tr.classList.toggle('row-hidden');
@@ -2618,6 +2668,7 @@ function renderScheduleTable(tableId, editable) {
             const hasHidden = !!document.querySelector('#tvorba-tbl .staff-tbody tr.row-hidden');
             btn.style.display = hasHidden ? '' : 'none';
           }
+          historySave();
         }
       });
     }
@@ -2788,6 +2839,7 @@ function renderScheduleTable(tableId, editable) {
   tbl.classList.toggle('hide-night', colShiftMode === 'day');
   tbl.classList.toggle('hide-day', colShiftMode === 'night');
   updateShiftContextBorders();
+  updateCellSelection();
   fineTuneScheduleFit(tbl);
 
   if (editable) {
@@ -2961,7 +3013,7 @@ function setupKeyboardNav(tbl) {
       if (si - 1 >= 0) focusCell(si - 1, ci);
     } else if (e.key === 'Delete' || e.key === 'Backspace') {
       handled = true;
-      setCellValue(si, ci, '');
+      if (!deleteSelectedCells()) setCellValue(si, ci, '');
     } else if (e.key === 'z' && (e.ctrlKey || e.metaKey) && !e.shiftKey) {
       handled = true; historyUndo();
     } else if ((e.key === 'z' && (e.ctrlKey || e.metaKey) && e.shiftKey) ||
@@ -3010,6 +3062,7 @@ function setCellValue(si, ci, val) {
   updateRequirementClasses();
   updatePManyCells();
   updateShiftContextBorders();
+  updateCellSelection();
   scheduleAutoSave();
 }
 
@@ -4447,6 +4500,9 @@ function restoreStbState() {
 let _copySelSi1  = null, _copySelCi1 = null;
 let _copySelSi2  = null, _copySelCi2 = null;
 let _copyDragging = false;
+let _selSi1 = null, _selCi1 = null, _selSi2 = null, _selCi2 = null;
+let _selDragging = false;
+let _selDragMoved = false;
 let sumsMode     = 'all'; // 'all' | 'hidden' | 'hoursonly'
 let nastaveniMode     = 'default'; // 'default' | 'monthly'
 let overrideModeMonth = 1;
@@ -4644,6 +4700,7 @@ function setColumnShiftMode(mode) {
   document.getElementById('stb-cols-day')?.classList.toggle('active', colShiftMode === 'day');
   document.getElementById('stb-cols-night')?.classList.toggle('active', colShiftMode === 'night');
   updateShiftContextBorders();
+  updateCellSelection();
   fitScheduleToViewport();
   const tbl = document.querySelector('.tab-panel.active .sched-tbl');
   if (tbl) fineTuneScheduleFit(tbl);
@@ -4821,6 +4878,81 @@ function updateCopySelection() {
       }
     });
   });
+}
+
+function isScheduleColumnVisible(ci) {
+  const col = getCalCols(state.month, state.year)[ci];
+  if (!col) return false;
+  if (colShiftMode === 'day') return col.dn === 'd';
+  if (colShiftMode === 'night') return col.dn === 'n';
+  return true;
+}
+
+function clearCellSelection() {
+  _selSi1 = _selCi1 = _selSi2 = _selCi2 = null;
+  document.querySelectorAll('.cell-selected').forEach(el => el.classList.remove('cell-selected'));
+}
+
+function clearCellSelectionHighlight() {
+  document.querySelectorAll('.cell-selected').forEach(el => el.classList.remove('cell-selected'));
+}
+
+function updateCellSelection() {
+  document.querySelectorAll('.cell-selected').forEach(el => el.classList.remove('cell-selected'));
+  if (_selSi1 === null || _selCi1 === null) return;
+  const si1 = Math.min(_selSi1, _selSi2 !== null ? _selSi2 : _selSi1);
+  const si2 = Math.max(_selSi1, _selSi2 !== null ? _selSi2 : _selSi1);
+  const ci1 = Math.min(_selCi1, _selCi2 !== null ? _selCi2 : _selCi1);
+  const ci2 = Math.max(_selCi1, _selCi2 !== null ? _selCi2 : _selCi1);
+  ['tvorba-tbl','rozpis-tbl'].forEach(tblId => {
+    const tbl = document.getElementById(tblId);
+    if (!tbl) return;
+    tbl.querySelectorAll('.staff-tbody .sched-cell[data-si][data-ci]').forEach(td => {
+      const si = +td.dataset.si;
+      const ci = +td.dataset.ci;
+      if (si >= si1 && si <= si2 && ci >= ci1 && ci <= ci2 && isScheduleColumnVisible(ci)) {
+        td.classList.add('cell-selected');
+      }
+    });
+  });
+}
+
+function hasCellSelection() {
+  return _selSi1 !== null && _selCi1 !== null && !!document.querySelector('.cell-selected');
+}
+
+function deleteSelectedCells() {
+  if (!hasCellSelection()) return false;
+  const keys = new Set();
+  document.querySelectorAll('.cell-selected[data-si][data-ci]').forEach(td => {
+    const si = +td.dataset.si;
+    const ci = +td.dataset.ci;
+    if (Number.isFinite(si) && Number.isFinite(ci)) keys.add(`${si}_${ci}`);
+  });
+  if (!keys.size) return false;
+
+  let changed = false;
+  keys.forEach(key => {
+    if (state.schedule[key]) {
+      delete state.schedule[key];
+      changed = true;
+    }
+  });
+  if (!changed) return true;
+
+  historySave();
+  renderCells('tvorba-tbl', true);
+  renderCells('rozpis-tbl', false);
+  updateAllSums();
+  updateDuplicateClasses();
+  updateCoverageRows();
+  updateRequirementClasses();
+  updatePManyCells();
+  updateShiftContextBorders();
+  updateCellSelection();
+  scheduleAutoSave();
+  toast(`Smazáno ${keys.size} buněk`);
+  return true;
 }
 
 function copySelectionToClipboard() {
@@ -5073,6 +5205,7 @@ function toggleMarkMode() {
     document.querySelectorAll('.staff-tbody tr.row-marked').forEach(tr => tr.classList.remove('row-marked'));
     applyRowFilters();
   }
+  historySave();
 }
 
 function saveRequirements() {
@@ -6455,6 +6588,7 @@ document.addEventListener('DOMContentLoaded', async () => {
     document.querySelectorAll('#stb-hotel-btns .stb-btn').forEach(b => b.classList.remove('active'));
     applyRowFilters();
     saveStbState();
+    historySave();
   });
   document.getElementById('stb-hide-hotels').addEventListener('click', toggleHotelRows);
   document.getElementById('stb-copy-mode').addEventListener('click', toggleCopyMode);
@@ -6589,6 +6723,7 @@ document.addEventListener('DOMContentLoaded', async () => {
       tr.classList.remove('row-hidden');
     });
     document.getElementById('btn-show-hidden').style.display = 'none';
+    historySave();
   });
   document.getElementById('btn-template-dl').addEventListener('click', downloadTemplate);
   document.getElementById('btn-import-xls').addEventListener('click', importXls);
@@ -6708,6 +6843,12 @@ document.addEventListener('DOMContentLoaded', async () => {
 
   // ── Global keyboard shortcuts ──
   document.addEventListener('keydown', e => {
+    if ((e.key === 'Delete' || e.key === 'Backspace') && hasCellSelection()) {
+      e.preventDefault();
+      e.stopPropagation();
+      deleteSelectedCells();
+      return;
+    }
     if ((e.ctrlKey || e.metaKey) && e.key === 'z' && !e.shiftKey) {
       const tbl = document.getElementById('tvorba-tbl');
       if (tbl && tbl.style.display !== 'none') { e.preventDefault(); e.stopPropagation(); historyUndo(); }
@@ -6753,6 +6894,41 @@ document.addEventListener('DOMContentLoaded', async () => {
 
   // Initialize history snapshot
   historyReset();
+
+  // Drag-select schedule cells for batch actions
+  document.addEventListener('mousedown', e => {
+    if (_copyMode || e.button !== 0) return;
+    const td = e.target.closest('.staff-tbody .sched-cell[data-si][data-ci]');
+    if (!td) {
+      clearCellSelection();
+      return;
+    }
+    _selDragging = true;
+    _selDragMoved = false;
+    _selSi1 = +td.dataset.si;
+    _selCi1 = +td.dataset.ci;
+    _selSi2 = _selSi1;
+    _selCi2 = _selCi1;
+    clearCellSelectionHighlight();
+  }, true);
+  document.addEventListener('mousemove', e => {
+    if (_copyMode || !_selDragging) return;
+    const td = e.target.closest('.staff-tbody .sched-cell[data-si][data-ci]');
+    if (!td) return;
+    const si = +td.dataset.si;
+    const ci = +td.dataset.ci;
+    if (si !== _selSi2 || ci !== _selCi2) {
+      _selSi2 = si;
+      _selCi2 = ci;
+      _selDragMoved = true;
+      updateCellSelection();
+    }
+  }, true);
+  document.addEventListener('mouseup', () => {
+    if (_selDragging && !_selDragMoved) clearCellSelection();
+    _selDragging = false;
+    _selDragMoved = false;
+  }, true);
 
   // ── Copy mode: drag selection on schedule cells ──
   document.addEventListener('mousedown', e => {
