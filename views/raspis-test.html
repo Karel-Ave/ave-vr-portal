@@ -145,7 +145,7 @@ table.staff-tbl {
   resize: none; overflow: hidden; line-height: 1.4; display: block;
 }
 .staff-tbl .col-note textarea:focus { outline: 1px solid var(--accent); border-radius: 3px; resize: vertical; }
-.staff-tbl .col-save { width: 60px; text-align: center; }
+.staff-tbl .col-save { width: 90px; text-align: center; }
 .staff-section-sep td { padding: 0; }
 
 /* Nastavení mode bar */
@@ -701,6 +701,7 @@ tbody tr.row-filtered { display: none; }
   cursor: pointer; font-size: 11px; font-family: inherit;
   margin: 0 1px; transition: background .12s;
 }
+.btn-row-add { white-space: nowrap; }
 .btn-row-act:hover { background: var(--accent); color: #fff; border-color: transparent; }
 .btn-row-del:hover { background: #e74c3c; color: #fff; border-color: transparent; }
 
@@ -938,6 +939,7 @@ tbody tr.row-filtered { display: none; }
             <th class="col-dates" title="Nemůže aktuálně">xA</th>
             <th class="col-note">Pozn. aktuální</th>
             <th class="col-note">Pozn. trvalá</th>
+            <th class="col-save">Akce</th>
           </tr>
         </thead>
         <tbody id="staff-tbody"></tbody>
@@ -3070,6 +3072,154 @@ function setCellValue(si, ci, val) {
    STAFF TABLE (Nastavení)
 ══════════════════════════════════════════════════════════════════════════════ */
 
+function staffMonthValue(value) {
+  if (!value) return null;
+  if (typeof value === 'string') {
+    const m = value.match(/^(\d{4})-(\d{1,2})/);
+    if (m) return { year: +m[1], month: +m[2] };
+  }
+  if (Number.isFinite(+value.year) && Number.isFinite(+value.month)) {
+    return { year: +value.year, month: +value.month };
+  }
+  return null;
+}
+
+function monthIndex(month, year) {
+  return (+year * 12) + +month;
+}
+
+function previousMonthValue(month, year) {
+  let m = +month - 1;
+  let y = +year;
+  if (m < 1) { m = 12; y--; }
+  return { month: m, year: y };
+}
+
+function parseYearMonthInput(value) {
+  const m = String(value || '').trim().match(/^(\d{4})-(\d{1,2})$/);
+  if (!m) return null;
+  const year = +m[1], month = +m[2];
+  if (!Number.isFinite(year) || !Number.isFinite(month) || month < 1 || month > 12) return null;
+  return { year, month };
+}
+
+function isStaffActiveInCurrentMonth(s) {
+  if (!s || s.inactive) return false;
+  const current = monthIndex(state.month, state.year);
+  const from = staffMonthValue(s.activeFrom);
+  const until = staffMonthValue(s.activeUntil);
+  if (from && monthIndex(from.month, from.year) > current) return false;
+  if (until && monthIndex(until.month, until.year) < current) return false;
+  return true;
+}
+
+function endSpecialStaffFromMonth(s) {
+  const label = `${state.year}-${String(state.month).padStart(2, '0')}`;
+  const input = prompt('Od kterého měsíce se nemá zobrazovat v Tvorbě/Rozpisu VR? Zadejte RRRR-MM.', label);
+  if (input === null) return false;
+  const stop = parseYearMonthInput(input);
+  if (!stop) {
+    toast('Zadejte měsíc ve formátu RRRR-MM', true);
+    return false;
+  }
+  const until = previousMonthValue(stop.month, stop.year);
+  s.activeUntil = until;
+
+  const nameKey = normalizeStaffName(s.name || '');
+  state.staff.forEach(row => {
+    if (!row.userId && normalizeStaffName(row.name || '') === nameKey) {
+      row.activeUntil = until;
+    }
+  });
+
+  refreshScheduleAfterStaffListChange();
+  saveSpecialStaff();
+  toast(`Ukončeno od ${String(stop.month).padStart(2, '0')}/${stop.year}: ${s.name || ''}`);
+  return true;
+}
+
+function staffExistsInCurrentSchedule(s) {
+  if (!s) return false;
+  if (s.userId && state.staff.some(x => x.userId === s.userId)) return true;
+  const name = normalizeStaffName(s.name || '');
+  if (!name) return false;
+  return state.staff.some(x => normalizeStaffName(x.name || '') === name);
+}
+
+function makeScheduleStaffFromSettings(s) {
+  return {
+    name: s.name || '',
+    login: s.login || '',
+    type: s.type || '',
+    contract: s.contract || '',
+    maxHrs: s.maxHrs || '',
+    regular: s.regular || '',
+    dates: s.dates || '',
+    noteM: s.noteM || '',
+    noteP: s.noteP || '',
+    monthlyOverrides: s.monthlyOverrides || undefined,
+    userId: s.userId || undefined,
+    activeFrom: staffMonthValue(s.activeFrom) || s.activeFrom || null,
+    activeUntil: staffMonthValue(s.activeUntil) || s.activeUntil || null,
+    inactive: !!s.inactive
+  };
+}
+
+function refreshScheduleAfterStaffListChange() {
+  renderStaffTable();
+  renderScheduleTable('tvorba-tbl', true);
+  renderScheduleTable('rozpis-tbl', false);
+  buildHotelFilterButtons();
+  updateAllSums();
+  updateDuplicateClasses();
+  updateCoverageRows();
+  updateRequirementClasses();
+  updatePManyCells();
+  updateShiftContextBorders();
+  fitScheduleToViewport();
+  historySave();
+  scheduleAutoSave();
+}
+
+function addSettingsStaffToSchedule(s, quiet = false) {
+  if (!s) return false;
+  if (!isStaffActiveInCurrentMonth(s)) {
+    toast('Pracovník není aktivní pro tento měsíc', true);
+    return false;
+  }
+  if (staffExistsInCurrentSchedule(s)) {
+    if (!quiet) toast('Pracovník už v Tvorbě je');
+    return false;
+  }
+  state.staff.push(makeScheduleStaffFromSettings(s));
+  sortStaffAlpha();
+  refreshScheduleAfterStaffListChange();
+  if (!quiet) toast(`Přidán do Tvorby: ${s.name || ''}`);
+  return true;
+}
+
+function appendAddToScheduleButton(td, s) {
+  if (staffExistsInCurrentSchedule(s)) {
+    const span = document.createElement('span');
+    span.textContent = 'v Tvorbě';
+    span.style.cssText = 'font-size:11px;color:var(--text-muted);';
+    td.appendChild(span);
+    return;
+  }
+  const btn = document.createElement('button');
+  btn.className = 'btn-row-act btn-row-add';
+  btn.textContent = 'Do Tvorby';
+  btn.disabled = !isStaffActiveInCurrentMonth(s);
+  btn.title = btn.disabled
+    ? 'Není aktivní pro aktuálně otevřený měsíc'
+    : 'Přidat prázdný řádek do aktuální Tvorby';
+  btn.addEventListener('click', e => {
+    e.stopPropagation();
+    addSettingsStaffToSchedule(s);
+  });
+  td.appendChild(btn);
+}
+
 function renderStaffTable() {
   const tbody = document.getElementById('staff-tbody');
   const tbodySpecial = document.getElementById('staff-tbody-special');
@@ -3239,7 +3389,12 @@ function renderStaffTable() {
     notePTd.appendChild(notePArea);
     tr.appendChild(notePTd);
 
-    // No action buttons for recepční
+    // Ruční přidání do aktuální Tvorby, bez automatického přepisování seznamu.
+    const actionTd = document.createElement('td');
+    actionTd.className = 'col-save';
+    appendAddToScheduleButton(actionTd, s);
+    tr.appendChild(actionTd);
+
     tbody.appendChild(tr);
   });
 
@@ -3252,10 +3407,19 @@ function renderStaffTable() {
 
     const tr = document.createElement('tr');
     tr.dataset.si = si;
+    if (!isStaffActiveInCurrentMonth(s)) tr.classList.add('row-inactive');
 
     // #
     const numTd = document.createElement('td');
     numTd.className = 'col-num'; numTd.textContent = specialRowNum;
+    if (!isStaffActiveInCurrentMonth(s) && s.activeUntil) {
+      const badge = document.createElement('span');
+      const au = staffMonthValue(s.activeUntil);
+      badge.className = 'staff-inactive-badge';
+      badge.textContent = 'ukončeno';
+      badge.title = au ? `Zobrazuje se do ${String(au.month).padStart(2, '0')}/${au.year}` : '';
+      numTd.appendChild(badge);
+    }
     tr.appendChild(numTd);
 
     // Name (colored bg, read-only span — name changed via edit modal)
@@ -3281,6 +3445,7 @@ function renderStaffTable() {
     const saveTd = document.createElement('td');
     saveTd.className = 'col-save';
     saveTd.style.whiteSpace = 'nowrap';
+    appendAddToScheduleButton(saveTd, s);
     const editBtn = document.createElement('button');
     editBtn.textContent = '✏'; editBtn.className = 'btn-row-act';
     editBtn.title = 'Upravit';
@@ -3293,15 +3458,12 @@ function renderStaffTable() {
     saveTd.appendChild(editBtn);
     const delBtn = document.createElement('button');
     delBtn.textContent = '✕'; delBtn.className = 'btn-row-act btn-row-del';
-    delBtn.title = 'Odebrat';
+    delBtn.title = 'Ukončit zobrazování od vybraného měsíce';
     delBtn.addEventListener('click', () => {
-      if (!confirm(`Odebrat pracovníka "${s.name || si+1}"?`)) return;
       const _n = s.name, _t = s.type;
       const _si = state.allSpecialStaff.findIndex(x => !x.userId && x.name === _n && x.type === _t);
       if (_si < 0) return;
-      state.allSpecialStaff.splice(_si, 1);
-      renderStaffTable();
-      saveSpecialStaff(); // uložit per-user speciální pracovníky — přežijí smazání draftu
+      endSpecialStaffFromMonth(state.allSpecialStaff[_si]);
     });
     saveTd.appendChild(delBtn);
     tr.appendChild(saveTd);
@@ -3908,6 +4070,8 @@ async function syncRaspisStaff() {
         hotel:    custom.hotel   || '',
         monthlyOverrides: custom.monthlyOverrides
           ? JSON.parse(JSON.stringify(custom.monthlyOverrides)) : {},
+        activeFrom:  staffMonthValue(as.activeFrom)  || as.activeFrom  || null,
+        activeUntil: staffMonthValue(as.activeUntil) || as.activeUntil || null,
         inactive: false,
       };
     };
@@ -5727,7 +5891,7 @@ function showAddStaffModal() {
 function confirmAddStaff() {
   const name = document.getElementById('ns-name').value.trim();
   if (!name) { toast('Zadejte jméno', true); return; }
-  state.allSpecialStaff.push({
+  const newWorker = {
     name,
     login:    document.getElementById('ns-login').value,
     type:     document.getElementById('ns-type').value,
@@ -5741,9 +5905,14 @@ function confirmAddStaff() {
       month: +document.getElementById('ns-active-month').value,
       year: +document.getElementById('ns-active-year').value
     },
-  });
+  };
+  state.allSpecialStaff.push(newWorker);
   document.getElementById('overlay-add-staff').classList.remove('show');
-  renderStaffTable();
+  if (isStaffActiveInCurrentMonth(newWorker)) {
+    addSettingsStaffToSchedule(newWorker, true);
+  } else {
+    renderStaffTable();
+  }
   toast(`Přidán: ${name}`);
   saveSpecialStaff(); // uložit per-user speciální pracovníky — přežijí smazání draftu
 }
@@ -6474,11 +6643,12 @@ function switchTab(name) {
       // Re-render the Rozpis VR table so name-cell inline TYPE_COLORS backgrounds
       // always reflect the latest color profile (they can't be updated via CSS
       // variables alone because they're set as inline style.background on render).
-      renderScheduleTable('raspis-tbl', false);
+      renderScheduleTable('rozpis-tbl', false);
       refreshCoverageSticky();
     }
   } else if (name === 'nastaveni') {
-    renderStaffTable();
+    if (window._initRendering) renderStaffTable();
+    else syncRaspisStaff();
   }
 }
 
