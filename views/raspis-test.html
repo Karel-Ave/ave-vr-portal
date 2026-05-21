@@ -10,6 +10,7 @@
 <script src="https://cdn.sheetjs.com/xlsx-0.20.3/package/dist/xlsx.full.min.js"></script>
 <style>
 * { box-sizing: border-box; margin: 0; padding: 0; }
+html, body { width: 100%; max-width: 100vw; overflow-x: hidden; }
 body { min-height: 100vh; background: var(--bg); font-family: 'Segoe UI', system-ui, sans-serif; color: var(--text); padding-top: 48px; opacity: 0; }
 body.rt-ready { opacity: 1; transition: opacity .18s ease; }
 body.with-subtoolbar { padding-top: calc(48px + var(--stb-h,68px)); }
@@ -17,6 +18,7 @@ body.with-subtoolbar { padding-top: calc(48px + var(--stb-h,68px)); }
 /* ── Topbar ── */
 #topbar {
   position: fixed; top: 0; left: 0; right: 0; z-index: 900;
+  width: 100vw; max-width: 100vw;
   height: 48px; background: var(--bg-topbar); border-bottom: 1px solid var(--border);
   display: flex; align-items: center; gap: 6px; padding: 0 10px;
   overflow-x: auto; overflow-y: hidden; scrollbar-width: none;
@@ -64,11 +66,32 @@ body.with-subtoolbar { padding-top: calc(48px + var(--stb-h,68px)); }
 }
 
 /* Tab actions groups */
-.tb-actions { display: flex; align-items: center; gap: 5px; }
+.tb-actions { display: flex; align-items: center; gap: 5px; min-width: 0; }
 .tb-actions.hidden { display: none; }
 #tb-act-nastaveni { position: absolute; left: 50%; transform: translateX(-50%); }
+#tb-act-tvorba {
+  flex: 1 1 auto;
+  margin-left: 18px;
+  min-width: 0;
+}
+#tb-act-tvorba .tb-btn,
+#tb-act-tvorba #sel-month-year {
+  background: var(--bg);
+  color: var(--text);
+  border-color: var(--border);
+}
+#tb-act-tvorba .tb-btn:hover,
+#tb-act-tvorba #sel-month-year:hover {
+  background: var(--surface-alt);
+  color: var(--text);
+}
+#tb-act-tvorba .tb-btn.primary {
+  background: var(--accent,#C4A96A);
+  color: #fff;
+  border-color: transparent;
+}
 
-.tab-panel { display: none; }
+.tab-panel { display: none; max-width: 100vw; overflow-x: hidden; }
 .tab-panel.active { display: block; }
 
 /* ── Nastavení tab ── */
@@ -194,23 +217,41 @@ table.staff-tbl {
 .schedule-wrap {
   overflow-x: auto; overflow-y: auto;
   -webkit-overflow-scrolling: touch;
+  position: relative;
+  width: 100vw;
+  max-width: 100vw;
 }
 .schedule-wrap.tvorba-wrap {
-  height: calc(100dvh - 48px - var(--stb-h,0px) - 12px);
+  height: calc(100dvh - 48px - var(--stb-h,0px));
 }
 .schedule-wrap.view-wrap {
-  height: calc(100dvh - 48px - var(--stb-h,0px) - 12px);
+  height: calc(100dvh - 48px - var(--stb-h,0px));
 }
 
 /* CSS variables for live resizing */
-:root { --sched-row-h: 22px; --sched-col-w: 18px; --sched-name-w: 150px; }
+:root {
+  --sched-row-h: 22px;
+  --sched-col-w: 18px;
+  --sched-name-w: 150px;
+  --sched-sum-w: 27px;
+  --sched-grid: rgba(0, 0, 0, .34);
+  --sched-grid-soft: rgba(0, 0, 0, .24);
+  --sched-grid-row: rgba(0, 0, 0, .16);
+  --sched-grid-strong: rgba(0, 0, 0, .42);
+}
+[data-theme="dark"] {
+  --sched-grid: rgba(255, 255, 255, .24);
+  --sched-grid-soft: rgba(255, 255, 255, .16);
+  --sched-grid-row: rgba(255, 255, 255, .10);
+  --sched-grid-strong: rgba(255, 255, 255, .30);
+}
 
 table.sched-tbl {
-  border-collapse: collapse; font-size: 11px;
+  border-collapse: separate; border-spacing: 0; font-size: 11px;
   white-space: nowrap;
 }
 .sched-tbl th, .sched-tbl td {
-  border: 1px solid var(--border); padding: 0; height: var(--sched-row-h);
+  border: 1px solid var(--sched-grid); padding: 0; height: var(--sched-row-h);
 }
 /* Name column sticky */
 .sched-tbl .col-name-th {
@@ -218,13 +259,13 @@ table.sched-tbl {
   background: var(--thead-bg); color: var(--thead-text);
   min-width: var(--sched-name-w); max-width: var(--sched-name-w); width: var(--sched-name-w);
   padding: 4px 6px; text-align: left; font-size: 11px; font-weight: 700;
-  border-right: 2px solid var(--border);
+  border-right: 1px solid var(--sched-grid-strong);
 }
 .sched-tbl .col-name-td {
   position: sticky; left: 0; z-index: 3;
   min-width: var(--sched-name-w); max-width: var(--sched-name-w); width: var(--sched-name-w);
   padding: 2px 5px; font-weight: 600; font-size: 11px;
-  border-right: 2px solid var(--border);
+  border-right: 1px solid var(--sched-grid-strong);
   background: var(--surface);
 }
 
@@ -232,7 +273,7 @@ table.sched-tbl {
 .sched-tbl .th-day {
   background: var(--thead-bg); color: var(--thead-text);
   text-align: center; font-weight: 700; min-width: 36px;
-  padding: 2px 0; font-size: 11px; border-bottom: 1px solid var(--thead-border);
+  padding: 2px 0; font-size: 11px; border-bottom: 1px solid var(--sched-grid);
 }
 .sched-tbl .th-day.is-weekend { color: #7ec8f0; }
 .sched-tbl .th-day.is-holiday { color: #f08080; }
@@ -246,18 +287,16 @@ table.sched-tbl {
 .sched-tbl .th-sum {
   background: var(--thead-bg); color: var(--thead-text);
   text-align: center; font-size: 9px; padding: 2px 1px; white-space: nowrap;
-  min-width: 27px; max-width: 27px; width: 27px;
+  min-width: var(--sched-sum-w); max-width: var(--sched-sum-w); width: var(--sched-sum-w);
 }
 
 /* Day/header width via variable */
 .sched-tbl .th-day { min-width: calc(var(--sched-col-w) * 2); }
-.sched-tbl .th-dn  { width: var(--sched-col-w); }
+.sched-tbl .th-dn  { width: var(--sched-col-w); min-width: var(--sched-col-w); max-width: var(--sched-col-w); }
 .sched-tbl td.sched-cell { width: var(--sched-col-w); min-width: var(--sched-col-w); max-width: var(--sched-col-w); }
 /* No border between d and n of the same day — header + staff rows only, NOT coverage panel */
-.sched-tbl thead [data-dn="d"],
-.sched-tbl .staff-tbody [data-dn="d"] { border-right: none !important; }
-.sched-tbl thead [data-dn="n"],
-.sched-tbl .staff-tbody [data-dn="n"] { border-left:  none !important; }
+.sched-tbl thead [data-dn="d"] { border-right: none !important; }
+.sched-tbl thead [data-dn="n"] { border-left:  none !important; }
 
 /* ── Cell color variables (user-editable via 🎨 Editor barev) ── */
 :root {
@@ -315,15 +354,23 @@ table.sched-tbl {
   /* Inset shadow provides a visible cell border regardless of background colour.
      border-collapse:collapse would make adjacent coloured cells share a single
      pixel, which blends into the fill. box-shadow is not affected by collapse. */
-  box-shadow: inset 0 0 0 1px rgba(0,0,0,.12);
+  box-shadow:
+    inset 1px 0 0 var(--sched-grid-soft),
+    inset -1px 0 0 var(--sched-grid-soft),
+    inset 0 1px 0 var(--sched-grid-row),
+    inset 0 -1px 0 var(--sched-grid-row);
 }
 [data-theme="dark"] .sched-tbl td.sched-cell {
-  box-shadow: inset 0 0 0 1px rgba(255,255,255,.08);
+  box-shadow:
+    inset 1px 0 0 var(--sched-grid-soft),
+    inset -1px 0 0 var(--sched-grid-soft),
+    inset 0 1px 0 var(--sched-grid-row),
+    inset 0 -1px 0 var(--sched-grid-row);
 }
 .sched-tbl td.sched-cell input {
   width: 100%; height: 100%; border: none; background: transparent;
   text-align: center; font-size: 10px; font-family: inherit;
-  color: inherit; padding: 0; cursor: pointer;
+  color: inherit; padding: 0; cursor: pointer; font-weight: 700;
   caret-color: transparent; outline: none;
 }
 .sched-tbl td.sched-cell.focused {
@@ -331,12 +378,12 @@ table.sched-tbl {
 }
 .sched-tbl td.sched-cell .cell-val {
   display: block; text-align: center; font-size: 10px; line-height: 22px;
-  user-select: none;
+  user-select: none; font-weight: 700;
 }
 
 /* Sum cells */
 .sched-tbl .sum-cell {
-  text-align: center; min-width: 27px; max-width: 32px; width: 27px; padding: 1px 2px; font-size: 11px;
+  text-align: center; min-width: var(--sched-sum-w); max-width: var(--sched-sum-w); width: var(--sched-sum-w); padding: 1px 2px; font-size: 11px;
   background: var(--surface);
 }
 .sched-tbl .sum-bold { font-weight: 700; }
@@ -348,8 +395,11 @@ table.sched-tbl {
 [title~="fond"] { cursor: pointer; }
 
 /* Sticky single header row */
-.sched-tbl thead th { position: sticky; top: 0; z-index: 20; border-bottom: 2px solid var(--thead-border,#3a3a3a) !important; }
-.sched-tbl thead th.col-name-th { z-index: 22; }
+.sched-tbl thead th { position: sticky; top: 0; z-index: 70; border-bottom: 1px solid var(--border) !important; }
+.sched-tbl thead th.col-name-th { z-index: 72; }
+.sched-tbl thead th {
+  box-shadow: 0 -6px 0 var(--surface);
+}
 /* Single header row — allow auto height for day-info stacking */
 .sched-tbl thead th { height: auto; min-height: var(--sched-row-h); }
 /* Day info inside d-column th-dn cells — absolutely positioned to span d+n visually */
@@ -358,6 +408,9 @@ table.sched-tbl {
   text-align: center; pointer-events: none; line-height: 1.2;
   z-index: 2; background: transparent;
 }
+.th-dn-day.is-weekend { color: var(--col-kn-bg); }
+.th-dn-day.is-weekend .th-day-num,
+.th-dn-day.is-weekend .th-day-dow { color: var(--col-kn-bg) !important; }
 .th-day-num { display: block; font-size: 12px; font-weight: 700; }
 .th-day-dow { display: block; font-size: 8px; opacity: 0.8; }
 /* d/n letter — only this span gets red, day number area stays clean */
@@ -375,9 +428,35 @@ table.sched-tbl {
 .cov-dot-over { background: #e67e22; }
 /* Vertical sticky lives on the td; horizontal sticky lives on the inner wrapper.
    Chrome ignores `top` when `left` is also set on the same td (bi-directional sticky bug). */
+.cov-row { height: var(--sched-row-h); }
 .cov-row .col-name-td { font-size: 10px; font-weight: 700; background: var(--surface);
-  padding: 0; overflow: visible; }
-.cov-tbody .col-name-td { position: sticky; left: auto !important; /* Override .sched-tbl .col-name-td left:0 — Chrome ignores top when left is set (bi-directional sticky bug) */ z-index: 20 !important; /* Must be > date-cell z-index(15) so name cell stacks on top; CSS !important beats inline style */ background: var(--surface) !important; overflow: visible !important; }
+  padding: 0; overflow: visible; height: var(--sched-row-h); }
+.cov-tbody .col-name-td { position: sticky; left: auto !important; /* Override .sched-tbl .col-name-td left:0 — Chrome ignores top when left is set (bi-directional sticky bug) */ z-index: 62 !important; /* Must be > date-cell z-index so name cell stacks on top; CSS !important beats inline style */ background: var(--surface) !important; overflow: visible !important; }
+.cov-row td,
+.cov-row th {
+  height: var(--sched-row-h) !important;
+  min-height: var(--sched-row-h);
+  max-height: var(--sched-row-h);
+}
+.cov-row td:not(.sum-cell),
+.cov-row th {
+  border-top: none !important;
+  border-bottom: none !important;
+}
+.cov-tbody td:not(.sum-cell),
+.cov-tbody th {
+  box-shadow:
+    inset 1px 0 0 var(--sched-grid-soft),
+    inset -1px 0 0 var(--sched-grid-soft),
+    inset 0 -1px 0 var(--sched-grid-soft);
+}
+[data-theme="dark"] .cov-tbody td:not(.sum-cell),
+[data-theme="dark"] .cov-tbody th {
+  box-shadow:
+    inset 1px 0 0 var(--sched-grid-soft),
+    inset -1px 0 0 var(--sched-grid-soft),
+    inset 0 -1px 0 var(--sched-grid-soft);
+}
 /* Inner wrapper handles LEFT (horizontal) stickiness */
 .cov-name-inner {
   position: sticky; left: 0;
@@ -385,15 +464,16 @@ table.sched-tbl {
   padding: 2px 5px; box-sizing: border-box;
   width: var(--sched-name-w);
   background: var(--surface);
+  height: var(--sched-row-h);
   min-height: var(--sched-row-h);
-  border-right: 2px solid var(--border);
+  border-right: 1px solid var(--sched-grid-strong);
 }
 /* Hotel panel hidden via class on table (more reliable than inline display on tbody) */
 .sched-tbl.hotels-hidden tbody.cov-tbody { display: none !important; }
 /* Note: do NOT add .cov-tbody td { background } here — it would override .cov-1/.cov-empty etc. */
 .cov-row td.cov-cell { font-size: 9px; text-align: center; padding: 0; border-left: none !important; border-right: none !important; }
 /* Sum columns (Dv, Nv...) in hotel panel: hide borders, var(--bg) matches note-column area (transparent note cells show --bg) to the right of Σh */
-.cov-row td.sum-cell { border: none !important; background: var(--bg) !important; }
+.cov-row td.sum-cell { border: none !important; box-shadow: none !important; outline: none !important; background: var(--surface) !important; }
 .cov-empty      { background: var(--col-cov0-bg,#ffebeb)  !important; color: var(--col-cov0-tx,#c0392b) !important; }
 .cov-1          { background: var(--col-cov1-bg,#c8f5c8)  !important; color: var(--col-cov1-tx,#1a6b1a) !important; font-weight: 700; }
 .cov-2          { background: var(--col-cov2-bg,#ffe082)  !important; color: var(--col-cov2-tx,#7a5000) !important; font-weight: 700; }
@@ -409,26 +489,31 @@ tbody tr.row-hidden { display: none !important; }
 /* ── Sub-toolbar (Tvorba & Rozpis) ── */
 #subtoolbar {
   position: fixed; top: 48px; left: 0; right: 0; z-index: 85;
+  width: 100vw; max-width: 100vw;
   background: var(--bg-topbar); border-bottom: 2px solid var(--border);
   display: none; flex-direction: column; padding: 4px 10px 4px;
+  overflow-x: hidden;
 }
 /* Light mode: subtoolbar uses light surface, dark text */
 :root:not([data-theme="dark"]) #subtoolbar {
-  background: var(--surface);
+  background: var(--bg);
   border-bottom-color: var(--border-strong);
 }
 :root:not([data-theme="dark"]) .stb-btn {
+  background: #fff;
   color: var(--text);
   border-color: var(--border-strong);
 }
 :root:not([data-theme="dark"]) .stb-btn:hover {
-  background: var(--surface-alt);
-  color: var(--text);
+  background: #2980b9;
+  color: #fff;
+  border-color: #2471a3;
 }
 :root:not([data-theme="dark"]) .stb-btn.active {
   background: #2980b9;
   color: #fff;
-  border-color: transparent;
+  border-color: #2471a3;
+  box-shadow: none;
 }
 :root:not([data-theme="dark"]) .stb-btn.active:hover {
   background: #2471a3;
@@ -445,8 +530,14 @@ tbody tr.row-hidden { display: none !important; }
 :root:not([data-theme="dark"]) .sched-tbl .th-sum,
 :root:not([data-theme="dark"]) .sched-tbl .col-name-th,
 :root:not([data-theme="dark"]) .sched-tbl .th-day {
-  background: var(--surface);
+  background: var(--bg);
   color: var(--text);
+}
+:root:not([data-theme="dark"]) .cov-row .col-name-td,
+:root:not([data-theme="dark"]) .cov-tbody .col-name-td,
+:root:not([data-theme="dark"]) .cov-name-inner,
+:root:not([data-theme="dark"]) .cov-row td.sum-cell {
+  background: var(--bg) !important;
 }
 :root:not([data-theme="dark"]) .sched-tbl thead th {
   border-bottom-color: var(--border-strong) !important;
@@ -456,6 +547,20 @@ tbody tr.row-hidden { display: none !important; }
 :root:not([data-theme="dark"]) .sched-tbl .th-day.is-holiday { color: #c0392b; }
 #subtoolbar.show { display: flex; }
 .stb-row { display: flex; align-items: center; gap: 4px; flex-wrap: wrap; min-height: 30px; }
+.stb-row-tools { position: relative; }
+.stb-row-tools #stb-undo,
+.stb-row-tools #stb-redo {
+  position: absolute;
+  top: 50%;
+  transform: translateY(-50%);
+}
+.stb-row-tools #stb-undo { left: calc(50% - 88px); }
+.stb-row-tools #stb-redo { left: calc(50% - 6px); }
+#subtoolbar.tab-tvorba #stb-available,
+#subtoolbar.tab-tvorba #stb-hide-sums,
+#subtoolbar.tab-tvorba #stb-hours-only {
+  display: none !important;
+}
 .stb-sep { width: 1px; height: 20px; background: var(--btn-top-border,#3E3E3E); flex-shrink: 0; margin: 0 2px; }
 .stb-spacer { flex: 1; }
 .stb-btn {
@@ -523,10 +628,22 @@ tbody tr.row-hidden { display: none !important; }
 .sched-tbl.hide-night th[data-dn="n"] { display: none; }
 .sched-tbl.hide-day td[data-dn="d"],
 .sched-tbl.hide-day th[data-dn="d"] { display: none; }
+.sched-tbl .th-dn[data-dn="n"] .th-dn-day { display: none; width: 100%; }
+.sched-tbl.hide-day .th-dn[data-dn="n"] .th-dn-day { display: block; }
+.sched-tbl.hide-night .th-dn[data-dn="d"] .th-dn-day { width: 100%; }
 .sched-tbl.hide-sums .sum-cell,
 .sched-tbl.hide-sums .th-sum { display: none; }
 .sched-tbl.hours-only .sum-cell:not(.sum-hrs):not(.sum-pm),
 .sched-tbl.hours-only .th-sum:not(.th-sum-hrs):not(.th-sum-pm) { display: none; }
+#tvorba-tbl .th-sum-pm,
+#tvorba-tbl .sum-pm,
+#tvorba-tbl .cov-row td.sum-cell[data-sum-idx="5"] { display: none !important; }
+#tvorba-tbl .th-sum:not(.th-sum-hrs):not(.th-sum-pm),
+#tvorba-tbl .sum-cell:not(.sum-hrs):not(.sum-pm) {
+  min-width: 25px;
+  max-width: 25px;
+  width: 25px;
+}
 /* selected cells highlight */
 .sched-cell.cell-selected { outline: 2px solid #f39c12; outline-offset: -1px; background: #fff3cd !important; }
 [data-theme="dark"] .sched-cell.cell-selected { background: #4a3000 !important; }
@@ -741,15 +858,19 @@ tbody tr.row-filtered { display: none; }
 
   <!-- Tvorba actions -->
   <div class="tb-actions hidden" id="tb-act-tvorba">
-    <select id="rt-draft-sel" class="tb-btn" style="padding:4px 6px;font-size:12px;"></select>
-    <button class="tb-btn" id="btn-draft-save">Uložit</button>
-    <button class="tb-btn" id="btn-draft-new">Nový</button>
-    <button class="tb-btn primary" id="btn-publish">Publikovat</button>
-    <button class="tb-btn" id="btn-template-dl">⬇ Šablona</button>
-    <button class="tb-btn" id="btn-import-xls">⬆ Nahrát rozpis</button>
+    <select id="rt-draft-sel" class="tb-btn" style="display:none;padding:4px 6px;font-size:12px;"></select>
+    <button class="tb-btn" id="btn-draft-save" style="display:none">Uložit</button>
+    <button class="tb-btn" id="btn-draft-new" style="display:none">Nový</button>
+    <select id="sel-month-year" class="tb-btn" style="padding:4px 6px;font-size:12px;"></select>
+    <button class="tb-btn" id="btn-fonds" title="Fondy a svátky">F+S</button>
+    <button class="tb-btn" id="btn-template-dl" style="display:none">⬇ Šablona</button>
+    <button class="tb-btn" id="btn-import-xls" style="display:none">⬆ Nahrát rozpis</button>
+    <button class="tb-btn" id="btn-paste-excel">Vložit z XLS</button>
     <button class="tb-btn" id="btn-import-unmatched" style="display:none">Neznámá jména</button>
     <button class="tb-btn" id="btn-draft-delete">🗑 Smazat</button>
     <button class="tb-btn" id="btn-draft-trash">Koš</button>
+    <span class="tb-spacer"></span>
+    <button class="tb-btn primary" id="btn-publish">Publikovat</button>
     <span id="autosave-ind"></span>
     <input type="file" id="xls-file-input" accept=".xls,.xlsx" style="display:none">
   </div>
@@ -766,6 +887,7 @@ tbody tr.row-filtered { display: none; }
     <span id="view-edit-badge" class="edit-mode-badge" style="display:none">EDITACE</span>
     <button class="tb-btn" id="btn-lock">🔒 Zamknout</button>
     <span id="lock-info"></span>
+    <button class="tb-btn" id="btn-copy-xls">Kopírovat do XLS</button>
     <button class="tb-btn" id="btn-export-xlsx">Export .xlsx</button>
   </div>
 
@@ -888,32 +1010,28 @@ tbody tr.row-filtered { display: none; }
   <div class="stb-row" id="stb-row-hotels">
     <!-- Levá polovina: tlačítka hotelů -->
     <div id="stb-hotels-left">
-      <span class="stb-hotel-lbl">Hotel:</span>
-      <button class="stb-btn active" id="stb-vse">VSE</button>
+      <button class="stb-btn active" id="stb-vse">VŠE</button>
       <div id="stb-hotel-btns"></div>
     </div>
-    <!-- Od středu: měsíc/rok + F+S (jen v záložce Tvorba) -->
-    <div id="stb-month-group">
-      <select id="sel-month-year" class="stb-input"></select>
-      <button class="stb-btn" id="btn-fonds" title="Fondy a svátky">F+S</button>
-      <div class="stb-sep"></div>
-    </div>
+    <!-- Měsíc/rok + F+S jsou v horní liště Tvorby. -->
     <div class="stb-spacer"></div>
     <button class="stb-btn" id="stb-hide-sums">Skrýt součty</button>
     <button class="stb-btn" id="stb-save-req">Zapamatuj požadavky</button>
   </div>
-  <div class="stb-row">
+  <div class="stb-row stb-row-tools">
     <!-- Levá polovina: filtry — Zpět/Vpřed začínají horizontálně pod výběrem měsíce -->
     <div id="stb-tools-left">
       <button class="stb-btn" id="stb-hide-hotels">Skrýt hotely</button>
       <div class="stb-sep"></div>
       <button class="stb-btn" id="stb-day-only">Jen denní</button>
       <button class="stb-btn" id="stb-night-only">Jen noční</button>
-      <button class="stb-btn" id="stb-available">Jen dostupní</button>
       <button class="stb-btn" id="stb-mark-sel">Označ vybrané</button>
-      <button class="stb-btn" id="btn-show-hidden" style="display:none">👁 Skrytí</button>
+      <button class="stb-btn" id="stb-available">Jen dostupní</button>
       <div class="stb-sep"></div>
-      <button class="stb-btn" id="stb-copy-mode" title="Přepne do režimu výběru buněk — táhni myší pro výběr, Ctrl+C zkopíruje, Ctrl+V vloží">📋 Kopírovat</button>
+      <button class="stb-btn" id="stb-cols-day" title="Zobrazí jen denní sloupce d">Jen d</button>
+      <button class="stb-btn" id="stb-cols-night" title="Zobrazí jen noční sloupce n">Jen n</button>
+      <button class="stb-btn" id="btn-show-hidden" style="display:none">👁 Skrytí</button>
+      <button class="stb-btn" id="stb-copy-mode" style="display:none" title="Přepne do režimu výběru buněk — táhni myší pro výběr, Ctrl+C zkopíruje, Ctrl+V vloží">📋 Kopírovat</button>
     </div>
     <!-- Od středu: Zpět / Vpřed -->
     <button class="stb-btn" id="stb-undo">⇐ Zpět</button>
@@ -1999,6 +2117,12 @@ let history = [];
 let historyIndex = -1;
 const HISTORY_MAX = 60;
 
+function historyReset() {
+  history = [];
+  historyIndex = -1;
+  historySave();
+}
+
 function historySave() {
   const snap = JSON.stringify(state.schedule);
   if (historyIndex >= 0 && history[historyIndex] === snap) return;
@@ -2012,24 +2136,25 @@ function historyUndo() {
   if (historyIndex <= 0) return;
   historyIndex--;
   state.schedule = JSON.parse(history[historyIndex]);
-  updateAllSums();
-  renderCells('tvorba-tbl', true);
-  updateDuplicateClasses();
-  updateCoverageRows();
-  updateRequirementClasses();
-  updatePManyCells();
+  refreshScheduleAfterHistory();
 }
 
 function historyRedo() {
   if (historyIndex >= history.length - 1) return;
   historyIndex++;
   state.schedule = JSON.parse(history[historyIndex]);
+  refreshScheduleAfterHistory();
+}
+
+function refreshScheduleAfterHistory() {
   updateAllSums();
   renderCells('tvorba-tbl', true);
+  renderCells('rozpis-tbl', false);
   updateDuplicateClasses();
   updateCoverageRows();
   updateRequirementClasses();
   updatePManyCells();
+  scheduleAutoSave();
 }
 
 /* ══════════════════════════════════════════════════════════════════════════════
@@ -2184,6 +2309,73 @@ function cellClass(col, month, year, holidaysList) {
   return 'cell-wd';
 }
 
+function fitScheduleToViewport(calCols = getCalCols(state.month, state.year)) {
+  const activeWrap = document.querySelector('.tab-panel.active .schedule-wrap') || document.getElementById('tvorba-wrap') || document.getElementById('rozpis-wrap');
+  const available = Math.max(320, (activeWrap ? activeWrap.clientWidth : window.innerWidth) - 4);
+  const activeTableId = document.querySelector('.tab-panel.active .sched-tbl')?.id;
+  const sumCount = activeTableId === 'tvorba-tbl' ? 6 : 7;
+  const base = { name: 150, col: 18, sum: 27 };
+  const min = { name: 118, col: 14, sum: 22 };
+
+  let nameW = base.name;
+  let colW = base.col;
+  let sumW = base.sum;
+  let deficit = Math.max(0, nameW + calCols.length * colW + sumCount * sumW - available);
+
+  const reduceName = Math.min(deficit, base.name - min.name);
+  nameW -= reduceName;
+  deficit -= reduceName;
+
+  const reduceSumEach = Math.min(base.sum - min.sum, Math.ceil(deficit / sumCount));
+  sumW -= reduceSumEach;
+  deficit -= reduceSumEach * sumCount;
+
+  const reduceColEach = Math.min(base.col - min.col, Math.ceil(deficit / Math.max(1, calCols.length)));
+  colW -= reduceColEach;
+
+  document.documentElement.style.setProperty('--sched-name-w', Math.round(nameW) + 'px');
+  document.documentElement.style.setProperty('--sched-col-w', Math.round(colW) + 'px');
+  document.documentElement.style.setProperty('--sched-sum-w', Math.round(sumW) + 'px');
+}
+
+function getSchedCssNumber(name, fallback) {
+  const val = parseFloat(getComputedStyle(document.documentElement).getPropertyValue(name));
+  return Number.isFinite(val) ? val : fallback;
+}
+
+function fineTuneScheduleFit(tbl) {
+  const wrap = tbl && tbl.closest('.schedule-wrap');
+  if (!tbl || !wrap || !wrap.clientWidth) return;
+  const minCol = 12, maxCol = 18;
+  const minName = 112, maxName = 150;
+  const minSum = 20, maxSum = 27;
+
+  for (let i = 0; i < 24; i++) {
+    const diff = tbl.scrollWidth - wrap.clientWidth;
+    let colW = getSchedCssNumber('--sched-col-w', 18);
+    let nameW = getSchedCssNumber('--sched-name-w', 150);
+    let sumW = getSchedCssNumber('--sched-sum-w', 27);
+
+    if (diff > 1) {
+      if (colW > minCol) colW -= 1;
+      else if (sumW > minSum) sumW -= 1;
+      else if (nameW > minName) nameW -= 1;
+      else break;
+    } else if (diff < -24) {
+      if (colW < maxCol) colW += 1;
+      else if (sumW < maxSum) sumW += 1;
+      else if (nameW < maxName) nameW += 1;
+      else break;
+    } else {
+      break;
+    }
+
+    document.documentElement.style.setProperty('--sched-col-w', Math.round(colW) + 'px');
+    document.documentElement.style.setProperty('--sched-name-w', Math.round(nameW) + 'px');
+    document.documentElement.style.setProperty('--sched-sum-w', Math.round(sumW) + 'px');
+  }
+}
+
 function renderScheduleTable(tableId, editable) {
   const tbl = document.getElementById(tableId);
   if (!tbl) return;
@@ -2197,9 +2389,10 @@ function renderScheduleTable(tableId, editable) {
 
   const calCols = getCalCols(state.month, state.year);
   const holidaysList = parseHolidays(state.holidays);
+  fitScheduleToViewport(calCols);
   // Short labels with full names as tooltips
-  const SUM_HEADS = ['Dv','Nv','Dk','Nk','Σ','±','Σh'];
-  const SUM_TITLES = ['Denní všední','Noční všední','Denní víkend','Noční víkend','Σ směny','± hodiny','Σ hodin'];
+  const SUM_HEADS = ['Σ','Dv','Nv','Dk','Nk','±','Σh'];
+  const SUM_TITLES = ['Σ směny','Denní všední','Noční všední','Denní víkend','Noční víkend','± hodiny','Σ hodin'];
 
   // ── THEAD (single row — merges day numbers + d/n into one sticky row) ──
   const thead = document.createElement('thead');
@@ -2221,7 +2414,7 @@ function renderScheduleTable(tableId, editable) {
     // Header cells always keep the dark thead background — only text is colored
     // (weekends → blue, holidays → red, weekdays → default white)
     const dayTextColor = hol ? '#e74c3c' : wkndTh ? '#7ec8f0' : '';
-    if (col.dn === 'd') {
+    if (col.dn === 'd' || col.dn === 'n') {
       const m2 = col.nextYear ? 1 : state.month;
       const y2 = col.nextYear ? state.year + 1 : state.year;
       const dow = new Date(y2, m2 - 1, col.day).getDay();
@@ -2229,6 +2422,7 @@ function renderScheduleTable(tableId, editable) {
       const dayName = DAY_NAMES[dow];
       const dayDiv = document.createElement('div');
       dayDiv.className = 'th-dn-day';
+      if (wkndTh) dayDiv.classList.add('is-weekend');
       const numSpan = document.createElement('span');
       numSpan.className = 'th-day-num';
       numSpan.textContent = dayLabel;
@@ -2269,9 +2463,9 @@ function renderScheduleTable(tableId, editable) {
     th.style.top = '0px';
     // d cells get z-index 21 so their absolutely-positioned day-number div
     // paints on top of the adjacent n cell (z-index 20)
-    if (th.classList.contains('col-name-th')) th.style.zIndex = '22';
-    else if (th.dataset.dn === 'd') th.style.zIndex = '21';
-    else th.style.zIndex = '20';
+    if (th.classList.contains('col-name-th')) th.style.zIndex = '72';
+    else if (th.dataset.dn === 'd') th.style.zIndex = '71';
+    else th.style.zIndex = '70';
   });
 
   // ── TBODIES: covTbody (coverage rows, sticky under header) + staffTbody ──
@@ -2354,7 +2548,11 @@ function renderScheduleTable(tableId, editable) {
         tr.appendChild(td);
       });
       SUM_HEADS.forEach((_, idx) => {
-        const td = document.createElement('td'); td.className = 'sum-cell'; tr.appendChild(td);
+        const td = document.createElement('td');
+        td.className = 'sum-cell';
+        td.dataset.sumIdx = idx;
+        if (idx === 5) td.classList.add('sum-pm');
+        tr.appendChild(td);
       });
       covTbody.appendChild(tr);
     });
@@ -2453,14 +2651,14 @@ function renderScheduleTable(tableId, editable) {
 
     // Sum cells
     const sums = calcSums(si, calCols, state);
-    const sumVals = [sums.dw, sums.nw, sums.dk, sums.nk, sums.total, '', sums.totalHrs];
+    const sumVals = [sums.total, sums.dw, sums.nw, sums.dk, sums.nk, '', sums.totalHrs];
     sumVals.forEach((v, idx) => {
       const td = document.createElement('td');
       td.className = 'sum-cell';
       td.dataset.si = si; td.dataset.sumIdx = idx;
       if (idx === 6) td.classList.add('sum-hrs');
       if (idx === 5) td.classList.add('sum-pm');
-      if (idx === 4 || idx === 6) td.classList.add('sum-bold');
+      if (idx === 0 || idx === 6) td.classList.add('sum-bold');
       if (idx === 5) {
         td.classList.add('sum-extra');
         const total = getExtraTotal(si);
@@ -2542,8 +2740,12 @@ function renderScheduleTable(tableId, editable) {
       });
 
       // Prázdné sum buňky
-      SUM_HEADS.forEach(() => {
-        const td = document.createElement('td'); td.className = 'sum-cell'; tr.appendChild(td);
+      SUM_HEADS.forEach((_, idx) => {
+        const td = document.createElement('td');
+        td.className = 'sum-cell';
+        td.dataset.sumIdx = idx;
+        if (idx === 5) td.classList.add('sum-pm');
+        tr.appendChild(td);
       });
 
       unmatchedTbody.appendChild(tr);
@@ -2555,11 +2757,13 @@ function renderScheduleTable(tableId, editable) {
   // Measure actual thead height (th-dn has padding-top:26px → taller than --sched-row-h).
   // If table is in a hidden panel offsetHeight is 0; switchTab will call refreshCoverageSticky()
   // once the panel becomes visible and the real height can be measured.
+  const _firstCovRow = covTbody.querySelector('tr.cov-row:not(.row-filtered)') || covTbody.querySelector('tr.cov-row');
+  const _covRowH = _firstCovRow ? Math.round(_firstCovRow.getBoundingClientRect().height || _firstCovRow.offsetHeight) || _rowH : _rowH;
   const _theadH = thead.offsetHeight || _rowH;
   let _covVisRow = 0;
   Array.from(covTbody.querySelectorAll('tr')).forEach(tr => {
     const hidden = tr.classList.contains('row-filtered');
-    const topPx = hidden ? '-9999px' : (_theadH + _covVisRow * _rowH) + 'px';
+    const topPx = hidden ? '-9999px' : (_theadH + _covVisRow * _covRowH) + 'px';
     tr.querySelectorAll('td, th').forEach(cell => {
       const _isName = cell.classList.contains('col-name-td');
       // Only set vertical sticky (top) on td — .cov-name-inner handles horizontal (left:0).
@@ -2568,7 +2772,7 @@ function renderScheduleTable(tableId, editable) {
       cell.style.position = 'sticky';
       cell.style.top = topPx;
       if (_isName) cell.style.left = 'auto';
-      cell.style.zIndex = _isName ? '17' : '15';
+      cell.style.zIndex = _isName ? '62' : '60';
       // Ensure solid background so staff rows don't bleed through
       if (!cell.style.background) cell.style.background = 'var(--surface)';
     });
@@ -2578,6 +2782,9 @@ function renderScheduleTable(tableId, editable) {
   // Sync hotel panel visibility — class on table is the single source of truth
   // (CSS rule .sched-tbl.hotels-hidden tbody.cov-tbody { display:none } handles it)
   tbl.classList.toggle('hotels-hidden', !showHotels);
+  tbl.classList.toggle('hide-night', colShiftMode === 'day');
+  tbl.classList.toggle('hide-day', colShiftMode === 'night');
+  fineTuneScheduleFit(tbl);
 
   if (editable) {
     setupKeyboardNav(tbl);
@@ -2623,7 +2830,7 @@ function updateSumRow(si) {
     [0,1,2,3,4,6].forEach(idx => {
       const td = row.querySelector(`.sum-cell[data-sum-idx="${idx}"]`);
       if (!td) return;
-      const vals = [sums.dw, sums.nw, sums.dk, sums.nk, sums.total, '', sums.totalHrs];
+      const vals = [sums.total, sums.dw, sums.nw, sums.dk, sums.nk, '', sums.totalHrs];
       if (idx === 6) {
         const hrs = sums.totalHrs;
         td.className = 'sum-cell sum-bold sum-hrs';
@@ -2750,17 +2957,20 @@ function setupKeyboardNav(tbl) {
       return; // preventDefault already called above
     }
 
-    if (handled && e.key !== 'Tab') e.preventDefault();
+    if (handled && e.key !== 'Tab') {
+      e.preventDefault();
+      e.stopPropagation();
+    }
   };
 
   tbl.addEventListener('keydown', _navHandler, true);
 }
 
 function setCellValue(si, ci, val) {
-  historySave();
   const key = `${si}_${ci}`;
   if (val === '') delete state.schedule[key];
   else state.schedule[key] = val;
+  historySave();
 
   const tbl = document.getElementById('tvorba-tbl');
   if (tbl) {
@@ -3810,6 +4020,7 @@ async function loadDraft(id) {
     updateRequirementClasses();
     updatePManyCells();
     buildHotelFilterButtons();
+    historyReset();
     setAutosaveInd('Načteno');
   } catch(e) {
     toast('Chyba načtení konceptu', true);
@@ -3852,11 +4063,11 @@ function newDraft() {
   delete state.monthlyData[`${state.year}-${state.month}`];
   currentDraftId = null;
   dirtyFlag = false;
-  history = []; historyIndex = -1;
   setAutosaveInd('');
   document.getElementById('rt-draft-sel').value = '';
   renderStaffTable();
   renderScheduleTable('tvorba-tbl', true);
+  historyReset();
   toast('Nový koncept');
 }
 
@@ -3884,11 +4095,11 @@ async function deleteCurrentDraft() {
     currentDraftId = null; dirtyFlag = false;
     clearTimeout(autoSaveTimer);
     setAutosaveInd('');
-    history = []; historyIndex = -1;
     await loadDraftList();
     renderStaffTable();
     renderScheduleTable('tvorba-tbl', true);
     buildHotelFilterButtons();
+    historyReset();
     toast(`Smazáno: ${mn} ${state.year}`);
   } catch(e) { toast('Chyba smazání', true); }
 }
@@ -4032,9 +4243,9 @@ function pubToTvorba() {
   if (dirtyFlag && !confirm('Neuložené změny budou ztraceny. Pokračovat?')) return;
   dirtyFlag = false;
   currentDraftId = null;
-  history = []; historyIndex = -1;
   setAutosaveInd('');
   renderScheduleTable('tvorba-tbl', true);
+  historyReset();
   switchTab('tvorba');
   toast('Načteno do Tvorby');
 }
@@ -4165,6 +4376,7 @@ let filterHotels = new Set();  // empty = VSE, else set of letter strings
 let markedWorkers = new Set();  // Set of si indices that remain visible across hotel filters
 let _markMode    = false;       // true = "Označ vybrané" mode active (click name → mark, not hide)
 let filterShift  = null;  // null | 'day' | 'night' | 'available'
+let colShiftMode = 'all'; // 'all' | 'day' | 'night'
 let showHotels   = false;
 // ── Copy/paste mode ──
 let _copyMode    = false;
@@ -4173,6 +4385,7 @@ let _copyMode    = false;
 function saveStbState() {
   try {
     sessionStorage.setItem('rt-stb-sumsMode',      sumsMode);
+    sessionStorage.setItem('rt-stb-colShiftMode',  colShiftMode);
     sessionStorage.setItem('rt-stb-showHotels',    String(showHotels));
     sessionStorage.setItem('rt-stb-filterShift',   filterShift || '');
     sessionStorage.setItem('rt-stb-filterHotels',  JSON.stringify(Array.from(filterHotels)));
@@ -4183,6 +4396,8 @@ function restoreStbState() {
     // sumsMode
     const sm = sessionStorage.getItem('rt-stb-sumsMode');
     if (sm && sm !== 'all') { sumsMode = 'all'; setSumsMode(sm); }
+    const csm = sessionStorage.getItem('rt-stb-colShiftMode');
+    if (csm && csm !== 'all') { colShiftMode = 'all'; setColumnShiftMode(csm); }
     // showHotels — always start hidden regardless of session storage
     // (user explicitly wants hotels panel hidden on every page load)
     // filterShift
@@ -4218,9 +4433,9 @@ function updateSubtoolbar() {
   const stb = document.getElementById('subtoolbar');
   const showStb = active === 'tvorba' || active === 'rozpis';
   stb.classList.toggle('show', showStb);
+  stb.classList.toggle('tab-tvorba', active === 'tvorba');
+  stb.classList.toggle('tab-rozpis', active === 'rozpis');
   // Skupina měsíc+F+S jen v Tvorba
-  const monthGroup = document.getElementById('stb-month-group');
-  if (monthGroup) monthGroup.classList.toggle('show', active === 'tvorba');
   if (showStb) {
     const h = stb.offsetHeight;
     document.documentElement.style.setProperty('--stb-h', h + 'px');
@@ -4357,6 +4572,23 @@ function filterByShift(mode) {
   saveStbState();
 }
 
+function setColumnShiftMode(mode) {
+  colShiftMode = colShiftMode === mode ? 'all' : mode;
+  ['tvorba-tbl','rozpis-tbl'].forEach(tblId => {
+    const tbl = document.getElementById(tblId);
+    if (!tbl) return;
+    tbl.classList.toggle('hide-night', colShiftMode === 'day');
+    tbl.classList.toggle('hide-day', colShiftMode === 'night');
+  });
+  document.getElementById('stb-cols-day')?.classList.toggle('active', colShiftMode === 'day');
+  document.getElementById('stb-cols-night')?.classList.toggle('active', colShiftMode === 'night');
+  fitScheduleToViewport();
+  const tbl = document.querySelector('.tab-panel.active .sched-tbl');
+  if (tbl) fineTuneScheduleFit(tbl);
+  refreshCoverageSticky();
+  saveStbState();
+}
+
 // d/n headers: always-red when any active hotel (ALL of them, no exclusion) has uncovered shift
 function updateDnCoverageColors() {
   const calCols = getCalCols(state.month, state.year);
@@ -4388,7 +4620,7 @@ function updateDnCoverageColors() {
 }
 
 function refreshCoverageSticky() {
-  const rowH = Math.round(parseFloat(getComputedStyle(document.documentElement).getPropertyValue('--sched-row-h'))) || 22;
+  const fallbackRowH = Math.round(parseFloat(getComputedStyle(document.documentElement).getPropertyValue('--sched-row-h'))) || 22;
   ['tvorba-tbl','rozpis-tbl'].forEach(tblId => {
     const tbl = document.getElementById(tblId);
     if (!tbl) return;
@@ -4399,6 +4631,8 @@ function refreshCoverageSticky() {
     const thead = tbl.querySelector('thead');
     const theadH = thead ? thead.offsetHeight : 0;
     if (!theadH) return;
+    const firstCovRow = covTbody.querySelector('tr.cov-row:not(.row-filtered)') || covTbody.querySelector('tr.cov-row');
+    const rowH = firstCovRow ? Math.round(firstCovRow.getBoundingClientRect().height || firstCovRow.offsetHeight) || fallbackRowH : fallbackRowH;
     let visRow = 0;
     Array.from(covTbody.querySelectorAll('tr')).forEach(tr => {
       const hidden = tr.classList.contains('row-filtered');
@@ -4411,7 +4645,7 @@ function refreshCoverageSticky() {
         cell.style.position = 'sticky';
         cell.style.top = topPx;
         if (isName) cell.style.left = 'auto';
-        cell.style.zIndex = isName ? '17' : '15';
+        cell.style.zIndex = isName ? '62' : '60';
         if (!cell.style.background) cell.style.background = 'var(--surface)';
       });
       if (!hidden) visRow++;
@@ -4556,7 +4790,6 @@ function pasteFromClipboard(startSi, startCi) {
   navigator.clipboard.readText().then(text => {
     const lines = text.split(/\r?\n/).filter(l => l !== '');
     if (!lines.length) return;
-    historySave();
     const calCols = getCalCols(state.month, state.year);
     lines.forEach((line, rowOff) => {
       const si = startSi + rowOff;
@@ -4577,6 +4810,7 @@ function pasteFromClipboard(startSi, startCi) {
         }
       });
     });
+    historySave();
     scheduleAutoSave();
     renderScheduleTable('tvorba-tbl', true);
     renderScheduleTable('rozpis-tbl', false);
@@ -4586,6 +4820,167 @@ function pasteFromClipboard(startSi, startCi) {
   }).catch(() => {
     toast('Vkládání selhalo — zkontrolujte oprávnění clipboardu', true);
   });
+}
+
+function parseClipboardTable(text) {
+  return String(text || '')
+    .replace(/\r\n/g, '\n')
+    .replace(/\r/g, '\n')
+    .split('\n')
+    .map(line => line.split('\t').map(v => String(v || '').trim()))
+    .filter(row => row.some(v => v !== ''));
+}
+
+function normalizeStaffName(name) {
+  return String(name || '').trim().toLowerCase();
+}
+
+async function pasteScheduleFromExcel() {
+  if (!navigator.clipboard || !navigator.clipboard.readText) {
+    toast('Prohlížeč nepovolil čtení schránky', true);
+    return;
+  }
+
+  try {
+    const text = await navigator.clipboard.readText();
+    const rows = parseClipboardTable(text);
+    if (!rows.length) { toast('Schránka je prázdná', true); return; }
+
+    const calCols = getCalCols(state.month, state.year);
+    const settingsByName = new Map();
+    (state.allSpecialStaff || []).forEach(s => {
+      const key = normalizeStaffName(s.name);
+      if (key) settingsByName.set(key, s);
+    });
+    (state.allPortalUsers || []).forEach(s => {
+      const key = normalizeStaffName(s.name);
+      if (key) settingsByName.set(key, s);
+    });
+
+    const staffByName = new Map();
+    (state.staff || []).forEach((s, si) => {
+      const key = normalizeStaffName(s.name);
+      if (key) staffByName.set(key, si);
+    });
+
+    const maxCols = Math.max(...rows.map(r => r.length));
+    const hasNameColumn = maxCols > calCols.length || rows.some(r => {
+      const first = normalizeStaffName(r[0]);
+      return staffByName.has(first) || settingsByName.has(first);
+    });
+    if ((!state.staff || !state.staff.length) && !hasNameColumn) {
+      toast('Když je Tvorba prázdná, zkopíruj z Excelu i první sloupec se jmény', true);
+      return;
+    }
+
+    const changes = [];
+    const newlyUnmatched = new Map();
+
+    rows.forEach((row, rowIdx) => {
+      let si;
+      if (hasNameColumn) {
+        const name = String(row[0] || '').trim();
+        const nameKey = normalizeStaffName(name);
+        if (!name || nameKey === 'jméno' || nameKey === 'jmeno') return;
+        si = staffByName.get(nameKey);
+        if (si === undefined) {
+          const matched = settingsByName.get(nameKey);
+          const staffEntry = matched
+            ? { ...matched, name: name || matched.name || '', unmatchedXls: false }
+            : {
+                name,
+                type: '',
+                login: '',
+                contract: '',
+                maxHrs: '',
+                noteM: '',
+                noteP: '',
+                x: '',
+                xa: '',
+                dates: '',
+                regular: '',
+                hotel: '',
+                monthlyOverrides: {},
+                unmatchedXls: true
+              };
+          state.staff.push(staffEntry);
+          si = state.staff.length - 1;
+          staffByName.set(nameKey, si);
+          if (!matched) newlyUnmatched.set(nameKey, { name, schedule: {} });
+        }
+      } else {
+        si = rowIdx;
+      }
+      if (si === undefined || si < 0 || si >= state.staff.length) return;
+      const values = hasNameColumn ? row.slice(1, 1 + calCols.length) : row.slice(0, calCols.length);
+      values.forEach((rawVal, ci) => {
+        if (ci >= calCols.length) return;
+        const val = String(rawVal || '').trim();
+        changes.push({ si, ci, val });
+        const staffName = normalizeStaffName(state.staff[si] && state.staff[si].name);
+        const unmatched = newlyUnmatched.get(staffName);
+        if (unmatched && val) unmatched.schedule[ci] = val;
+      });
+    });
+
+    if (!changes.length) {
+      toast(hasNameColumn ? 'Nenašel jsem shodná jména v Tvorbě' : 'Není co vložit', true);
+      return;
+    }
+
+    const affectedRows = new Set(changes.map(ch => ch.si)).size;
+    const affectedCols = new Set(changes.map(ch => ch.ci)).size;
+    if (!confirm(`Vložit data ze schránky do Tvorby?\n\nŘádky: ${affectedRows}\nSloupce směn: ${affectedCols}\nPrázdné buňky z Excelu smažou hodnotu v rozpisu.`)) return;
+
+    changes.forEach(({ si, ci, val }) => {
+      const key = `${si}_${ci}`;
+      if (val) state.schedule[key] = val;
+      else delete state.schedule[key];
+    });
+    historySave();
+    if (newlyUnmatched.size) {
+      const mergedUnmatched = new Map((state.unmatchedXls || []).map(u => [normalizeStaffName(u.name), u]));
+      newlyUnmatched.forEach((u, key) => mergedUnmatched.set(key, u));
+      state.unmatchedXls = [...mergedUnmatched.values()].filter(u => !settingsByName.has(normalizeStaffName(u.name)));
+      updateImportUnmatchedButton();
+    }
+    renderScheduleTable('tvorba-tbl', true);
+    renderScheduleTable('rozpis-tbl', false);
+    updateDuplicateClasses();
+    updateCoverageRows();
+    updateRequirementClasses();
+    buildHotelFilterButtons();
+    scheduleAutoSave();
+    toast(`Vloženo z Excelu (${affectedRows} řádků)`);
+  } catch(e) {
+    console.warn('pasteScheduleFromExcel:', e);
+    toast('Vložení ze schránky selhalo', true);
+  }
+}
+
+async function copyScheduleForXls() {
+  if (!navigator.clipboard || !navigator.clipboard.writeText) {
+    toast('Prohlížeč nepovolil zápis do schránky', true);
+    return;
+  }
+  if (!state.staff || !state.staff.length) {
+    toast('Není co kopírovat', true);
+    return;
+  }
+
+  try {
+    const calCols = getCalCols(state.month, state.year);
+    const lines = state.staff.map((s, si) => {
+      const cells = [s.name || ''];
+      calCols.forEach((_, ci) => cells.push(state.schedule[`${si}_${ci}`] || ''));
+      return cells.join('\t');
+    });
+    await navigator.clipboard.writeText(lines.join('\n'));
+    toast(`Zkopírováno do schránky (${state.staff.length} řádků)`);
+  } catch(e) {
+    console.warn('copyScheduleForXls:', e);
+    toast('Kopírování do schránky selhalo', true);
+  }
 }
 
 function setSumsMode(mode) {
@@ -5847,6 +6242,7 @@ function switchTab(name) {
 
   // Show/hide subtoolbar
   updateSubtoolbar();
+  fitScheduleToViewport();
   if (name === 'tvorba' || name === 'rozpis') {
     buildHotelFilterButtons();
     // Re-apply active sums mode to tables
@@ -5855,6 +6251,8 @@ function switchTab(name) {
       if (!tbl) return;
       tbl.classList.toggle('hide-sums', sumsMode === 'hidden');
       tbl.classList.toggle('hours-only', sumsMode === 'hoursonly');
+      tbl.classList.toggle('hide-night', colShiftMode === 'day');
+      tbl.classList.toggle('hide-day', colShiftMode === 'night');
     });
   }
 
@@ -5968,6 +6366,12 @@ document.addEventListener('DOMContentLoaded', async () => {
 
   // Vše načteno — zobraz stránku (fade-in), případně signalizuj portálu
   document.body.classList.add('rt-ready');
+  window.addEventListener('resize', () => {
+    fitScheduleToViewport();
+    const tbl = document.querySelector('.tab-panel.active .sched-tbl');
+    if (tbl) fineTuneScheduleFit(tbl);
+    refreshCoverageSticky();
+  });
 
   // ── Topbar tab buttons ──
   document.querySelectorAll('.tb-tab[data-tab]').forEach(b => {
@@ -5995,6 +6399,8 @@ document.addEventListener('DOMContentLoaded', async () => {
   document.getElementById('stb-day-only').addEventListener('click', () => filterByShift('day'));
   document.getElementById('stb-night-only').addEventListener('click', () => filterByShift('night'));
   document.getElementById('stb-available').addEventListener('click', () => filterByShift('available'));
+  document.getElementById('stb-cols-day').addEventListener('click', () => setColumnShiftMode('day'));
+  document.getElementById('stb-cols-night').addEventListener('click', () => setColumnShiftMode('night'));
   document.getElementById('stb-hide-sums').addEventListener('click', () => setSumsMode('hidden'));
   document.getElementById('stb-hours-only').addEventListener('click', () => setSumsMode('hoursonly'));
   document.getElementById('stb-mark-sel').addEventListener('click', toggleMarkMode);
@@ -6124,6 +6530,7 @@ document.addEventListener('DOMContentLoaded', async () => {
   });
   document.getElementById('btn-template-dl').addEventListener('click', downloadTemplate);
   document.getElementById('btn-import-xls').addEventListener('click', importXls);
+  document.getElementById('btn-paste-excel').addEventListener('click', pasteScheduleFromExcel);
   document.getElementById('xls-file-input').addEventListener('change', handleXlsImport);
   document.getElementById('btn-import-unmatched').addEventListener('click', showImportUnmatchedOverlay);
 
@@ -6140,6 +6547,7 @@ document.addEventListener('DOMContentLoaded', async () => {
   document.getElementById('btn-lock').addEventListener('click', () => {
     if (lockOwned) releaseLock(); else acquireLock();
   });
+  document.getElementById('btn-copy-xls').addEventListener('click', copyScheduleForXls);
   document.getElementById('btn-export-xlsx').addEventListener('click', exportXlsx);
 
   // ── Trash modal (drafts) ──
@@ -6240,12 +6648,12 @@ document.addEventListener('DOMContentLoaded', async () => {
   document.addEventListener('keydown', e => {
     if ((e.ctrlKey || e.metaKey) && e.key === 'z' && !e.shiftKey) {
       const tbl = document.getElementById('tvorba-tbl');
-      if (tbl && tbl.style.display !== 'none') { e.preventDefault(); historyUndo(); }
+      if (tbl && tbl.style.display !== 'none') { e.preventDefault(); e.stopPropagation(); historyUndo(); }
     }
     if (((e.ctrlKey || e.metaKey) && e.key === 'z' && e.shiftKey) ||
         ((e.ctrlKey || e.metaKey) && e.key === 'y')) {
       const tbl = document.getElementById('tvorba-tbl');
-      if (tbl && tbl.style.display !== 'none') { e.preventDefault(); historyRedo(); }
+      if (tbl && tbl.style.display !== 'none') { e.preventDefault(); e.stopPropagation(); historyRedo(); }
     }
     if ((e.ctrlKey || e.metaKey) && e.key === 's') {
       const tab = document.querySelector('.tb-tab.active');
@@ -6282,7 +6690,7 @@ document.addEventListener('DOMContentLoaded', async () => {
   initColorEditorListeners();
 
   // Initialize history snapshot
-  historySave();
+  historyReset();
 
   // ── Copy mode: drag selection on schedule cells ──
   document.addEventListener('mousedown', e => {

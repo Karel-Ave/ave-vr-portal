@@ -634,8 +634,18 @@
     return el;
   }
 
+  try { history.replaceState({ home: true }, '', '/portal'); } catch(e) {}
+
+  function replaceFrameUrl(frame, url) {
+    try {
+      frame.contentWindow.location.replace(url);
+    } catch(e) {
+      frame.src = url;
+    }
+  }
+
   // ── Load app into iframe ──────────────────────────────────────────────────
-  function loadApp(url) {
+  function loadApp(url, pushHistory = true) {
     const frame = document.getElementById('app-frame');
     const cardsView = document.getElementById('cards-view');
     const btnHome = document.getElementById('btn-home');
@@ -650,45 +660,36 @@
       loading.classList.remove('visible');
       frame.classList.add('visible');
     };
-    frame.src = url;
+    replaceFrameUrl(frame, url);
     // Keep URL as /portal — app name stays hidden. State stored in sessionStorage for F5 restore.
-    history.pushState({ app: url }, '', '/portal');
+    if (pushHistory) history.pushState({ app: url }, '', '/portal');
     try { sessionStorage.setItem('portal-last-app', url); } catch(e) {}
   }
 
   // ── Return to home / card grid ────────────────────────────────────────────
-  function goHome() {
+  function goHome(pushHistory = true) {
     const frame = document.getElementById('app-frame');
     const cardsView = document.getElementById('cards-view');
     const btnHome = document.getElementById('btn-home');
     const loading = document.getElementById('app-loading');
 
     frame.onload = null;
-    frame.src = 'about:blank';
+    replaceFrameUrl(frame, 'about:blank');
     frame.classList.remove('visible');
     loading.classList.remove('visible');
     cardsView.style.display = '';
     btnHome.classList.remove('visible');
 
     try { sessionStorage.removeItem('portal-last-app'); } catch(e) {}
-    history.pushState({}, '', '/portal');
+    if (pushHistory) history.pushState({ home: true }, '', '/portal');
   }
 
   // Handle browser back/forward
   window.addEventListener('popstate', function(e) {
     if (e.state && e.state.app) {
-      loadApp(e.state.app);
+      loadApp(e.state.app, false);
     } else {
-      const frame = document.getElementById('app-frame');
-      const cardsView = document.getElementById('cards-view');
-      const btnHome = document.getElementById('btn-home');
-      const loading = document.getElementById('app-loading');
-      frame.onload = null;
-      frame.src = 'about:blank';
-      frame.classList.remove('visible');
-      if (loading) loading.classList.remove('visible');
-      cardsView.style.display = '';
-      btnHome.classList.remove('visible');
+      goHome(false);
     }
   });
 
