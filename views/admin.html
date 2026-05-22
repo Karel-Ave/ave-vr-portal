@@ -123,6 +123,13 @@
   .rt-badge.inactive { background: #f6eeee; color: #9b3d3d; border-color: #e2baba; }
   [data-theme="dark"] .rt-badge.inactive { background: #351f1f; color: #e08686; border-color: #684242; }
   tr.user-inactive td { color: var(--text-muted); }
+  .hotel-skill-grid { display:flex; flex-wrap:wrap; gap:6px; }
+  .hotel-skill-grid label {
+    min-width:36px; padding:5px 7px; border:1px solid var(--input-border); border-radius:6px;
+    background:var(--input-bg); font-size:12px; font-weight:700; color:var(--text);
+    display:flex; align-items:center; justify-content:center; gap:4px; cursor:pointer;
+  }
+  .hotel-skill-grid input { width:auto; margin:0; accent-color:var(--accent); }
 
   /* Modals */
   .overlay { display: none; position: fixed; inset: 0; background: var(--overlay-bg); z-index: 1000; align-items: center; justify-content: center; }
@@ -370,6 +377,13 @@
             </div>
           </div>
         </div>
+        <div class="form-group">
+          <label>Hotely, které recepční zná</label>
+          <div class="hotel-skill-grid" id="raspis-hotels-grid"></div>
+        </div>
+        <div class="form-group">
+          <label><input type="checkbox" id="raspis-no-standby" style="width:auto;margin-right:6px"> Nemůže mít pohotovost (P)</label>
+        </div>
       </div>
     </div>
 
@@ -468,6 +482,7 @@
   let overridesData = {};
   let allGroups = [];
   let selectedGroupName = null;
+  const RASPIS_HOTEL_LETTERS = ['A','B','C','D','E','G','H','I','J','L','M','N','S','T','U'];
 
   fetch('/api/me').then(r => r.json()).then(u => { myId = u.id; loadUsers(); loadGroups(); });
 
@@ -1118,6 +1133,26 @@
     document.getElementById('raspis-from-year').value = now.getFullYear();
     document.getElementById('raspis-until-month').value = '';
     document.getElementById('raspis-until-year').value = '';
+    document.getElementById('raspis-no-standby').checked = false;
+    renderRaspisHotelSkills([]);
+  }
+
+  function renderRaspisHotelSkills(selected) {
+    const grid = document.getElementById('raspis-hotels-grid');
+    if (!grid) return;
+    const sel = new Set((selected || []).map(h => String(h).toUpperCase()));
+    grid.innerHTML = RASPIS_HOTEL_LETTERS.map(h =>
+      `<label><input type="checkbox" class="raspis-hotel-skill" value="${h}" ${sel.has(h) ? 'checked' : ''}>${h}</label>`
+    ).join('');
+  }
+
+  function getSelectedRaspisHotels() {
+    return Array.from(document.querySelectorAll('.raspis-hotel-skill:checked'))
+      .map(ch => ch.value.toUpperCase());
+  }
+
+  function getRaspisNoStandby() {
+    return !!document.getElementById('raspis-no-standby')?.checked;
   }
 
   function populateRaspisFields(rs) {
@@ -1126,6 +1161,7 @@
     document.getElementById('raspis-login').value = rs.login || '';
     document.getElementById('raspis-type').value = rs.type || '';
     document.getElementById('raspis-contract').value = rs.contract || '';
+    document.getElementById('raspis-no-standby').checked = !!rs.noStandby;
     if (rs.activeFrom) {
       document.getElementById('raspis-from-month').value = rs.activeFrom.month;
       document.getElementById('raspis-from-year').value  = rs.activeFrom.year;
@@ -1137,6 +1173,7 @@
       document.getElementById('raspis-until-month').value = '';
       document.getElementById('raspis-until-year').value  = '';
     }
+    renderRaspisHotelSkills(rs.hotels || rs.hotelSkills || []);
     if (rs.active) {
       document.getElementById('raspis-active-track').classList.add('on');
       document.getElementById('raspis-body').style.display = '';
@@ -1190,6 +1227,8 @@
         login:       document.getElementById('raspis-login').value.trim().toUpperCase(),
         type:        document.getElementById('raspis-type').value,
         contract:    document.getElementById('raspis-contract').value,
+        hotels:      getSelectedRaspisHotels(),
+        noStandby:   getRaspisNoStandby(),
         activeFrom:  (fMonth && fYear)  ? { month: fMonth,  year: fYear  } : null,
         activeUntil: (uMonth && uYear)  ? { month: uMonth,  year: uYear  } : null
       };

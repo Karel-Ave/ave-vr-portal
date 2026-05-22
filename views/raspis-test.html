@@ -1029,6 +1029,7 @@ tbody tr.row-filtered { display: none; }
       <div class="stb-sep"></div>
       <button class="stb-btn" id="stb-day-only">Jen denní</button>
       <button class="stb-btn" id="stb-night-only">Jen noční</button>
+      <button class="stb-btn" id="stb-show-qualified" style="display:none">Ukázat možné</button>
       <button class="stb-btn" id="stb-mark-sel">Označ vybrané</button>
       <button class="stb-btn" id="stb-available">Jen dostupní</button>
       <div class="stb-sep"></div>
@@ -2208,6 +2209,7 @@ function refreshScheduleAfterHistory() {
   updatePManyCells();
   updateShiftContextBorders();
   updateCellSelection();
+  applyRowFilters();
   scheduleAutoSave();
 }
 
@@ -2290,6 +2292,7 @@ function updateRequirementClasses() {
       applyRegularAndReqClasses(td, si, ci, col, val);
     });
   });
+  updateRememberRequirementsButton();
 }
 
 /* ══════════════════════════════════════════════════════════════════════════════
@@ -3065,6 +3068,7 @@ function setCellValue(si, ci, val) {
   updatePManyCells();
   updateShiftContextBorders();
   updateCellSelection();
+  applyRowFilters();
   scheduleAutoSave();
 }
 
@@ -3157,6 +3161,8 @@ function makeScheduleStaffFromSettings(s) {
     dates: s.dates || '',
     noteM: s.noteM || '',
     noteP: s.noteP || '',
+    hotelSkills: Array.isArray(s.hotelSkills) ? [...s.hotelSkills] : (Array.isArray(s.hotels) ? [...s.hotels] : []),
+    noStandby: !!s.noStandby,
     monthlyOverrides: s.monthlyOverrides || undefined,
     userId: s.userId || undefined,
     activeFrom: staffMonthValue(s.activeFrom) || s.activeFrom || null,
@@ -3556,7 +3562,9 @@ function buildSaveData() {
         pcd[s.userId] = {
           maxHrs: s.maxHrs || '', noteM: s.noteM || '', noteP: s.noteP || '',
           x: s.x || '', xa: s.xa || '', dates: s.dates || '', regular: s.regular || '',
-          hotel: s.hotel || '', monthlyOverrides: s.monthlyOverrides || {},
+          hotel: s.hotel || '', hotelSkills: Array.isArray(s.hotelSkills) ? [...s.hotelSkills] : [],
+          noStandby: !!s.noStandby,
+          monthlyOverrides: s.monthlyOverrides || {},
         };
       });
       return pcd;
@@ -3603,6 +3611,8 @@ function applyData(data) {
     s.dates  = custom.dates  || '';
     s.regular = custom.regular || '';
     s.hotel  = custom.hotel  || '';
+    s.hotelSkills = Array.isArray(custom.hotelSkills) ? [...custom.hotelSkills] : [];
+    s.noStandby = !!custom.noStandby || !!s.noStandby;
     s.monthlyOverrides = custom.monthlyOverrides ? JSON.parse(JSON.stringify(custom.monthlyOverrides)) : {};
   });
   state.hrsColorOverride = data.hrsColorOverride || {};
@@ -3805,7 +3815,7 @@ function addUnmatchedToOstalni(ui) {
     type:     'Speciální',
     login:    '',
     contract: '',
-    maxHrs: '', noteM: '', noteP: '', x: '', xa: '', dates: '', regular: '', hotel: '',
+    maxHrs: '', noteM: '', noteP: '', x: '', xa: '', dates: '', regular: '', hotel: '', hotelSkills: [], noStandby: false,
     activeFrom: { month: now.getMonth() + 1, year: now.getFullYear() },
     monthlyOverrides: {}
   };
@@ -3958,6 +3968,8 @@ async function confirmAddWebUser() {
             maxHrs: custom.maxHrs || '', noteM: custom.noteM || '', noteP: custom.noteP || '',
             x: custom.x || '', xa: custom.xa || '', dates: custom.dates || '',
             regular: custom.regular || '', hotel: custom.hotel || '',
+            hotelSkills: Array.isArray(as.hotels) ? [...as.hotels] : (Array.isArray(custom.hotelSkills) ? [...custom.hotelSkills] : []),
+            noStandby: !!as.noStandby || !!custom.noStandby,
             monthlyOverrides: custom.monthlyOverrides ? JSON.parse(JSON.stringify(custom.monthlyOverrides)) : {},
             inactive: false
           };
@@ -3975,6 +3987,8 @@ async function confirmAddWebUser() {
               maxHrs: custom.maxHrs || '', noteM: custom.noteM || '', noteP: custom.noteP || '',
               x: custom.x || '', xa: custom.xa || '', dates: custom.dates || '',
               regular: custom.regular || '', hotel: custom.hotel || '',
+              hotelSkills: Array.isArray(newApiEntry.hotels) ? [...newApiEntry.hotels] : (Array.isArray(custom.hotelSkills) ? [...custom.hotelSkills] : []),
+              noStandby: !!newApiEntry.noStandby || !!custom.noStandby,
               monthlyOverrides: {}, inactive: false
             };
             const existingSi = state.staff.findIndex(s =>
@@ -4068,6 +4082,8 @@ async function syncRaspisStaff() {
         dates:    custom.dates   || '',
         regular:  custom.regular || '',
         hotel:    custom.hotel   || '',
+        hotelSkills: Array.isArray(as.hotels) ? [...as.hotels] : (Array.isArray(custom.hotelSkills) ? [...custom.hotelSkills] : []),
+        noStandby: !!as.noStandby || !!custom.noStandby,
         monthlyOverrides: custom.monthlyOverrides
           ? JSON.parse(JSON.stringify(custom.monthlyOverrides)) : {},
         activeFrom:  staffMonthValue(as.activeFrom)  || as.activeFrom  || null,
@@ -4617,6 +4633,7 @@ function exportXlsx() {
 let filterHotels = new Set();  // empty = VSE, else set of letter strings
 let markedWorkers = new Set();  // Set of si indices that remain visible across hotel filters
 let _markMode    = false;       // true = "Označ vybrané" mode active (click name → mark, not hide)
+let showQualifiedWorkers = false;
 let filterShift  = null;  // null | 'day' | 'night' | 'available'
 let colShiftMode = 'all'; // 'all' | 'day' | 'night'
 let showHotels   = false;
@@ -4631,6 +4648,7 @@ function saveStbState() {
     sessionStorage.setItem('rt-stb-showHotels',    String(showHotels));
     sessionStorage.setItem('rt-stb-filterShift',   filterShift || '');
     sessionStorage.setItem('rt-stb-filterHotels',  JSON.stringify(Array.from(filterHotels)));
+    sessionStorage.setItem('rt-stb-showQualifiedWorkers', showQualifiedWorkers ? '1' : '0');
   } catch(e) {}
 }
 function restoreStbState() {
@@ -4645,6 +4663,8 @@ function restoreStbState() {
     // filterShift
     const fs = sessionStorage.getItem('rt-stb-filterShift');
     if (fs) { filterShift = null; filterByShift(fs); }
+    showQualifiedWorkers = sessionStorage.getItem('rt-stb-showQualifiedWorkers') === '1';
+    updateQualifiedButton();
     // filterHotels
     const fh = sessionStorage.getItem('rt-stb-filterHotels');
     if (fh) {
@@ -4656,6 +4676,7 @@ function restoreStbState() {
         document.querySelectorAll('#stb-hotel-btns .stb-btn').forEach(b => {
           b.classList.toggle('active', filterHotels.has(b.dataset.hotel));
         });
+        updateQualifiedButton();
         applyRowFilters();
       }
     }
@@ -4827,16 +4848,20 @@ function buildHotelFilterButtons() {
   });
 }
 
-function filterByHotel(letter) {
+async function filterByHotel(letter) {
+  await syncRaspisStaff();
+  const wasEmpty = filterHotels.size === 0;
   if (filterHotels.has(letter)) {
     filterHotels.delete(letter);
   } else {
     filterHotels.add(letter);
   }
+  if (wasEmpty && filterHotels.size > 0) showQualifiedWorkers = false;
   document.getElementById('stb-vse').classList.toggle('active', filterHotels.size === 0);
   document.querySelectorAll('#stb-hotel-btns .stb-btn').forEach(b => {
     b.classList.toggle('active', filterHotels.has(b.dataset.hotel));
   });
+  updateQualifiedButton();
   applyRowFilters();
   saveStbState();
 }
@@ -4936,6 +4961,52 @@ function refreshCoverageSticky() {
   });
 }
 
+function staffCanWorkSelectedHotels(s) {
+  if (!s || filterHotels.size === 0) return false;
+  const skills = Array.isArray(s.hotelSkills) ? s.hotelSkills : [];
+  if (!skills.length) return false;
+  const known = new Set(skills.map(h => String(h).toUpperCase()));
+  return Array.from(filterHotels).some(h => String(h).toUpperCase() !== 'P' && known.has(String(h).toUpperCase()));
+}
+
+function selectedRealHotels() {
+  return Array.from(filterHotels).map(h => String(h).toUpperCase()).filter(h => h !== 'P');
+}
+
+function staffHasHotelShift(si, letter) {
+  const wanted = String(letter || '').toUpperCase();
+  return getCalCols(state.month, state.year).some((_, ci) =>
+    String(state.schedule[`${si}_${ci}`] || '').trim().toUpperCase() === wanted
+  );
+}
+
+function staffCanTakeStandby(s) {
+  return !!s && ['Denní','Noční','Obojí'].includes(s.type) && !s.noStandby;
+}
+
+function updateQualifiedButton() {
+  const btn = document.getElementById('stb-show-qualified');
+  if (!btn) return;
+  const visible = selectedRealHotels().length > 0;
+  if (!visible) showQualifiedWorkers = false;
+  btn.style.display = visible ? '' : 'none';
+  btn.classList.toggle('active', showQualifiedWorkers && visible);
+  btn.textContent = showQualifiedWorkers ? 'Skrýt možné' : 'Ukázat možné';
+}
+
+function rowFilterRank(si, s) {
+  if (filterHotels.size === 0) return 0;
+  const realHotels = selectedRealHotels();
+  const hasHotel = realHotels.length
+    ? getCalCols(state.month, state.year).some((_, ci) => realHotels.includes(String(state.schedule[`${si}_${ci}`] || '').toUpperCase()))
+    : false;
+  if (hasHotel) return 0;
+  if (filterHotels.has('P') && staffCanTakeStandby(s) && !staffHasHotelShift(si, 'P')) return 0;
+  if (showQualifiedWorkers && realHotels.length && staffCanWorkSelectedHotels(s)) return 1;
+  if (markedWorkers.has(si)) return 2;
+  return 9;
+}
+
 function applyRowFilters() {
   ['tvorba-tbl','rozpis-tbl'].forEach(tblId => {
     const tbl = document.getElementById(tblId);
@@ -4947,8 +5018,11 @@ function applyRowFilters() {
       let hide = false;
       if (filterHotels.size > 0) {
         const calCols = getCalCols(state.month, state.year);
-        const hasHotel = calCols.some((_, ci) => filterHotels.has(state.schedule[`${si}_${ci}`]));
-        if (!hasHotel && !markedWorkers.has(si)) hide = true;
+        const selectedHotels = selectedRealHotels();
+        const hasHotel = calCols.some((_, ci) => selectedHotels.includes(String(state.schedule[`${si}_${ci}`] || '').toUpperCase()));
+        const canWorkHotel = showQualifiedWorkers && selectedHotels.length && staffCanWorkSelectedHotels(s);
+        const missingStandby = filterHotels.has('P') && staffCanTakeStandby(s) && !staffHasHotelShift(si, 'P');
+        if (!hasHotel && !canWorkHotel && !missingStandby && !markedWorkers.has(si)) hide = true;
       }
       if (!hide && filterShift === 'day') {
         hide = s.type === 'Noční';
@@ -4982,10 +5056,13 @@ function applyRowFilters() {
     const staffTbody = tbl.querySelector('.staff-tbody');
     if (!staffTbody) return;
     const allRows = Array.from(staffTbody.querySelectorAll('tr[data-si]'));
-    if (_markMode && markedWorkers.size > 0 && filterHotels.size > 0) {
-      const markedVisible = allRows.filter(tr => markedWorkers.has(+tr.dataset.si) && !tr.classList.contains('row-filtered'));
-      const rest = allRows.filter(tr => !markedVisible.includes(tr));
-      [...markedVisible, ...rest].forEach(tr => staffTbody.appendChild(tr));
+    if (filterHotels.size > 0) {
+      allRows.sort((a, b) => {
+        const aSi = +a.dataset.si;
+        const bSi = +b.dataset.si;
+        return rowFilterRank(aSi, state.staff[aSi]) - rowFilterRank(bSi, state.staff[bSi]) || aSi - bSi;
+      });
+      allRows.forEach(tr => staffTbody.appendChild(tr));
     } else {
       // Restore original order by si index
       allRows.sort((a, b) => +a.dataset.si - +b.dataset.si);
@@ -5174,6 +5251,7 @@ function pasteFromClipboard(startSi, startCi) {
     renderScheduleTable('rozpis-tbl', false);
     buildHotelFilterButtons();
     updateCoverageRows();
+    applyRowFilters();
     toast('Vloženo');
   }).catch(() => {
     toast('Vkládání selhalo — zkontrolujte oprávnění clipboardu', true);
@@ -5373,9 +5451,22 @@ function toggleMarkMode() {
 }
 
 function saveRequirements() {
+  const existing = Object.keys(state.requirements || {}).length;
+  if (existing && !confirm('Přepsat dříve zapamatované požadavky aktuální podobou rozpisu?')) return;
   state.requirements = JSON.parse(JSON.stringify(state.schedule));
-  toast('Požadavky zapamatovány — ' + Object.keys(state.requirements).length + ' buněk');
+  const count = Object.keys(state.requirements).length;
+  toast((existing ? 'Požadavky znovu zapamatovány — ' : 'Požadavky zapamatovány — ') + count + ' buněk');
   updateRequirementClasses();
+  updateRememberRequirementsButton();
+  scheduleAutoSave();
+}
+
+function updateRememberRequirementsButton() {
+  const btn = document.getElementById('stb-save-req');
+  if (!btn) return;
+  btn.textContent = Object.keys(state.requirements || {}).length
+    ? 'Znovu zapamatovat požadavky'
+    : 'Zapamatuj požadavky';
 }
 
 /* ══════════════════════════════════════════════════════════════════════════════
@@ -5945,9 +6036,18 @@ function sortStaffAlpha() {
     const newSi = oldToNew[+siStr];
     if (newSi !== undefined) newExtras[String(newSi)] = val;
   });
+  // Remap remembered requirements with the same staff index mapping.
+  const newRequirements = {};
+  Object.entries(state.requirements || {}).forEach(([key, val]) => {
+    const parts = key.split('_');
+    const oldSi = +parts[0], ci = parts[1];
+    const newSi = oldToNew[oldSi];
+    if (newSi !== undefined) newRequirements[`${newSi}_${ci}`] = val;
+  });
   state.staff = indexed.map(item => item.s);
   state.schedule = newSchedule;
   state.extras = newExtras;
+  state.requirements = newRequirements;
   return true;
 }
 
@@ -6480,7 +6580,7 @@ function handleXlsImport(e) {
             type: '',
             login: '',
             contract: '',
-            maxHrs: '', noteM: '', noteP: '', x: '', xa: '', dates: '', regular: '', hotel: '',
+            maxHrs: '', noteM: '', noteP: '', x: '', xa: '', dates: '', regular: '', hotel: '', hotelSkills: [], noStandby: false,
             monthlyOverrides: {},
             unmatchedXls: true
           };
@@ -6748,6 +6848,7 @@ document.addEventListener('DOMContentLoaded', async () => {
     filterHotels.clear();
     document.querySelectorAll('.staff-tbody tr.row-marked').forEach(tr => tr.classList.remove('row-marked'));
     markedWorkers.clear();
+    showQualifiedWorkers = false;
     if (_markMode) {
       _markMode = false;
       const btn = document.getElementById('stb-mark-sel');
@@ -6756,6 +6857,7 @@ document.addEventListener('DOMContentLoaded', async () => {
     }
     document.getElementById('stb-vse').classList.add('active');
     document.querySelectorAll('#stb-hotel-btns .stb-btn').forEach(b => b.classList.remove('active'));
+    updateQualifiedButton();
     applyRowFilters();
     saveStbState();
     historySave();
@@ -6765,6 +6867,12 @@ document.addEventListener('DOMContentLoaded', async () => {
   document.getElementById('stb-day-only').addEventListener('click', () => filterByShift('day'));
   document.getElementById('stb-night-only').addEventListener('click', () => filterByShift('night'));
   document.getElementById('stb-available').addEventListener('click', () => filterByShift('available'));
+  document.getElementById('stb-show-qualified').addEventListener('click', () => {
+    showQualifiedWorkers = !showQualifiedWorkers;
+    updateQualifiedButton();
+    applyRowFilters();
+    saveStbState();
+  });
   document.getElementById('stb-cols-day').addEventListener('click', () => setColumnShiftMode('day'));
   document.getElementById('stb-cols-night').addEventListener('click', () => setColumnShiftMode('night'));
   document.getElementById('stb-hide-sums').addEventListener('click', () => setSumsMode('hidden'));

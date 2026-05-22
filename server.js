@@ -29,8 +29,8 @@ app.use(session({
   secret: process.env.SESSION_SECRET || 'ave-portal-2026-secret',
   resave: false,
   saveUninitialized: false,
-  rolling: true,                                    // reset 30 dní při každém požadavku
-  cookie: { maxAge: 30 * 24 * 60 * 60 * 1000 }    // 30 dní
+  rolling: false,
+  cookie: { maxAge: 12 * 60 * 60 * 1000 }          // 12 hodin od přihlášení
 }));
 
 // ── Auth helpery ──────────────────────────────────────────────────────────────
@@ -3118,6 +3118,8 @@ app.get('/api/raspis-staff', requireLogin, async (req, res) => {
           login:       rs.login       || '',
           type:        rs.type        || '',
           contract:    rs.contract    || '',
+          hotels:      Array.isArray(rs.hotels) ? rs.hotels : [],
+          noStandby:   !!rs.noStandby,
           activeFrom:  rs.activeFrom  || null,
           activeUntil: rs.activeUntil || null
         });
