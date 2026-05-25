@@ -33,6 +33,7 @@ body {
   background: var(--bg-topbar);
   display: flex;
   align-items: center;
+  justify-content: center;
   gap: 8px;
   padding: 0 18px;
   height: 48px;
@@ -41,20 +42,17 @@ body {
   flex-wrap: wrap;
 }
 #topbar-title {
-  font-size: 13px;
-  font-weight: 700;
-  color: var(--text-topbar);
-  margin-right: 10px;
-  white-space: nowrap;
-  letter-spacing: .04em;
+  display: none;
 }
 .btn-top {
-  padding: 4px 12px;
-  border-radius: 5px;
+  height: 34px;
+  padding: 0 18px;
+  border-radius: 7px;
   border: 1px solid var(--btn-top-border);
   background: transparent;
   color: var(--btn-top-color);
-  font-size: 11px;
+  font-size: 13px;
+  font-weight: 600;
   cursor: pointer;
   font-family: inherit;
   transition: all .15s;
@@ -63,8 +61,8 @@ body {
 .btn-top:hover { background: var(--btn-top-hover-bg); color: #fff; border-color: #666; }
 .btn-top.danger { border-color: #6b2a2a; color: #e07070; }
 .btn-top.danger:hover { background: #4a1a1a; color: #ff9999; border-color: #c0392b; }
-.btn-top.primary { border-color: #2e5a2e; color: #6fbf6f; }
-.btn-top.primary:hover { background: #1e3e1e; color: #90e090; border-color: #4caf50; }
+.btn-top.primary { border-color: var(--btn-top-border); color: var(--btn-top-color); }
+.btn-top.primary:hover { background: var(--btn-top-hover-bg); color: #fff; border-color: #666; }
 
 
 /* ── Main content ── */
@@ -873,8 +871,8 @@ body.no-hist-delete #btn-hist-del-sel { display: none !important; }
 
 <!-- Topbar -->
 <div id="topbar">
-  <span id="topbar-title">🚫 Blacklist</span>
-  <button class="btn-top primary" id="btn-add">+ Přidat</button>
+  <span id="topbar-title">Blacklist</span>
+  <button class="btn-top primary" id="btn-add">Přidat</button>
   <button class="btn-top" id="btn-pdf">Export PDF</button>
   <button class="btn-top" id="btn-email">Export e-mail</button>
   <button class="btn-top" id="btn-intro">Upravit text</button>
@@ -970,7 +968,7 @@ body.no-hist-delete #btn-hist-del-sel { display: none !important; }
   <div class="modal">
     <h2>Přidat osobu na blacklist</h2>
     <div id="person-blocks"></div>
-    <button class="btn-add-more" id="btn-add-more">+ Přidat další osobu</button>
+    <button class="btn-add-more" id="btn-add-more">Přidat další osobu</button>
     <div class="modal-btns">
       <button class="btn-cancel" id="btn-add-cancel">Zrušit</button>
       <button class="btn-save" id="btn-add-submit">Přidat</button>

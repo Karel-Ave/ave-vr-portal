@@ -3,14 +3,14 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, viewport-fit=cover">
-<title>📋 Rozpis – VR AVE</title>
+<title>Rozpis a požadavky – VR AVE</title>
 <link rel="icon" type="image/png" href="/static/logo.png">
 <script src="/static/theme.js"></script>
 <link rel="stylesheet" href="/static/theme.css">
 <script src="https://cdn.sheetjs.com/xlsx-0.20.3/package/dist/xlsx.full.min.js"></script>
 <style>
 * { box-sizing: border-box; margin: 0; padding: 0; }
-html, body { width: 100%; max-width: 100vw; overflow-x: hidden; }
+html, body { width: 100%; max-width: 100vw; overflow-x: hidden; overflow-y: hidden; }
 body { min-height: 100vh; background: var(--bg); font-family: 'Segoe UI', system-ui, sans-serif; color: var(--text); padding-top: 48px; opacity: 0; }
 body.rt-ready { opacity: 1; transition: opacity .18s ease; }
 body.with-subtoolbar { padding-top: calc(48px + var(--stb-h,68px)); }
@@ -19,40 +19,92 @@ body.with-subtoolbar { padding-top: calc(48px + var(--stb-h,68px)); }
 #topbar {
   position: fixed; top: 0; left: 0; right: 0; z-index: 900;
   width: 100vw; max-width: 100vw;
-  height: 48px; background: var(--bg-topbar); border-bottom: 1px solid var(--border);
+  height: 48px; background: var(--bg-topbar); border-bottom: 1px solid var(--bg-controls-border);
   display: flex; align-items: center; gap: 6px; padding: 0 10px;
-  overflow-x: auto; overflow-y: hidden; scrollbar-width: none;
+  overflow: visible; scrollbar-width: none;
+}
+[data-theme="dark"] #topbar {
+  background: var(--bg-topbar);
+  border-bottom-color: var(--border);
 }
 #topbar::-webkit-scrollbar { display: none; }
-#topbar-logo { width: 28px; height: 28px; object-fit: contain; filter: brightness(0) invert(1); flex-shrink: 0; }
+#topbar-logo { width: 28px; height: 28px; object-fit: contain; filter: brightness(0); flex-shrink: 0; }
 [data-theme="dark"] #topbar-logo { filter: brightness(0) invert(1); }
 
-/* Tab buttons in topbar */
-.tb-tab {
-  padding: 5px 12px; border: none; border-radius: 6px;
-  background: none; color: var(--btn-top-color,#9A9890); cursor: pointer;
-  font-size: 13px; font-weight: 600; font-family: inherit;
-  border-bottom: 2px solid transparent; white-space: nowrap; flex-shrink: 0;
-  transition: color .15s, border-color .15s;
+#tb-tabs {
+  position: absolute;
+  left: 50%;
+  top: 7px;
+  transform: translateX(-50%);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  z-index: 2;
 }
-.tb-tab:hover { color: var(--text-topbar); }
-.tb-tab.active { color: #fff; border-bottom-color: var(--accent,#C4A96A); }
-[data-theme] .tb-tab.active { color: var(--accent,#C4A96A); }
 
-.tb-sep { width: 1px; height: 24px; background: var(--btn-top-border,#3E3E3E); flex-shrink: 0; margin: 0 2px; }
+.tb-tab {
+  height: 34px; padding: 0 13px; border: 1px solid transparent; border-radius: 7px;
+  background: var(--surface); color: var(--accent-h); cursor: pointer;
+  font-size: 13px; font-weight: 600; font-family: inherit;
+  text-align: center; white-space: nowrap; flex-shrink: 0;
+  border-color: var(--btn-top-border);
+  box-shadow: 0 1px 2px rgba(20,20,20,.10);
+  transition: background .15s, border-color .15s, color .15s;
+}
+.tb-tab:hover:not(.active) {
+  background: var(--btn-top-hover-bg);
+  border-color: var(--accent);
+  color: var(--accent-h);
+}
+.tb-tab.active {
+  background: var(--accent);
+  border-color: var(--accent);
+  color: #fff;
+  box-shadow: 0 3px 10px rgba(20,20,20,.18);
+}
+[data-theme="dark"] .tb-tab { color: var(--text-topbar); }
+[data-theme="dark"] .tb-tab:hover:not(.active) {
+  background: var(--btn-top-hover-bg);
+  border-color: var(--btn-top-border);
+  color: var(--text-topbar);
+}
+[data-theme="dark"] .tb-tab.active {
+  background: var(--accent,#C4A96A);
+  border-color: var(--accent,#C4A96A);
+  color: #1A1A18;
+}
+
+.tb-sep { width: 1px; height: 26px; background: var(--bg-controls-border); flex-shrink: 0; margin: 0 5px; }
+.tb-sep, [data-theme="dark"] .tb-sep { background: var(--btn-top-border); }
 .tb-spacer { flex: 1; min-width: 4px; }
 
 /* Topbar action buttons */
 .tb-btn {
-  padding: 5px 10px; border: 1px solid var(--btn-top-border,#3E3E3E);
-  border-radius: 6px; background: none; color: var(--btn-top-color,#BBBBBB);
+  padding: 5px 10px; border: 1px solid var(--border);
+  border-radius: 6px; background: var(--surface); color: var(--text);
   cursor: pointer; font-size: 12px; font-weight: 600; font-family: inherit;
   white-space: nowrap; flex-shrink: 0; transition: background .15s;
 }
-.tb-btn:hover { background: var(--btn-top-hover-bg,#2A2A2A); color: var(--text-topbar,#DDD); }
-.tb-btn.primary { background: var(--accent,#C4A96A); color: #fff; border-color: transparent; }
+.tb-btn:hover:not(.primary) { background: var(--surface-alt); color: var(--text); border-color: var(--border-strong); }
+.tb-btn.primary { background: var(--thead-bg); color: #fff; border-color: transparent; }
 .tb-btn.primary:hover { opacity: .88; }
 .tb-btn:disabled { opacity: .4; cursor: not-allowed; }
+[data-theme="dark"] .tb-btn {
+  background: transparent;
+  border-color: var(--btn-top-border,#3E3E3E);
+  color: var(--btn-top-color,#BBBBBB);
+}
+[data-theme="dark"] .tb-btn:hover:not(.primary) {
+  background: var(--btn-top-hover-bg,#2A2A2A);
+  color: var(--text-topbar,#DDD);
+  border-color: var(--border-strong);
+}
+[data-theme="dark"] .tb-btn.primary {
+  background: var(--accent,#C4A96A);
+  color: #1A1A18;
+  border-color: transparent;
+}
 
 /* Size editor badge */
 .edit-mode-badge {
@@ -62,6 +114,7 @@ body.with-subtoolbar { padding-top: calc(48px + var(--stb-h,68px)); }
 
 /* Auto-save indicator */
 #autosave-ind {
+  min-width: 54px; text-align: right;
   font-size: 11px; color: var(--text-muted,#8A8A82); white-space: nowrap; flex-shrink: 0;
 }
 
@@ -70,13 +123,14 @@ body.with-subtoolbar { padding-top: calc(48px + var(--stb-h,68px)); }
 .tb-actions.hidden { display: none; }
 #tb-act-nastaveni { position: absolute; left: 50%; transform: translateX(-50%); }
 #tb-act-tvorba {
-  flex: 1 1 auto;
-  margin-left: 18px;
+  flex: 0 1 auto;
+  margin-left: 0;
   min-width: 0;
+  max-width: calc(50vw - 24px);
 }
 #tb-act-tvorba .tb-btn,
 #tb-act-tvorba #sel-month-year {
-  background: var(--bg);
+  background: var(--surface);
   color: var(--text);
   border-color: var(--border);
 }
@@ -86,13 +140,89 @@ body.with-subtoolbar { padding-top: calc(48px + var(--stb-h,68px)); }
   color: var(--text);
 }
 #tb-act-tvorba .tb-btn.primary {
-  background: var(--accent,#C4A96A);
+  background: var(--thead-bg);
   color: #fff;
   border-color: transparent;
 }
+[data-theme="dark"] #tb-act-tvorba .tb-btn,
+[data-theme="dark"] #tb-act-tvorba #sel-month-year {
+  background: rgba(255,255,255,.04);
+  color: var(--text-topbar);
+  border-color: var(--btn-top-border);
+}
+[data-theme="dark"] #tb-act-tvorba .tb-btn:hover,
+[data-theme="dark"] #tb-act-tvorba #sel-month-year:hover {
+  background: var(--btn-top-hover-bg);
+  color: var(--text-topbar);
+}
+[data-theme="dark"] #tb-act-tvorba .tb-btn.primary {
+  background: var(--accent,#C4A96A);
+  color: #1A1A18;
+  border-color: transparent;
+}
 
-.tab-panel { display: none; max-width: 100vw; overflow-x: hidden; }
+#tb-right-actions {
+  margin-left: auto;
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  flex-shrink: 0;
+  z-index: 3;
+}
+#btn-publish { display: none; }
+body[data-active-tab="tvorba"] #btn-publish { display: inline-flex; }
+#btn-delete-schedule,
+#btn-schedule-archive,
+#btn-schedule-log { display: none; }
+body[data-active-tab="rozpis"] #btn-delete-schedule,
+body[data-active-tab="rozpis"] #btn-schedule-archive,
+body[data-active-tab="rozpis"] #btn-schedule-log { display: inline-flex; }
+#btn-publish {
+  background: var(--accent);
+  color: #fff;
+  border-color: var(--accent);
+}
+#btn-publish:hover {
+  background: var(--accent-h);
+  color: #fff;
+  border-color: var(--accent-h);
+  opacity: 1;
+}
+#btn-color-editor {
+  background: #202124;
+  color: #fff;
+  border-color: #202124;
+}
+#btn-color-editor:hover {
+  background: #34363A;
+  color: #fff;
+  border-color: #34363A;
+}
+[data-theme="dark"] #btn-publish {
+  background: #fff;
+  color: #111;
+  border-color: #fff;
+}
+[data-theme="dark"] #btn-publish:hover {
+  background: #f3f3f3;
+  color: #111;
+  border-color: #f3f3f3;
+}
+[data-theme="dark"] #btn-color-editor {
+  background: #101418;
+  color: #fff;
+  border-color: #3E4650;
+}
+[data-theme="dark"] #btn-color-editor:hover {
+  background: #252B32;
+  color: #fff;
+  border-color: #66707B;
+}
+
+.tab-panel { display: none; max-width: 100vw; height: calc(100dvh - 48px); overflow-x: hidden; }
+body.with-subtoolbar .tab-panel { height: calc(100dvh - 48px - var(--stb-h,0px)); }
 .tab-panel.active { display: block; }
+#tab-nastaveni { overflow-y: auto; }
 
 /* ── Nastavení tab ── */
 .wrap { max-width: 1400px; margin: 0 auto; padding: 16px 14px 80px; }
@@ -303,7 +433,7 @@ table.sched-tbl {
   --col-wd-bg:#ffffff;  --col-wd-tx:#222222;
   --col-wn-bg:#c8c8c8;  --col-wn-tx:#222222;
   --col-kd-bg:#a8d8f0;  --col-kd-tx:#222222;
-  --col-kn-bg:#5b9dc9;  --col-kn-tx:#ffffff;
+  --col-kn-bg:#5b9dc9;  --col-kn-tx:#222222;
   --col-dup-bg:#ffccaa; --col-dup-tx:#7a3000;
   --col-type-den:#F8FF35; --col-type-noc:#4DC3F5;
   --col-type-oba:#A8E05A; --col-type-ved:#FFB347; --col-type-spe:#FF8585;
@@ -317,10 +447,10 @@ table.sched-tbl {
   --col-covdn-bg:#e8e8e8; --col-covdn-tx:#999999;
 }
 [data-theme="dark"] {
-  --col-wd-bg:#2a2e36;  --col-wd-tx:#c8ccd6;
-  --col-wn-bg:#1e2228;  --col-wn-tx:#8a8e98;
-  --col-kd-bg:#1a3a52;  --col-kd-tx:#9cd4f0;
-  --col-kn-bg:#0f2840;  --col-kn-tx:#9cd4f0;
+  --col-wd-bg:#343942;  --col-wd-tx:#ffffff;
+  --col-wn-bg:#2f343c;  --col-wn-tx:#ffffff;
+  --col-kd-bg:#3d5264;  --col-kd-tx:#ffffff;
+  --col-kn-bg:#435f76;  --col-kn-tx:#ffffff;
   --col-dup-bg:#5a3000; --col-dup-tx:#ffccaa;
   --col-empty-bg:#2a1a1a;
   --col-reg-off-bg:#1e1e24; --col-reg-off-tx:#666666;
@@ -380,6 +510,16 @@ table.sched-tbl {
   display: block; text-align: center; font-size: 10px; line-height: 22px;
   user-select: none; font-weight: 700;
 }
+:root:not([data-theme="dark"]) .sched-tbl td.sched-cell,
+:root:not([data-theme="dark"]) .sched-tbl td.sched-cell input,
+:root:not([data-theme="dark"]) .sched-tbl td.sched-cell .cell-val {
+  color: #111 !important;
+}
+[data-theme="dark"] .sched-tbl td.sched-cell,
+[data-theme="dark"] .sched-tbl td.sched-cell input,
+[data-theme="dark"] .sched-tbl td.sched-cell .cell-val {
+  color: #fff !important;
+}
 
 /* Sum cells */
 .sched-tbl .sum-cell {
@@ -416,8 +556,34 @@ table.sched-tbl {
 /* d/n letter — only this span gets red, day number area stays clean */
 .th-dn-letter { display: inline-block; line-height: 1.4; padding: 0 3px; border-radius: 3px; }
 .th-dn.dn-uncovered .th-dn-letter { background: #e74c3c !important; color: #fff !important; }
+.th-dn-letter.dn-filter-click {
+  cursor: pointer;
+  user-select: none;
+}
+.th-dn-letter.dn-filter-click:hover,
+.th-dn-letter.dn-filter-active {
+  background: var(--accent) !important;
+  color: #fff !important;
+}
+.th-dn.dn-uncovered .th-dn-letter.dn-filter-active {
+  background: var(--accent) !important;
+}
+[data-theme="dark"] .th-dn-letter.dn-filter-click:hover,
+[data-theme="dark"] .th-dn-letter.dn-filter-active {
+  color: #111 !important;
+}
+.sched-tbl .th-dn.is-today .th-dn-day {
+  outline: 3px solid #ffb000;
+  outline-offset: -3px;
+  box-shadow:
+    inset 0 0 0 1px #fff,
+    0 0 0 1px rgba(0,0,0,.35),
+    0 0 8px rgba(255,176,0,.45);
+  border-radius: 3px;
+  background: rgba(255,176,0,.13);
+}
 /* Copy/paste selection */
-.sched-cell.cell-copy-sel { outline: 2px solid #2980b9 !important; outline-offset: -1px; background: rgba(41,128,185,.18) !important; }
+.sched-cell.cell-copy-sel { outline: 2px solid #202124 !important; outline-offset: -1px; background: rgba(32,33,36,.12) !important; }
 .sched-tbl.copy-mode .sched-cell { cursor: crosshair !important; }
 .sched-tbl.copy-mode { user-select: none; -webkit-user-select: none; }
 /* Coverage panel rows (dots in name cell) */
@@ -490,37 +656,38 @@ tbody tr.row-hidden { display: none !important; }
 #subtoolbar {
   position: fixed; top: 48px; left: 0; right: 0; z-index: 85;
   width: 100vw; max-width: 100vw;
-  background: var(--bg-topbar); border-bottom: 2px solid var(--border);
+  background: var(--bg-controls); border-bottom: 1px solid var(--bg-controls-border);
   display: none; flex-direction: column; padding: 4px 10px 4px;
   overflow-x: hidden;
+  box-shadow: 0 1px 0 rgba(0,0,0,.03);
 }
 /* Light mode: subtoolbar uses light surface, dark text */
 :root:not([data-theme="dark"]) #subtoolbar {
-  background: var(--bg);
-  border-bottom-color: var(--border-strong);
+  background: var(--bg-controls);
+  border-bottom-color: var(--bg-controls-border);
 }
 :root:not([data-theme="dark"]) .stb-btn {
   background: #fff;
   color: var(--text);
   border-color: var(--border-strong);
 }
-:root:not([data-theme="dark"]) .stb-btn:hover {
-  background: #2980b9;
-  color: #fff;
-  border-color: #2471a3;
+:root:not([data-theme="dark"]) .stb-btn:hover:not(.active) {
+  background: var(--surface-alt);
+  color: var(--text);
+  border-color: var(--border-strong);
 }
 :root:not([data-theme="dark"]) .stb-btn.active {
-  background: #2980b9;
+  background: var(--thead-bg);
   color: #fff;
-  border-color: #2471a3;
+  border-color: var(--thead-bg);
   box-shadow: none;
 }
 :root:not([data-theme="dark"]) .stb-btn.active:hover {
-  background: #2471a3;
+  background: var(--thead-hover);
   opacity: 1;
 }
 :root:not([data-theme="dark"]) .stb-sep {
-  background: var(--border-strong);
+  background: var(--bg-controls-border);
 }
 :root:not([data-theme="dark"]) .stb-hotel-lbl {
   color: var(--text-muted);
@@ -546,7 +713,13 @@ tbody tr.row-hidden { display: none !important; }
 :root:not([data-theme="dark"]) .sched-tbl .th-day.is-weekend { color: #4a9fd4; }
 :root:not([data-theme="dark"]) .sched-tbl .th-day.is-holiday { color: #c0392b; }
 #subtoolbar.show { display: flex; }
+[data-theme="dark"] #subtoolbar {
+  background: var(--bg-controls);
+  border-bottom-color: var(--bg-controls-border);
+  box-shadow: none;
+}
 .stb-row { display: flex; align-items: center; gap: 4px; flex-wrap: wrap; min-height: 30px; }
+#stb-row-hotels { position: relative; }
 .stb-row-tools { position: relative; }
 .stb-row-tools #stb-undo,
 .stb-row-tools #stb-redo {
@@ -554,11 +727,16 @@ tbody tr.row-hidden { display: none !important; }
   top: 50%;
   transform: translateY(-50%);
 }
-.stb-row-tools #stb-undo { left: calc(50% - 88px); }
-.stb-row-tools #stb-redo { left: calc(50% - 6px); }
-#subtoolbar.tab-tvorba #stb-available,
+.stb-row-tools #stb-undo { left: auto; right: calc(50% + 7px); }
+.stb-row-tools #stb-redo { left: calc(50% + 7px); }
 #subtoolbar.tab-tvorba #stb-hide-sums,
 #subtoolbar.tab-tvorba #stb-hours-only {
+  display: none !important;
+}
+#subtoolbar.tab-rozpis #stb-hide-sums,
+#subtoolbar.tab-rozpis #stb-hours-only,
+#subtoolbar.tab-rozpis #stb-save-req,
+#subtoolbar.tab-rozpis #stb-export2 {
   display: none !important;
 }
 .stb-sep { width: 1px; height: 20px; background: var(--btn-top-border,#3E3E3E); flex-shrink: 0; margin: 0 2px; }
@@ -569,8 +747,8 @@ tbody tr.row-hidden { display: none !important; }
   cursor: pointer; font-size: 11px; font-weight: 600; font-family: inherit;
   white-space: nowrap; flex-shrink: 0; transition: background .12s;
 }
-.stb-btn:hover { background: var(--btn-top-hover-bg,#2A2A2A); color: var(--text-topbar,#DDD); }
-.stb-btn.active { background: var(--accent,#C4A96A); color: #fff; border-color: transparent; }
+.stb-btn:hover:not(.active) { background: var(--btn-top-hover-bg,#2A2A2A); color: var(--text-topbar,#DDD); }
+.stb-btn.active { background: var(--accent,#C4A96A); color: #1A1A18; border-color: transparent; }
 .stb-btn.active:hover { opacity: .88; }
 .stb-hotel-lbl { font-size: 10px; color: var(--text-muted); margin-right: 2px; }
 .stb-label { font-size: 10px; color: var(--btn-top-color,#9A9890); white-space: nowrap; }
@@ -647,12 +825,29 @@ tbody tr.row-hidden { display: none !important; }
   width: 25px;
 }
 /* selected cells highlight */
-.sched-cell.cell-selected { outline: 2px solid #f39c12; outline-offset: -1px; background: #fff3cd !important; }
-[data-theme="dark"] .sched-cell.cell-selected { background: #4a3000 !important; }
+.sched-cell.cell-selected,
+.col-name-td.cell-selected { outline: 2px solid #f39c12; outline-offset: -1px; background: #fff3cd !important; }
+[data-theme="dark"] .sched-cell.cell-selected,
+[data-theme="dark"] .col-name-td.cell-selected { background: #4a3000 !important; }
 /* row filter */
 tbody tr.row-filtered { display: none; }
-.staff-tbody tr.row-marked .col-name-td { outline: 2px solid #e74c3c; outline-offset: -2px; }
-.staff-tbody tr.row-marked td { box-shadow: inset 0 1px 0 rgba(231,76,60,.5), inset 0 -1px 0 rgba(231,76,60,.5); }
+.staff-tbody tr.row-marked .col-name-td {
+  outline: 2px solid var(--accent);
+  outline-offset: -2px;
+  box-shadow: inset 4px 0 0 var(--accent);
+}
+.staff-tbody tr.row-marked td {
+  box-shadow:
+    inset 0 1px 0 color-mix(in srgb, var(--accent) 58%, transparent),
+    inset 0 -1px 0 color-mix(in srgb, var(--accent) 58%, transparent);
+}
+.staff-tbody tr.row-marked .sched-cell {
+  background-image: linear-gradient(color-mix(in srgb, var(--accent) 10%, transparent), color-mix(in srgb, var(--accent) 10%, transparent));
+  background-blend-mode: multiply;
+}
+[data-theme="dark"] .staff-tbody tr.row-marked .sched-cell {
+  background-blend-mode: screen;
+}
 /* (coverage panel rows removed) */
 
 /* Cell state coloring */
@@ -795,6 +990,7 @@ tbody tr.row-filtered { display: none; }
   font-size: 11px; color: var(--text-muted); padding: 4px 8px;
   background: var(--surface-alt); border-radius: 5px; flex-shrink: 0;
 }
+#lock-info:empty { display: none; }
 #lock-info.locked-by-other { color: #e74c3c; }
 #lock-info.lock-owned { color: #27ae60; }
 
@@ -827,8 +1023,8 @@ tbody tr.row-filtered { display: none; }
 .scope-cbs { display:inline-flex; align-items:center; gap:5px; margin-left:8px; flex-shrink:0; }
 .scope-cb { display:inline-flex; align-items:center; gap:2px; font-size:10px; font-weight:600; cursor:pointer; user-select:none;
   padding:1px 5px; border-radius:3px; border:1px solid var(--border); color:var(--text-muted); }
-.scope-cb input[type="checkbox"] { width:11px; height:11px; margin:0; cursor:pointer; accent-color:#2980b9; }
-.scope-cb:has(input:checked) { border-color:#2980b9; color:#2980b9; background:rgba(41,128,185,.08); }
+.scope-cb input[type="checkbox"] { width:11px; height:11px; margin:0; cursor:pointer; accent-color:var(--accent); }
+.scope-cb:has(input:checked) { border-color:var(--accent); color:var(--accent); background:rgba(32,33,36,.08); }
 .color-tab { padding:4px 14px; border:1px solid var(--border); border-radius:5px;
   background:none; color:var(--text-muted); cursor:pointer; font-size:12px; font-family:inherit; }
 .color-tab.active { background:var(--accent); color:#fff; border-color:transparent; }
@@ -850,11 +1046,11 @@ tbody tr.row-filtered { display: none; }
 
 <!-- ════════════════════════════════════════ TOPBAR ════════════════════════════════════════ -->
 <div id="topbar">
-  <button class="tb-tab" data-tab="nastaveni">⚙ Nastavení</button>
-  <button class="tb-tab" data-tab="tvorba">✏ Tvorba</button>
-  <button class="tb-tab" data-tab="rozpis">📋 Rozpis VR</button>
-
-  <div class="tb-sep"></div>
+  <div id="tb-tabs">
+    <button class="tb-tab" data-tab="nastaveni" type="button">Nastavení</button>
+    <button class="tb-tab" data-tab="tvorba" type="button">Tvorba</button>
+    <button class="tb-tab" data-tab="rozpis" type="button">Rozpis VR</button>
+  </div>
 
   <!-- Nastavení actions — prázdné, tlačítka přesunuta do mode baru a Ostatní sekce -->
   <div class="tb-actions hidden" id="tb-act-nastaveni"></div>
@@ -866,46 +1062,40 @@ tbody tr.row-filtered { display: none; }
     <button class="tb-btn" id="btn-draft-new" style="display:none">Nový</button>
     <select id="sel-month-year" class="tb-btn" style="padding:4px 6px;font-size:12px;"></select>
     <button class="tb-btn" id="btn-fonds" title="Fondy a svátky">F+S</button>
-    <button class="tb-btn" id="btn-template-dl" style="display:none">⬇ Šablona</button>
+    <button class="tb-btn" id="btn-template-dl" style="display:none">Šablona</button>
     <button class="tb-btn" id="btn-import-xls" style="display:none">⬆ Nahrát rozpis</button>
     <button class="tb-btn" id="btn-paste-excel">Vložit z XLS</button>
     <button class="tb-btn" id="btn-import-unmatched" style="display:none">Neznámá jména</button>
-    <button class="tb-btn" id="btn-draft-delete">🗑 Smazat</button>
+    <button class="tb-btn" id="btn-draft-delete">Smazat</button>
     <button class="tb-btn" id="btn-draft-trash">Koš</button>
-    <span class="tb-spacer"></span>
-    <button class="tb-btn primary" id="btn-publish">Publikovat</button>
-    <span id="autosave-ind"></span>
     <input type="file" id="xls-file-input" accept=".xls,.xlsx" style="display:none">
   </div>
 
   <!-- Rozpis VR actions -->
   <div class="tb-actions hidden" id="tb-act-rozpis">
     <select id="pub-sel" class="tb-btn" style="padding:4px 6px;font-size:12px;"></select>
-    <button class="tb-btn" id="btn-pub-to-tvorba">Načíst do Tvorby</button>
-    <button class="tb-btn" id="btn-delete-schedule">🗑 Smazat</button>
-    <button class="tb-btn" id="btn-schedule-archive">📦 Archiv</button>
-    <button class="tb-btn" id="btn-schedule-log">📋 Log</button>
-    <button class="tb-btn" id="btn-view-edit">✏ Editovat</button>
-    <button class="tb-btn primary" id="btn-view-save" style="display:none">💾 Uložit</button>
-    <span id="view-edit-badge" class="edit-mode-badge" style="display:none">EDITACE</span>
-    <button class="tb-btn" id="btn-lock">🔒 Zamknout</button>
+    <button class="tb-btn" id="btn-view-edit">Editovat</button>
     <span id="lock-info"></span>
-    <button class="tb-btn" id="btn-copy-xls">Kopírovat do XLS</button>
-    <button class="tb-btn" id="btn-export-xlsx">Export .xlsx</button>
   </div>
 
-  <div class="tb-spacer"></div>
-  <button class="tb-btn" id="btn-color-editor" title="Editor barev tabulky">🎨 Barvy</button>
+  <div id="tb-right-actions">
+    <span id="autosave-ind"></span>
+    <button class="tb-btn primary" id="btn-publish">Publikovat</button>
+    <button class="tb-btn" id="btn-delete-schedule">Smazat</button>
+    <button class="tb-btn" id="btn-schedule-archive">Archiv</button>
+    <button class="tb-btn" id="btn-schedule-log">Log</button>
+    <button class="tb-btn" id="btn-color-editor" title="Editor barev tabulky">Barvy</button>
+  </div>
 </div>
 
 <!-- ═══════════════════════════ TAB: NASTAVENÍ ════════════════════════════════════════════ -->
 <div class="tab-panel" id="tab-nastaveni">
   <div class="wrap">
     <div id="nastaveni-mode-bar">
-      <button class="mode-btn" id="btn-hotel-manager">🏨 Hotely</button>
+      <button class="mode-btn" id="btn-hotel-manager">Hotely</button>
       <span style="border-left:1px solid var(--border);height:20px;"></span>
-      <button id="mode-default-btn" class="mode-btn active" onclick="setNastaveniMode('default')">📌 Výchozí</button>
-      <button id="mode-monthly-btn" class="mode-btn" onclick="setNastaveniMode('monthly')">🗓 Přepisy</button>
+      <button id="mode-default-btn" class="mode-btn active" onclick="setNastaveniMode('default')">Výchozí</button>
+      <button id="mode-monthly-btn" class="mode-btn" onclick="setNastaveniMode('monthly')">Přepisy</button>
       <div id="override-month-controls" style="display:none;align-items:center;gap:4px;">
         <span class="mode-label">pro</span>
         <select id="override-month-sel" onchange="setOverrideMonth()" style="padding:3px 6px;font-size:12px;border:1px solid var(--border);border-radius:4px;background:var(--surface);color:var(--text);">
@@ -918,7 +1108,7 @@ tbody tr.row-filtered { display: none; }
         </select>
         <input type="number" id="override-year-inp" min="2020" max="2099" onchange="setOverrideMonth()" style="width:68px;padding:3px 6px;font-size:12px;border:1px solid var(--border);border-radius:4px;background:var(--surface);color:var(--text);">
         <button id="btn-set-as-default" class="mode-btn" style="margin-left:6px;" onclick="setOverridesAsDefault()" title="Zkopíruje přepisy tohoto měsíce do výchozích hodnot a přepisy smaže">✔ Nastavit jako výchozí</button>
-        <button id="btn-clear-month-overrides" class="mode-btn" style="color:#c00;border-color:#fcc;" onclick="clearMonthOverrides()" title="Smazat přepisy pro tento měsíc">🗑 Smazat přepis</button>
+        <button id="btn-clear-month-overrides" class="mode-btn" style="color:#c00;border-color:#fcc;" onclick="clearMonthOverrides()" title="Smazat přepisy pro tento měsíc">Smazat přepis</button>
       </div>
     </div>
     <div id="override-info" style="display:none;">
@@ -1031,7 +1221,7 @@ tbody tr.row-filtered { display: none; }
       <button class="stb-btn" id="stb-night-only">Jen noční</button>
       <button class="stb-btn" id="stb-show-qualified" style="display:none">Ukázat možné</button>
       <button class="stb-btn" id="stb-mark-sel">Označ vybrané</button>
-      <button class="stb-btn" id="stb-available">Jen dostupní</button>
+      <button class="stb-btn" id="stb-show-selected" style="display:none">Zobraz vybrané</button>
       <div class="stb-sep"></div>
       <button class="stb-btn" id="stb-cols-day" title="Zobrazí jen denní sloupce d">Jen d</button>
       <button class="stb-btn" id="stb-cols-night" title="Zobrazí jen noční sloupce n">Jen n</button>
@@ -1983,6 +2173,21 @@ function isHoliday(col, month, year, holidaysList) {
   return (holidaysList || []).includes(col.day);
 }
 
+function getPragueToday() {
+  const parts = new Intl.DateTimeFormat('en-CA', {
+    timeZone: 'Europe/Prague',
+    year: 'numeric',
+    month: '2-digit',
+    day: '2-digit'
+  }).formatToParts(new Date());
+  const byType = Object.fromEntries(parts.map(p => [p.type, p.value]));
+  return {
+    year: parseInt(byType.year, 10),
+    month: parseInt(byType.month, 10),
+    day: parseInt(byType.day, 10)
+  };
+}
+
 function isDayOff(col, month, year, holidaysList) {
   return isWeekend(col, month, year) || isHoliday(col, month, year, holidaysList);
 }
@@ -2139,7 +2344,8 @@ function makeHistorySnapshot() {
     schedule: state.schedule || {},
     hiddenRows: getHiddenRowsSnapshot(),
     markedWorkers: Array.from(markedWorkers || []),
-    markMode: !!_markMode
+    markMode: !!_markMode,
+    showMarkedOnly: !!showMarkedOnly
   };
 }
 
@@ -2171,6 +2377,7 @@ function applyHistorySnapshot(snap) {
 
   _markMode = !!snap.markMode;
   markedWorkers = new Set(snap.markedWorkers || []);
+  showMarkedOnly = !!snap.showMarkedOnly && markedWorkers.size > 0;
   refreshScheduleAfterHistory();
   applyHistoryUiState(snap);
 }
@@ -2196,6 +2403,7 @@ function applyHistoryUiState(snap) {
   document.querySelectorAll('.staff-tbody td.col-name-td[data-si]').forEach(td => {
     td.title = _markMode ? 'Kliknutím označíš / odznačíš pracovníka' : 'Kliknutím skryješ řádek';
   });
+  updateMarkedOnlyButton();
   applyRowFilters();
 }
 
@@ -2462,12 +2670,20 @@ function renderScheduleTable(tableId, editable) {
   tr1.appendChild(nameTh);
 
   // d/n cells — for 'd' columns embed day number + day name above the 'd' label
-  calCols.forEach(col => {
+  const pragueToday = getPragueToday();
+  const shouldMarkToday = tableId === 'rozpis-tbl'
+    && pragueToday.month === state.month
+    && pragueToday.year === state.year;
+  calCols.forEach((col, ci) => {
     const th = document.createElement('th');
     th.className = 'th-dn';
     th.dataset.dn = col.dn;
+    th.dataset.ci = ci;
     const hol = isHoliday(col, state.month, state.year, holidaysList);
     const wkndTh = isWeekend(col, state.month, state.year);
+    if (shouldMarkToday && !col.nextYear && col.day === pragueToday.day) {
+      th.classList.add('is-today');
+    }
     // Header cells always keep the dark thead background — only text is colored
     // (weekends → blue, holidays → red, weekdays → default white)
     const dayTextColor = hol ? '#e74c3c' : wkndTh ? '#7ec8f0' : '';
@@ -2494,7 +2710,20 @@ function renderScheduleTable(tableId, editable) {
     }
     const dnLetter = document.createElement('span');
     dnLetter.className = 'th-dn-letter';
+    dnLetter.classList.add('dn-filter-click');
+    if (availableSlotFilter
+        && availableSlotFilter.ci === ci
+        && availableSlotFilter.month === state.month
+        && availableSlotFilter.year === state.year) {
+      dnLetter.classList.add('dn-filter-active');
+    }
     dnLetter.textContent = col.dn;
+    dnLetter.title = `Zobrazit dostupné pro ${col.day}. ${state.month}. ${state.year} (${col.dn})`;
+    dnLetter.addEventListener('click', e => {
+      e.preventDefault();
+      e.stopPropagation();
+      toggleAvailableSlotFilter(ci, col);
+    });
     th.appendChild(dnLetter);
     tr1.appendChild(th);
   });
@@ -2648,12 +2877,16 @@ function renderScheduleTable(tableId, editable) {
       nameTd.style.color = 'var(--text-muted)';
       nameTd.title = 'Toto jméno je z XLS a není v Nastavení';
     }
-    if (editable) {
+    if (editable || tableId === 'rozpis-tbl') {
       nameTd.style.cursor = 'pointer';
       nameTd.title = s.unmatchedXls
         ? 'Toto jméno je z XLS a není v Nastavení'
-        : 'Kliknutím skryješ řádek';
+        : editable ? 'Kliknutím skryješ řádek' : 'Označování zapneš tlačítkem Označ vybrané';
       nameTd.addEventListener('click', () => {
+        if (_suppressNextNameClick) {
+          _suppressNextNameClick = false;
+          return;
+        }
         if (_markMode) {
           // Mark mode: toggle worker selection (outline), never hide
           if (markedWorkers.has(si)) {
@@ -2663,9 +2896,10 @@ function renderScheduleTable(tableId, editable) {
             markedWorkers.add(si);
             tr.classList.add('row-marked');
           }
+          updateMarkedOnlyButton();
           applyRowFilters();
           historySave();
-        } else {
+        } else if (editable) {
           // Normal mode: hide/show the row
           tr.classList.toggle('row-hidden');
           const btn = document.getElementById('btn-show-hidden');
@@ -3572,6 +3806,7 @@ function buildSaveData() {
     // Aktuální měsíc na root úrovni (zpětná kompatibilita)
     schedule: JSON.parse(JSON.stringify(state.schedule)),
     extras: JSON.parse(JSON.stringify(state.extras)),
+    requirements: JSON.parse(JSON.stringify(state.requirements || {})),
     fondHpp: state.fondHpp,
     fondZpp: state.fondZpp,
     holidays: state.holidays,
@@ -3686,10 +3921,19 @@ function applyData(data) {
 let currentDraftId = null;
 let dirtyFlag = false;
 let autoSaveTimer = null;
+let autoSaveIndClearTimer = null;
 let draftListCache = []; // cache seznamu draftů (pro init a findAndLoadMonthDraft)
 
 function setAutosaveInd(msg) {
-  document.getElementById('autosave-ind').textContent = msg;
+  const el = document.getElementById('autosave-ind');
+  if (!el) return;
+  clearTimeout(autoSaveIndClearTimer);
+  el.textContent = msg || '';
+  if (msg) {
+    autoSaveIndClearTimer = setTimeout(() => {
+      if (el.textContent === msg) el.textContent = '';
+    }, 3500);
+  }
 }
 
 function scheduleAutoSave() {
@@ -4405,14 +4649,19 @@ async function publishSchedule() {
   const mn = MONTH_NAMES[state.month - 1];
   if (!confirm(`Publikovat rozpis ${mn} ${state.year}?`)) return;
   try {
+    state.requirements = JSON.parse(JSON.stringify(state.schedule || {}));
+    updateRequirementClasses();
+    updateRememberRequirementsButton();
+    const data = buildSaveData();
     const r = await fetch('/api/rt/schedules/publish', {
       method: 'POST', credentials: 'include',
       headers: {'Content-Type':'application/json'},
-      body: JSON.stringify({month: state.month, year: state.year, data: buildSaveData()})
+      body: JSON.stringify({month: state.month, year: state.year, data})
     });
     if (!r.ok) throw new Error(r.status);
     toast('Rozpis publikován');
     loadScheduleList();
+    saveDraft(true);
   } catch(e) {
     toast('Chyba publikování', true);
   }
@@ -4423,10 +4672,12 @@ async function publishSchedule() {
 ══════════════════════════════════════════════════════════════════════════════ */
 
 let currentPubKey = null;
+let rozpisHasLoadedTable = false;
 
 async function loadScheduleList() {
   const sel = document.getElementById('pub-sel');
   sel.innerHTML = '';
+  const keepExistingTable = rozpisHasLoadedTable || !!currentPubKey;
   try {
     const r = await fetch('/api/rt/schedules', {credentials:'include'});
     if (!r.ok) throw new Error();
@@ -4442,15 +4693,26 @@ async function loadScheduleList() {
     });
     if (!sel.options.length) {
       sel.innerHTML = '<option value="">Žádný publikovaný rozpis</option>';
+      currentPubKey = null;
+      rozpisHasLoadedTable = false;
       showRozpisEmpty(true);
     } else {
+      const preferredKey = (currentPubKey && items.some(it => it.key === currentPubKey))
+        ? currentPubKey
+        : (currentKey || items[0].key);
+      sel.value = preferredKey;
       showRozpisEmpty(false);
       currentPubKey = sel.value;
       loadSchedule(currentPubKey);
     }
   } catch(e) {
-    sel.innerHTML = '<option value="">Žádný publikovaný rozpis</option>';
-    showRozpisEmpty(true);
+    if (keepExistingTable) {
+      toast('Seznam publikovaných rozpisů se nepodařilo načíst', true);
+      showRozpisEmpty(false);
+    } else {
+      sel.innerHTML = '<option value="">Žádný publikovaný rozpis</option>';
+      showRozpisEmpty(true);
+    }
   }
 }
 
@@ -4486,12 +4748,18 @@ async function loadSchedule(key) {
     updateRequirementClasses();
     updatePManyCells();
     buildHotelFilterButtons();
+    rozpisHasLoadedTable = true;
     showRozpisEmpty(false);
     currentPubKey = key;
   } catch(e) {
     console.error('[loadSchedule] chyba:', e);
     spinner.style.display = 'none';
-    showRozpisEmpty(true);
+    if (rozpisHasLoadedTable) {
+      toast('Rozpis se nepodařilo znovu načíst, ponechávám poslední zobrazení', true);
+      showRozpisEmpty(false);
+    } else {
+      showRozpisEmpty(true);
+    }
   }
 }
 
@@ -4512,74 +4780,128 @@ function pubToTvorba() {
    LOCK SYSTEM
 ══════════════════════════════════════════════════════════════════════════════ */
 
+const RASPIS_LOCK_APP = 'raspis-view';
+const VIEW_EDIT_IDLE_MS = 10 * 60 * 1000;
 let lockOwned = false;
 let lockPollTimer = null;
+let currentEditLock = null;
+let viewEditIdleTimer = null;
 
-async function acquireLock() {
+async function acquireLock(silent = false) {
   try {
-    const r = await fetch('/api/lock/rt-view/acquire', {method:'POST', credentials:'include'});
-    if (r.ok) {
-      lockOwned = true;
+    const r = await fetch(`/api/lock/${RASPIS_LOCK_APP}/acquire`, {method:'POST', credentials:'include'});
+    const d = await r.json().catch(() => ({}));
+    if (!r.ok || d.ok === false) {
+      currentEditLock = d.lock || null;
+      lockOwned = false;
       updateLockUI();
-      toast('Zámek získán');
+      if (!silent) toast(d.msg || `Rozpis právě edituje ${lockOwnerName(currentEditLock)}`, true);
       scheduleLockPoll();
-    } else {
-      const d = await r.json().catch(() => ({}));
-      toast(`Zámek drží: ${d.owner || '?'}`, true);
+      return false;
     }
-  } catch(e) { toast('Chyba zámku', true); }
+    currentEditLock = d.lock || null;
+    lockOwned = true;
+    updateLockUI();
+    scheduleLockPoll();
+    return true;
+  } catch(e) { if (!silent) toast('Chyba zámku', true); return false; }
 }
 
 async function releaseLock() {
   try {
-    await fetch('/api/lock/rt-view/release', {method:'POST', credentials:'include'});
+    await fetch(`/api/lock/${RASPIS_LOCK_APP}/release`, {method:'POST', credentials:'include'});
     lockOwned = false;
+    currentEditLock = null;
+    stopViewEditIdleWatch();
     updateLockUI();
     clearTimeout(lockPollTimer);
-    toast('Zámek uvolněn');
   } catch(e) {}
 }
 
 async function pollLock() {
   try {
-    const r = await fetch('/api/lock/rt-view', {credentials:'include'});
+    const r = await fetch(`/api/lock/${RASPIS_LOCK_APP}`, {credentials:'include'});
     if (!r.ok) return;
     const d = await r.json();
-    const info = document.getElementById('lock-info');
-    if (d.locked && d.owner) {
-      if (lockOwned && d.owner === (_user && _user.name)) {
-        // renew by re-acquiring
-        await acquireLock();
-        info.textContent = '🔒 Mám zámek';
-        info.className = 'lock-owned';
-      } else {
-        info.textContent = `🔒 ${d.owner}`;
-        info.className = 'locked-by-other';
-      }
-    } else {
-      info.textContent = lockOwned ? '🔒 Mám zámek' : '';
-      info.className = lockOwned ? 'lock-owned' : '';
+    currentEditLock = d.lock || null;
+    lockOwned = isOwnLock(currentEditLock);
+    if (viewEditMode && lockOwned) {
+      await acquireLock(true);
+      return;
     }
+    if (viewEditMode && !lockOwned) {
+      viewEditMode = false;
+      viewEditSnapshot = null;
+      stopViewEditIdleWatch();
+      renderScheduleTable('rozpis-tbl', false);
+    }
+    updateLockUI();
   } catch(e) {}
 }
 
 function scheduleLockPoll() {
   clearTimeout(lockPollTimer);
-  lockPollTimer = setTimeout(async () => { await pollLock(); scheduleLockPoll(); }, 30000);
+  lockPollTimer = setTimeout(async () => { await pollLock(); scheduleLockPoll(); }, 10000);
+}
+
+function lockOwnerName(lock) {
+  return (lock && (lock.userName || lock.owner || lock.name)) || 'jiný uživatel';
+}
+
+function isOwnLock(lock) {
+  if (!lock || !_user) return false;
+  return String(lock.userId || '') === String(_user.id || '') ||
+    (!!lock.userName && lock.userName === _user.name);
+}
+
+function formatLockSince(lock) {
+  if (!lock || !lock.since) return '';
+  try {
+    return new Date(lock.since).toLocaleTimeString('cs', {hour:'2-digit', minute:'2-digit'});
+  } catch(e) { return ''; }
 }
 
 function updateLockUI() {
-  const btn = document.getElementById('btn-lock');
+  const editBtn = document.getElementById('btn-view-edit');
   const info = document.getElementById('lock-info');
-  if (lockOwned) {
-    btn.textContent = '🔓 Uvolnit';
-    info.textContent = '🔒 Mám zámek';
-    info.className = 'lock-owned';
+  if (!editBtn || !info) return;
+  if (viewEditMode && lockOwned) {
+    editBtn.style.display = '';
+    editBtn.textContent = 'Uložit';
+    editBtn.classList.add('primary');
+    info.textContent = '';
+    info.className = '';
+  } else if (currentEditLock && !isOwnLock(currentEditLock)) {
+    const since = formatLockSince(currentEditLock);
+    editBtn.style.display = 'none';
+    editBtn.classList.remove('primary');
+    info.textContent = `Právě edituje ${lockOwnerName(currentEditLock)}${since ? ` od ${since}` : ''}`;
+    info.className = 'locked-by-other';
   } else {
-    btn.textContent = '🔒 Zamknout';
+    editBtn.style.display = '';
+    editBtn.textContent = 'Editovat';
+    editBtn.classList.remove('primary');
     info.textContent = '';
     info.className = '';
   }
+}
+
+function startViewEditIdleWatch() {
+  stopViewEditIdleWatch();
+  resetViewEditIdleTimer();
+}
+
+function stopViewEditIdleWatch() {
+  clearTimeout(viewEditIdleTimer);
+  viewEditIdleTimer = null;
+}
+
+function resetViewEditIdleTimer() {
+  if (!viewEditMode || !lockOwned) return;
+  clearTimeout(viewEditIdleTimer);
+  viewEditIdleTimer = setTimeout(() => {
+    saveViewEdits({ auto: true });
+  }, VIEW_EDIT_IDLE_MS);
 }
 
 /* ══════════════════════════════════════════════════════════════════════════════
@@ -4634,7 +4956,9 @@ let filterHotels = new Set();  // empty = VSE, else set of letter strings
 let markedWorkers = new Set();  // Set of si indices that remain visible across hotel filters
 let _markMode    = false;       // true = "Označ vybrané" mode active (click name → mark, not hide)
 let showQualifiedWorkers = false;
-let filterShift  = null;  // null | 'day' | 'night' | 'available'
+let showMarkedOnly = false;
+let availableSlotFilter = null; // {ci, month, year, dn, day}
+let filterShift  = null;  // null | 'day' | 'night'
 let colShiftMode = 'all'; // 'all' | 'day' | 'night'
 let showHotels   = false;
 // ── Copy/paste mode ──
@@ -4665,6 +4989,7 @@ function restoreStbState() {
     if (fs) { filterShift = null; filterByShift(fs); }
     showQualifiedWorkers = sessionStorage.getItem('rt-stb-showQualifiedWorkers') === '1';
     updateQualifiedButton();
+    updateMarkedOnlyButton();
     // filterHotels
     const fh = sessionStorage.getItem('rt-stb-filterHotels');
     if (fh) {
@@ -4688,6 +5013,8 @@ let _copyDragging = false;
 let _selSi1 = null, _selCi1 = null, _selSi2 = null, _selCi2 = null;
 let _selDragging = false;
 let _selDragMoved = false;
+let _selectionStartedOnName = false;
+let _suppressNextNameClick = false;
 let sumsMode     = 'all'; // 'all' | 'hidden' | 'hoursonly'
 let nastaveniMode     = 'default'; // 'default' | 'monthly'
 let overrideModeMonth = 1;
@@ -4850,6 +5177,7 @@ function buildHotelFilterButtons() {
 
 async function filterByHotel(letter) {
   await syncRaspisStaff();
+  showMarkedOnly = false;
   const wasEmpty = filterHotels.size === 0;
   if (filterHotels.has(letter)) {
     filterHotels.delete(letter);
@@ -4862,18 +5190,49 @@ async function filterByHotel(letter) {
     b.classList.toggle('active', filterHotels.has(b.dataset.hotel));
   });
   updateQualifiedButton();
+  updateMarkedOnlyButton();
   applyRowFilters();
   saveStbState();
 }
 
 function filterByShift(mode) {
   filterShift = filterShift === mode ? null : mode;
-  ['stb-day-only','stb-night-only','stb-available'].forEach(id => {
+  ['stb-day-only','stb-night-only'].forEach(id => {
     const el = document.getElementById(id);
     if (!el) return;
-    const m = id === 'stb-day-only' ? 'day' : id === 'stb-night-only' ? 'night' : 'available';
+    const m = id === 'stb-day-only' ? 'day' : 'night';
     el.classList.toggle('active', filterShift === m);
   });
+  applyRowFilters();
+  saveStbState();
+}
+
+function updateAvailableSlotHeaders() {
+  document.querySelectorAll('.th-dn-letter.dn-filter-active').forEach(el => el.classList.remove('dn-filter-active'));
+  if (!availableSlotFilter) return;
+  document.querySelectorAll(`.sched-tbl thead th.th-dn[data-ci="${availableSlotFilter.ci}"] .th-dn-letter`).forEach(el => {
+    el.classList.add('dn-filter-active');
+  });
+}
+
+function clearAvailableSlotFilter() {
+  availableSlotFilter = null;
+  updateAvailableSlotHeaders();
+}
+
+function toggleAvailableSlotFilter(ci, col) {
+  const same = availableSlotFilter
+    && availableSlotFilter.ci === ci
+    && availableSlotFilter.month === state.month
+    && availableSlotFilter.year === state.year;
+  availableSlotFilter = same ? null : {
+    ci,
+    month: state.month,
+    year: state.year,
+    dn: col.dn,
+    day: col.day
+  };
+  updateAvailableSlotHeaders();
   applyRowFilters();
   saveStbState();
 }
@@ -4994,6 +5353,35 @@ function updateQualifiedButton() {
   btn.textContent = showQualifiedWorkers ? 'Skrýt možné' : 'Ukázat možné';
 }
 
+function updateMarkedOnlyButton() {
+  const btn = document.getElementById('stb-show-selected');
+  if (!btn) return;
+  const visible = markedWorkers.size > 0;
+  if (!visible) showMarkedOnly = false;
+  btn.style.display = visible ? '' : 'none';
+  btn.classList.toggle('active', showMarkedOnly && visible);
+  btn.textContent = showMarkedOnly ? 'Zobrazit vše' : 'Zobraz vybrané';
+}
+
+function clearHotelFilterUi() {
+  filterHotels.clear();
+  showQualifiedWorkers = false;
+  const vseBtn = document.getElementById('stb-vse');
+  if (vseBtn) vseBtn.classList.add('active');
+  document.querySelectorAll('#stb-hotel-btns .stb-btn').forEach(b => b.classList.remove('active'));
+  updateQualifiedButton();
+}
+
+function toggleMarkedOnly() {
+  if (!markedWorkers.size) return;
+  showMarkedOnly = !showMarkedOnly;
+  if (showMarkedOnly) clearHotelFilterUi();
+  updateMarkedOnlyButton();
+  applyRowFilters();
+  saveStbState();
+  historySave();
+}
+
 function rowFilterRank(si, s) {
   if (filterHotels.size === 0) return 0;
   const realHotels = selectedRealHotels();
@@ -5008,6 +5396,9 @@ function rowFilterRank(si, s) {
 }
 
 function applyRowFilters() {
+  if (availableSlotFilter && (availableSlotFilter.month !== state.month || availableSlotFilter.year !== state.year)) {
+    clearAvailableSlotFilter();
+  }
   ['tvorba-tbl','rozpis-tbl'].forEach(tblId => {
     const tbl = document.getElementById(tblId);
     if (!tbl) return;
@@ -5015,8 +5406,11 @@ function applyRowFilters() {
       const si = +tr.dataset.si;
       const s = state.staff[si];
       if (!s) return;
+      tr.classList.toggle('row-marked', markedWorkers.has(si));
       let hide = false;
-      if (filterHotels.size > 0) {
+      if (showMarkedOnly) {
+        hide = !markedWorkers.has(si);
+      } else if (filterHotels.size > 0) {
         const calCols = getCalCols(state.month, state.year);
         const selectedHotels = selectedRealHotels();
         const hasHotel = calCols.some((_, ci) => selectedHotels.includes(String(state.schedule[`${si}_${ci}`] || '').toUpperCase()));
@@ -5028,10 +5422,9 @@ function applyRowFilters() {
         hide = s.type === 'Noční';
       } else if (!hide && filterShift === 'night') {
         hide = s.type === 'Denní';
-      } else if (!hide && filterShift === 'available') {
-        const calCols = getCalCols(state.month, state.year);
-        const allFilled = calCols.every((_, ci) => !!state.schedule[`${si}_${ci}`]);
-        hide = allFilled;
+      }
+      if (!hide && availableSlotFilter) {
+        hide = !!String(state.schedule[`${si}_${availableSlotFilter.ci}`] || '').trim();
       }
       tr.classList.toggle('row-filtered', hide);
     });
@@ -5148,6 +5541,10 @@ function updateCellSelection() {
   ['tvorba-tbl','rozpis-tbl'].forEach(tblId => {
     const tbl = document.getElementById(tblId);
     if (!tbl) return;
+    tbl.querySelectorAll('.staff-tbody td.col-name-td[data-si]').forEach(td => {
+      const si = +td.dataset.si;
+      if (ci1 <= -1 && si >= si1 && si <= si2) td.classList.add('cell-selected');
+    });
     tbl.querySelectorAll('.staff-tbody .sched-cell[data-si][data-ci]').forEach(td => {
       const si = +td.dataset.si;
       const ci = +td.dataset.ci;
@@ -5164,8 +5561,13 @@ function hasCellSelection() {
 
 function deleteSelectedCells() {
   if (!hasCellSelection()) return false;
+  const activeTab = document.querySelector('.tb-tab.active')?.dataset.tab;
+  if (activeTab === 'rozpis' && !viewEditMode) {
+    toast('V Rozpis VR nejdřív klikni na Editovat', true);
+    return true;
+  }
   const keys = new Set();
-  document.querySelectorAll('.cell-selected[data-si][data-ci]').forEach(td => {
+  document.querySelectorAll('.cell-selected.sched-cell[data-si][data-ci]').forEach(td => {
     const si = +td.dataset.si;
     const ci = +td.dataset.ci;
     if (Number.isFinite(si) && Number.isFinite(ci)) keys.add(`${si}_${ci}`);
@@ -5183,7 +5585,7 @@ function deleteSelectedCells() {
 
   historySave();
   renderCells('tvorba-tbl', true);
-  renderCells('rozpis-tbl', false);
+  renderCells('rozpis-tbl', viewEditMode);
   updateAllSums();
   updateDuplicateClasses();
   updateCoverageRows();
@@ -5191,23 +5593,31 @@ function deleteSelectedCells() {
   updatePManyCells();
   updateShiftContextBorders();
   updateCellSelection();
-  scheduleAutoSave();
+  if (activeTab !== 'rozpis') scheduleAutoSave();
   toast(`Smazáno ${keys.size} buněk`);
   return true;
 }
 
 function copySelectionToClipboard() {
-  if (_copySelSi1 === null || _copySelCi1 === null) { toast('Nejdřív označ buňky tažením', false); return; }
-  const si1 = Math.min(_copySelSi1, _copySelSi2 !== null ? _copySelSi2 : _copySelSi1);
-  const si2 = Math.max(_copySelSi1, _copySelSi2 !== null ? _copySelSi2 : _copySelSi1);
-  const ci1 = Math.min(_copySelCi1, _copySelCi2 !== null ? _copySelCi2 : _copySelCi1);
-  const ci2 = Math.max(_copySelCi1, _copySelCi2 !== null ? _copySelCi2 : _copySelCi1);
+  const useNormal = hasCellSelection();
+  const srcSi1 = useNormal ? _selSi1 : _copySelSi1;
+  const srcSi2 = useNormal ? _selSi2 : _copySelSi2;
+  const srcCi1 = useNormal ? _selCi1 : _copySelCi1;
+  const srcCi2 = useNormal ? _selCi2 : _copySelCi2;
+  if (srcSi1 === null || srcCi1 === null) { toast('Nejdřív označ buňky tažením', false); return; }
+  const si1 = Math.min(srcSi1, srcSi2 !== null ? srcSi2 : srcSi1);
+  const si2 = Math.max(srcSi1, srcSi2 !== null ? srcSi2 : srcSi1);
+  const ci1 = Math.min(srcCi1, srcCi2 !== null ? srcCi2 : srcCi1);
+  const ci2 = Math.max(srcCi1, srcCi2 !== null ? srcCi2 : srcCi1);
   const lines = [];
   for (let si = si1; si <= si2; si++) {
     const s = state.staff[si];
     if (!s) continue;
     const cells = [];
+    if (ci1 <= -1) cells.push(s.name || '');
     for (let ci = ci1; ci <= ci2; ci++) {
+      if (ci < 0) continue;
+      if (!isScheduleColumnVisible(ci)) continue;
       cells.push(state.schedule[`${si}_${ci}`] || '');
     }
     lines.push(cells.join('\t'));
@@ -5444,7 +5854,9 @@ function toggleMarkMode() {
   if (!_markMode) {
     // Deactivate: clear all marks and restore normal order
     markedWorkers.clear();
+    showMarkedOnly = false;
     document.querySelectorAll('.staff-tbody tr.row-marked').forEach(tr => tr.classList.remove('row-marked'));
+    updateMarkedOnlyButton();
     applyRowFilters();
   }
   historySave();
@@ -5612,7 +6024,7 @@ const COLOR_DEFAULTS = {
     wdBg:'#ffffff', wdTx:'#222222',
     wnBg:'#c8c8c8', wnTx:'#222222',
     kdBg:'#a8d8f0', kdTx:'#222222',
-    knBg:'#5b9dc9', knTx:'#ffffff',
+    knBg:'#5b9dc9', knTx:'#222222',
     dupBg:'#ffccaa', dupTx:'#7a3000',
     tDen:'#F8FF35', tNoc:'#4DC3F5', tOba:'#A8E05A',
     tVed:'#FFB347', tSpe:'#FF8585', tPoh:'#C8A0DC',
@@ -5625,10 +6037,10 @@ const COLOR_DEFAULTS = {
     reqMissBg:'#ffd6d6'
   },
   dark: {
-    wdBg:'#2a2e36', wdTx:'#c8ccd6',
-    wnBg:'#1e2228', wnTx:'#8a8e98',
-    kdBg:'#1a3a52', kdTx:'#9cd4f0',
-    knBg:'#0f2840', knTx:'#9cd4f0',
+    wdBg:'#343942', wdTx:'#ffffff',
+    wnBg:'#2f343c', wnTx:'#ffffff',
+    kdBg:'#3d5264', kdTx:'#ffffff',
+    knBg:'#435f76', knTx:'#ffffff',
     dupBg:'#5a3000', dupTx:'#ffccaa',
     tDen:'#F8FF35', tNoc:'#4DC3F5', tOba:'#A8E05A',
     tVed:'#FFB347', tSpe:'#FF8585', tPoh:'#C8A0DC',
@@ -5641,6 +6053,116 @@ const COLOR_DEFAULTS = {
     reqMissBg:'#3a0a0a'
   }
 };
+
+const SCHEDULE_SKIN_ACCENTS = {
+  mono:'#202124', graphite:'#17181B', slate:'#26323F', blue:'#2879B6', teal:'#167A73',
+  green:'#3D7B32', olive:'#70752A', amber:'#9A6422', rose:'#9B3F5B', violet:'#64428A'
+};
+const SCHEDULE_SKIN_COLOR_VERSION = 'readability4';
+
+const SCHEDULE_TYPE_PALETTES = {
+  mono: {
+    light: { tDen:'#F2E56A', tNoc:'#A9C0D6', tOba:'#A9C779', tVed:'#D9B06B', tSpe:'#D49AA5', tPoh:'#EDEBE5' },
+    dark:  { tDen:'#BFB35C', tNoc:'#607A96', tOba:'#6F8A52', tVed:'#A17845', tSpe:'#965E68', tPoh:'#3F4248' }
+  },
+  graphite: {
+    light: { tDen:'#E8DA72', tNoc:'#AEB7C2', tOba:'#A7BC82', tVed:'#D2A76C', tSpe:'#C996A2', tPoh:'#E6E3DA' },
+    dark:  { tDen:'#B3A65A', tNoc:'#646F7C', tOba:'#718259', tVed:'#9A7048', tSpe:'#875A64', tPoh:'#3C3E43' }
+  },
+  slate: {
+    light: { tDen:'#E7DA77', tNoc:'#A8BCD1', tOba:'#A8C28C', tVed:'#D3AA72', tSpe:'#CA98A2', tPoh:'#E7E5DC' },
+    dark:  { tDen:'#BAAD60', tNoc:'#637B95', tOba:'#71875F', tVed:'#9F764A', tSpe:'#8C5C66', tPoh:'#3D4249' }
+  },
+  blue: {
+    light: { tDen:'#DDE68A', tNoc:'#A8CDE0', tOba:'#B8D884', tVed:'#D8B27B', tSpe:'#D2A1AF', tPoh:'#C5B8D8' },
+    dark:  { tDen:'#AEB96C', tNoc:'#5F92B0', tOba:'#7FA25E', tVed:'#A88055', tSpe:'#966777', tPoh:'#6F6283' }
+  },
+  teal: {
+    light: { tDen:'#DDE58D', tNoc:'#A7D3CD', tOba:'#B1D58B', tVed:'#D4B17A', tSpe:'#CFA0A9', tPoh:'#D8D3C6' },
+    dark:  { tDen:'#ABB56C', tNoc:'#5B968F', tOba:'#789D5F', tVed:'#9F7D55', tSpe:'#916672', tPoh:'#55564E' }
+  },
+  green: {
+    light: { tDen:'#E4E48A', tNoc:'#ACCAD3', tOba:'#B4D77B', tVed:'#D7B173', tSpe:'#CEA0A2', tPoh:'#E5E1D5' },
+    dark:  { tDen:'#B0B45F', tNoc:'#607F8B', tOba:'#79A157', tVed:'#A07A4E', tSpe:'#8F6569', tPoh:'#484C43' }
+  },
+  olive: {
+    light: { tDen:'#E9DF82', tNoc:'#B8C6C4', tOba:'#BED381', tVed:'#D9B36D', tSpe:'#CC9A9D', tPoh:'#E9E3D1' },
+    dark:  { tDen:'#BAB15F', tNoc:'#6D7D7B', tOba:'#87995C', tVed:'#A17B48', tSpe:'#8C5F62', tPoh:'#4A4A3C' }
+  },
+  amber: {
+    light: { tDen:'#EEDC7B', tNoc:'#B9C4CF', tOba:'#BFD07E', tVed:'#E0AE63', tSpe:'#D19A93', tPoh:'#EDE3D4' },
+    dark:  { tDen:'#BFA85A', tNoc:'#6C7784', tOba:'#86965C', tVed:'#A8783E', tSpe:'#95605D', tPoh:'#50463D' }
+  },
+  rose: {
+    light: { tDen:'#E9DC83', tNoc:'#B8C4D4', tOba:'#BDD185', tVed:'#D8AD72', tSpe:'#D79BAA', tPoh:'#E9DDE4' },
+    dark:  { tDen:'#B8AA60', tNoc:'#6B778B', tOba:'#849A61', tVed:'#9F764B', tSpe:'#9D6274', tPoh:'#51414A' }
+  },
+  violet: {
+    light: { tDen:'#E7DD86', tNoc:'#B4C2D7', tOba:'#B9CF87', tVed:'#D5AD76', tSpe:'#CF9BAE', tPoh:'#D8C9E5' },
+    dark:  { tDen:'#B6A95F', tNoc:'#68768E', tOba:'#7F965F', tVed:'#9D774F', tSpe:'#936276', tPoh:'#5B4A69' }
+  }
+};
+
+function _hexToRgb(hex) {
+  hex = String(hex || '#202124').replace('#','');
+  if (hex.length === 3) hex = hex.split('').map(c => c + c).join('');
+  const n = parseInt(hex, 16);
+  return { r:(n >> 16) & 255, g:(n >> 8) & 255, b:n & 255 };
+}
+
+function _rgbToHex(c) {
+  return '#' + [c.r,c.g,c.b].map(v => Math.max(0, Math.min(255, Math.round(v))).toString(16).padStart(2,'0')).join('');
+}
+
+function _mix(a, b, t) {
+  const x = _hexToRgb(a), y = _hexToRgb(b);
+  return _rgbToHex({ r:x.r + (y.r - x.r) * t, g:x.g + (y.g - x.g) * t, b:x.b + (y.b - x.b) * t });
+}
+
+function schedulePaletteForSkin(skin) {
+  const accent = SCHEDULE_SKIN_ACCENTS[skin] || SCHEDULE_SKIN_ACCENTS.mono;
+  const typePalette = SCHEDULE_TYPE_PALETTES[skin] || SCHEDULE_TYPE_PALETTES.mono;
+  const lightSoft = _mix(accent, '#ffffff', .76);
+  const lightMid  = _mix(accent, '#ffffff', .58);
+  const lightDeep = _mix(accent, '#ffffff', .22);
+  const darkSoft  = _mix(accent, '#4a4f58', .55);
+  const darkMid   = _mix(accent, '#4d5660', .42);
+  const darkDeep  = _mix(accent, '#566474', .30);
+  return {
+    light: {
+      wdBg:'#ffffff', wdTx:'#222222',
+      wnBg:_mix(accent, '#d8d8d8', .72), wnTx:'#222222',
+      kdBg:lightSoft, kdTx:'#222222',
+      knBg:lightDeep, knTx:'#222222',
+      dupBg:_mix(accent, '#ffccaa', .75), dupTx:'#4a2600',
+      tDen:typePalette.light.tDen, tNoc:typePalette.light.tNoc, tOba:typePalette.light.tOba,
+      tVed:typePalette.light.tVed, tSpe:typePalette.light.tSpe, tPoh:typePalette.light.tPoh,
+      cov0Bg:'#ffebeb', cov0Tx:'#c0392b',
+      cov1Bg:_mix(accent, '#c8f5c8', .82), cov1Tx:'#1a6b1a',
+      cov2Bg:_mix(accent, '#ffe082', .82), cov2Tx:'#7a5000',
+      cov3Bg:_mix(accent, '#ff8a65', .82), cov3Tx:'#5d1a00',
+      covdnBg:'#e8e8e8', covdnTx:'#999999',
+      emptyBg:'#fff5f5', regOffBg:'#ebebeb', regOffTx:'#999999',
+      reqMissBg:'#ffd6d6'
+    },
+    dark: {
+      wdBg:'#343942', wdTx:'#ffffff',
+      wnBg:'#2f343c', wnTx:'#ffffff',
+      kdBg:darkMid, kdTx:'#ffffff',
+      knBg:darkDeep, knTx:'#ffffff',
+      dupBg:'#5a3000', dupTx:'#ffccaa',
+      tDen:typePalette.dark.tDen, tNoc:typePalette.dark.tNoc, tOba:typePalette.dark.tOba,
+      tVed:typePalette.dark.tVed, tSpe:typePalette.dark.tSpe, tPoh:typePalette.dark.tPoh,
+      cov0Bg:'#4a0000', cov0Tx:'#ff8a65',
+      cov1Bg:'#1a4a1a', cov1Tx:'#7fff7f',
+      cov2Bg:'#4a3a00', cov2Tx:'#ffe082',
+      cov3Bg:'#4a1500', cov3Tx:'#ff8a65',
+      covdnBg:'#1a1a1a', covdnTx:'#555555',
+      emptyBg:'#2a1a1a', regOffBg:'#1e1e24', regOffTx:'#666666',
+      reqMissBg:'#3a0a0a'
+    }
+  };
+}
 
 const SHEET_NAMES = ['tvorba', 'nastaveni', 'raspis'];
 
@@ -5686,6 +6208,21 @@ function loadColorProfile() {
 
 function saveColorProfileStorage() {
   try { localStorage.setItem('rt-color-profile', JSON.stringify(colorProfile)); } catch(e) {}
+}
+
+function syncScheduleColorsToPortalSkin(skin, persist = false) {
+  skin = String(skin || localStorage.getItem('ave-portal-skin') || 'mono').toLowerCase();
+  if (!SCHEDULE_SKIN_ACCENTS[skin]) skin = 'mono';
+  const prev = localStorage.getItem('rt-color-profile-skin');
+  const skinVersion = `${skin}:${SCHEDULE_SKIN_COLOR_VERSION}`;
+  if (prev === skinVersion) return false;
+  const p = schedulePaletteForSkin(skin);
+  colorProfile.light = Object.assign({}, p.light);
+  colorProfile.dark = Object.assign({}, p.dark);
+  SHEET_NAMES.forEach(s => { colorProfile[s] = { light: {}, dark: {} }; });
+  try { localStorage.setItem('rt-color-profile-skin', skinVersion); } catch(e) {}
+  if (persist) saveColorProfileStorage();
+  return true;
 }
 
 function applyColorProfile() {
@@ -6372,37 +6909,28 @@ async function showScheduleLog() {
 /* ── Edit mode ─────────────────────────────────────────────────────────────── */
 
 let viewEditMode = false;
-let viewEditSnapshot = null; // store state before editing to allow cancel
+let viewEditSnapshot = null;
 
-function toggleViewEdit() {
+async function toggleViewEdit() {
   if (!currentPubKey) { toast('Žádný rozpis vybrán', true); return; }
-  viewEditMode = !viewEditMode;
   if (viewEditMode) {
-    viewEditSnapshot = JSON.parse(JSON.stringify({ schedule: state.schedule, staff: state.staff, extras: state.extras }));
-    renderScheduleTable('rozpis-tbl', true);
-    document.getElementById('btn-view-edit').textContent = '✕ Zrušit';
-    document.getElementById('btn-view-save').style.display = '';
-    document.getElementById('view-edit-badge').style.display = '';
-    toast('Editace aktivována');
-  } else {
-    // restore snapshot
-    if (viewEditSnapshot) {
-      state.schedule = viewEditSnapshot.schedule;
-      state.staff    = viewEditSnapshot.staff;
-      state.extras   = viewEditSnapshot.extras;
-      viewEditSnapshot = null;
-    }
-    renderScheduleTable('rozpis-tbl', false);
-    document.getElementById('btn-view-edit').textContent = '✏ Editovat';
-    document.getElementById('btn-view-save').style.display = 'none';
-    document.getElementById('view-edit-badge').style.display = 'none';
-    toast('Editace zrušena');
+    await saveViewEdits();
+    return;
   }
+  const locked = await acquireLock();
+  if (!locked) return;
+  viewEditMode = true;
+  viewEditSnapshot = JSON.parse(JSON.stringify({ schedule: state.schedule, staff: state.staff, extras: state.extras }));
+  renderScheduleTable('rozpis-tbl', true);
+  updateLockUI();
+  startViewEditIdleWatch();
+  toast('Editace aktivována');
 }
 
-async function saveViewEdits() {
+async function saveViewEdits(options = {}) {
   if (!currentPubKey || !viewEditMode) return;
-  if (!confirm('Uložit změny do publikovaného rozpisu?')) return;
+  const auto = !!options.auto;
+  if (!auto && !confirm('Uložit změny do publikovaného rozpisu?')) return;
   try {
     const r = await fetch('/api/rt/schedules/save-edits', {
       method: 'POST', credentials: 'include',
@@ -6412,11 +6940,11 @@ async function saveViewEdits() {
     const d = await r.json();
     if (d.ok) {
       viewEditMode = false; viewEditSnapshot = null;
+      stopViewEditIdleWatch();
       renderScheduleTable('rozpis-tbl', false);
-      document.getElementById('btn-view-edit').textContent = '✏ Editovat';
-      document.getElementById('btn-view-save').style.display = 'none';
-      document.getElementById('view-edit-badge').style.display = 'none';
-      toast('Uloženo do rozpisu VR');
+      await releaseLock();
+      updateLockUI();
+      toast(auto ? 'Editace automaticky uložena po neaktivitě' : 'Uloženo do rozpisu VR');
     } else toast('Chyba uložení', true);
   } catch(e) { toast('Chyba uložení', true); }
 }
@@ -6694,6 +7222,7 @@ function addStaff() {
 function switchTab(name) {
   // Persist active tab so F5 stays on same tab
   try { sessionStorage.setItem('rt-active-tab', name); } catch(e) {}
+  document.body.dataset.activeTab = name;
   document.querySelectorAll('.tb-tab').forEach(b => b.classList.toggle('active', b.dataset.tab === name));
   document.querySelectorAll('.tab-panel').forEach(p => p.classList.remove('active'));
   document.querySelectorAll('.tb-actions').forEach(a => a.classList.add('hidden'));
@@ -6738,7 +7267,9 @@ function switchTab(name) {
       refreshCoverageSticky();
     }
   } else if (name === 'rozpis') {
+    if (sumsMode !== 'all') setSumsMode('all');
     pollLock();
+    scheduleLockPoll();
     if (!window._initRendering) {
       // Re-render the Rozpis VR table so name-cell inline TYPE_COLORS backgrounds
       // always reflect the latest color profile (they can't be updated via CSS
@@ -6756,6 +7287,15 @@ function switchTab(name) {
    INIT
 ══════════════════════════════════════════════════════════════════════════════ */
 
+window.addEventListener('message', e => {
+  if (!e.data || e.data.type !== 'ave-theme' || !e.data.skin) return;
+  if (!syncScheduleColorsToPortalSkin(e.data.skin, true)) return;
+  applyColorProfile();
+  renderScheduleTable('tvorba-tbl', true);
+  renderScheduleTable('rozpis-tbl', viewEditMode);
+  refreshCoverageSticky();
+});
+
 document.addEventListener('DOMContentLoaded', async () => {
   // ── Restore active tab FIRST (synchronous, before any await) ──────────
   // Prevents flash of the default "Nastavení" panel.
@@ -6770,6 +7310,7 @@ document.addEventListener('DOMContentLoaded', async () => {
 
   // Load & apply color profile from localStorage first (before any render)
   loadColorProfile();
+  syncScheduleColorsToPortalSkin(localStorage.getItem('ave-portal-skin') || 'mono', false);
   applyColorProfile();
 
   // Initialize hotel list from defaults
@@ -6849,6 +7390,8 @@ document.addEventListener('DOMContentLoaded', async () => {
     document.querySelectorAll('.staff-tbody tr.row-marked').forEach(tr => tr.classList.remove('row-marked'));
     markedWorkers.clear();
     showQualifiedWorkers = false;
+    showMarkedOnly = false;
+    clearAvailableSlotFilter();
     if (_markMode) {
       _markMode = false;
       const btn = document.getElementById('stb-mark-sel');
@@ -6858,6 +7401,7 @@ document.addEventListener('DOMContentLoaded', async () => {
     document.getElementById('stb-vse').classList.add('active');
     document.querySelectorAll('#stb-hotel-btns .stb-btn').forEach(b => b.classList.remove('active'));
     updateQualifiedButton();
+    updateMarkedOnlyButton();
     applyRowFilters();
     saveStbState();
     historySave();
@@ -6866,10 +7410,11 @@ document.addEventListener('DOMContentLoaded', async () => {
   document.getElementById('stb-copy-mode').addEventListener('click', toggleCopyMode);
   document.getElementById('stb-day-only').addEventListener('click', () => filterByShift('day'));
   document.getElementById('stb-night-only').addEventListener('click', () => filterByShift('night'));
-  document.getElementById('stb-available').addEventListener('click', () => filterByShift('available'));
   document.getElementById('stb-show-qualified').addEventListener('click', () => {
+    showMarkedOnly = false;
     showQualifiedWorkers = !showQualifiedWorkers;
     updateQualifiedButton();
+    updateMarkedOnlyButton();
     applyRowFilters();
     saveStbState();
   });
@@ -6878,6 +7423,7 @@ document.addEventListener('DOMContentLoaded', async () => {
   document.getElementById('stb-hide-sums').addEventListener('click', () => setSumsMode('hidden'));
   document.getElementById('stb-hours-only').addEventListener('click', () => setSumsMode('hoursonly'));
   document.getElementById('stb-mark-sel').addEventListener('click', toggleMarkMode);
+  document.getElementById('stb-show-selected').addEventListener('click', toggleMarkedOnly);
   document.getElementById('stb-save-req').addEventListener('click', saveRequirements);
   document.getElementById('stb-undo').addEventListener('click', historyUndo);
   document.getElementById('stb-redo').addEventListener('click', historyRedo);
@@ -7013,17 +7559,10 @@ document.addEventListener('DOMContentLoaded', async () => {
   document.getElementById('pub-sel').addEventListener('change', e => {
     if (e.target.value) loadSchedule(e.target.value);
   });
-  document.getElementById('btn-pub-to-tvorba').addEventListener('click', pubToTvorba);
   document.getElementById('btn-delete-schedule').addEventListener('click', deleteSchedule);
   document.getElementById('btn-schedule-archive').addEventListener('click', showScheduleArchive);
   document.getElementById('btn-schedule-log').addEventListener('click', showScheduleLog);
   document.getElementById('btn-view-edit').addEventListener('click', toggleViewEdit);
-  document.getElementById('btn-view-save').addEventListener('click', saveViewEdits);
-  document.getElementById('btn-lock').addEventListener('click', () => {
-    if (lockOwned) releaseLock(); else acquireLock();
-  });
-  document.getElementById('btn-copy-xls').addEventListener('click', copyScheduleForXls);
-  document.getElementById('btn-export-xlsx').addEventListener('click', exportXlsx);
 
   // ── Trash modal (drafts) ──
   document.getElementById('trash-close').addEventListener('click', () => {
@@ -7141,8 +7680,8 @@ document.addEventListener('DOMContentLoaded', async () => {
       if (tab && tab.dataset.tab === 'tvorba') { e.preventDefault(); saveDraft(false); }
       else if (tab && tab.dataset.tab === 'nastaveni') { e.preventDefault(); saveSettings(); }
     }
-    // ── Copy mode: Ctrl+C / Ctrl+V ──
-    if (_copyMode && (e.ctrlKey || e.metaKey) && e.key === 'c' && !e.shiftKey) {
+    // ── Copy selected schedule cells to clipboard ──
+    if ((e.ctrlKey || e.metaKey) && e.key === 'c' && !e.shiftKey && (hasCellSelection() || _copyMode)) {
       e.preventDefault();
       copySelectionToClipboard();
     }
@@ -7176,25 +7715,26 @@ document.addEventListener('DOMContentLoaded', async () => {
   // Drag-select schedule cells for batch actions
   document.addEventListener('mousedown', e => {
     if (_copyMode || e.button !== 0) return;
-    const td = e.target.closest('.staff-tbody .sched-cell[data-si][data-ci]');
+    const td = e.target.closest('.staff-tbody .sched-cell[data-si][data-ci], .staff-tbody td.col-name-td[data-si]');
     if (!td) {
       clearCellSelection();
       return;
     }
     _selDragging = true;
     _selDragMoved = false;
+    _selectionStartedOnName = td.classList.contains('col-name-td');
     _selSi1 = +td.dataset.si;
-    _selCi1 = +td.dataset.ci;
+    _selCi1 = _selectionStartedOnName ? -1 : +td.dataset.ci;
     _selSi2 = _selSi1;
     _selCi2 = _selCi1;
     clearCellSelectionHighlight();
   }, true);
   document.addEventListener('mousemove', e => {
     if (_copyMode || !_selDragging) return;
-    const td = e.target.closest('.staff-tbody .sched-cell[data-si][data-ci]');
+    const td = e.target.closest('.staff-tbody .sched-cell[data-si][data-ci], .staff-tbody td.col-name-td[data-si]');
     if (!td) return;
     const si = +td.dataset.si;
-    const ci = +td.dataset.ci;
+    const ci = td.classList.contains('col-name-td') ? -1 : +td.dataset.ci;
     if (si !== _selSi2 || ci !== _selCi2) {
       _selSi2 = si;
       _selCi2 = ci;
@@ -7203,10 +7743,16 @@ document.addEventListener('DOMContentLoaded', async () => {
     }
   }, true);
   document.addEventListener('mouseup', () => {
+    if (_selectionStartedOnName && _selDragging && _selDragMoved) _suppressNextNameClick = true;
     if (_selDragging && !_selDragMoved) clearCellSelection();
     _selDragging = false;
     _selDragMoved = false;
+    _selectionStartedOnName = false;
   }, true);
+
+  ['mousemove','mousedown','keydown','wheel','touchstart'].forEach(evt => {
+    document.addEventListener(evt, resetViewEditIdleTimer, { passive: true, capture: true });
+  });
 
   // ── Copy mode: drag selection on schedule cells ──
   document.addEventListener('mousedown', e => {

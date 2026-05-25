@@ -36,6 +36,9 @@ async function init() {
   await db.query(`
     ALTER TABLE users ADD COLUMN IF NOT EXISTS theme VARCHAR(5) DEFAULT 'light'
   `);
+  await db.query(`
+    ALTER TABLE users ADD COLUMN IF NOT EXISTS theme_skin VARCHAR(30) DEFAULT 'mono'
+  `);
 
   await db.query(`
     CREATE TABLE IF NOT EXISTS settings (

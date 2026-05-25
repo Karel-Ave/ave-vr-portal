@@ -36,26 +36,143 @@
     left: 0;
     width: 100%;
     z-index: 9999;
-    border-bottom: 1px solid rgba(0,0,0,.4);
+    border-bottom: 1px solid var(--bg-controls-border);
+    box-shadow: 0 1px 0 rgba(16,34,51,.04);
   }
-  .topbar-logo {
+  [data-theme="dark"] #topbar {
+    background: var(--bg-topbar);
+    border-bottom-color: var(--border);
+    box-shadow: none;
+  }
+  .portal-brand {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    min-width: 260px;
+  }
+  .portal-brand img {
+    height: 42px;
+    object-fit: contain;
+    filter: brightness(0) saturate(100%) invert(18%) sepia(26%) saturate(1338%) hue-rotate(166deg) brightness(91%) contrast(91%);
+  }
+  [data-theme="dark"] .portal-brand img {
+    filter: brightness(0) invert(1);
+  }
+  .portal-copy {
+    font-size: 11px;
+    color: var(--text-topbar);
+    white-space: nowrap;
+  }
+  #app-nav {
     position: absolute;
     left: 50%;
     transform: translateX(-50%);
     display: flex;
     align-items: center;
-    gap: 10px;
-    pointer-events: none;
+    justify-content: center;
+    gap: 6px;
+    width: 245px;
+    padding: 0;
+    background: transparent;
+    border: none;
+    overflow: visible;
   }
-  .topbar-logo img {
-    height: 52px;
-    object-fit: contain;
-    filter: brightness(0) invert(1);
+  [data-theme="dark"] #app-nav {
+    background: transparent;
+    border-color: transparent;
   }
-  .topbar-copy {
-    font-size: 10px;
-    color: rgba(255,255,255,0.55);
+  #app-nav-current {
+    width: 100%;
+    height: 36px;
+    padding: 0 14px;
+    border: 1px solid var(--accent);
+    border-radius: 8px;
+    background: var(--surface);
+    color: var(--accent-h);
+    font-size: 13px;
+    font-weight: 700;
+    font-family: inherit;
+    cursor: pointer;
+    text-align: left;
     white-space: nowrap;
+    box-shadow: 0 1px 2px rgba(20,20,20,.10);
+    transition: background .15s, border-color .15s, color .15s, box-shadow .15s;
+  }
+  #app-nav-current::after {
+    content: "⌄";
+    float: right;
+    font-size: 12px;
+    opacity: .75;
+    margin-top: 1px;
+  }
+  #app-nav.open #app-nav-current,
+  #app-nav-current:hover {
+    background: var(--accent);
+    border-color: var(--accent);
+    color: #fff;
+    box-shadow: 0 4px 12px rgba(20,20,20,.18);
+  }
+  #app-nav-menu {
+    position: absolute;
+    top: 43px;
+    left: 50%;
+    transform: translateX(-50%);
+    width: 260px;
+    padding: 6px;
+    display: none;
+    gap: 4px;
+    background: #F9FCFE;
+    border: 1px solid var(--btn-top-border);
+    border-radius: 10px;
+    box-shadow: 0 12px 30px rgba(20,60,90,.18);
+  }
+  #app-nav.open #app-nav-menu { display: grid; }
+  .app-nav-btn {
+    height: 32px;
+    width: 100%;
+    padding: 0 11px;
+    border: 1px solid transparent;
+    border-radius: 6px;
+    background: transparent;
+    color: var(--text);
+    font-size: 13px;
+    font-weight: 700;
+    font-family: inherit;
+    text-align: left;
+    white-space: nowrap;
+    cursor: pointer;
+    transition: background .15s, border-color .15s, color .15s;
+  }
+  [data-theme="dark"] .app-nav-btn { color: var(--text-topbar); }
+  [data-theme="dark"] #app-nav-current {
+    background: var(--accent);
+    border-color: var(--accent);
+    color: #1A1A18;
+  }
+  [data-theme="dark"] #app-nav-menu {
+    background: var(--surface);
+    border-color: var(--border);
+    box-shadow: 0 14px 32px rgba(0,0,0,.35);
+  }
+  .app-nav-btn:hover:not(.active) {
+    background: var(--accent-light);
+    border-color: var(--btn-top-border);
+    color: var(--accent-h);
+  }
+  .app-nav-btn.active {
+    background: var(--thead-bg);
+    border-color: var(--thead-bg);
+    color: #fff;
+  }
+  [data-theme="dark"] .app-nav-btn:hover:not(.active) {
+    background: var(--btn-top-hover-bg);
+    border-color: var(--border-strong);
+    color: var(--text-topbar);
+  }
+  [data-theme="dark"] .app-nav-btn.active {
+    background: var(--accent);
+    border-color: var(--accent);
+    color: #1A1A18;
   }
   .topbar-left {
     display: flex;
@@ -70,7 +187,7 @@
     gap: 10px;
   }
   .user-badge {
-    color: var(--text-muted);
+    color: var(--text-topbar);
     font-size: 13px;
   }
   .btn-top {
@@ -88,37 +205,21 @@
     align-items: center;
     gap: 5px;
   }
-  .btn-top:hover { background: var(--btn-top-hover-bg); color: #fff; border-color: #666; }
-
-  /* ── Home button (hidden by default) ── */
-  #btn-home {
-    display: none;
-  }
-  #btn-home.visible {
-    display: inline-flex;
-    align-items: center;
-    justify-content: center;
-    font-size: 22px;
-    font-weight: 700;
-    padding: 4px 14px;
-    border-radius: 8px;
-    border: 2px solid var(--btn-top-border);
-    background: var(--portal-card-bg, rgba(255,255,255,0.08));
+  .btn-top:hover { background: var(--btn-top-hover-bg); color: var(--text-topbar); border-color: var(--border-strong); }
+  [data-theme="dark"] .btn-top {
+    border-color: var(--btn-top-border);
     color: var(--btn-top-color);
-    line-height: 1;
-    min-width: 44px;
-    min-height: 34px;
   }
-  #btn-home.visible:hover {
-    background: var(--accent);
-    border-color: var(--accent);
-    color: #fff;
+  [data-theme="dark"] .btn-top:hover {
+    background: var(--btn-top-hover-bg);
+    color: var(--text-topbar);
+    border-color: var(--border-strong);
   }
 
   /* ── Obsah ── */
   #cards-view {
     min-height: calc(100vh - 58px);
-    display: flex;
+    display: none;
     align-items: center;
   }
   .main {
@@ -316,6 +417,11 @@
     width: 360px;
     box-shadow: var(--modal-shadow);
   }
+  .modal.modal-wide {
+    width: min(760px, calc(100vw - 32px));
+    max-height: min(760px, calc(100vh - 32px));
+    overflow-y: auto;
+  }
   .modal h2 { font-size: 15px; font-weight: 600; color: var(--text); margin-bottom: 20px; }
   .modal label {
     display: block;
@@ -366,6 +472,28 @@
     transition: background .15s;
   }
   .btn-primary:hover { background: var(--accent-h); }
+  .theme-mode-row { display: flex; gap: 8px; margin-bottom: 18px; }
+  .theme-mode-btn {
+    flex: 1; padding: 9px 12px; border: 1px solid var(--border); border-radius: 8px;
+    background: var(--surface); color: var(--text); font-weight: 700; cursor: pointer; font-family: inherit;
+  }
+  .theme-mode-btn.active { background: var(--accent); border-color: var(--accent); color: #fff; }
+  .skin-grid { display: grid; grid-template-columns: repeat(5, minmax(0, 1fr)); gap: 10px; }
+  .skin-card {
+    border: 1px solid var(--border); border-radius: 10px; background: var(--surface);
+    padding: 8px; cursor: pointer; color: var(--text); font-family: inherit; text-align: left;
+    transition: border-color .15s, background .15s, transform .15s;
+  }
+  .skin-card:hover { border-color: var(--border-strong); background: var(--surface-alt); }
+  .skin-card.active { border-color: var(--accent); box-shadow: 0 0 0 2px color-mix(in srgb, var(--accent) 22%, transparent); }
+  .skin-preview {
+    height: 46px; border-radius: 7px; border: 1px solid rgba(0,0,0,.12);
+    display: grid; grid-template-columns: 1.1fr .9fr; overflow: hidden; margin-bottom: 7px;
+  }
+  .skin-preview span:first-child { display: block; }
+  .skin-preview span:last-child { display: block; }
+  .skin-label { font-size: 12px; font-weight: 700; text-align: center; }
+  .settings-note { font-size: 12px; color: var(--text-muted); margin: -8px 0 16px; }
 
   /* Theme toggle button */
   #btn-theme {
@@ -380,7 +508,15 @@
     line-height: 1;
     font-family: inherit;
   }
-  #btn-theme:hover { background: var(--btn-top-hover-bg); color: #fff; }
+  #btn-theme:hover { background: var(--btn-top-hover-bg); color: var(--text-topbar); }
+  [data-theme="dark"] #btn-theme {
+    border-color: var(--btn-top-border);
+    color: var(--btn-top-color);
+  }
+  [data-theme="dark"] #btn-theme:hover {
+    background: var(--btn-top-hover-bg);
+    color: var(--text-topbar);
+  }
 
   .msg { font-size: 12px; min-height: 18px; margin-top: 6px; }
   .msg.ok  { color: #5cb85c; }
@@ -400,7 +536,15 @@
     transition: all .15s;
     font-family: inherit;
   }
-  #btn-hamburger:hover { background: var(--btn-top-hover-bg); color: #fff; }
+  #btn-hamburger:hover { background: var(--btn-top-hover-bg); color: var(--text-topbar); }
+  [data-theme="dark"] #btn-hamburger {
+    border-color: var(--btn-top-border);
+    color: var(--btn-top-color);
+  }
+  [data-theme="dark"] #btn-hamburger:hover {
+    background: var(--btn-top-hover-bg);
+    color: var(--text-topbar);
+  }
 
   /* ── Mobilní slide-down menu ── */
   #mobile-menu {
@@ -452,12 +596,26 @@
 
     /* Topbar: kompaktní */
     #topbar { padding: 0 12px; }
-    .topbar-logo img { height: 40px; }
-    .topbar-copy { display: none; }
+    .portal-brand { min-width: 0; }
+    .portal-brand img { height: 34px; }
+    .portal-copy { display: none; }
+    #app-nav {
+      left: 74px;
+      right: 54px;
+      width: auto;
+      transform: none;
+      justify-content: flex-start;
+      max-width: none;
+    }
+    .app-nav-btn {
+      height: 32px;
+      padding: 0 10px;
+      font-size: 12px;
+    }
 
     /* Schovat desktop prvky, ukázat hamburger */
     .user-badge { display: none; }
-    #btn-pw-change { display: none; }
+    #btn-pw-change, #btn-user-settings { display: none; }
     #btn-logout    { display: none; }
     #btn-hamburger { display: inline-flex; align-items: center; justify-content: center; }
 
@@ -498,18 +656,28 @@
     /* Modál změny hesla: full width přes theme.css, ale parent má padding */
     .modal h2   { font-size: 14px; }
     .modal input { min-height: 46px; }
+    .skin-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
   }
 
   /* Landscape mobile — hide overlapping topbar elements */
   @media (max-width: 1000px) and (orientation: landscape) {
     #topbar { padding: 0 env(safe-area-inset-right, 12px) 0 env(safe-area-inset-left, 12px); }
-    .topbar-copy { display: none; }
+    .portal-copy { display: none; }
     .user-badge  { display: none; }
-    #btn-pw-change { display: none; }
+    #btn-pw-change, #btn-user-settings { display: none; }
     #btn-logout    { display: none; }
     #btn-hamburger { display: inline-flex; align-items: center; justify-content: center; }
     .home-label    { display: none; }
-    .topbar-logo img { height: 36px; }
+    .portal-brand { min-width: 0; }
+    .portal-brand img { height: 32px; }
+    #app-nav {
+      left: 74px;
+      right: 104px;
+      width: auto;
+      transform: none;
+      justify-content: flex-start;
+      max-width: none;
+    }
   }
 
   @media (max-width: 380px) {
@@ -521,20 +689,19 @@
 <body>
 
 <div id="topbar">
-  <!-- Left: Home button (visible only when app is loaded) -->
   <div class="topbar-left">
-    <button id="btn-home" class="btn-top" onclick="goHome()" title="Zpět na přehled">&#8592;</button>
+    <div class="portal-brand">
+      <img src="/static/logo.png" alt="AVE Hotels">
+      <span class="portal-copy">&copy; 2026 Karel Dvořák</span>
+    </div>
   </div>
 
-  <!-- Center: Logo (always visible) -->
-  <div class="topbar-logo">
-    <img src="/static/logo.png" alt="AVE Hotels">
-    <span class="topbar-copy">&copy; 2026 Karel Dvo&rcaron;&aacute;k</span>
-  </div>
+  <nav id="app-nav" aria-label="Aplikace"></nav>
 
   <!-- Right: User controls -->
   <div class="topbar-right">
     <span class="user-badge" id="user-label"></span>
+    <button id="btn-user-settings" class="btn-top" onclick="openUserSettings()">Nastavení</button>
 <button id="btn-pw-change" class="btn-top" onclick="document.getElementById('pw-overlay').classList.add('show')">Změnit heslo</button>
     <a id="btn-logout" href="/logout" class="btn-top">Odhlásit</a>
     <button id="btn-theme" title="Přepnout světlé / tmavé téma">🌙</button>
@@ -545,6 +712,7 @@
 <!-- Mobilní slide-down menu (skryté na desktopu) -->
 <div id="mobile-menu" aria-hidden="true">
   <div id="mobile-menu-user"></div>
+  <button class="mob-menu-btn" onclick="openUserSettings()">Nastavení</button>
   <button class="mob-menu-btn" onclick="openPwModal()">🔑&nbsp; Změnit heslo</button>
   <a class="mob-menu-btn" href="/logout">⎋&nbsp; Odhlásit</a>
 </div>
@@ -587,6 +755,24 @@
   </div>
 </div>
 
+<!-- Modál: Nastavení vzhledu -->
+<div class="overlay" id="settings-overlay">
+  <div class="modal modal-wide">
+    <h2>Nastavení vzhledu</h2>
+    <p class="settings-note">Vybraný vzhled se uloží k vašemu účtu a použije se v celém portálu.</p>
+    <label>Režim</label>
+    <div class="theme-mode-row">
+      <button class="theme-mode-btn" id="mode-light" type="button" onclick="setPortalMode(false)">Světlý</button>
+      <button class="theme-mode-btn" id="mode-dark" type="button" onclick="setPortalMode(true)">Tmavý</button>
+    </div>
+    <label>Barevný design</label>
+    <div class="skin-grid" id="skin-grid"></div>
+    <div class="modal-btns">
+      <button class="btn-primary" onclick="closeUserSettings()">Hotovo</button>
+    </div>
+  </div>
+</div>
+
 <script>
   // ── Blacklist icon: black document + red diagonal ────────────────────────
   function blacklistIcon() {
@@ -607,12 +793,10 @@
   // ── Card definitions ──────────────────────────────────────────────────────
   // ── Všechny karty aplikací (jednotný seznam) ─────────────────────────────
   const ALL_CARDS = [
-    { id: 'raspis',      icon: calendarIcon(), title: 'Rozpis VR',          href: '/rozpis-view',  permKey: 'raspis'      },
-    { id: 'raspis-test', icon: '🧪',           title: 'Rozpis Test',        href: '/raspis-test',  permKey: 'raspis-test', adminOnly: true },
-    { id: 'rozpis',      icon: '📋',           title: 'Rozpis',             href: '/rozpis',       permKey: 'rozpis'      },
-    { id: 'priplatky',   icon: '💵',           title: 'Příplatky a pokuty', href: '/priplatky',    permKey: 'priplatky'   },
-    { id: 'blacklist',   icon: blacklistIcon(), title: 'Blacklist',          href: '/blacklist',    permKey: 'blacklist'   },
-    { id: 'admin',       icon: '👥',           title: 'Správa uživatelů',   href: '/admin',        permKey: 'admin', adminOnly: true }
+    { id: 'raspis',      title: 'Rozpis a požadavky', href: '/raspis-test',  permKey: 'raspis' },
+    { id: 'priplatky',   title: 'Příplatky a pokuty', href: '/priplatky',    permKey: 'priplatky' },
+    { id: 'blacklist',   title: 'Blacklist',          href: '/blacklist',    permKey: 'blacklist' },
+    { id: 'admin',       title: 'Správa uživatelů',   href: '/admin',        permKey: 'admin', adminOnly: true }
   ];
 
   // ── Build a card element ──────────────────────────────────────────────────
@@ -621,7 +805,6 @@
     el.className = 'card' + (c.href ? '' : ' disabled');
     el.dataset.appId = c.id;
     el.innerHTML = `
-      <div class="card-icon">${c.icon}</div>
       <div class="card-title">${c.title}</div>
       ${!c.href ? '<span class="badge-soon">Připravuje se</span>' : ''}
     `;
@@ -634,7 +817,55 @@
     return el;
   }
 
-  try { history.replaceState({ home: true }, '', '/portal'); } catch(e) {}
+  let portalCards = [];
+  let portalDefaultUrl = null;
+  let currentAppUrl = null;
+
+  function makeAppNavButton(c) {
+    const btn = document.createElement('button');
+    btn.type = 'button';
+    btn.className = 'app-nav-btn';
+    btn.dataset.href = c.href || '';
+    btn.dataset.appId = c.id;
+    btn.textContent = c.title;
+    btn.addEventListener('click', () => loadApp(c.href));
+    return btn;
+  }
+
+  function updateActiveAppNav(url) {
+    let active = null;
+    document.querySelectorAll('#app-nav .app-nav-btn').forEach(btn => {
+      const isActive = btn.dataset.href === url;
+      btn.classList.toggle('active', isActive);
+      if (isActive) active = btn;
+    });
+    const current = document.getElementById('app-nav-current');
+    if (current) current.textContent = active?.textContent || 'Vybrat kartu';
+    document.getElementById('app-nav')?.classList.remove('open');
+  }
+
+  function renderAppNav(cards) {
+    const nav = document.getElementById('app-nav');
+    nav.innerHTML = '<button id="app-nav-current" type="button">Vybrat kartu</button><div id="app-nav-menu"></div>';
+    const menu = document.getElementById('app-nav-menu');
+    cards.filter(c => c.href).forEach(c => menu.appendChild(makeAppNavButton(c)));
+    document.getElementById('app-nav-current').addEventListener('click', e => {
+      e.stopPropagation();
+      nav.classList.toggle('open');
+    });
+    document.addEventListener('click', e => {
+      if (!e.target.closest('#app-nav')) nav.classList.remove('open');
+    });
+  }
+
+  function getDefaultApp(cards, user, perms) {
+    const defaultRoles = ['admin', 'vedoucí', 'recepční'];
+    const preferredId = perms?.__defaultApp || (defaultRoles.includes(user?.role) ? 'raspis' : null);
+    const preferred = preferredId ? cards.find(c => c.id === preferredId && c.href) : null;
+    return preferred?.href || cards.find(c => c.href)?.href || null;
+  }
+
+  try { history.replaceState({ app: null }, '', '/portal'); } catch(e) {}
 
   function replaceFrameUrl(frame, url) {
     try {
@@ -646,15 +877,18 @@
 
   // ── Load app into iframe ──────────────────────────────────────────────────
   function loadApp(url, pushHistory = true) {
+    if (!url) return;
     const frame = document.getElementById('app-frame');
     const cardsView = document.getElementById('cards-view');
     const btnHome = document.getElementById('btn-home');
     const loading = document.getElementById('app-loading');
 
     cardsView.style.display = 'none';
-    btnHome.classList.add('visible');
+    if (btnHome) btnHome.classList.remove('visible');
     loading.classList.add('visible');
     frame.classList.remove('visible');
+    currentAppUrl = url;
+    updateActiveAppNav(url);
 
     frame.onload = function() {
       loading.classList.remove('visible');
@@ -668,20 +902,7 @@
 
   // ── Return to home / card grid ────────────────────────────────────────────
   function goHome(pushHistory = true) {
-    const frame = document.getElementById('app-frame');
-    const cardsView = document.getElementById('cards-view');
-    const btnHome = document.getElementById('btn-home');
-    const loading = document.getElementById('app-loading');
-
-    frame.onload = null;
-    replaceFrameUrl(frame, 'about:blank');
-    frame.classList.remove('visible');
-    loading.classList.remove('visible');
-    cardsView.style.display = '';
-    btnHome.classList.remove('visible');
-
-    try { sessionStorage.removeItem('portal-last-app'); } catch(e) {}
-    if (pushHistory) history.pushState({ home: true }, '', '/portal');
+    loadApp(portalDefaultUrl || portalCards[0]?.href || '/raspis-test', pushHistory);
   }
 
   // Handle browser back/forward
@@ -689,7 +910,7 @@
     if (e.state && e.state.app) {
       loadApp(e.state.app, false);
     } else {
-      goHome(false);
+      loadApp(portalDefaultUrl || currentAppUrl || '/raspis-test', false);
     }
   });
 
@@ -701,7 +922,7 @@
     const isReload = navEntry ? navEntry.type === 'reload'
                               : (performance.navigation && performance.navigation.type === 1);
     if (!isReload) {
-      // Čerstvá navigace (nová URL, back/forward…) — smaž uloženou aplikaci, ukaž dashboard
+      // Čerstvá navigace (nová URL, back/forward…) — výchozí aplikaci vybereme po načtení práv.
       try { sessionStorage.removeItem('portal-last-app'); } catch(e) {}
       return;
     }
@@ -709,7 +930,6 @@
     const storedUrl = (() => { try { return sessionStorage.getItem('portal-last-app'); } catch(e) { return null; } })();
     const url = (storedUrl && validHrefs.includes(storedUrl)) ? storedUrl : null;
     if (url) {
-      document.getElementById('cards-view').style.display = 'none';
       document.getElementById('app-loading').classList.add('visible');
       window._portalRestoreUrl = url;
     }
@@ -729,7 +949,7 @@
     const isAdmin = user.role === 'admin';
 
     // Určení pořadí karet (uložené nebo výchozí)
-    const savedOrder = orderData?.order || [];
+    const savedOrder = [];
     let cards = [...ALL_CARDS];
     if (savedOrder.length) {
       cards.sort((a, b) => {
@@ -742,14 +962,21 @@
       });
     }
 
-    // Vykreslit karty do jednotného gridu s ohledem na oprávnění
+    // Připravit dostupné aplikace s ohledem na oprávnění
     const grid = document.getElementById('grid-all');
-    cards.forEach(c => {
-      if (c.adminOnly && !isAdmin) return; // Admin-only → skrýt
+    const visibleCards = cards.filter(c => {
+      if (c.adminOnly && !isAdmin) return false; // Admin-only → skrýt
       // Zkontroluj viditelnost přes oprávnění
       if (perms && c.permKey && perms[c.permKey]) {
-        if (perms[c.permKey].visible === false) return; // Skryto adminem
+        if (perms[c.permKey].visible === false) return false; // Skryto adminem
       }
+      return true;
+    });
+
+    portalCards = visibleCards;
+    portalDefaultUrl = getDefaultApp(visibleCards, user, perms);
+    renderAppNav(visibleCards);
+    visibleCards.forEach(c => {
       grid.appendChild(makeCard(c));
     });
 
@@ -773,8 +1000,67 @@
 
     // ── Restore last app after F5 ────────────────────────────────────────
     // URL was already validated synchronously above; just call loadApp().
-    if (window._portalRestoreUrl) loadApp(window._portalRestoreUrl);
+    loadApp(window._portalRestoreUrl || portalDefaultUrl || visibleCards[0]?.href);
   })();
+
+  // ── User appearance settings ──────────────────────────────────────────────
+  const SKIN_PREVIEWS = {
+    mono:     ['#F7F7F6', '#202124'],
+    graphite: ['#F4F4F5', '#17181B'],
+    slate:    ['#F6F8FA', '#26323F'],
+    blue:     ['#F5FAFE', '#2879B6'],
+    teal:     ['#F4FBFA', '#167A73'],
+    green:    ['#F6FBF6', '#3D7B32'],
+    olive:    ['#FAFAF3', '#70752A'],
+    amber:    ['#FCF8F0', '#9A6422'],
+    rose:     ['#FCF7F8', '#9B3F5B'],
+    violet:   ['#F9F7FC', '#64428A']
+  };
+
+  function renderSkinGrid() {
+    const grid = document.getElementById('skin-grid');
+    if (!grid) return;
+    const skins = window.AVE_THEME_SKINS || [];
+    const active = window.AVE_THEME?.getSkin?.() || 'mono';
+    grid.innerHTML = skins.map(s => {
+      const c = SKIN_PREVIEWS[s.id] || SKIN_PREVIEWS.mono;
+      return `<button class="skin-card${s.id === active ? ' active' : ''}" type="button" data-skin="${s.id}" onclick="selectPortalSkin('${s.id}')">
+        <span class="skin-preview"><span style="background:${c[0]}"></span><span style="background:${c[1]}"></span></span>
+        <span class="skin-label">${s.label}</span>
+      </button>`;
+    }).join('');
+  }
+
+  function refreshThemeSettingsState() {
+    const dark = document.documentElement.getAttribute('data-theme') === 'dark';
+    document.getElementById('mode-light')?.classList.toggle('active', !dark);
+    document.getElementById('mode-dark')?.classList.toggle('active', dark);
+    renderSkinGrid();
+  }
+
+  function openUserSettings() {
+    closeMobileMenu();
+    refreshThemeSettingsState();
+    document.getElementById('settings-overlay').classList.add('show');
+  }
+
+  function closeUserSettings() {
+    document.getElementById('settings-overlay').classList.remove('show');
+  }
+
+  function setPortalMode(dark) {
+    window.AVE_THEME?.setMode?.(dark, true);
+    refreshThemeSettingsState();
+  }
+
+  function selectPortalSkin(skin) {
+    window.AVE_THEME?.setSkin?.(skin, true);
+    refreshThemeSettingsState();
+  }
+
+  document.getElementById('settings-overlay').addEventListener('click', e => {
+    if (e.target === document.getElementById('settings-overlay')) closeUserSettings();
+  });
 
   // ── Password change ───────────────────────────────────────────────────────
   function closePwModal() {

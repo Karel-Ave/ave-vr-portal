@@ -179,10 +179,14 @@ app.get('/api/me', requireLogin, (req, res) => res.json(req.session.user));
 // Save theme preference for the current user
 app.patch('/api/me/theme', requireLogin, async (req, res) => {
   const theme = req.body.theme === 'dark' ? 'dark' : 'light';
+  const skinRaw = String(req.body.skin || req.session.user.theme_skin || 'mono').toLowerCase();
+  const allowedSkins = new Set(['mono','graphite','slate','blue','teal','green','olive','amber','rose','violet']);
+  const skin = allowedSkins.has(skinRaw) ? skinRaw : 'mono';
   try {
     const db = getPool();
-    await db.query('UPDATE users SET theme = $1 WHERE id = $2', [theme, req.session.user.id]);
+    await db.query('UPDATE users SET theme = $1, theme_skin = $2 WHERE id = $3', [theme, skin, req.session.user.id]);
     req.session.user.theme = theme;
+    req.session.user.theme_skin = skin;
     res.json({ ok: true });
   } catch (err) {
     res.json({ ok: false });
@@ -203,7 +207,8 @@ app.post('/login', async (req, res) => {
       name: user.name,
       username: user.username,
       role: user.role,
-      theme: user.theme || 'light'
+      theme: user.theme || 'light',
+      theme_skin: user.theme_skin || 'mono'
     };
     logEvent(user.id, user.username, 'login', { role: user.role });
     // Widget-only uživatelé vždy na widget; ostatní dle ?next nebo na portál
@@ -451,7 +456,7 @@ app.get('/api/my-permissions', requireLogin, async (req, res) => {
       tab_nastaveni: isAdm, tab_tvorba: isAdm, tab_rozpis_vr: true, tab_rozpis: false,
       import: isAdm, delete: isAdm, trash: isAdm, edit: true, export: true, log: isAdm
     } } };
-    const allApps = new Set([...Object.keys(DEFAULTS), ...Object.keys(groupPerms), ...Object.keys(userOv)]);
+    const allApps = new Set([...Object.keys(DEFAULTS), ...Object.keys(groupPerms), ...Object.keys(userOv)].filter(k => !k.startsWith('__')));
     for (const appKey of allApps) {
       const gp   = groupPerms[appKey] || DEFAULTS[appKey] || { enabled: true, buttons: {} };
       const uo   = userOv[appKey] || {};
@@ -465,6 +470,8 @@ app.get('/api/my-permissions', requireLogin, async (req, res) => {
       }
       result[appKey] = { enabled, visible, buttons };
     }
+    result.__defaultApp = userOv.__defaultApp || groupPerms.__defaultApp ||
+      (['admin', 'vedoucí', 'recepční'].includes(user.role) ? 'raspis' : null);
     res.json(result);
   } catch(err) { console.error(err); res.json({}); }
 });
@@ -492,6 +499,11 @@ app.post('/api/lock/:app/acquire', requireLogin, async (req, res) => {
   }
   const now   = new Date();
   const until = new Date(now.getTime() + LOCK_TTL).toISOString();
+  if (locks[key]?.userId === user.id) {
+    locks[key].until = until;
+    setLockTimer(key);
+    return res.json({ ok: true, lock: locks[key] });
+  }
   locks[key]  = { userId: user.id, userName: user.name, since: now.toISOString(), until };
   setLockTimer(key);
   res.json({ ok: true, lock: locks[key] });
@@ -3367,7 +3379,7 @@ app.delete('/api/rt/schedules/perma/:id', requireLogin, requireAdmin, async (req
 
 // ── Uložit editace publikovaného (Rozpis VR tab) ──────────────────────────────
 
-app.post('/api/rt/schedules/save-edits', requireLogin, requireAdmin, async (req, res) => {
+app.post('/api/rt/schedules/save-edits', requireLogin, requirePerm('raspis', 'edit'), async (req, res) => {
   const { key, data } = req.body;
   if (!key || !data) return res.json({ ok: false, msg: 'Chybí data.' });
   try {
