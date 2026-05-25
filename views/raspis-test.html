@@ -14,6 +14,7 @@ html, body { width: 100%; max-width: 100vw; overflow-x: hidden; overflow-y: hidd
 body { min-height: 100vh; background: var(--bg); font-family: 'Segoe UI', system-ui, sans-serif; color: var(--text); padding-top: 48px; opacity: 0; }
 body.rt-ready { opacity: 1; transition: opacity .18s ease; }
 body.with-subtoolbar { padding-top: calc(48px + var(--stb-h,68px)); }
+body.with-subtoolbar:has(#schedule-legend.show) { padding-bottom: 30px; }
 
 /* ── Topbar ── */
 #topbar {
@@ -65,9 +66,9 @@ body.with-subtoolbar { padding-top: calc(48px + var(--stb-h,68px)); }
 }
 [data-theme="dark"] .tb-tab { color: var(--text-topbar); }
 [data-theme="dark"] .tb-tab:hover:not(.active) {
-  background: var(--btn-top-hover-bg);
-  border-color: var(--btn-top-border);
-  color: var(--text-topbar);
+  background: var(--accent-light);
+  border-color: var(--accent);
+  color: var(--accent-h);
 }
 [data-theme="dark"] .tb-tab.active {
   background: var(--accent,#C4A96A);
@@ -96,9 +97,9 @@ body.with-subtoolbar { padding-top: calc(48px + var(--stb-h,68px)); }
   color: var(--btn-top-color,#BBBBBB);
 }
 [data-theme="dark"] .tb-btn:hover:not(.primary) {
-  background: var(--btn-top-hover-bg,#2A2A2A);
-  color: var(--text-topbar,#DDD);
-  border-color: var(--border-strong);
+  background: var(--accent-light,#2E2820);
+  color: var(--accent-h,#D4B97A);
+  border-color: var(--accent,#C4A96A);
 }
 [data-theme="dark"] .tb-btn.primary {
   background: var(--accent,#C4A96A);
@@ -152,8 +153,9 @@ body.with-subtoolbar { padding-top: calc(48px + var(--stb-h,68px)); }
 }
 [data-theme="dark"] #tb-act-tvorba .tb-btn:hover,
 [data-theme="dark"] #tb-act-tvorba #sel-month-year:hover {
-  background: var(--btn-top-hover-bg);
-  color: var(--text-topbar);
+  background: var(--accent-light);
+  color: var(--accent-h);
+  border-color: var(--accent);
 }
 [data-theme="dark"] #tb-act-tvorba .tb-btn.primary {
   background: var(--accent,#C4A96A);
@@ -177,6 +179,8 @@ body[data-active-tab="tvorba"] #btn-publish { display: inline-flex; }
 body[data-active-tab="rozpis"] #btn-delete-schedule,
 body[data-active-tab="rozpis"] #btn-schedule-archive,
 body[data-active-tab="rozpis"] #btn-schedule-log { display: inline-flex; }
+body[data-active-tab="public"] #tb-right-actions { display: none; }
+#tb-act-public { margin-left: 18px; }
 #btn-publish {
   background: var(--accent);
   color: #fff;
@@ -214,9 +218,9 @@ body[data-active-tab="rozpis"] #btn-schedule-log { display: inline-flex; }
   border-color: #3E4650;
 }
 [data-theme="dark"] #btn-color-editor:hover {
-  background: #252B32;
-  color: #fff;
-  border-color: #66707B;
+  background: var(--accent-light);
+  color: var(--accent-h);
+  border-color: var(--accent);
 }
 
 .tab-panel { display: none; max-width: 100vw; height: calc(100dvh - 48px); overflow-x: hidden; }
@@ -357,6 +361,11 @@ table.staff-tbl {
 .schedule-wrap.view-wrap {
   height: calc(100dvh - 48px - var(--stb-h,0px));
 }
+body[data-active-tab="tvorba"] .schedule-wrap.tvorba-wrap,
+body[data-active-tab="rozpis"] .schedule-wrap.view-wrap,
+body[data-active-tab="public"] .schedule-wrap.public-wrap {
+  height: calc(100dvh - 48px - var(--stb-h,0px) - 28px);
+}
 
 /* CSS variables for live resizing */
 :root {
@@ -364,6 +373,8 @@ table.staff-tbl {
   --sched-col-w: 18px;
   --sched-name-w: 150px;
   --sched-sum-w: 27px;
+  --sched-hrs-w: 36px;
+  --sched-pm-w: 34px;
   --sched-grid: rgba(0, 0, 0, .34);
   --sched-grid-soft: rgba(0, 0, 0, .24);
   --sched-grid-row: rgba(0, 0, 0, .16);
@@ -374,6 +385,14 @@ table.staff-tbl {
   --sched-grid-soft: rgba(255, 255, 255, .16);
   --sched-grid-row: rgba(255, 255, 255, .10);
   --sched-grid-strong: rgba(255, 255, 255, .30);
+}
+[data-theme="dark"] #tab-tvorba,
+[data-theme="dark"] #tab-rozpis,
+[data-theme="dark"] #tab-public {
+  --sched-grid: rgba(0, 0, 0, .34);
+  --sched-grid-soft: rgba(0, 0, 0, .24);
+  --sched-grid-row: rgba(0, 0, 0, .16);
+  --sched-grid-strong: rgba(0, 0, 0, .42);
 }
 
 table.sched-tbl {
@@ -434,12 +453,13 @@ table.sched-tbl {
   --col-wn-bg:#c8c8c8;  --col-wn-tx:#222222;
   --col-kd-bg:#a8d8f0;  --col-kd-tx:#222222;
   --col-kn-bg:#5b9dc9;  --col-kn-tx:#222222;
-  --col-dup-bg:#ffccaa; --col-dup-tx:#7a3000;
+  --col-dup-bg:#ffe0b8; --col-dup-tx:#3d2400; --col-dup-border:#c67812;
   --col-type-den:#F8FF35; --col-type-noc:#4DC3F5;
   --col-type-oba:#A8E05A; --col-type-ved:#FFB347; --col-type-spe:#FF8585;
   --col-empty-bg:#fff5f5;
-  --col-reg-off-bg:#ebebeb; --col-reg-off-tx:#999999;
-  --col-req-miss-bg:#ffd6d6;
+  --col-reg-off-bg:#f9dce3; --col-reg-off-tx:#7c2f3d;
+  --col-unavail-bg:#f9dce3; --col-unavail-border:#c65b70;
+  --col-req-miss-bg:#eadcff; --col-req-miss-border:#7a4fc7;
   --col-cov0-bg:#ffebeb; --col-cov0-tx:#c0392b;
   --col-cov1-bg:#c8f5c8; --col-cov1-tx:#1a6b1a;
   --col-cov2-bg:#ffe082; --col-cov2-tx:#7a5000;
@@ -451,10 +471,11 @@ table.sched-tbl {
   --col-wn-bg:#2f343c;  --col-wn-tx:#ffffff;
   --col-kd-bg:#3d5264;  --col-kd-tx:#ffffff;
   --col-kn-bg:#435f76;  --col-kn-tx:#ffffff;
-  --col-dup-bg:#5a3000; --col-dup-tx:#ffccaa;
+  --col-dup-bg:#5a3000; --col-dup-tx:#ffccaa; --col-dup-border:#d18a25;
   --col-empty-bg:#2a1a1a;
-  --col-reg-off-bg:#1e1e24; --col-reg-off-tx:#666666;
-  --col-req-miss-bg:#3a0a0a;
+  --col-reg-off-bg:#4a2630; --col-reg-off-tx:#f1b8c3;
+  --col-unavail-bg:#4a2630; --col-unavail-border:#d78796;
+  --col-req-miss-bg:#33284e; --col-req-miss-border:#ad91f0;
   --col-cov0-bg:#4a0000; --col-cov0-tx:#ff8a65;
   --col-cov1-bg:#1a4a1a; --col-cov1-tx:#7fff7f;
   --col-cov2-bg:#4a3a00; --col-cov2-tx:#ffe082;
@@ -472,7 +493,9 @@ table.sched-tbl {
 .sched-cell.cell-duplicate {
   background: var(--col-dup-bg) !important;
   color: var(--col-dup-tx) !important;
-  outline: 1px solid #e67e22; outline-offset: -1px;
+  outline: 2px solid var(--col-dup-border,#c67812) !important;
+  outline-offset: -2px;
+  box-shadow: inset 0 0 0 999px color-mix(in srgb, var(--col-dup-bg) 38%, transparent);
 }
 
 .cell-hol-header { color: #e53030 !important; }
@@ -517,8 +540,17 @@ table.sched-tbl {
 }
 [data-theme="dark"] .sched-tbl td.sched-cell,
 [data-theme="dark"] .sched-tbl td.sched-cell input,
-[data-theme="dark"] .sched-tbl td.sched-cell .cell-val {
-  color: #fff !important;
+[data-theme="dark"] .sched-tbl td.sched-cell .cell-val { color: #fff !important; }
+[data-theme="dark"] #tab-tvorba .sched-tbl td.sched-cell,
+[data-theme="dark"] #tab-tvorba .sched-tbl td.sched-cell input,
+[data-theme="dark"] #tab-tvorba .sched-tbl td.sched-cell .cell-val,
+[data-theme="dark"] #tab-rozpis .sched-tbl td.sched-cell,
+[data-theme="dark"] #tab-rozpis .sched-tbl td.sched-cell input,
+[data-theme="dark"] #tab-rozpis .sched-tbl td.sched-cell .cell-val,
+[data-theme="dark"] #tab-public .sched-tbl td.sched-cell,
+[data-theme="dark"] #tab-public .sched-tbl td.sched-cell input,
+[data-theme="dark"] #tab-public .sched-tbl td.sched-cell .cell-val {
+  color: #111 !important;
 }
 
 /* Sum cells */
@@ -529,9 +561,26 @@ table.sched-tbl {
 .sched-tbl .sum-bold { font-weight: 700; }
 .sched-tbl .sum-extra { cursor: pointer; }
 .sched-tbl .sum-extra:hover { background: var(--surface-alt) !important; }
+#public-rozpis-tbl .sum-extra { cursor: default; }
+#public-rozpis-tbl .sum-extra:hover { background: inherit !important; }
+.sched-tbl .sum-pm,
+.sched-tbl .th-sum-pm {
+  min-width: var(--sched-pm-w);
+  max-width: var(--sched-pm-w);
+  width: var(--sched-pm-w);
+  white-space: nowrap;
+}
 .col-hrs-green { color: #27ae60; font-weight: 700; cursor: pointer; }
 .col-hrs-red   { color: #e74c3c; font-weight: 700; cursor: pointer; }
 .sched-tbl .sum-hrs { cursor: pointer; }
+#public-rozpis-tbl .sum-hrs { cursor: default; }
+.sched-tbl .sum-hrs,
+.sched-tbl .th-sum-hrs {
+  min-width: var(--sched-hrs-w);
+  max-width: var(--sched-hrs-w);
+  width: var(--sched-hrs-w);
+  white-space: nowrap;
+}
 [title~="fond"] { cursor: pointer; }
 
 /* Sticky single header row */
@@ -573,14 +622,14 @@ table.sched-tbl {
   color: #111 !important;
 }
 .sched-tbl .th-dn.is-today .th-dn-day {
-  outline: 3px solid #ffb000;
-  outline-offset: -3px;
+  outline: none;
   box-shadow:
-    inset 0 0 0 1px #fff,
-    0 0 0 1px rgba(0,0,0,.35),
-    0 0 8px rgba(255,176,0,.45);
-  border-radius: 3px;
-  background: rgba(255,176,0,.13);
+    inset 3px 0 0 var(--accent),
+    inset -3px 0 0 var(--accent),
+    inset 0 3px 0 var(--accent),
+    0 0 8px color-mix(in srgb, var(--accent) 45%, transparent);
+  border-radius: 3px 3px 0 0;
+  background: color-mix(in srgb, var(--accent) 13%, transparent);
 }
 /* Copy/paste selection */
 .sched-cell.cell-copy-sel { outline: 2px solid #202124 !important; outline-offset: -1px; background: rgba(32,33,36,.12) !important; }
@@ -712,6 +761,55 @@ tbody tr.row-hidden { display: none !important; }
 /* Weekends/holidays keep their colored text even in light mode */
 :root:not([data-theme="dark"]) .sched-tbl .th-day.is-weekend { color: #4a9fd4; }
 :root:not([data-theme="dark"]) .sched-tbl .th-day.is-holiday { color: #c0392b; }
+[data-theme="dark"] #tab-tvorba .sched-tbl .th-dn,
+[data-theme="dark"] #tab-tvorba .sched-tbl .th-sum,
+[data-theme="dark"] #tab-tvorba .sched-tbl .col-name-th,
+[data-theme="dark"] #tab-tvorba .sched-tbl .th-day,
+[data-theme="dark"] #tab-rozpis .sched-tbl .th-dn,
+[data-theme="dark"] #tab-rozpis .sched-tbl .th-sum,
+[data-theme="dark"] #tab-rozpis .sched-tbl .col-name-th,
+[data-theme="dark"] #tab-rozpis .sched-tbl .th-day,
+[data-theme="dark"] #tab-public .sched-tbl .th-dn,
+[data-theme="dark"] #tab-public .sched-tbl .th-sum,
+[data-theme="dark"] #tab-public .sched-tbl .col-name-th,
+[data-theme="dark"] #tab-public .sched-tbl .th-day {
+  background: #f4f2ea;
+  color: #111;
+}
+[data-theme="dark"] #tab-tvorba .sched-tbl .sum-cell,
+[data-theme="dark"] #tab-rozpis .sched-tbl .sum-cell,
+[data-theme="dark"] #tab-tvorba .cov-row .col-name-td,
+[data-theme="dark"] #tab-tvorba .cov-tbody .col-name-td,
+[data-theme="dark"] #tab-tvorba .cov-name-inner,
+[data-theme="dark"] #tab-tvorba .cov-row td.sum-cell,
+[data-theme="dark"] #tab-rozpis .cov-row .col-name-td,
+[data-theme="dark"] #tab-rozpis .cov-tbody .col-name-td,
+[data-theme="dark"] #tab-rozpis .cov-name-inner,
+[data-theme="dark"] #tab-rozpis .cov-row td.sum-cell,
+[data-theme="dark"] #tab-public .sched-tbl .sum-cell,
+[data-theme="dark"] #tab-public .cov-row .col-name-td,
+[data-theme="dark"] #tab-public .cov-tbody .col-name-td,
+[data-theme="dark"] #tab-public .cov-name-inner,
+[data-theme="dark"] #tab-public .cov-row td.sum-cell {
+  background: #f4f2ea !important;
+  color: #111;
+}
+[data-theme="dark"] #tab-tvorba .sched-tbl thead th,
+[data-theme="dark"] #tab-rozpis .sched-tbl thead th,
+[data-theme="dark"] #tab-public .sched-tbl thead th {
+  border-bottom-color: #8f8f8f !important;
+}
+[data-theme="dark"] #tab-tvorba .sched-tbl .th-day.is-weekend,
+[data-theme="dark"] #tab-tvorba .th-dn-day.is-weekend .th-day-num,
+[data-theme="dark"] #tab-tvorba .th-dn-day.is-weekend .th-day-dow,
+[data-theme="dark"] #tab-rozpis .sched-tbl .th-day.is-weekend,
+[data-theme="dark"] #tab-rozpis .th-dn-day.is-weekend .th-day-num,
+[data-theme="dark"] #tab-rozpis .th-dn-day.is-weekend .th-day-dow,
+[data-theme="dark"] #tab-public .sched-tbl .th-day.is-weekend,
+[data-theme="dark"] #tab-public .th-dn-day.is-weekend .th-day-num,
+[data-theme="dark"] #tab-public .th-dn-day.is-weekend .th-day-dow {
+  color: #4a9fd4 !important;
+}
 #subtoolbar.show { display: flex; }
 [data-theme="dark"] #subtoolbar {
   background: var(--bg-controls);
@@ -739,6 +837,16 @@ tbody tr.row-hidden { display: none !important; }
 #subtoolbar.tab-rozpis #stb-export2 {
   display: none !important;
 }
+#subtoolbar.tab-public #stb-undo,
+#subtoolbar.tab-public #stb-redo,
+#subtoolbar.tab-public #stb-mark-sel,
+#subtoolbar.tab-public #stb-show-selected,
+#subtoolbar.tab-public #stb-hide-sums,
+#subtoolbar.tab-public #stb-save-req,
+#subtoolbar.tab-public #stb-hours-only,
+#subtoolbar.tab-public #stb-export2 {
+  display: none !important;
+}
 .stb-sep { width: 1px; height: 20px; background: var(--btn-top-border,#3E3E3E); flex-shrink: 0; margin: 0 2px; }
 .stb-spacer { flex: 1; }
 .stb-btn {
@@ -748,6 +856,11 @@ tbody tr.row-hidden { display: none !important; }
   white-space: nowrap; flex-shrink: 0; transition: background .12s;
 }
 .stb-btn:hover:not(.active) { background: var(--btn-top-hover-bg,#2A2A2A); color: var(--text-topbar,#DDD); }
+[data-theme="dark"] .stb-btn:hover:not(.active) {
+  background: var(--accent-light,#2E2820);
+  color: var(--accent-h,#D4B97A);
+  border-color: var(--accent,#C4A96A);
+}
 .stb-btn.active { background: var(--accent,#C4A96A); color: #1A1A18; border-color: transparent; }
 .stb-btn.active:hover { opacity: .88; }
 .stb-hotel-lbl { font-size: 10px; color: var(--text-muted); margin-right: 2px; }
@@ -824,25 +937,89 @@ tbody tr.row-hidden { display: none !important; }
   max-width: 25px;
   width: 25px;
 }
+#schedule-legend {
+  position: fixed;
+  left: 0; right: 0; bottom: 0; z-index: 120;
+  display: none; align-items: center; justify-content: center; gap: 12px;
+  min-height: 26px; padding: 3px 10px;
+  background: color-mix(in srgb, var(--surface) 92%, transparent);
+  border-top: 1px solid var(--border);
+  box-shadow: 0 -2px 12px rgba(0,0,0,.08);
+  font-size: 10px; color: var(--text-muted);
+  pointer-events: none;
+}
+#schedule-legend.show { display: flex; }
+.legend-item { display: inline-flex; align-items: center; gap: 5px; white-space: nowrap; }
+.legend-swatch {
+  width: 22px; height: 12px; border-radius: 3px; flex: 0 0 auto;
+  border: 1px solid var(--border-strong);
+  box-shadow: inset 0 0 0 1px rgba(255,255,255,.55);
+}
+.legend-unavail { background: var(--col-unavail-bg); border-color: var(--col-unavail-border); }
+.legend-req { background: var(--col-req-miss-bg); border-style: dashed; border-color: var(--col-req-miss-border); }
+.legend-dup { background: var(--col-dup-bg); border-color: var(--col-dup-border); }
+.legend-selected {
+  background: color-mix(in srgb, var(--accent) 10%, #fff);
+  border: 2px solid color-mix(in srgb, var(--accent) 74%, #111);
+}
+body[data-active-tab="public"] #schedule-legend .legend-public-hide { display: none; }
+body[data-active-tab="public"] #schedule-legend .legend-full-label { display: none; }
+#schedule-legend .legend-public-label { display: none; }
+body[data-active-tab="public"] #schedule-legend .legend-public-label { display: inline; }
+body[data-active-tab="public"] #schedule-legend .legend-item:nth-child(1),
+body[data-active-tab="public"] #schedule-legend .legend-item:nth-child(3),
+body[data-active-tab="public"] #schedule-legend .legend-item:nth-child(4) { display: none; }
+body[data-active-tab="public"] #schedule-legend .legend-item:nth-child(2) { font-size: 0; }
+body[data-active-tab="public"] #schedule-legend .legend-item:nth-child(2)::after {
+  content: "Zm\011Bn\011Bno";
+  font-size: 11px;
+}
+[data-theme="dark"] #schedule-legend {
+  background: color-mix(in srgb, var(--surface) 94%, transparent);
+  box-shadow: 0 -2px 14px rgba(0,0,0,.35);
+}
 /* selected cells highlight */
 .sched-cell.cell-selected,
-.col-name-td.cell-selected { outline: 2px solid #f39c12; outline-offset: -1px; background: #fff3cd !important; }
+.col-name-td.cell-selected {
+  outline: 3px solid color-mix(in srgb, var(--accent) 74%, #111) !important;
+  outline-offset: -3px;
+  box-shadow:
+    inset 0 0 0 2px rgba(255,255,255,.92),
+    inset 0 0 0 999px color-mix(in srgb, var(--accent) 10%, transparent),
+    inset 1px 0 0 var(--sched-grid-soft),
+    inset -1px 0 0 var(--sched-grid-soft),
+    inset 0 1px 0 var(--sched-grid-row),
+    inset 0 -1px 0 var(--sched-grid-row) !important;
+  z-index: 4;
+}
 [data-theme="dark"] .sched-cell.cell-selected,
-[data-theme="dark"] .col-name-td.cell-selected { background: #4a3000 !important; }
+[data-theme="dark"] .col-name-td.cell-selected {
+  box-shadow:
+    inset 0 0 0 2px rgba(255,255,255,.92),
+    inset 0 0 0 999px color-mix(in srgb, var(--accent) 10%, transparent),
+    inset 1px 0 0 var(--sched-grid-soft),
+    inset -1px 0 0 var(--sched-grid-soft),
+    inset 0 1px 0 var(--sched-grid-row),
+    inset 0 -1px 0 var(--sched-grid-row) !important;
+}
+.sched-cell.cell-selected input,
+.sched-cell.cell-selected .cell-val { color: #111 !important; }
 /* row filter */
 tbody tr.row-filtered { display: none; }
 .staff-tbody tr.row-marked .col-name-td {
-  outline: 2px solid var(--accent);
-  outline-offset: -2px;
-  box-shadow: inset 4px 0 0 var(--accent);
+  outline: 3px solid color-mix(in srgb, var(--accent) 72%, #111);
+  outline-offset: -3px;
+  box-shadow:
+    inset 6px 0 0 var(--accent),
+    inset 0 0 0 999px color-mix(in srgb, var(--accent) 22%, transparent);
 }
 .staff-tbody tr.row-marked td {
   box-shadow:
-    inset 0 1px 0 color-mix(in srgb, var(--accent) 58%, transparent),
-    inset 0 -1px 0 color-mix(in srgb, var(--accent) 58%, transparent);
+    inset 0 2px 0 color-mix(in srgb, var(--accent) 78%, #111),
+    inset 0 -2px 0 color-mix(in srgb, var(--accent) 78%, #111);
 }
 .staff-tbody tr.row-marked .sched-cell {
-  background-image: linear-gradient(color-mix(in srgb, var(--accent) 10%, transparent), color-mix(in srgb, var(--accent) 10%, transparent));
+  background-image: linear-gradient(color-mix(in srgb, var(--accent) 18%, transparent), color-mix(in srgb, var(--accent) 18%, transparent));
   background-blend-mode: multiply;
 }
 [data-theme="dark"] .staff-tbody tr.row-marked .sched-cell {
@@ -854,10 +1031,46 @@ tbody tr.row-filtered { display: none; }
 /* .cell-empty removed (CHANGE 7a) */
 .sched-cell.cell-p-many { color: #e74c3c !important; font-weight: 700; }
 .sched-cell.cell-p-many input { color: #e74c3c !important; font-weight: 700; }
-.sched-cell.cell-regular-off { background: var(--col-reg-off-bg,#e8e8e8) !important; color: var(--col-reg-off-tx,#888) !important; }
-[data-theme="dark"] .sched-cell.cell-regular-off { background: var(--col-reg-off-bg,#1e1e24) !important; color: var(--col-reg-off-tx,#666) !important; }
-.sched-cell.cell-req-missing { background: var(--col-req-miss-bg,#ffd6d6) !important; outline: 1px dashed #e74c3c; outline-offset: -1px; }
-[data-theme="dark"] .sched-cell.cell-req-missing { background: var(--col-req-miss-bg,#3a0a0a) !important; }
+.sched-cell.cell-regular-off {
+  background: var(--col-unavail-bg,var(--col-reg-off-bg,#f9dce3)) !important;
+  color: var(--col-reg-off-tx,#7c2f3d) !important;
+  outline: 2px solid color-mix(in srgb, var(--col-unavail-border,#c65b70) 54%, transparent);
+  outline-offset: -2px;
+}
+[data-theme="dark"] .sched-cell.cell-regular-off {
+  background: var(--col-unavail-bg,var(--col-reg-off-bg,#4a2630)) !important;
+  color: var(--col-reg-off-tx,#f1b8c3) !important;
+}
+.sched-cell.cell-unavailable-conflict {
+  background: var(--col-unavail-bg,#f9dce3) !important;
+  outline: 2px solid var(--col-unavail-border,#c65b70) !important;
+  outline-offset: -2px;
+  box-shadow: inset 0 0 0 999px color-mix(in srgb, var(--col-unavail-bg,#f9dce3) 24%, transparent);
+}
+.sched-cell.cell-req-missing {
+  background: var(--col-req-miss-bg,#eadcff) !important;
+  outline: 2px dashed var(--col-req-miss-border,#7a4fc7) !important;
+  outline-offset: -2px;
+  box-shadow: inset 0 0 0 999px color-mix(in srgb, var(--col-req-miss-bg,#eadcff) 38%, transparent);
+}
+[data-theme="dark"] .sched-cell.cell-req-missing { background: var(--col-req-miss-bg,#33284e) !important; }
+[data-theme="dark"] #tab-tvorba .sched-cell.cell-regular-off,
+[data-theme="dark"] #tab-rozpis .sched-cell.cell-regular-off,
+[data-theme="dark"] #tab-public .sched-cell.cell-regular-off {
+  background: var(--col-unavail-bg,#f9dce3) !important;
+  color: #111 !important;
+}
+[data-theme="dark"] #tab-tvorba .sched-cell.cell-req-missing,
+[data-theme="dark"] #tab-rozpis .sched-cell.cell-req-missing,
+[data-theme="dark"] #tab-public .sched-cell.cell-req-missing {
+  background: var(--col-req-miss-bg,#eadcff) !important;
+  color: #111 !important;
+}
+.public-own-row .col-name-td {
+  background: var(--accent) !important;
+  color: var(--accent-fg,#fff) !important;
+  font-weight: 800;
+}
 
 /* ── Regular picker popup ── */
 #regular-picker {
@@ -932,6 +1145,29 @@ tbody tr.row-filtered { display: none; }
   font-size: 10px; white-space: nowrap; pointer-events: none; z-index: 100;
 }
 .sched-cell { position: relative; }
+#sched-name-tip {
+  background: color-mix(in srgb, var(--surface) 94%, var(--accent) 6%) !important;
+  color: var(--text) !important;
+  border: 1px solid color-mix(in srgb, var(--accent) 42%, var(--border)) !important;
+  box-shadow: 0 8px 24px rgba(20,20,20,.18), 0 0 0 1px rgba(255,255,255,.45) inset !important;
+}
+#sched-name-tip::before {
+  content: '';
+  position: absolute;
+  left: 0; top: 0; bottom: 0;
+  width: 4px;
+  border-radius: 8px 0 0 8px;
+  background: var(--accent);
+}
+#snt-name { color: var(--accent-h); }
+#snt-sums, #snt-prev { color: var(--text); }
+#snt-pref, #snt-notes { color: var(--text-muted); opacity: 1 !important; }
+[data-theme="dark"] #sched-name-tip {
+  background: color-mix(in srgb, var(--surface) 88%, var(--accent) 12%) !important;
+  color: var(--text) !important;
+  border-color: color-mix(in srgb, var(--accent) 58%, var(--border)) !important;
+  box-shadow: 0 10px 28px rgba(0,0,0,.45), 0 0 0 1px rgba(255,255,255,.06) inset !important;
+}
 /* Tooltip – jméno pracovníka v tabulce — replaced by JS floating tooltip (#sched-name-tip) */
 
 /* ── Buttons ── */
@@ -1040,6 +1276,24 @@ tbody tr.row-filtered { display: none; }
 .color-swatch { min-width:80px; height:22px; border-radius:4px; text-align:center;
   line-height:22px; font-size:10px; font-weight:700; border:1px solid var(--border);
   padding:0 6px; display:inline-block; }
+.color-auto-note {
+  border: 1px solid color-mix(in srgb, var(--accent) 30%, var(--border));
+  background: color-mix(in srgb, var(--accent) 8%, var(--surface));
+  border-radius: 8px;
+  padding: 14px 16px;
+  color: var(--text);
+  font-size: 13px;
+  line-height: 1.45;
+}
+.color-auto-note strong { color: var(--accent-h); }
+#overlay-colors .color-tabs,
+#overlay-colors .color-panel {
+  display: none !important;
+}
+#overlay-colors #btn-colors-reset,
+#overlay-colors #btn-colors-save {
+  display: none !important;
+}
 </style>
 </head>
 <body>
@@ -1050,6 +1304,7 @@ tbody tr.row-filtered { display: none; }
     <button class="tb-tab" data-tab="nastaveni" type="button">Nastavení</button>
     <button class="tb-tab" data-tab="tvorba" type="button">Tvorba</button>
     <button class="tb-tab" data-tab="rozpis" type="button">Rozpis VR</button>
+    <button class="tb-tab" data-tab="public" type="button">Rozpis</button>
   </div>
 
   <!-- Nastavení actions — prázdné, tlačítka přesunuta do mode baru a Ostatní sekce -->
@@ -1076,6 +1331,10 @@ tbody tr.row-filtered { display: none; }
     <select id="pub-sel" class="tb-btn" style="padding:4px 6px;font-size:12px;"></select>
     <button class="tb-btn" id="btn-view-edit">Editovat</button>
     <span id="lock-info"></span>
+  </div>
+
+  <div class="tb-actions hidden" id="tb-act-public">
+    <select id="pub-sel-public" class="tb-btn" style="padding:4px 6px;font-size:12px;"></select>
   </div>
 
   <div id="tb-right-actions">
@@ -1255,6 +1514,14 @@ tbody tr.row-filtered { display: none; }
 </div>
 
 <!-- ═══════════════════════════ MODAL: Přidat pracovníka ═════════════════════════════════ -->
+<div class="tab-panel" id="tab-public">
+  <div class="schedule-wrap public-wrap" id="public-wrap">
+    <div class="spinner-wrap" id="public-spinner"><div class="spinner"></div></div>
+    <table class="sched-tbl" id="public-rozpis-tbl" style="display:none"></table>
+    <div class="empty-state" id="public-empty" style="display:none">Ĺ˝ĂˇdnĂ˝ publikovanĂ˝ rozpis</div>
+  </div>
+</div>
+
 <div class="overlay" id="overlay-add-staff">
   <div class="modal" style="width:min(520px,100%)">
     <div class="modal-header">
@@ -1558,6 +1825,11 @@ tbody tr.row-filtered { display: none; }
       <button class="modal-close" id="colors-close">✕</button>
     </div>
     <div class="modal-body">
+      <div class="color-auto-note">
+        <strong>Barvy rozpisu se nastavují automaticky podle vybraného vzhledu.</strong><br>
+        Buňky rozpisu, typy pracovníků, pokrytí i speciální stavy jsou sladěné se skinem tak,
+        aby zůstaly čitelné a dobře odlišitelné.
+      </div>
       <div class="color-tabs">
         <button class="color-tab active" data-coltheme="light">☀ Světlý režim</button>
         <button class="color-tab" data-coltheme="dark">🌙 Tmavý režim</button>
@@ -1864,8 +2136,16 @@ tbody tr.row-filtered { display: none; }
 <div id="sched-name-tip" style="position:fixed;z-index:9998;display:none;pointer-events:none;background:rgba(28,28,28,.97);color:#fff;padding:8px 12px;border-radius:8px;min-width:160px;max-width:280px;box-shadow:0 4px 16px rgba(0,0,0,.45)">
   <div id="snt-name" style="font-weight:700;font-size:12px;margin-bottom:4px"></div>
   <div id="snt-sums" style="font-size:11px;margin-bottom:2px"></div>
+  <div id="snt-prev" style="font-size:11px;margin-bottom:2px"></div>
   <div id="snt-pref" style="font-size:11px;font-style:italic;opacity:.75"></div>
   <div id="snt-notes" style="font-size:10px;opacity:.7;margin-top:4px;white-space:pre-line"></div>
+</div>
+
+<div id="schedule-legend" aria-hidden="true">
+  <span class="legend-item"><span class="legend-swatch legend-unavail"></span>Nemůže</span>
+  <span class="legend-item"><span class="legend-swatch legend-req"></span>Změna proti požadavkům</span>
+  <span class="legend-item"><span class="legend-swatch legend-dup"></span>Duplicitní směna</span>
+  <span class="legend-item"><span class="legend-swatch legend-selected"></span>Označeno</span>
 </div>
 
 <script>
@@ -1882,14 +2162,18 @@ function showSchedTip(si, x, y) {
 
   document.getElementById('snt-name').textContent = s.name || `(pracovník ${si+1})`;
   document.getElementById('snt-sums').textContent = `Směn: ${sums.total}   Hodin: ${sums.totalHrs % 1 === 0 ? sums.totalHrs : sums.totalHrs.toFixed(1)}`;
+  const prevEl = document.getElementById('snt-prev');
+  const prevEnd = getPreviousMonthEndSummary(si);
+  if (prevEnd) { prevEl.textContent = `Konec měsíce: ${prevEnd}`; prevEl.style.display = ''; }
+  else prevEl.style.display = 'none';
   const prefEl = document.getElementById('snt-pref');
   if (targetShifts > 0) { prefEl.textContent = `chtěl by ideálně ${targetShifts} směn`; prefEl.style.display = ''; }
   else prefEl.style.display = 'none';
 
   const noteParts = [];
   if (s.dates) noteParts.push(`Nemůže: ${s.dates}`);
-  if (s.noteM) noteParts.push(`Pozn.: ${s.noteM}`);
-  if (s.noteP) noteParts.push(`Trvalá: ${s.noteP}`);
+  if (s.noteM) noteParts.push(s.noteM);
+  if (s.noteP) noteParts.push(s.noteP);
   const noteEl = document.getElementById('snt-notes');
   if (noteParts.length) { noteEl.textContent = noteParts.join('\n'); noteEl.style.display = ''; }
   else noteEl.style.display = 'none';
@@ -1905,6 +2189,36 @@ function showSchedTip(si, x, y) {
 
 function hideSchedTip() {
   document.getElementById('sched-name-tip').style.display = 'none';
+}
+
+function getPreviousMonthEndSummary(si) {
+  const prev = previousMonthValue(state.month, state.year);
+  const md = state.monthlyData && state.monthlyData[`${prev.year}-${prev.month}`];
+  if (!md || !md.schedule) return '';
+
+  const cols = getCalCols(prev.month, prev.year);
+  const days = getDaysInMonth(prev.month, prev.year);
+  const startDay = Math.max(1, days - 6);
+  const parts = [];
+
+  for (let day = startDay; day <= days; day++) {
+    const daySlots = cols
+      .map((col, ci) => ({ col, ci }))
+      .filter(x => !x.col.nextYear && x.col.day === day);
+    const labels = [];
+
+    daySlots.forEach(({ col, ci }) => {
+      const val = String(md.schedule[`${si}_${ci}`] || '').trim();
+      if (!val || SKIP_VALS.has(val)) return;
+      const up = val.toUpperCase();
+      if (up === 'P') labels.push(col.dn === 'n' ? 'Pn' : 'Pd');
+      else labels.push(col.dn === 'n' ? 'N' : 'D');
+    });
+
+    parts.push(labels.length ? labels.join('/') : '-');
+  }
+
+  return parts.join(' ');
 }
 
 /* ── ±hod popup ── */
@@ -2057,6 +2371,26 @@ function showExtraTip(si, x, y) {
 }
 function hideExtraTip() { document.getElementById('extra-tip').style.display = 'none'; }
 
+let _popupPointerDownInside = false;
+
+function isPopupInteriorTarget(target) {
+  return !!(target && target.closest && target.closest(
+    '.modal, .fonds-modal, #regular-picker, #dates-picker, #extra-popup, #size-panel'
+  ));
+}
+
+function shouldKeepPopupOpenForSelection() {
+  const selection = window.getSelection ? window.getSelection() : null;
+  const hasTextSelection = !!(selection && !selection.isCollapsed && String(selection).length);
+  const keepOpen = _popupPointerDownInside || hasTextSelection;
+  _popupPointerDownInside = false;
+  return keepOpen;
+}
+
+document.addEventListener('pointerdown', e => {
+  _popupPointerDownInside = isPopupInteriorTarget(e.target);
+}, true);
+
 /* ══════════════════════════════════════════════════════════════════════════════
    CONSTANTS & STATE
 ══════════════════════════════════════════════════════════════════════════════ */
@@ -2071,8 +2405,8 @@ const STAFF_TYPES = ['','Denní','Noční','Obojí','Vedoucí','Pohotovost','Spe
 const CONTRACTS   = ['','HPP','ZPP','DPČ','DPP'];
 
 let TYPE_COLORS = {
-  'Denní':'#F8FF35','Noční':'#4DC3F5','Obojí':'#A8E05A',
-  'Vedoucí':'#FFB347','Speciální':'#FF8585','Pohotovost':'#C8A0DC'
+  'Denní':'#8FC7EA','Noční':'#8FC7EA','Obojí':'#8FC7EA',
+  'Vedoucí':'#E9BE74','Speciální':'#E6A0AD','Pohotovost':'#D8D2C2'
 };
 
 const STATIC_HOLIDAYS = {
@@ -2294,10 +2628,20 @@ function calcSums(si, calCols, st) {
 ══════════════════════════════════════════════════════════════════════════════ */
 
 let _user = null;
+let publicDefaultHotel = 'ALL';
 async function fetchUser() {
   try {
     const r = await fetch('/api/me', {credentials:'include'});
     if (r.ok) _user = await r.json();
+  } catch(e) {}
+}
+
+async function loadUserPrefs() {
+  try {
+    const r = await fetch('/api/user-prefs', {credentials:'include'});
+    if (!r.ok) return;
+    const prefs = await r.json();
+    publicDefaultHotel = String(prefs.default_public_hotel || 'ALL').toUpperCase();
   } catch(e) {}
 }
 
@@ -2400,7 +2744,7 @@ function applyHistoryUiState(snap) {
     markBtn.classList.toggle('active', _markMode);
     markBtn.textContent = _markMode ? '✓ Označování' : 'Označ vybrané';
   }
-  document.querySelectorAll('.staff-tbody td.col-name-td[data-si]').forEach(td => {
+  document.querySelectorAll('#tvorba-tbl .staff-tbody td.col-name-td[data-si], #rozpis-tbl .staff-tbody td.col-name-td[data-si]').forEach(td => {
     td.title = _markMode ? 'Kliknutím označíš / odznačíš pracovníka' : 'Kliknutím skryješ řádek';
   });
   updateMarkedOnlyButton();
@@ -2411,6 +2755,7 @@ function refreshScheduleAfterHistory() {
   updateAllSums();
   renderCells('tvorba-tbl', true);
   renderCells('rozpis-tbl', false);
+  renderCells('public-rozpis-tbl', false);
   updateDuplicateClasses();
   updateCoverageRows();
   updateRequirementClasses();
@@ -2456,6 +2801,29 @@ function isRegularOff(col, month, year, regular, holidaysList) {
   return parsed.has(`${dow}-${col.dn}`);
 }
 
+function parseUnavailableDates(dates) {
+  const days = new Set();
+  String(dates || '')
+    .split(/[,\s;]+/)
+    .map(s => s.trim())
+    .filter(Boolean)
+    .forEach(part => {
+      const m = part.match(/^(\d{1,2})(?:\s*[-–]\s*(\d{1,2}))?$/);
+      if (!m) return;
+      const a = Math.max(1, Math.min(31, +m[1]));
+      const b = Math.max(1, Math.min(31, +(m[2] || m[1])));
+      const from = Math.min(a, b);
+      const to = Math.max(a, b);
+      for (let day = from; day <= to; day++) days.add(day);
+    });
+  return days;
+}
+
+function isDateUnavailable(col, dates) {
+  if (!dates) return false;
+  return parseUnavailableDates(dates).has(+col.day);
+}
+
 function regularToString(checks, sv, wk) {
   const DOW_NAMES_R = {1:'po',2:'út',3:'st',4:'čt',5:'pá',6:'so',0:'ne'};
   const parts = [];
@@ -2473,22 +2841,28 @@ function regularToString(checks, sv, wk) {
 }
 
 function applyRegularAndReqClasses(td, si, ci, col, val) {
+  const isPublicView = !!td.closest('#public-rozpis-tbl');
   const s = state.staff[si];
   const holidaysList = parseHolidays(state.holidays);
   // Regular off
-  const regOff = s && isRegularOff(col, state.month, state.year, s.regular, holidaysList);
+  const regular = getEffectiveForSchedule(s, 'regular');
+  const dates = getEffectiveForSchedule(s, 'dates');
+  const regOff = s && isRegularOff(col, state.month, state.year, regular, holidaysList);
+  const dateOff = s && isDateUnavailable(col, dates);
+  const unavailable = !!(regOff || dateOff);
   // Requirements
   const req = state.requirements && state.requirements[`${si}_${ci}`];
   const reqMissing = !!(req && !val);
 
-  td.classList.toggle('cell-regular-off', !!(regOff && !val));
+  td.classList.toggle('cell-regular-off', !isPublicView && !!(unavailable && !val));
+  td.classList.toggle('cell-unavailable-conflict', !isPublicView && !!(unavailable && val));
   td.classList.toggle('cell-req-missing', reqMissing);
   if (reqMissing) td.dataset.reqTip = `Původně: ${req}`;
   else delete td.dataset.reqTip;
 }
 
 function updateRequirementClasses() {
-  ['tvorba-tbl','rozpis-tbl'].forEach(tblId => {
+  scheduleTableIds().forEach(tblId => {
     const tbl = document.getElementById(tblId);
     if (!tbl) return;
     const calCols = getCalCols(state.month, state.year);
@@ -2509,7 +2883,7 @@ function updateRequirementClasses() {
 
 function updateCoverageRows() {
   const calCols = getCalCols(state.month, state.year);
-  ['tvorba-tbl','rozpis-tbl'].forEach(tblId => {
+  scheduleTableIds().forEach(tblId => {
     const tbl = document.getElementById(tblId);
     if (!tbl) return;
     tbl.querySelectorAll('tbody.cov-tbody tr.cov-row').forEach(tr => {
@@ -2579,13 +2953,15 @@ function fitScheduleToViewport(calCols = getCalCols(state.month, state.year)) {
   const available = Math.max(320, (activeWrap ? activeWrap.clientWidth : window.innerWidth) - 4);
   const activeTableId = document.querySelector('.tab-panel.active .sched-tbl')?.id;
   const sumCount = activeTableId === 'tvorba-tbl' ? 6 : 7;
-  const base = { name: 150, col: 18, sum: 27 };
-  const min = { name: 118, col: 14, sum: 22 };
+  const base = { name: 150, col: 18, sum: 24, pm: 34, hrs: 36 };
+  const min = { name: 118, col: 14, sum: 19, pm: 32, hrs: 34 };
 
   let nameW = base.name;
   let colW = base.col;
   let sumW = base.sum;
-  let deficit = Math.max(0, nameW + calCols.length * colW + sumCount * sumW - available);
+  let pmW = base.pm;
+  let hrsW = base.hrs;
+  let deficit = Math.max(0, nameW + calCols.length * colW + Math.max(0, sumCount - 2) * sumW + pmW + hrsW - available);
 
   const reduceName = Math.min(deficit, base.name - min.name);
   nameW -= reduceName;
@@ -2601,6 +2977,8 @@ function fitScheduleToViewport(calCols = getCalCols(state.month, state.year)) {
   document.documentElement.style.setProperty('--sched-name-w', Math.round(nameW) + 'px');
   document.documentElement.style.setProperty('--sched-col-w', Math.round(colW) + 'px');
   document.documentElement.style.setProperty('--sched-sum-w', Math.round(sumW) + 'px');
+  document.documentElement.style.setProperty('--sched-pm-w', Math.round(pmW) + 'px');
+  document.documentElement.style.setProperty('--sched-hrs-w', Math.round(hrsW) + 'px');
 }
 
 function getSchedCssNumber(name, fallback) {
@@ -2613,22 +2991,29 @@ function fineTuneScheduleFit(tbl) {
   if (!tbl || !wrap || !wrap.clientWidth) return;
   const minCol = 12, maxCol = 18;
   const minName = 112, maxName = 150;
-  const minSum = 20, maxSum = 27;
+  const minSum = 19, maxSum = 24;
+  const minPm = 32, maxPm = 36;
+  const minHrs = 34, maxHrs = 38;
 
   for (let i = 0; i < 24; i++) {
     const diff = tbl.scrollWidth - wrap.clientWidth;
     let colW = getSchedCssNumber('--sched-col-w', 18);
     let nameW = getSchedCssNumber('--sched-name-w', 150);
-    let sumW = getSchedCssNumber('--sched-sum-w', 27);
+    let sumW = getSchedCssNumber('--sched-sum-w', 24);
+    let pmW = getSchedCssNumber('--sched-pm-w', 34);
+    let hrsW = getSchedCssNumber('--sched-hrs-w', 36);
 
     if (diff > 1) {
       if (colW > minCol) colW -= 1;
       else if (sumW > minSum) sumW -= 1;
+      else if (pmW > minPm) pmW -= 1;
       else if (nameW > minName) nameW -= 1;
       else break;
     } else if (diff < -24) {
       if (colW < maxCol) colW += 1;
       else if (sumW < maxSum) sumW += 1;
+      else if (pmW < maxPm) pmW += 1;
+      else if (hrsW < maxHrs) hrsW += 1;
       else if (nameW < maxName) nameW += 1;
       else break;
     } else {
@@ -2638,12 +3023,15 @@ function fineTuneScheduleFit(tbl) {
     document.documentElement.style.setProperty('--sched-col-w', Math.round(colW) + 'px');
     document.documentElement.style.setProperty('--sched-name-w', Math.round(nameW) + 'px');
     document.documentElement.style.setProperty('--sched-sum-w', Math.round(sumW) + 'px');
+    document.documentElement.style.setProperty('--sched-pm-w', Math.round(pmW) + 'px');
+    document.documentElement.style.setProperty('--sched-hrs-w', Math.round(hrsW) + 'px');
   }
 }
 
 function renderScheduleTable(tableId, editable) {
   const tbl = document.getElementById(tableId);
   if (!tbl) return;
+  const isPublicView = isPublicScheduleTable(tableId);
   tbl.innerHTML = '';
   tbl.style.display = '';
   // Reset hidden-row button when re-rendering
@@ -2671,7 +3059,7 @@ function renderScheduleTable(tableId, editable) {
 
   // d/n cells — for 'd' columns embed day number + day name above the 'd' label
   const pragueToday = getPragueToday();
-  const shouldMarkToday = tableId === 'rozpis-tbl'
+  const shouldMarkToday = (tableId === 'rozpis-tbl' || isPublicView)
     && pragueToday.month === state.month
     && pragueToday.year === state.year;
   calCols.forEach((col, ci) => {
@@ -2849,6 +3237,7 @@ function renderScheduleTable(tableId, editable) {
   const _pManyKeys = computePersonPMany(calCols, state.staff, state.schedule);
 
   state.staff.forEach((s, si) => {
+    if (isPublicView && isPublicHiddenStaff(s)) return;
     // Skip if not yet active in this month
     if (s.activeFrom) {
       const af = s.activeFrom;
@@ -2864,13 +3253,14 @@ function renderScheduleTable(tableId, editable) {
 
     const tr = document.createElement('tr');
     tr.dataset.si = si;
+    if (isPublicView && isCurrentUserStaff(s)) tr.classList.add('public-own-row');
 
     // Name cell
     const nameTd = document.createElement('td');
     nameTd.className = 'col-name-td';
     nameTd.dataset.si = si;
     nameTd.textContent = s.name || `(pracovník ${si+1})`;
-    const tc = TYPE_COLORS[s.type] || '';
+    const tc = getScheduleTypeColor(s.type, tableId);
     if (tc) { nameTd.style.background = tc; nameTd.style.color = '#222'; }
     if (s.unmatchedXls) {
       nameTd.style.fontStyle = 'italic';
@@ -2918,10 +3308,10 @@ function renderScheduleTable(tableId, editable) {
       const td = document.createElement('td');
       td.className = 'sched-cell ' + cellClass(col, state.month, state.year, holidaysList);
       td.dataset.si = si; td.dataset.ci = ci; td.dataset.dn = col.dn;
-      if (_dupeKeys.has(`${si}_${ci}`)) td.classList.add('cell-duplicate');
-      if (_pManyKeys.has(`${si}_${ci}`)) td.classList.add('cell-p-many');
+      if (!isPublicView && _dupeKeys.has(`${si}_${ci}`)) td.classList.add('cell-duplicate');
+      if (!isPublicView && _pManyKeys.has(`${si}_${ci}`)) td.classList.add('cell-p-many');
       const val = state.schedule[`${si}_${ci}`] || '';
-      if (!_dupeKeys.has(`${si}_${ci}`)) applyRegularAndReqClasses(td, si, ci, col, val);
+      if (isPublicView || !_dupeKeys.has(`${si}_${ci}`)) applyRegularAndReqClasses(td, si, ci, col, val);
 
       if (editable) {
         const inp = document.createElement('input');
@@ -2931,7 +3321,7 @@ function renderScheduleTable(tableId, editable) {
         inp.tabIndex = -1;
         inp.addEventListener('mousedown', e => {
           e.preventDefault();
-          focusCell(si, ci);
+          focusCell(si, ci, tableId);
         });
         td.appendChild(inp);
       } else {
@@ -2956,19 +3346,26 @@ function renderScheduleTable(tableId, editable) {
         td.classList.add('sum-extra');
         const total = getExtraTotal(si);
         td.textContent = total !== 0 ? (total > 0 ? '+' + total : String(total)) : '';
-        td.style.cursor = 'pointer';
-        td.addEventListener('click', () => showExtraPopup(si));
-        td.addEventListener('mouseenter', e => showExtraTip(si, e.clientX, e.clientY));
-        td.addEventListener('mouseleave', hideExtraTip);
+        if (!isPublicView) {
+          td.style.cursor = 'pointer';
+          td.addEventListener('click', () => showExtraPopup(si));
+          td.addEventListener('mouseenter', e => showExtraTip(si, e.clientX, e.clientY));
+          td.addEventListener('mouseleave', hideExtraTip);
+        }
       } else if (idx === 6) {
         // Σhod — coloured by fond/maxHrs, click toggles override
         const hrs = sums.totalHrs;
-        const cls = getHrsClass(si, hrs);
+        const cls = isPublicView ? '' : getHrsClass(si, hrs);
         td.classList.add('sum-bold');
         if (cls) td.classList.add(cls);
         td.title = 'Kliknutím přepneš zvýraznění dle fondu';
+        if (isPublicView) td.removeAttribute('title');
         td.textContent = hrs % 1 === 0 ? hrs : hrs.toFixed(1);
-        if (editable) {
+        if (isPublicView) {
+          td.removeAttribute('title');
+          td.classList.remove('col-hrs-green', 'col-hrs-red', 'col-hrs-warn');
+        }
+        if (editable && !isPublicView) {
           td.addEventListener('click', () => {
             if (!state.hrsColorOverride) state.hrsColorOverride = {};
             if (state.hrsColorOverride[si]) delete state.hrsColorOverride[si];
@@ -2992,7 +3389,7 @@ function renderScheduleTable(tableId, editable) {
   tbl.appendChild(staffTbody);
 
   // ── Řádky pro Neuložené (jména z XLS, která nejsou v Nastavení) — VŽDY za staffTbody ──
-  if ((state.unmatchedXls || []).some(u => !state.staff.some(s =>
+  if (!isPublicView && (state.unmatchedXls || []).some(u => !state.staff.some(s =>
     s.unmatchedXls && (s.name || '').trim().toLowerCase() === (u.name || '').trim().toLowerCase()
   ))) {
     const unmatchedTbody = document.createElement('tbody');
@@ -3116,7 +3513,7 @@ function updateSumRow(si) {
   const s = state.staff[si];
 
   // Update in both tables (tvorba & view, whichever is rendered)
-  ['tvorba-tbl','rozpis-tbl'].forEach(tblId => {
+  scheduleTableIds().forEach(tblId => {
     const tbl = document.getElementById(tblId);
     if (!tbl || tbl.style.display === 'none') return;
     const row = tbl.querySelector(`tbody tr[data-si="${si}"]`);
@@ -3127,9 +3524,10 @@ function updateSumRow(si) {
       if (!td) return;
       const vals = [sums.total, sums.dw, sums.nw, sums.dk, sums.nk, '', sums.totalHrs];
       if (idx === 6) {
+        const isPublicView = tblId === 'public-rozpis-tbl';
         const hrs = sums.totalHrs;
         td.className = 'sum-cell sum-bold sum-hrs';
-        const cls = getHrsClass(si, hrs);
+        const cls = isPublicView ? '' : getHrsClass(si, hrs);
         if (cls) td.classList.add(cls);
         td.title = 'Kliknutím přepneš zvýraznění dle fondu';
         td.textContent = hrs % 1 === 0 ? hrs : hrs.toFixed(1);
@@ -3181,21 +3579,61 @@ function renderCells(tableId, editable) {
 let focusedCell = null;
 let _navHandler  = null;   // stored so we can remove it before re-adding
 
-function focusCell(si, ci) {
-  const tbl = document.getElementById('tvorba-tbl');
+function getActiveScheduleTableId() {
+  const activeTab = document.querySelector('.tb-tab.active')?.dataset.tab;
+  if (activeTab === 'rozpis') return 'rozpis-tbl';
+  if (activeTab === 'public') return 'public-rozpis-tbl';
+  return 'tvorba-tbl';
+}
+
+function scheduleTableIds() {
+  return ['tvorba-tbl', 'rozpis-tbl', 'public-rozpis-tbl'];
+}
+
+function isPublicScheduleTable(tableId) {
+  return tableId === 'public-rozpis-tbl';
+}
+
+function isPublicHiddenStaff(s) {
+  const type = String((s && s.type) || '').toLowerCase();
+  return type.includes('pohotovost') || type.includes('speci');
+}
+
+function currentUserStaffKey() {
+  return String((_user && (_user.username || _user.login || _user.name || _user.fullName)) || '').trim().toLowerCase();
+}
+
+function isCurrentUserStaff(s) {
+  if (!s || !_user) return false;
+  if (s.userId && _user.id && String(s.userId) === String(_user.id)) return true;
+  const key = currentUserStaffKey();
+  const userName = String(_user.name || _user.fullName || '').trim().toLowerCase();
+  if (!key && !userName) return false;
+  return String(s.login || '').trim().toLowerCase() === key ||
+    String(s.username || '').trim().toLowerCase() === key ||
+    String(s.userLogin || '').trim().toLowerCase() === key ||
+    String(s.code || '').trim().toLowerCase() === key ||
+    String(s.short || '').trim().toLowerCase() === key ||
+    String(s.name || '').trim().toLowerCase() === key ||
+    (!!userName && String(s.name || '').trim().toLowerCase() === userName);
+}
+
+function focusCell(si, ci, tableId = null) {
+  const tblId = tableId || focusedCell?.tableId || getActiveScheduleTableId();
+  const tbl = document.getElementById(tblId);
   if (!tbl) return;
 
   // Unfocus old
   if (focusedCell) {
-    const old = tbl.querySelector(`.sched-cell[data-si="${focusedCell.si}"][data-ci="${focusedCell.ci}"]`);
+    const oldTbl = document.getElementById(focusedCell.tableId || tblId);
+    const old = oldTbl?.querySelector(`.sched-cell[data-si="${focusedCell.si}"][data-ci="${focusedCell.ci}"]`);
     if (old) old.classList.remove('focused');
   }
 
-  focusedCell = {si, ci};
+  focusedCell = {si, ci, tableId: tblId};
   const td = tbl.querySelector(`.sched-cell[data-si="${si}"][data-ci="${ci}"]`);
   if (!td) return;
   td.classList.add('focused');
-  td.scrollIntoView({block:'nearest', inline:'nearest'});
   const inp = td.querySelector('input');
   if (inp) inp.focus({preventScroll: true});
 }
@@ -3239,17 +3677,17 @@ function setupKeyboardNav(tbl) {
     if (e.key === 'ArrowRight' || (e.key === 'Tab' && !e.shiftKey)) {
       handled = true;
       const next = moveCell(si, ci, 1);
-      focusCell(next.si, next.ci);
+      focusCell(next.si, next.ci, tbl.id);
     } else if (e.key === 'ArrowLeft' || (e.key === 'Tab' && e.shiftKey)) {
       handled = true;
       const prev = moveCell(si, ci, -1);
-      focusCell(prev.si, prev.ci);
+      focusCell(prev.si, prev.ci, tbl.id);
     } else if (e.key === 'ArrowDown' || e.key === 'Enter') {
       handled = true;
-      if (si + 1 < numRows) focusCell(si + 1, ci);
+      if (si + 1 < numRows) focusCell(si + 1, ci, tbl.id);
     } else if (e.key === 'ArrowUp') {
       handled = true;
-      if (si - 1 >= 0) focusCell(si - 1, ci);
+      if (si - 1 >= 0) focusCell(si - 1, ci, tbl.id);
     } else if (e.key === 'Delete' || e.key === 'Backspace') {
       handled = true;
       if (!deleteSelectedCells()) setCellValue(si, ci, '');
@@ -3259,16 +3697,16 @@ function setupKeyboardNav(tbl) {
                (e.key === 'y' && (e.ctrlKey || e.metaKey))) {
       handled = true; historyRedo();
     } else if (e.key.length === 1 && !e.ctrlKey && !e.metaKey && !e.altKey) {
-      // Character key: prevent browser from inserting it into the input,
-      // set value programmatically, then defer focus move to next cell so
-      // the browser's input pipeline doesn't race with the focus change.
+      // Character key: write into the focused cell and keep focus there.
       e.preventDefault();
+      const scrollSnapshot = captureScheduleScroll();
       const newVal = smartCase(e.key);
       setCellValue(si, ci, newVal);
-      const next = moveCell(si, ci, 1);
-      const nextSi = next.si;
-      const nextCi = next.ci;
-      setTimeout(() => focusCell(nextSi, nextCi), 0);
+      setTimeout(() => {
+        restoreScheduleScroll(scrollSnapshot);
+        focusCell(si, ci, tbl.id);
+        restoreScheduleScroll(scrollSnapshot);
+      }, 0);
       return; // preventDefault already called above
     }
 
@@ -3281,20 +3719,46 @@ function setupKeyboardNav(tbl) {
   tbl.addEventListener('keydown', _navHandler, true);
 }
 
+function captureScheduleScroll() {
+  const entries = [];
+  document.querySelectorAll('.schedule-wrap, .tab-panel').forEach(el => {
+    entries.push({ el, left: el.scrollLeft, top: el.scrollTop });
+  });
+  return {
+    x: window.scrollX,
+    y: window.scrollY,
+    entries
+  };
+}
+
+function restoreScheduleScroll(snapshot) {
+  if (!snapshot) return;
+  snapshot.entries.forEach(item => {
+    if (!item.el || !item.el.isConnected) return;
+    item.el.scrollLeft = item.left;
+    item.el.scrollTop = item.top;
+  });
+  window.scrollTo(snapshot.x, snapshot.y);
+}
+
 function setCellValue(si, ci, val) {
+  const scrollSnapshot = captureScheduleScroll();
   const key = `${si}_${ci}`;
   if (val === '') delete state.schedule[key];
   else state.schedule[key] = val;
   historySave();
 
-  const tbl = document.getElementById('tvorba-tbl');
-  if (tbl) {
+  scheduleTableIds().forEach(tblId => {
+    const tbl = document.getElementById(tblId);
+    if (!tbl) return;
     const td = tbl.querySelector(`.sched-cell[data-si="${si}"][data-ci="${ci}"]`);
     if (td) {
       const inp = td.querySelector('input');
       if (inp) inp.value = val;
+      const span = td.querySelector('.cell-val');
+      if (span) span.textContent = val;
     }
-  }
+  });
   updateSumRow(si);
   updateDuplicateClasses();
   updateCoverageRows();
@@ -3303,12 +3767,45 @@ function setCellValue(si, ci, val) {
   updateShiftContextBorders();
   updateCellSelection();
   applyRowFilters();
+  restoreScheduleScroll(scrollSnapshot);
+  requestAnimationFrame(() => restoreScheduleScroll(scrollSnapshot));
   scheduleAutoSave();
 }
 
 /* ══════════════════════════════════════════════════════════════════════════════
    STAFF TABLE (Nastavení)
 ══════════════════════════════════════════════════════════════════════════════ */
+
+function shouldRouteKeyToFocusedCell(e) {
+  if (!focusedCell) return false;
+  const activeTab = document.querySelector('.tb-tab.active')?.dataset.tab;
+  if (activeTab !== 'tvorba' && activeTab !== 'rozpis') return false;
+  if (activeTab === 'rozpis' && !viewEditMode) return false;
+  if (focusedCell.tableId !== getActiveScheduleTableId()) return false;
+  if (e.target && e.target.closest && e.target.closest(
+    'input, textarea, select, button, a, [contenteditable="true"], .modal, #regular-picker, #dates-picker, #extra-popup, #size-panel'
+  )) return false;
+  const isTyping = e.key.length === 1 && !e.ctrlKey && !e.metaKey && !e.altKey;
+  const isDelete = e.key === 'Delete' || e.key === 'Backspace';
+  return isTyping || isDelete;
+}
+
+function routeKeyToFocusedCell(e) {
+  const { si, ci, tableId } = focusedCell;
+  const scrollSnapshot = captureScheduleScroll();
+  e.preventDefault();
+  e.stopPropagation();
+  if (e.key === 'Delete' || e.key === 'Backspace') {
+    if (!deleteSelectedCells()) setCellValue(si, ci, '');
+  } else {
+    setCellValue(si, ci, smartCase(e.key));
+  }
+  requestAnimationFrame(() => {
+    restoreScheduleScroll(scrollSnapshot);
+    focusCell(si, ci, tableId);
+    restoreScheduleScroll(scrollSnapshot);
+  });
+}
 
 function staffMonthValue(value) {
   if (!value) return null;
@@ -3562,16 +4059,17 @@ function renderStaffTable() {
     // Regular (stálé volno) — indicator button
     const regTd = document.createElement('td');
     regTd.className = 'col-regular';
+    const { val: regularVal, overridden: regularOvr } = getEffective(s, 'regular');
+    if (regularOvr) regTd.classList.add('override-cell');
     const regBtn = document.createElement('button');
-    regBtn.className = 'btn-ind-pick' + (s.regular ? ' btn-ind-active' : '');
-    regBtn.textContent = s.regular ? '●' : '○';
-    regBtn.title = s.regular ? `Stálé volno: ${s.regular}` : '';
+    regBtn.className = 'btn-ind-pick' + (regularVal ? ' btn-ind-active' : '');
+    regBtn.textContent = regularVal ? '●' : '○';
+    regBtn.title = regularVal ? `Stálé volno: ${regularVal}` : '';
     regBtn.addEventListener('click', ev => {
       ev.stopPropagation();
       const _uid = s.userId;
       const _si = state.staff.findIndex(x => x.userId === _uid);
-      if (_si < 0) return;
-      openRegularPicker(_si, regBtn, ev.currentTarget);
+      openRegularPicker(_si, regBtn, ev.currentTarget, s);
     });
     regTd.appendChild(regBtn);
     tr.appendChild(regTd);
@@ -3579,16 +4077,17 @@ function renderStaffTable() {
     // Dates (nemůže aktuálně) — indicator button
     const datesTd = document.createElement('td');
     datesTd.className = 'col-dates';
+    const { val: datesVal, overridden: datesOvr } = getEffective(s, 'dates');
+    if (datesOvr) datesTd.classList.add('override-cell');
     const datesBtn = document.createElement('button');
-    datesBtn.className = 'btn-ind-pick' + (s.dates ? ' btn-ind-active' : '');
+    datesBtn.className = 'btn-ind-pick' + (datesVal ? ' btn-ind-active' : '');
     datesBtn.title = 'Nemůže aktuálně';
-    datesBtn.textContent = s.dates ? '●' : '○';
+    datesBtn.textContent = datesVal ? '●' : '○';
     datesBtn.addEventListener('click', e => {
       e.stopPropagation();
       const _uid = s.userId;
       const _si = state.staff.findIndex(x => x.userId === _uid);
-      if (_si < 0) return;
-      openDatesPicker(_si, datesBtn);
+      openDatesPicker(_si, datesBtn, s);
     });
     datesTd.appendChild(datesBtn);
     tr.appendChild(datesTd);
@@ -4676,7 +5175,9 @@ let rozpisHasLoadedTable = false;
 
 async function loadScheduleList() {
   const sel = document.getElementById('pub-sel');
+  const publicSel = document.getElementById('pub-sel-public');
   sel.innerHTML = '';
+  if (publicSel) publicSel.innerHTML = '';
   const keepExistingTable = rozpisHasLoadedTable || !!currentPubKey;
   try {
     const r = await fetch('/api/rt/schedules', {credentials:'include'});
@@ -4690,18 +5191,23 @@ async function loadScheduleList() {
       const mn = MONTH_NAMES[(it.month||1)-1];
       opt.textContent = (it.key === currentKey ? '★ ' : '') + (it.label || `${mn} ${it.year}`);
       sel.appendChild(opt);
+      if (publicSel) publicSel.appendChild(opt.cloneNode(true));
     });
     if (!sel.options.length) {
       sel.innerHTML = '<option value="">Žádný publikovaný rozpis</option>';
+      if (publicSel) publicSel.innerHTML = sel.innerHTML;
       currentPubKey = null;
       rozpisHasLoadedTable = false;
       showRozpisEmpty(true);
+      showPublicEmpty(true);
     } else {
       const preferredKey = (currentPubKey && items.some(it => it.key === currentPubKey))
         ? currentPubKey
         : (currentKey || items[0].key);
       sel.value = preferredKey;
+      if (publicSel) publicSel.value = preferredKey;
       showRozpisEmpty(false);
+      showPublicEmpty(false);
       currentPubKey = sel.value;
       loadSchedule(currentPubKey);
     }
@@ -4709,6 +5215,7 @@ async function loadScheduleList() {
     if (keepExistingTable) {
       toast('Seznam publikovaných rozpisů se nepodařilo načíst', true);
       showRozpisEmpty(false);
+      showPublicEmpty(false);
     } else {
       sel.innerHTML = '<option value="">Žádný publikovaný rozpis</option>';
       showRozpisEmpty(true);
@@ -4721,12 +5228,27 @@ function showRozpisEmpty(yes) {
   document.getElementById('rozpis-tbl').style.display = yes ? 'none' : '';
 }
 
+function showPublicEmpty(yes) {
+  const empty = document.getElementById('public-empty');
+  const tbl = document.getElementById('public-rozpis-tbl');
+  if (empty && !empty.dataset.labelFixed) {
+    empty.textContent = '\u017d\u00e1dn\u00fd publikovan\u00fd rozpis';
+    empty.dataset.labelFixed = '1';
+  }
+  if (empty) empty.style.display = yes ? '' : 'none';
+  if (tbl) tbl.style.display = yes ? 'none' : '';
+}
+
 async function loadSchedule(key) {
   if (!key) return;
   const spinner = document.getElementById('rozpis-spinner');
+  const publicSpinner = document.getElementById('public-spinner');
   spinner.style.display = '';
+  if (publicSpinner) publicSpinner.style.display = '';
   document.getElementById('rozpis-tbl').style.display = 'none';
   document.getElementById('rozpis-empty').style.display = 'none';
+  document.getElementById('public-rozpis-tbl').style.display = 'none';
+  document.getElementById('public-empty').style.display = 'none';
   try {
     const r = await fetch(`/api/rt/schedules/${encodeURIComponent(key)}`, {credentials:'include'});
     if (!r.ok) throw new Error(`HTTP ${r.status}`);
@@ -4742,7 +5264,9 @@ async function loadSchedule(key) {
     if (!scheduleData) throw new Error('Prázdná data');
     applyData(scheduleData);
     spinner.style.display = 'none';
+    if (publicSpinner) publicSpinner.style.display = 'none';
     renderScheduleTable('rozpis-tbl', false);
+    renderScheduleTable('public-rozpis-tbl', false);
     updateDuplicateClasses();
     updateCoverageRows();
     updateRequirementClasses();
@@ -4750,15 +5274,24 @@ async function loadSchedule(key) {
     buildHotelFilterButtons();
     rozpisHasLoadedTable = true;
     showRozpisEmpty(false);
+    showPublicEmpty(false);
     currentPubKey = key;
+    const sel = document.getElementById('pub-sel');
+    const publicSel = document.getElementById('pub-sel-public');
+    if (sel) sel.value = key;
+    if (publicSel) publicSel.value = key;
+    applyPublicDefaultHotel();
   } catch(e) {
     console.error('[loadSchedule] chyba:', e);
     spinner.style.display = 'none';
+    if (publicSpinner) publicSpinner.style.display = 'none';
     if (rozpisHasLoadedTable) {
       toast('Rozpis se nepodařilo znovu načíst, ponechávám poslední zobrazení', true);
       showRozpisEmpty(false);
+      showPublicEmpty(false);
     } else {
       showRozpisEmpty(true);
+      showPublicEmpty(true);
     }
   }
 }
@@ -5024,10 +5557,11 @@ function updateSubtoolbar() {
   const tab = document.querySelector('.tb-tab.active');
   const active = tab ? tab.dataset.tab : null;
   const stb = document.getElementById('subtoolbar');
-  const showStb = active === 'tvorba' || active === 'rozpis';
+  const showStb = active === 'tvorba' || active === 'rozpis' || active === 'public';
   stb.classList.toggle('show', showStb);
   stb.classList.toggle('tab-tvorba', active === 'tvorba');
   stb.classList.toggle('tab-rozpis', active === 'rozpis');
+  stb.classList.toggle('tab-public', active === 'public');
   // Skupina měsíc+F+S jen v Tvorba
   if (showStb) {
     const h = stb.offsetHeight;
@@ -5097,12 +5631,12 @@ function computePersonPMany(calCols, staff, schedule) {
 function updatePManyCells() {
   const calCols = getCalCols(state.month, state.year);
   const pMany = computePersonPMany(calCols, state.staff, state.schedule);
-  ['tvorba-tbl', 'rozpis-tbl'].forEach(tblId => {
+  scheduleTableIds().forEach(tblId => {
     const tbl = document.getElementById(tblId);
     if (!tbl) return;
     tbl.querySelectorAll('.sched-cell[data-si][data-ci]').forEach(td => {
       if (td.classList.contains('cov-cell')) return;
-      td.classList.toggle('cell-p-many', pMany.has(`${td.dataset.si}_${td.dataset.ci}`));
+      td.classList.toggle('cell-p-many', tblId !== 'public-rozpis-tbl' && pMany.has(`${td.dataset.si}_${td.dataset.ci}`));
     });
   });
 }
@@ -5110,19 +5644,19 @@ function updatePManyCells() {
 function updateDuplicateClasses() {
   const calCols = getCalCols(state.month, state.year);
   const dupeKeys = computeDuplicateCells(calCols, state.staff, state.schedule);
-  ['tvorba-tbl','rozpis-tbl'].forEach(tblId => {
+  scheduleTableIds().forEach(tblId => {
     const tbl = document.getElementById(tblId);
     if (!tbl) return;
     tbl.querySelectorAll('.sched-cell[data-si][data-ci]').forEach(td => {
       const si = +td.dataset.si, ci = +td.dataset.ci;
-      td.classList.toggle('cell-duplicate', dupeKeys.has(`${si}_${ci}`));
+      td.classList.toggle('cell-duplicate', tblId !== 'public-rozpis-tbl' && dupeKeys.has(`${si}_${ci}`));
     });
   });
 }
 
 function updateShiftContextBorders() {
   const calCols = getCalCols(state.month, state.year);
-  ['tvorba-tbl','rozpis-tbl'].forEach(tblId => {
+  scheduleTableIds().forEach(tblId => {
     const tbl = document.getElementById(tblId);
     if (!tbl) return;
     tbl.querySelectorAll('.staff-tbody .sched-cell[data-si][data-ci]').forEach(td => {
@@ -5173,6 +5707,27 @@ function buildHotelFilterButtons() {
     btn.addEventListener('click', () => filterByHotel(letter));
     container.appendChild(btn);
   });
+}
+
+function applyPublicDefaultHotel() {
+  const activeTab = document.querySelector('.tb-tab.active')?.dataset.tab;
+  if (activeTab !== 'public') return;
+  const wanted = String(publicDefaultHotel || 'ALL').toUpperCase();
+  showMarkedOnly = false;
+  showQualifiedWorkers = false;
+  clearAvailableSlotFilter();
+  if (!wanted || wanted === 'ALL' || wanted === 'VSE' || wanted === 'VŠE') {
+    filterHotels.clear();
+  } else {
+    filterHotels = new Set(wanted.split(',').map(x => x.trim()).filter(Boolean));
+  }
+  document.getElementById('stb-vse')?.classList.toggle('active', filterHotels.size === 0);
+  document.querySelectorAll('#stb-hotel-btns .stb-btn').forEach(b => {
+    b.classList.toggle('active', filterHotels.has(b.dataset.hotel));
+  });
+  updateQualifiedButton();
+  updateMarkedOnlyButton();
+  applyRowFilters();
 }
 
 async function filterByHotel(letter) {
@@ -5239,7 +5794,7 @@ function toggleAvailableSlotFilter(ci, col) {
 
 function setColumnShiftMode(mode) {
   colShiftMode = colShiftMode === mode ? 'all' : mode;
-  ['tvorba-tbl','rozpis-tbl'].forEach(tblId => {
+  scheduleTableIds().forEach(tblId => {
     const tbl = document.getElementById(tblId);
     if (!tbl) return;
     tbl.classList.toggle('hide-night', colShiftMode === 'day');
@@ -5266,7 +5821,7 @@ function updateDnCoverageColors() {
   } else {
     hotelsToCheck = (state.hotels || []).filter(h => h.active && h.hours > 0).map(h => h.letter);
   }
-  ['tvorba-tbl','rozpis-tbl'].forEach(tblId => {
+  scheduleTableIds().forEach(tblId => {
     const tbl = document.getElementById(tblId);
     if (!tbl) return;
     const thDns = Array.from(tbl.querySelectorAll('thead th.th-dn'));
@@ -5288,7 +5843,7 @@ function updateDnCoverageColors() {
 
 function refreshCoverageSticky() {
   const fallbackRowH = Math.round(parseFloat(getComputedStyle(document.documentElement).getPropertyValue('--sched-row-h'))) || 22;
-  ['tvorba-tbl','rozpis-tbl'].forEach(tblId => {
+  scheduleTableIds().forEach(tblId => {
     const tbl = document.getElementById(tblId);
     if (!tbl) return;
     const covTbody = tbl.querySelector('tbody.cov-tbody');
@@ -5399,9 +5954,10 @@ function applyRowFilters() {
   if (availableSlotFilter && (availableSlotFilter.month !== state.month || availableSlotFilter.year !== state.year)) {
     clearAvailableSlotFilter();
   }
-  ['tvorba-tbl','rozpis-tbl'].forEach(tblId => {
+  scheduleTableIds().forEach(tblId => {
     const tbl = document.getElementById(tblId);
     if (!tbl) return;
+    const isPublicTbl = tblId === 'public-rozpis-tbl';
     tbl.querySelectorAll('tbody tr[data-si]').forEach(tr => {
       const si = +tr.dataset.si;
       const s = state.staff[si];
@@ -5426,6 +5982,7 @@ function applyRowFilters() {
       if (!hide && availableSlotFilter) {
         hide = !!String(state.schedule[`${si}_${availableSlotFilter.ci}`] || '').trim();
       }
+      if (isPublicTbl && isCurrentUserStaff(s)) hide = false;
       tr.classList.toggle('row-filtered', hide);
     });
     // Coverage rows: toggle class on table — CSS handles display:none on covTbody
@@ -5443,9 +6000,10 @@ function applyRowFilters() {
   refreshCoverageSticky();
   updateDnCoverageColors();
   // When mark mode + hotel filter active: float marked (visible) workers to top of staff tbody
-  ['tvorba-tbl','rozpis-tbl'].forEach(tblId => {
+  scheduleTableIds().forEach(tblId => {
     const tbl = document.getElementById(tblId);
     if (!tbl) return;
+    const isPublicTbl = tblId === 'public-rozpis-tbl';
     const staffTbody = tbl.querySelector('.staff-tbody');
     if (!staffTbody) return;
     const allRows = Array.from(staffTbody.querySelectorAll('tr[data-si]'));
@@ -5453,12 +6011,20 @@ function applyRowFilters() {
       allRows.sort((a, b) => {
         const aSi = +a.dataset.si;
         const bSi = +b.dataset.si;
-        return rowFilterRank(aSi, state.staff[aSi]) - rowFilterRank(bSi, state.staff[bSi]) || aSi - bSi;
+        const aOwn = isPublicTbl && isCurrentUserStaff(state.staff[aSi]) ? -1 : 0;
+        const bOwn = isPublicTbl && isCurrentUserStaff(state.staff[bSi]) ? -1 : 0;
+        return aOwn - bOwn || rowFilterRank(aSi, state.staff[aSi]) - rowFilterRank(bSi, state.staff[bSi]) || aSi - bSi;
       });
       allRows.forEach(tr => staffTbody.appendChild(tr));
     } else {
       // Restore original order by si index
-      allRows.sort((a, b) => +a.dataset.si - +b.dataset.si);
+      allRows.sort((a, b) => {
+        const aSi = +a.dataset.si;
+        const bSi = +b.dataset.si;
+        const aOwn = isPublicTbl && isCurrentUserStaff(state.staff[aSi]) ? -1 : 0;
+        const bOwn = isPublicTbl && isCurrentUserStaff(state.staff[bSi]) ? -1 : 0;
+        return aOwn - bOwn || aSi - bSi;
+      });
       allRows.forEach(tr => staffTbody.appendChild(tr));
     }
   });
@@ -5482,7 +6048,7 @@ function toggleCopyMode() {
   const btn = document.getElementById('stb-copy-mode');
   btn.classList.toggle('active', _copyMode);
   btn.textContent = _copyMode ? '❌ Zrušit výběr' : '📋 Kopírovat';
-  ['tvorba-tbl','rozpis-tbl'].forEach(tblId => {
+  scheduleTableIds().forEach(tblId => {
     const tbl = document.getElementById(tblId);
     if (tbl) tbl.classList.toggle('copy-mode', _copyMode);
   });
@@ -5501,7 +6067,7 @@ function updateCopySelection() {
   const si2 = Math.max(_copySelSi1, _copySelSi2 !== null ? _copySelSi2 : _copySelSi1);
   const ci1 = Math.min(_copySelCi1, _copySelCi2 !== null ? _copySelCi2 : _copySelCi1);
   const ci2 = Math.max(_copySelCi1, _copySelCi2 !== null ? _copySelCi2 : _copySelCi1);
-  ['tvorba-tbl','rozpis-tbl'].forEach(tblId => {
+  scheduleTableIds().forEach(tblId => {
     const tbl = document.getElementById(tblId);
     if (!tbl) return;
     tbl.querySelectorAll('.staff-tbody .sched-cell[data-si][data-ci]').forEach(td => {
@@ -5538,7 +6104,7 @@ function updateCellSelection() {
   const si2 = Math.max(_selSi1, _selSi2 !== null ? _selSi2 : _selSi1);
   const ci1 = Math.min(_selCi1, _selCi2 !== null ? _selCi2 : _selCi1);
   const ci2 = Math.max(_selCi1, _selCi2 !== null ? _selCi2 : _selCi1);
-  ['tvorba-tbl','rozpis-tbl'].forEach(tblId => {
+  scheduleTableIds().forEach(tblId => {
     const tbl = document.getElementById(tblId);
     if (!tbl) return;
     tbl.querySelectorAll('.staff-tbody td.col-name-td[data-si]').forEach(td => {
@@ -5562,15 +6128,20 @@ function hasCellSelection() {
 function deleteSelectedCells() {
   if (!hasCellSelection()) return false;
   const activeTab = document.querySelector('.tb-tab.active')?.dataset.tab;
+  if (activeTab === 'public') return true;
   if (activeTab === 'rozpis' && !viewEditMode) {
     toast('V Rozpis VR nejdřív klikni na Editovat', true);
     return true;
   }
   const keys = new Set();
+  let focusTarget = null;
   document.querySelectorAll('.cell-selected.sched-cell[data-si][data-ci]').forEach(td => {
     const si = +td.dataset.si;
     const ci = +td.dataset.ci;
-    if (Number.isFinite(si) && Number.isFinite(ci)) keys.add(`${si}_${ci}`);
+    if (Number.isFinite(si) && Number.isFinite(ci)) {
+      keys.add(`${si}_${ci}`);
+      if (!focusTarget) focusTarget = { si, ci };
+    }
   });
   if (!keys.size) return false;
 
@@ -5581,18 +6152,30 @@ function deleteSelectedCells() {
       changed = true;
     }
   });
-  if (!changed) return true;
+  if (!changed) {
+    clearCellSelection();
+    if (focusTarget) {
+      const tableId = activeTab === 'rozpis' ? 'rozpis-tbl' : 'tvorba-tbl';
+      requestAnimationFrame(() => focusCell(focusTarget.si, focusTarget.ci, tableId));
+    }
+    return true;
+  }
 
   historySave();
   renderCells('tvorba-tbl', true);
   renderCells('rozpis-tbl', viewEditMode);
+  renderCells('public-rozpis-tbl', false);
   updateAllSums();
   updateDuplicateClasses();
   updateCoverageRows();
   updateRequirementClasses();
   updatePManyCells();
   updateShiftContextBorders();
-  updateCellSelection();
+  clearCellSelection();
+  if (focusTarget) {
+    const tableId = activeTab === 'rozpis' ? 'rozpis-tbl' : 'tvorba-tbl';
+    requestAnimationFrame(() => focusCell(focusTarget.si, focusTarget.ci, tableId));
+  }
   if (activeTab !== 'rozpis') scheduleAutoSave();
   toast(`Smazáno ${keys.size} buněk`);
   return true;
@@ -5666,6 +6249,244 @@ function pasteFromClipboard(startSi, startCi) {
   }).catch(() => {
     toast('Vkládání selhalo — zkontrolujte oprávnění clipboardu', true);
   });
+}
+
+function pasteScheduleTextIntoTvorba(text, startSi = null, startCi = 0) {
+  const rows = parseClipboardTable(text);
+  if (!rows.length) { toast('SchrĂˇnka je prĂˇzdnĂˇ', true); return false; }
+
+  const calCols = getCalCols(state.month, state.year);
+  const settingsByName = new Map();
+  (state.allSpecialStaff || []).forEach(s => {
+    const key = normalizeStaffName(s.name);
+    if (key) settingsByName.set(key, s);
+  });
+  (state.allPortalUsers || []).forEach(s => {
+    const key = normalizeStaffName(s.name);
+    if (key) settingsByName.set(key, s);
+  });
+
+  const staffByName = new Map();
+  (state.staff || []).forEach((s, si) => {
+    const key = normalizeStaffName(s.name);
+    if (key) staffByName.set(key, si);
+  });
+
+  const maxCols = Math.max(...rows.map(r => r.length));
+  const firstColLooksLikeNames = rows.some(r => {
+    const first = normalizeStaffName(r[0]);
+    return first === 'jmĂ©no' || first === 'jmeno' || staffByName.has(first) || settingsByName.has(first) || String(r[0] || '').trim().length > 2;
+  });
+  const hasNameColumn = maxCols > calCols.length || firstColLooksLikeNames;
+  if ((!state.staff || !state.staff.length) && !hasNameColumn) {
+    toast('KdyĹľ je Tvorba prĂˇzdnĂˇ, zkopĂ­ruj z Excelu i prvnĂ­ sloupec se jmĂ©ny', true);
+    return false;
+  }
+
+  const changes = [];
+  const newlyUnmatched = new Map();
+
+  rows.forEach((row, rowIdx) => {
+    let si;
+    let values;
+    if (hasNameColumn) {
+      const name = String(row[0] || '').trim();
+      const nameKey = normalizeStaffName(name);
+      if (!name || nameKey === 'jmĂ©no' || nameKey === 'jmeno') return;
+      si = staffByName.get(nameKey);
+      if (si === undefined) {
+        const matched = settingsByName.get(nameKey);
+        const staffEntry = matched
+          ? { ...matched, name: name || matched.name || '', unmatchedXls: false }
+          : {
+              name,
+              type: '',
+              login: '',
+              contract: '',
+              maxHrs: '',
+              noteM: '',
+              noteP: '',
+              x: '',
+              xa: '',
+              dates: '',
+              regular: '',
+              hotel: '',
+              monthlyOverrides: {},
+              unmatchedXls: true
+            };
+        state.staff.push(staffEntry);
+        si = state.staff.length - 1;
+        staffByName.set(nameKey, si);
+        if (!matched) newlyUnmatched.set(nameKey, { name, schedule: {} });
+      }
+      values = row.slice(1, 1 + calCols.length);
+    } else {
+      si = (startSi ?? 0) + rowIdx;
+      values = row.slice(0, calCols.length - startCi);
+    }
+
+    if (si === undefined || si < 0 || si >= state.staff.length) return;
+    values.forEach((rawVal, colOff) => {
+      const ci = (hasNameColumn ? 0 : startCi) + colOff;
+      if (ci >= calCols.length) return;
+      const val = String(rawVal || '').trim();
+      changes.push({ si, ci, val });
+      const staffName = normalizeStaffName(state.staff[si] && state.staff[si].name);
+      const unmatched = newlyUnmatched.get(staffName);
+      if (unmatched && val) unmatched.schedule[ci] = val;
+    });
+  });
+
+  if (!changes.length) {
+    toast(hasNameColumn ? 'NenaĹˇel jsem shodnĂˇ jmĂ©na v TvorbÄ›' : 'NenĂ­ co vloĹľit', true);
+    return false;
+  }
+
+  const affectedRows = new Set(changes.map(ch => ch.si)).size;
+  const affectedCols = new Set(changes.map(ch => ch.ci)).size;
+  if (!confirm(`VloĹľit data ze schrĂˇnky do Tvorby?\n\nĹĂˇdky: ${affectedRows}\nSloupce smÄ›n: ${affectedCols}\nPrĂˇzdnĂ© buĹky z Excelu smaĹľou hodnotu v rozpisu.`)) return false;
+
+  changes.forEach(({ si, ci, val }) => {
+    const key = `${si}_${ci}`;
+    if (val) state.schedule[key] = val;
+    else delete state.schedule[key];
+  });
+  historySave();
+  if (newlyUnmatched.size) {
+    const mergedUnmatched = new Map((state.unmatchedXls || []).map(u => [normalizeStaffName(u.name), u]));
+    newlyUnmatched.forEach((u, key) => mergedUnmatched.set(key, u));
+    state.unmatchedXls = [...mergedUnmatched.values()].filter(u => !settingsByName.has(normalizeStaffName(u.name)));
+    updateImportUnmatchedButton();
+  }
+  renderScheduleTable('tvorba-tbl', true);
+  renderScheduleTable('rozpis-tbl', false);
+  updateDuplicateClasses();
+  updateCoverageRows();
+  updateRequirementClasses();
+  buildHotelFilterButtons();
+  applyRowFilters();
+  scheduleAutoSave();
+  toast(`VloĹľeno z Excelu (${affectedRows} Ĺ™ĂˇdkĹŻ)`);
+  return true;
+}
+
+function pasteScheduleTextIntoTvorba(text, startSi = null, startCi = 0) {
+  const rows = parseClipboardTable(text);
+  if (!rows.length) { toast('Schr\u00e1nka je pr\u00e1zdn\u00e1', true); return false; }
+
+  const calCols = getCalCols(state.month, state.year);
+  const settingsByName = new Map();
+  (state.allSpecialStaff || []).forEach(s => {
+    const key = normalizeStaffName(s.name);
+    if (key) settingsByName.set(key, s);
+  });
+  (state.allPortalUsers || []).forEach(s => {
+    const key = normalizeStaffName(s.name);
+    if (key) settingsByName.set(key, s);
+  });
+
+  const staffByName = new Map();
+  (state.staff || []).forEach((s, si) => {
+    const key = normalizeStaffName(s.name);
+    if (key) staffByName.set(key, si);
+  });
+
+  const maxCols = Math.max(...rows.map(r => r.length));
+  const firstColLooksLikeNames = rows.some(r => {
+    const first = normalizeStaffName(r[0]);
+    return first === 'jm\u00e9no' || first === 'jmeno' || staffByName.has(first) || settingsByName.has(first) || String(r[0] || '').trim().length > 2;
+  });
+  const hasNameColumn = maxCols > calCols.length || firstColLooksLikeNames;
+  if ((!state.staff || !state.staff.length) && !hasNameColumn) {
+    toast('Kdy\u017e je Tvorba pr\u00e1zdn\u00e1, zkop\u00edruj z Excelu i prvn\u00ed sloupec se jm\u00e9ny', true);
+    return false;
+  }
+
+  const changes = [];
+  const newlyUnmatched = new Map();
+
+  rows.forEach((row, rowIdx) => {
+    let si;
+    let values;
+    if (hasNameColumn) {
+      const name = String(row[0] || '').trim();
+      const nameKey = normalizeStaffName(name);
+      if (!name || nameKey === 'jm\u00e9no' || nameKey === 'jmeno') return;
+      si = staffByName.get(nameKey);
+      if (si === undefined) {
+        const matched = settingsByName.get(nameKey);
+        const staffEntry = matched
+          ? { ...matched, name: name || matched.name || '', unmatchedXls: false }
+          : {
+              name,
+              type: '',
+              login: '',
+              contract: '',
+              maxHrs: '',
+              noteM: '',
+              noteP: '',
+              x: '',
+              xa: '',
+              dates: '',
+              regular: '',
+              hotel: '',
+              monthlyOverrides: {},
+              unmatchedXls: true
+            };
+        state.staff.push(staffEntry);
+        si = state.staff.length - 1;
+        staffByName.set(nameKey, si);
+        if (!matched) newlyUnmatched.set(nameKey, { name, schedule: {} });
+      }
+      values = row.slice(1, 1 + calCols.length);
+    } else {
+      si = (startSi ?? 0) + rowIdx;
+      values = row.slice(0, calCols.length - startCi);
+    }
+
+    if (si === undefined || si < 0 || si >= state.staff.length) return;
+    values.forEach((rawVal, colOff) => {
+      const ci = (hasNameColumn ? 0 : startCi) + colOff;
+      if (ci >= calCols.length) return;
+      const val = String(rawVal || '').trim();
+      changes.push({ si, ci, val });
+      const staffName = normalizeStaffName(state.staff[si] && state.staff[si].name);
+      const unmatched = newlyUnmatched.get(staffName);
+      if (unmatched && val) unmatched.schedule[ci] = val;
+    });
+  });
+
+  if (!changes.length) {
+    toast(hasNameColumn ? 'Nena\u0161el jsem shodn\u00e1 jm\u00e9na v Tvorb\u011b' : 'Nen\u00ed co vlo\u017eit', true);
+    return false;
+  }
+
+  const affectedRows = new Set(changes.map(ch => ch.si)).size;
+  const affectedCols = new Set(changes.map(ch => ch.ci)).size;
+  if (!confirm(`Vlo\u017eit data ze schr\u00e1nky do Tvorby?\n\n\u0158\u00e1dky: ${affectedRows}\nSloupce sm\u011bn: ${affectedCols}\nPr\u00e1zdn\u00e9 bu\u0148ky z Excelu sma\u017eou hodnotu v rozpisu.`)) return false;
+
+  changes.forEach(({ si, ci, val }) => {
+    const key = `${si}_${ci}`;
+    if (val) state.schedule[key] = val;
+    else delete state.schedule[key];
+  });
+  historySave();
+  if (newlyUnmatched.size) {
+    const mergedUnmatched = new Map((state.unmatchedXls || []).map(u => [normalizeStaffName(u.name), u]));
+    newlyUnmatched.forEach((u, key) => mergedUnmatched.set(key, u));
+    state.unmatchedXls = [...mergedUnmatched.values()].filter(u => !settingsByName.has(normalizeStaffName(u.name)));
+    updateImportUnmatchedButton();
+  }
+  renderScheduleTable('tvorba-tbl', true);
+  renderScheduleTable('rozpis-tbl', false);
+  updateDuplicateClasses();
+  updateCoverageRows();
+  updateRequirementClasses();
+  buildHotelFilterButtons();
+  applyRowFilters();
+  scheduleAutoSave();
+  toast(`Vlo\u017eeno z Excelu (${affectedRows} \u0159\u00e1dk\u016f)`);
+  return true;
 }
 
 function parseClipboardTable(text) {
@@ -5831,7 +6652,7 @@ async function copyScheduleForXls() {
 
 function setSumsMode(mode) {
   sumsMode = sumsMode === mode ? 'all' : mode;
-  ['tvorba-tbl','rozpis-tbl'].forEach(tblId => {
+  scheduleTableIds().forEach(tblId => {
     const tbl = document.getElementById(tblId);
     if (!tbl) return;
     tbl.classList.toggle('hide-sums', sumsMode === 'hidden');
@@ -5887,12 +6708,15 @@ function updateRememberRequirementsButton() {
 
 let _rpSi = null;
 let _rpLabel = null;
+let _rpStaff = null;
 
-function openRegularPicker(si, labelEl, triggerEl) {
+function openRegularPicker(si, labelEl, triggerEl, staffObj = null) {
   _rpSi = si;
   _rpLabel = labelEl;
-  const s = state.staff[si];
-  const parsed = parseRegular(s.regular || '');
+  _rpStaff = staffObj || state.staff[si];
+  const s = _rpStaff;
+  if (!s) return;
+  const parsed = parseRegular(getEffective(s, 'regular').val || '');
   const picker = document.getElementById('regular-picker');
 
   // Set checkbox states from parsed regular string
@@ -5918,17 +6742,23 @@ function openRegularPicker(si, labelEl, triggerEl) {
 
 function _closePickerOnOutside(e) {
   const picker = document.getElementById('regular-picker');
-  if (!picker.contains(e.target)) picker.classList.remove('show');
+  if (!picker.contains(e.target)) {
+    if (shouldKeepPopupOpenForSelection()) {
+      document.addEventListener('click', _closePickerOnOutside, {once: true});
+      return;
+    }
+    picker.classList.remove('show');
+  }
 }
 
 function applyRegularPicker() {
-  if (_rpSi === null) return;
+  if (!_rpStaff && _rpSi === null) return;
   const picker = document.getElementById('regular-picker');
   const checks = Array.from(picker.querySelectorAll('input[data-dow]'));
   const sv = document.getElementById('rp-sv').checked;
   const wk = document.getElementById('rp-hols').checked;
   const val = regularToString(checks, sv, wk);
-  state.staff[_rpSi].regular = val;
+  setFieldValue(_rpStaff || state.staff[_rpSi], 'regular', val);
   if (_rpLabel) {
     _rpLabel.textContent = val ? '●' : '○';
     _rpLabel.classList.toggle('btn-ind-active', !!val);
@@ -5936,6 +6766,7 @@ function applyRegularPicker() {
   }
   picker.classList.remove('show');
   _rpSi = null;
+  _rpStaff = null;
   // Re-apply coloring in all rendered schedule tables
   updateRequirementClasses();
 }
@@ -5983,12 +6814,15 @@ function confirmEditStaff() {
 
 let _dpSi = null;
 let _dpBtn = null;
+let _dpStaff = null;
 
-function openDatesPicker(si, btnEl) {
+function openDatesPicker(si, btnEl, staffObj = null) {
   _dpSi = si;
   _dpBtn = btnEl;
-  const s = state.staff[si];
-  document.getElementById('dp-input').value = s.dates || '';
+  _dpStaff = staffObj || state.staff[si];
+  const s = _dpStaff;
+  if (!s) return;
+  document.getElementById('dp-input').value = getEffective(s, 'dates').val || '';
   const picker = document.getElementById('dates-picker');
   const rect = btnEl.getBoundingClientRect();
   picker.style.top = (rect.bottom + 4) + 'px';
@@ -6002,16 +6836,23 @@ function openDatesPicker(si, btnEl) {
 
 function _closeDatesPickerOnOutside(e) {
   const picker = document.getElementById('dates-picker');
-  if (!picker.contains(e.target)) picker.classList.remove('show');
+  if (!picker.contains(e.target)) {
+    if (shouldKeepPopupOpenForSelection()) {
+      document.addEventListener('click', _closeDatesPickerOnOutside, {once: true});
+      return;
+    }
+    picker.classList.remove('show');
+  }
 }
 
 function applyDatesPicker() {
-  if (_dpSi === null) return;
+  if (!_dpStaff && _dpSi === null) return;
   const val = document.getElementById('dp-input').value.trim();
-  state.staff[_dpSi].dates = val;
+  setFieldValue(_dpStaff || state.staff[_dpSi], 'dates', val);
   if (_dpBtn) { _dpBtn.textContent = val ? '●' : '○'; _dpBtn.classList.toggle('btn-ind-active', !!val); }
   document.getElementById('dates-picker').classList.remove('show');
   _dpSi = null;
+  _dpStaff = null;
   updateRequirementClasses();
 }
 
@@ -6025,83 +6866,47 @@ const COLOR_DEFAULTS = {
     wnBg:'#c8c8c8', wnTx:'#222222',
     kdBg:'#a8d8f0', kdTx:'#222222',
     knBg:'#5b9dc9', knTx:'#222222',
-    dupBg:'#ffccaa', dupTx:'#7a3000',
-    tDen:'#F8FF35', tNoc:'#4DC3F5', tOba:'#A8E05A',
-    tVed:'#FFB347', tSpe:'#FF8585', tPoh:'#C8A0DC',
+    dupBg:'#ffe0b8', dupTx:'#3d2400', dupBorder:'#c67812',
+    tDen:'#8FC7EA', tNoc:'#8FC7EA', tOba:'#8FC7EA',
+    tVed:'#E9BE74', tSpe:'#E6A0AD', tPoh:'#D8D2C2',
     cov0Bg:'#ffebeb', cov0Tx:'#c0392b',
     cov1Bg:'#c8f5c8', cov1Tx:'#1a6b1a',
     cov2Bg:'#ffe082', cov2Tx:'#7a5000',
     cov3Bg:'#ff8a65', cov3Tx:'#5d1a00',
     covdnBg:'#e8e8e8', covdnTx:'#999999',
-    emptyBg:'#fff5f5', regOffBg:'#ebebeb', regOffTx:'#999999',
-    reqMissBg:'#ffd6d6'
+    emptyBg:'#fff5f5',
+    regOffBg:'#f9dce3', regOffTx:'#7c2f3d',
+    unavailBg:'#f9dce3', unavailBorder:'#c65b70',
+    reqMissBg:'#eadcff', reqMissBorder:'#7a4fc7'
   },
   dark: {
     wdBg:'#343942', wdTx:'#ffffff',
     wnBg:'#2f343c', wnTx:'#ffffff',
     kdBg:'#3d5264', kdTx:'#ffffff',
     knBg:'#435f76', knTx:'#ffffff',
-    dupBg:'#5a3000', dupTx:'#ffccaa',
-    tDen:'#F8FF35', tNoc:'#4DC3F5', tOba:'#A8E05A',
-    tVed:'#FFB347', tSpe:'#FF8585', tPoh:'#C8A0DC',
+    dupBg:'#5a3000', dupTx:'#ffccaa', dupBorder:'#d18a25',
+    tDen:'#8FC7EA', tNoc:'#8FC7EA', tOba:'#8FC7EA',
+    tVed:'#A9844A', tSpe:'#9B6570', tPoh:'#4A4A42',
     cov0Bg:'#4a0000', cov0Tx:'#ff8a65',
     cov1Bg:'#1a4a1a', cov1Tx:'#7fff7f',
     cov2Bg:'#4a3a00', cov2Tx:'#ffe082',
     cov3Bg:'#4a1500', cov3Tx:'#ff8a65',
     covdnBg:'#1a1a1a', covdnTx:'#555555',
-    emptyBg:'#2a1a1a', regOffBg:'#1e1e24', regOffTx:'#666666',
-    reqMissBg:'#3a0a0a'
+    emptyBg:'#2a1a1a',
+    regOffBg:'#4a2630', regOffTx:'#f1b8c3',
+    unavailBg:'#4a2630', unavailBorder:'#d78796',
+    reqMissBg:'#33284e', reqMissBorder:'#ad91f0'
   }
 };
 
 const SCHEDULE_SKIN_ACCENTS = {
-  mono:'#202124', graphite:'#17181B', slate:'#26323F', blue:'#2879B6', teal:'#167A73',
-  green:'#3D7B32', olive:'#70752A', amber:'#9A6422', rose:'#9B3F5B', violet:'#64428A'
+  default:'#2879B6', mono:'#202124', graphite:'#17181B', slate:'#26323F', blue:'#2879B6', teal:'#167A73',
+  green:'#3D7B32', olive:'#70752A', amber:'#9A6422', rose:'#9B3F5B', violet:'#64428A',
+  indigo:'#3F51B5', cyan:'#0E88A8', mint:'#2E9273', lime:'#7D9A20', yellow:'#B08A00',
+  orange:'#C25B1E', red:'#B63A32', pink:'#C0447E', plum:'#7E3C8C', coffee:'#6B4A2E',
+  navy:'#173E70'
 };
-const SCHEDULE_SKIN_COLOR_VERSION = 'readability4';
-
-const SCHEDULE_TYPE_PALETTES = {
-  mono: {
-    light: { tDen:'#F2E56A', tNoc:'#A9C0D6', tOba:'#A9C779', tVed:'#D9B06B', tSpe:'#D49AA5', tPoh:'#EDEBE5' },
-    dark:  { tDen:'#BFB35C', tNoc:'#607A96', tOba:'#6F8A52', tVed:'#A17845', tSpe:'#965E68', tPoh:'#3F4248' }
-  },
-  graphite: {
-    light: { tDen:'#E8DA72', tNoc:'#AEB7C2', tOba:'#A7BC82', tVed:'#D2A76C', tSpe:'#C996A2', tPoh:'#E6E3DA' },
-    dark:  { tDen:'#B3A65A', tNoc:'#646F7C', tOba:'#718259', tVed:'#9A7048', tSpe:'#875A64', tPoh:'#3C3E43' }
-  },
-  slate: {
-    light: { tDen:'#E7DA77', tNoc:'#A8BCD1', tOba:'#A8C28C', tVed:'#D3AA72', tSpe:'#CA98A2', tPoh:'#E7E5DC' },
-    dark:  { tDen:'#BAAD60', tNoc:'#637B95', tOba:'#71875F', tVed:'#9F764A', tSpe:'#8C5C66', tPoh:'#3D4249' }
-  },
-  blue: {
-    light: { tDen:'#DDE68A', tNoc:'#A8CDE0', tOba:'#B8D884', tVed:'#D8B27B', tSpe:'#D2A1AF', tPoh:'#C5B8D8' },
-    dark:  { tDen:'#AEB96C', tNoc:'#5F92B0', tOba:'#7FA25E', tVed:'#A88055', tSpe:'#966777', tPoh:'#6F6283' }
-  },
-  teal: {
-    light: { tDen:'#DDE58D', tNoc:'#A7D3CD', tOba:'#B1D58B', tVed:'#D4B17A', tSpe:'#CFA0A9', tPoh:'#D8D3C6' },
-    dark:  { tDen:'#ABB56C', tNoc:'#5B968F', tOba:'#789D5F', tVed:'#9F7D55', tSpe:'#916672', tPoh:'#55564E' }
-  },
-  green: {
-    light: { tDen:'#E4E48A', tNoc:'#ACCAD3', tOba:'#B4D77B', tVed:'#D7B173', tSpe:'#CEA0A2', tPoh:'#E5E1D5' },
-    dark:  { tDen:'#B0B45F', tNoc:'#607F8B', tOba:'#79A157', tVed:'#A07A4E', tSpe:'#8F6569', tPoh:'#484C43' }
-  },
-  olive: {
-    light: { tDen:'#E9DF82', tNoc:'#B8C6C4', tOba:'#BED381', tVed:'#D9B36D', tSpe:'#CC9A9D', tPoh:'#E9E3D1' },
-    dark:  { tDen:'#BAB15F', tNoc:'#6D7D7B', tOba:'#87995C', tVed:'#A17B48', tSpe:'#8C5F62', tPoh:'#4A4A3C' }
-  },
-  amber: {
-    light: { tDen:'#EEDC7B', tNoc:'#B9C4CF', tOba:'#BFD07E', tVed:'#E0AE63', tSpe:'#D19A93', tPoh:'#EDE3D4' },
-    dark:  { tDen:'#BFA85A', tNoc:'#6C7784', tOba:'#86965C', tVed:'#A8783E', tSpe:'#95605D', tPoh:'#50463D' }
-  },
-  rose: {
-    light: { tDen:'#E9DC83', tNoc:'#B8C4D4', tOba:'#BDD185', tVed:'#D8AD72', tSpe:'#D79BAA', tPoh:'#E9DDE4' },
-    dark:  { tDen:'#B8AA60', tNoc:'#6B778B', tOba:'#849A61', tVed:'#9F764B', tSpe:'#9D6274', tPoh:'#51414A' }
-  },
-  violet: {
-    light: { tDen:'#E7DD86', tNoc:'#B4C2D7', tOba:'#B9CF87', tVed:'#D5AD76', tSpe:'#CF9BAE', tPoh:'#D8C9E5' },
-    dark:  { tDen:'#B6A95F', tNoc:'#68768E', tOba:'#7F965F', tVed:'#9D774F', tSpe:'#936276', tPoh:'#5B4A69' }
-  }
-};
+const SCHEDULE_SKIN_COLOR_VERSION = 'readability10';
 
 function _hexToRgb(hex) {
   hex = String(hex || '#202124').replace('#','');
@@ -6120,46 +6925,55 @@ function _mix(a, b, t) {
 }
 
 function schedulePaletteForSkin(skin) {
-  const accent = SCHEDULE_SKIN_ACCENTS[skin] || SCHEDULE_SKIN_ACCENTS.mono;
-  const typePalette = SCHEDULE_TYPE_PALETTES[skin] || SCHEDULE_TYPE_PALETTES.mono;
+  const accent = SCHEDULE_SKIN_ACCENTS[skin] || SCHEDULE_SKIN_ACCENTS.default;
   const lightSoft = _mix(accent, '#ffffff', .76);
   const lightMid  = _mix(accent, '#ffffff', .58);
   const lightDeep = _mix(accent, '#ffffff', .22);
+  const lightUnavailable = _mix('#fde8ee', accent, .07);
+  const lightReqMissing = _mix('#dcd2ff', accent, .10);
+  const lightDuplicate = _mix('#f6d99d', accent, .10);
   const darkSoft  = _mix(accent, '#4a4f58', .55);
   const darkMid   = _mix(accent, '#4d5660', .42);
   const darkDeep  = _mix(accent, '#566474', .30);
+  const darkUnavailable = _mix('#5a2d38', accent, .20);
+  const darkReqMissing = _mix('#3f315e', accent, .20);
+  const darkDuplicate = _mix('#66410f', accent, .18);
   return {
     light: {
       wdBg:'#ffffff', wdTx:'#222222',
       wnBg:_mix(accent, '#d8d8d8', .72), wnTx:'#222222',
       kdBg:lightSoft, kdTx:'#222222',
       knBg:lightDeep, knTx:'#222222',
-      dupBg:_mix(accent, '#ffccaa', .75), dupTx:'#4a2600',
-      tDen:typePalette.light.tDen, tNoc:typePalette.light.tNoc, tOba:typePalette.light.tOba,
-      tVed:typePalette.light.tVed, tSpe:typePalette.light.tSpe, tPoh:typePalette.light.tPoh,
+      dupBg:lightDuplicate, dupTx:'#3d2400', dupBorder:_mix('#a66700', accent, .20),
+      tDen:lightMid, tNoc:lightMid, tOba:lightMid,
+      tVed:'#E9BE74', tSpe:'#E6A0AD', tPoh:'#D8D2C2',
       cov0Bg:'#ffebeb', cov0Tx:'#c0392b',
       cov1Bg:_mix(accent, '#c8f5c8', .82), cov1Tx:'#1a6b1a',
       cov2Bg:_mix(accent, '#ffe082', .82), cov2Tx:'#7a5000',
       cov3Bg:_mix(accent, '#ff8a65', .82), cov3Tx:'#5d1a00',
       covdnBg:'#e8e8e8', covdnTx:'#999999',
-      emptyBg:'#fff5f5', regOffBg:'#ebebeb', regOffTx:'#999999',
-      reqMissBg:'#ffd6d6'
+      emptyBg:'#fff5f5',
+      regOffBg:lightUnavailable, regOffTx:'#7c2f3d',
+      unavailBg:lightUnavailable, unavailBorder:_mix('#c46a7f', accent, .14),
+      reqMissBg:lightReqMissing, reqMissBorder:_mix('#5636b0', accent, .14)
     },
     dark: {
       wdBg:'#343942', wdTx:'#ffffff',
       wnBg:'#2f343c', wnTx:'#ffffff',
       kdBg:darkMid, kdTx:'#ffffff',
       knBg:darkDeep, knTx:'#ffffff',
-      dupBg:'#5a3000', dupTx:'#ffccaa',
-      tDen:typePalette.dark.tDen, tNoc:typePalette.dark.tNoc, tOba:typePalette.dark.tOba,
-      tVed:typePalette.dark.tVed, tSpe:typePalette.dark.tSpe, tPoh:typePalette.dark.tPoh,
+      dupBg:darkDuplicate, dupTx:'#ffccaa', dupBorder:_mix('#d18a25', accent, .22),
+      tDen:darkMid, tNoc:darkMid, tOba:darkMid,
+      tVed:'#A9844A', tSpe:'#9B6570', tPoh:'#4A4A42',
       cov0Bg:'#4a0000', cov0Tx:'#ff8a65',
       cov1Bg:'#1a4a1a', cov1Tx:'#7fff7f',
       cov2Bg:'#4a3a00', cov2Tx:'#ffe082',
       cov3Bg:'#4a1500', cov3Tx:'#ff8a65',
       covdnBg:'#1a1a1a', covdnTx:'#555555',
-      emptyBg:'#2a1a1a', regOffBg:'#1e1e24', regOffTx:'#666666',
-      reqMissBg:'#3a0a0a'
+      emptyBg:'#2a1a1a',
+      regOffBg:darkUnavailable, regOffTx:'#f1b8c3',
+      unavailBg:darkUnavailable, unavailBorder:_mix('#d78796', accent, .22),
+      reqMissBg:darkReqMissing, reqMissBorder:_mix('#ad91f0', accent, .22)
     }
   };
 }
@@ -6178,12 +6992,14 @@ let colorProfile = {
 const COLOR_VAR_MAP = {
   wdBg:'--col-wd-bg', wdTx:'--col-wd-tx', wnBg:'--col-wn-bg', wnTx:'--col-wn-tx',
   kdBg:'--col-kd-bg', kdTx:'--col-kd-tx', knBg:'--col-kn-bg', knTx:'--col-kn-tx',
-  dupBg:'--col-dup-bg', dupTx:'--col-dup-tx',
+  dupBg:'--col-dup-bg', dupTx:'--col-dup-tx', dupBorder:'--col-dup-border',
   tDen:'--col-type-den', tNoc:'--col-type-noc', tOba:'--col-type-oba', tVed:'--col-type-ved', tSpe:'--col-type-spe', tPoh:'--col-type-poh',
   cov0Bg:'--col-cov0-bg', cov0Tx:'--col-cov0-tx', cov1Bg:'--col-cov1-bg', cov1Tx:'--col-cov1-tx',
   cov2Bg:'--col-cov2-bg', cov2Tx:'--col-cov2-tx', cov3Bg:'--col-cov3-bg', cov3Tx:'--col-cov3-tx',
   covdnBg:'--col-covdn-bg', covdnTx:'--col-covdn-tx', emptyBg:'--col-empty-bg',
-  regOffBg:'--col-reg-off-bg', regOffTx:'--col-reg-off-tx', reqMissBg:'--col-req-miss-bg'
+  regOffBg:'--col-reg-off-bg', regOffTx:'--col-reg-off-tx',
+  unavailBg:'--col-unavail-bg', unavailBorder:'--col-unavail-border',
+  reqMissBg:'--col-req-miss-bg', reqMissBorder:'--col-req-miss-border'
 };
 function sparseToCss(obj) {
   return Object.entries(obj).filter(([,v])=>v).map(([k,v])=>COLOR_VAR_MAP[k]?`${COLOR_VAR_MAP[k]}:${v}`:'').filter(Boolean).join(';');
@@ -6211,8 +7027,8 @@ function saveColorProfileStorage() {
 }
 
 function syncScheduleColorsToPortalSkin(skin, persist = false) {
-  skin = String(skin || localStorage.getItem('ave-portal-skin') || 'mono').toLowerCase();
-  if (!SCHEDULE_SKIN_ACCENTS[skin]) skin = 'mono';
+  skin = String(skin || localStorage.getItem('ave-portal-skin') || 'default').toLowerCase();
+  if (!SCHEDULE_SKIN_ACCENTS[skin]) skin = 'default';
   const prev = localStorage.getItem('rt-color-profile-skin');
   const skinVersion = `${skin}:${SCHEDULE_SKIN_COLOR_VERSION}`;
   if (prev === skinVersion) return false;
@@ -6239,7 +7055,7 @@ function applyColorProfile() {
       --col-wn-bg:${l.wnBg}; --col-wn-tx:${l.wnTx};
       --col-kd-bg:${l.kdBg}; --col-kd-tx:${l.kdTx};
       --col-kn-bg:${l.knBg}; --col-kn-tx:${l.knTx};
-      --col-dup-bg:${l.dupBg}; --col-dup-tx:${l.dupTx};
+      --col-dup-bg:${l.dupBg}; --col-dup-tx:${l.dupTx}; --col-dup-border:${l.dupBorder};
       --col-type-den:${l.tDen}; --col-type-noc:${l.tNoc};
       --col-type-oba:${l.tOba}; --col-type-ved:${l.tVed}; --col-type-spe:${l.tSpe}; --col-type-poh:${l.tPoh};
       --col-cov0-bg:${l.cov0Bg}; --col-cov0-tx:${l.cov0Tx};
@@ -6249,14 +7065,15 @@ function applyColorProfile() {
       --col-covdn-bg:${l.covdnBg}; --col-covdn-tx:${l.covdnTx};
       --col-empty-bg:${l.emptyBg};
       --col-reg-off-bg:${l.regOffBg}; --col-reg-off-tx:${l.regOffTx};
-      --col-req-miss-bg:${l.reqMissBg};
+      --col-unavail-bg:${l.unavailBg}; --col-unavail-border:${l.unavailBorder};
+      --col-req-miss-bg:${l.reqMissBg}; --col-req-miss-border:${l.reqMissBorder};
     }
     [data-theme="dark"] {
       --col-wd-bg:${d.wdBg}; --col-wd-tx:${d.wdTx};
       --col-wn-bg:${d.wnBg}; --col-wn-tx:${d.wnTx};
       --col-kd-bg:${d.kdBg}; --col-kd-tx:${d.kdTx};
       --col-kn-bg:${d.knBg}; --col-kn-tx:${d.knTx};
-      --col-dup-bg:${d.dupBg}; --col-dup-tx:${d.dupTx};
+      --col-dup-bg:${d.dupBg}; --col-dup-tx:${d.dupTx}; --col-dup-border:${d.dupBorder};
       --col-type-den:${d.tDen}; --col-type-noc:${d.tNoc};
       --col-type-oba:${d.tOba}; --col-type-ved:${d.tVed}; --col-type-spe:${d.tSpe}; --col-type-poh:${d.tPoh};
       --col-cov0-bg:${d.cov0Bg}; --col-cov0-tx:${d.cov0Tx};
@@ -6266,7 +7083,28 @@ function applyColorProfile() {
       --col-covdn-bg:${d.covdnBg}; --col-covdn-tx:${d.covdnTx};
       --col-empty-bg:${d.emptyBg};
       --col-reg-off-bg:${d.regOffBg}; --col-reg-off-tx:${d.regOffTx};
-      --col-req-miss-bg:${d.reqMissBg};
+      --col-unavail-bg:${d.unavailBg}; --col-unavail-border:${d.unavailBorder};
+      --col-req-miss-bg:${d.reqMissBg}; --col-req-miss-border:${d.reqMissBorder};
+    }
+    [data-theme="dark"] #tab-tvorba,
+    [data-theme="dark"] #tab-rozpis,
+    [data-theme="dark"] #tab-public {
+      --col-wd-bg:${l.wdBg}; --col-wd-tx:${l.wdTx};
+      --col-wn-bg:${l.wnBg}; --col-wn-tx:${l.wnTx};
+      --col-kd-bg:${l.kdBg}; --col-kd-tx:${l.kdTx};
+      --col-kn-bg:${l.knBg}; --col-kn-tx:${l.knTx};
+      --col-dup-bg:${l.dupBg}; --col-dup-tx:${l.dupTx}; --col-dup-border:${l.dupBorder};
+      --col-type-den:${l.tDen}; --col-type-noc:${l.tNoc};
+      --col-type-oba:${l.tOba}; --col-type-ved:${l.tVed}; --col-type-spe:${l.tSpe}; --col-type-poh:${l.tPoh};
+      --col-cov0-bg:${l.cov0Bg}; --col-cov0-tx:${l.cov0Tx};
+      --col-cov1-bg:${l.cov1Bg}; --col-cov1-tx:${l.cov1Tx};
+      --col-cov2-bg:${l.cov2Bg}; --col-cov2-tx:${l.cov2Tx};
+      --col-cov3-bg:${l.cov3Bg}; --col-cov3-tx:${l.cov3Tx};
+      --col-covdn-bg:${l.covdnBg}; --col-covdn-tx:${l.covdnTx};
+      --col-empty-bg:${l.emptyBg};
+      --col-reg-off-bg:${l.regOffBg}; --col-reg-off-tx:${l.regOffTx};
+      --col-unavail-bg:${l.unavailBg}; --col-unavail-border:${l.unavailBorder};
+      --col-req-miss-bg:${l.reqMissBg}; --col-req-miss-border:${l.reqMissBorder};
     }
   `;
   // Per-sheet overrides: sparse CSS vars scoped to each tab panel
@@ -6275,7 +7113,13 @@ function applyColorProfile() {
     const lc = sparseToCss(colorProfile[s].light);
     const dc = sparseToCss(colorProfile[s].dark);
     if (lc) styleEl.textContent += `${TAB_IDS[s]}{${lc}}`;
-    if (dc) styleEl.textContent += `[data-theme="dark"] ${TAB_IDS[s]}{${dc}}`;
+    if (s === 'raspis' && lc) styleEl.textContent += `#tab-public{${lc}}`;
+    if (s === 'tvorba' || s === 'raspis') {
+      if (lc) styleEl.textContent += `[data-theme="dark"] ${TAB_IDS[s]}{${lc}}`;
+      if (s === 'raspis' && lc) styleEl.textContent += `[data-theme="dark"] #tab-public{${lc}}`;
+    } else if (dc) {
+      styleEl.textContent += `[data-theme="dark"] ${TAB_IDS[s]}{${dc}}`;
+    }
   });
   // Sync TYPE_COLORS to current theme
   const isDark = document.documentElement.getAttribute('data-theme') === 'dark';
@@ -6286,6 +7130,24 @@ function applyColorProfile() {
   TYPE_COLORS['Vedoucí']   = cp.tVed;
   TYPE_COLORS['Speciální'] = cp.tSpe;
   TYPE_COLORS['Pohotovost']= cp.tPoh;
+}
+
+function getScheduleTypeColor(type, tableId) {
+  const isScheduleTable = tableId === 'tvorba-tbl' || tableId === 'rozpis-tbl' || tableId === 'public-rozpis-tbl';
+  if (isScheduleTable && /^(Denn|No|Oboj)/.test(String(type || ''))) return '';
+  if (isScheduleTable && ['DennĂ­', 'NoÄŤnĂ­', 'ObojĂ­'].includes(type)) return '';
+  const isDark = document.documentElement.getAttribute('data-theme') === 'dark';
+  if (!isScheduleTable || !isDark) return TYPE_COLORS[type] || '';
+  const keyByType = {
+    'Denní':'tDen',
+    'Noční':'tNoc',
+    'Obojí':'tOba',
+    'Vedoucí':'tVed',
+    'Speciální':'tSpe',
+    'Pohotovost':'tPoh'
+  };
+  const key = keyByType[type];
+  return key ? getEffectiveColor('light', key) : '';
 }
 
 let _colorEditorTheme = 'light'; // which tab is active
@@ -6456,7 +7318,8 @@ function initColorEditorListeners() {
     // Re-render all tables so name-cell TYPE_COLORS inline backgrounds update immediately
     renderStaffTable();
     renderScheduleTable('tvorba-tbl', true);
-    renderScheduleTable('raspis-tbl', false);
+    renderScheduleTable('rozpis-tbl', viewEditMode);
+    renderScheduleTable('public-rozpis-tbl', false);
     buildHotelFilterButtons();
     toast('Barvy uloženy');
   });
@@ -6484,7 +7347,7 @@ function initColorEditorListeners() {
     });
   });
   document.getElementById('overlay-colors').addEventListener('click', e => {
-    if (e.target === e.currentTarget) e.currentTarget.classList.remove('show');
+    if (e.target === e.currentTarget && !shouldKeepPopupOpenForSelection()) e.currentTarget.classList.remove('show');
   });
 
   // Open button
@@ -6604,6 +7467,81 @@ function getEffective(s, field) {
   return { val: s[field], overridden: false };
 }
 
+function getEffectiveForSchedule(s, field) {
+  if (!s) return '';
+  const key = `${state.year}-${state.month}`;
+  const ov = s.monthlyOverrides?.[key];
+  if (ov && ov[field] !== undefined) return ov[field];
+  return s[field] || '';
+}
+
+const SETTINGS_SYNC_FIELDS = ['maxHrs','noteM','noteP','x','xa','dates','regular','hotel','hotelSkills','noStandby','monthlyOverrides'];
+
+function copySettingsFields(source, target) {
+  if (!source || !target) return;
+  SETTINGS_SYNC_FIELDS.forEach(field => {
+    if (field === 'hotelSkills') {
+      target[field] = Array.isArray(source[field]) ? [...source[field]] : [];
+    } else if (field === 'monthlyOverrides') {
+      target[field] = source[field] ? JSON.parse(JSON.stringify(source[field])) : {};
+    } else if (field === 'noStandby') {
+      target[field] = !!source[field];
+    } else {
+      target[field] = source[field] || '';
+    }
+  });
+}
+
+function syncPortalCustomDataFrom(source) {
+  if (!source?.userId) return;
+  if (!state.portalCustomData) state.portalCustomData = {};
+  const existing = state.portalCustomData[source.userId] || {};
+  state.portalCustomData[source.userId] = {
+    ...existing,
+    maxHrs: source.maxHrs || '',
+    noteM: source.noteM || '',
+    noteP: source.noteP || '',
+    x: source.x || '',
+    xa: source.xa || '',
+    dates: source.dates || '',
+    regular: source.regular || '',
+    hotel: source.hotel || '',
+    hotelSkills: Array.isArray(source.hotelSkills) ? [...source.hotelSkills] : [],
+    noStandby: !!source.noStandby,
+    monthlyOverrides: source.monthlyOverrides ? JSON.parse(JSON.stringify(source.monthlyOverrides)) : {}
+  };
+}
+
+function syncSettingsWorker(source) {
+  if (!source) return;
+  const sameWorker = target => {
+    if (!target) return false;
+    if (source.userId && target.userId) return String(source.userId) === String(target.userId);
+    return normalizeStaffName(source.name || '') && normalizeStaffName(target.name || '') === normalizeStaffName(source.name || '');
+  };
+  [state.staff, state.allPortalUsers, state.allSpecialStaff].forEach(list => {
+    (list || []).forEach(target => {
+      if (target !== source && sameWorker(target)) copySettingsFields(source, target);
+    });
+  });
+  syncPortalCustomDataFrom(source);
+}
+
+function getAllSettingsWorkers() {
+  const out = [];
+  const seen = new Set();
+  [state.allPortalUsers, state.staff, state.allSpecialStaff].forEach(list => {
+    (list || []).forEach(s => {
+      const nameKey = normalizeStaffName(s.name || '');
+      const key = s.userId ? `u:${s.userId}` : (nameKey ? `n:${nameKey}` : '');
+      if (!key || seen.has(key)) return;
+      seen.add(key);
+      out.push(s);
+    });
+  });
+  return out;
+}
+
 function setFieldValue(s, field, value) {
   if (nastaveniMode === 'monthly') {
     if (!s.monthlyOverrides) s.monthlyOverrides = {};
@@ -6613,6 +7551,8 @@ function setFieldValue(s, field, value) {
   } else {
     s[field] = value;
   }
+  syncSettingsWorker(s);
+  if (!s.userId) saveSpecialStaff();
   scheduleAutoSave();
 }
 
@@ -6620,9 +7560,11 @@ function clearMonthlyOverride(s, field) {
   const key = getMonthKey();
   if (s.monthlyOverrides?.[key]) {
     delete s.monthlyOverrides[key][field];
-    if (!Object.keys(s.monthlyOverrides[key]).length) delete s.monthlyOverrides[key];
-    if (!Object.keys(s.monthlyOverrides).length) delete s.monthlyOverrides;
+      if (!Object.keys(s.monthlyOverrides[key]).length) delete s.monthlyOverrides[key];
+      if (!Object.keys(s.monthlyOverrides).length) delete s.monthlyOverrides;
   }
+  syncSettingsWorker(s);
+  if (!s.userId) saveSpecialStaff();
   scheduleAutoSave();
 }
 
@@ -6673,19 +7615,23 @@ function updateModeMonthLabel() {
 function clearMonthOverrides() {
   const key = getMonthKey();
   const mName = `${MONTH_NAMES_LONG[overrideModeMonth]} ${overrideModeYear}`;
-  const hasAny = state.staff.some(s => {
+  const workers = getAllSettingsWorkers();
+  const hasAny = workers.some(s => {
     const ov = s.monthlyOverrides?.[key];
     return ov && Object.keys(ov).length > 0;
   });
   if (!hasAny) { toast(`Žádné přepisy pro ${mName}`, false); return; }
   if (!confirm(`Smazat všechny přepisy pro ${mName}?\n\nBuňky se vrátí na výchozí hodnoty. Tato akce je nevratná.`)) return;
-  state.staff.forEach(s => {
+  workers.forEach(s => {
     if (s.monthlyOverrides?.[key]) {
       delete s.monthlyOverrides[key];
       if (s.monthlyOverrides && !Object.keys(s.monthlyOverrides).length) delete s.monthlyOverrides;
+      syncSettingsWorker(s);
     }
   });
+  saveSpecialStaff();
   renderStaffTable();
+  updateRequirementClasses();
   scheduleAutoSave();
   toast(`Přepisy pro ${mName} smazány`);
 }
@@ -6693,26 +7639,25 @@ function clearMonthOverrides() {
 function setOverridesAsDefault() {
   const key = getMonthKey();
   const mName = `${MONTH_NAMES_LONG[overrideModeMonth]} ${overrideModeYear}`;
-  const hasAny = state.staff.some(s => {
+  const workers = getAllSettingsWorkers();
+  const hasAny = workers.some(s => {
     const ov = s.monthlyOverrides?.[key];
     return ov && Object.keys(ov).length > 0;
   });
   if (!hasAny) { toast(`Žádné přepisy pro ${mName}`, false); return; }
   if (!confirm(`Přepisy pro ${mName} se zkopírují do výchozích hodnot a přepisy se smažou.\n\nPokračovat?`)) return;
   const FIELDS = ['maxHrs','noteM','noteP','x','xa','dates','regular','hotel'];
-  state.staff.forEach(s => {
+  workers.forEach(s => {
     const ov = s.monthlyOverrides?.[key];
     if (!ov) return;
     FIELDS.forEach(f => { if (ov[f] !== undefined) s[f] = ov[f]; });
-    // Sync zpět do portalCustomData pro portálové uživatele
-    if (s.userId) {
-      if (!state.portalCustomData[s.userId]) state.portalCustomData[s.userId] = {};
-      FIELDS.forEach(f => { state.portalCustomData[s.userId][f] = s[f] || ''; });
-    }
     delete s.monthlyOverrides[key];
     if (!Object.keys(s.monthlyOverrides).length) delete s.monthlyOverrides;
+    syncSettingsWorker(s);
   });
+  saveSpecialStaff();
   renderStaffTable();
+  updateRequirementClasses();
   scheduleAutoSave();
   toast(`Přepisy pro ${mName} nastaveny jako výchozí`);
 }
@@ -6724,10 +7669,18 @@ function sortStaff() {
 }
 
 function clearActual() {
-  if (!state.staff.some(s => s.noteM || s.dates)) { toast('Žádné aktuální údaje', false); return; }
+  const workers = getAllSettingsWorkers();
+  if (!workers.some(s => s.noteM || s.dates)) { toast('Žádné aktuální údaje', false); return; }
   if (!confirm('Smazat Nemůže aktuálně a Pozn. aktuální všech pracovníků?')) return;
-  state.staff.forEach(s => { s.noteM = ''; s.dates = ''; });
+  workers.forEach(s => {
+    s.noteM = '';
+    s.dates = '';
+    syncSettingsWorker(s);
+  });
+  saveSpecialStaff();
   renderStaffTable();
+  updateRequirementClasses();
+  scheduleAutoSave();
   toast('Aktuální údaje smazány');
 }
 
@@ -6942,6 +7895,7 @@ async function saveViewEdits(options = {}) {
       viewEditMode = false; viewEditSnapshot = null;
       stopViewEditIdleWatch();
       renderScheduleTable('rozpis-tbl', false);
+      renderScheduleTable('public-rozpis-tbl', false);
       await releaseLock();
       updateLockUI();
       toast(auto ? 'Editace automaticky uložena po neaktivitě' : 'Uloženo do rozpisu VR');
@@ -7184,7 +8138,8 @@ function handleXlsImport(e) {
 async function saveSettings() {
   // Měsíc/rok a fondy jsou nyní řízeny přes subtoolbar/F+S modal — jen uložíme draft
   renderScheduleTable('tvorba-tbl', true);
-  renderScheduleTable('raspis-tbl', false);
+  renderScheduleTable('rozpis-tbl', viewEditMode);
+  renderScheduleTable('public-rozpis-tbl', false);
   buildHotelFilterButtons();
   await saveDraft(false);
   toast('Nastavení uloženo');
@@ -7232,14 +8187,15 @@ function switchTab(name) {
 
   const act = document.getElementById(`tb-act-${name}`);
   if (act) act.classList.remove('hidden');
+  document.getElementById('schedule-legend')?.classList.toggle('show', name === 'tvorba' || name === 'rozpis' || name === 'public');
 
   // Show/hide subtoolbar
   updateSubtoolbar();
   fitScheduleToViewport();
-  if (name === 'tvorba' || name === 'rozpis') {
+  if (name === 'tvorba' || name === 'rozpis' || name === 'public') {
     buildHotelFilterButtons();
     // Re-apply active sums mode to tables
-    ['tvorba-tbl','rozpis-tbl'].forEach(tblId => {
+    scheduleTableIds().forEach(tblId => {
       const tbl = document.getElementById(tblId);
       if (!tbl) return;
       tbl.classList.toggle('hide-sums', sumsMode === 'hidden');
@@ -7247,6 +8203,7 @@ function switchTab(name) {
       tbl.classList.toggle('hide-night', colShiftMode === 'day');
       tbl.classList.toggle('hide-day', colShiftMode === 'night');
     });
+    updateRequirementClasses();
   }
 
   if (name === 'tvorba') {
@@ -7277,6 +8234,14 @@ function switchTab(name) {
       renderScheduleTable('rozpis-tbl', false);
       refreshCoverageSticky();
     }
+  } else if (name === 'public') {
+    if (sumsMode !== 'all') setSumsMode('all');
+    applyPublicDefaultHotel();
+    if (!window._initRendering) {
+      renderScheduleTable('public-rozpis-tbl', false);
+      refreshCoverageSticky();
+      applyPublicDefaultHotel();
+    }
   } else if (name === 'nastaveni') {
     if (window._initRendering) renderStaffTable();
     else syncRaspisStaff();
@@ -7288,11 +8253,17 @@ function switchTab(name) {
 ══════════════════════════════════════════════════════════════════════════════ */
 
 window.addEventListener('message', e => {
+  if (e.data && e.data.type === 'ave-public-default-hotel') {
+    publicDefaultHotel = String(e.data.hotel || 'ALL').toUpperCase();
+    applyPublicDefaultHotel();
+    return;
+  }
   if (!e.data || e.data.type !== 'ave-theme' || !e.data.skin) return;
   if (!syncScheduleColorsToPortalSkin(e.data.skin, true)) return;
   applyColorProfile();
   renderScheduleTable('tvorba-tbl', true);
   renderScheduleTable('rozpis-tbl', viewEditMode);
+  renderScheduleTable('public-rozpis-tbl', false);
   refreshCoverageSticky();
 });
 
@@ -7310,7 +8281,7 @@ document.addEventListener('DOMContentLoaded', async () => {
 
   // Load & apply color profile from localStorage first (before any render)
   loadColorProfile();
-  syncScheduleColorsToPortalSkin(localStorage.getItem('ave-portal-skin') || 'mono', false);
+  syncScheduleColorsToPortalSkin(localStorage.getItem('ave-portal-skin') || 'default', false);
   applyColorProfile();
 
   // Initialize hotel list from defaults
@@ -7321,6 +8292,7 @@ document.addEventListener('DOMContentLoaded', async () => {
   document.getElementById('sel-month-year').value = `${state.year}-${state.month}`;
 
   await fetchUser();
+  await loadUserPrefs();
 
 
   // Render staff table (empty)
@@ -7452,6 +8424,7 @@ document.addEventListener('DOMContentLoaded', async () => {
     const pop = document.getElementById('extra-popup');
     if (pop && pop.style.display !== 'none' && !pop.contains(e.target) &&
         !e.target.classList.contains('sum-extra')) {
+      if (shouldKeepPopupOpenForSelection()) return;
       pop.style.display = 'none';
     }
   }, true);
@@ -7465,7 +8438,7 @@ document.addEventListener('DOMContentLoaded', async () => {
   });
   document.getElementById('add-staff-confirm').addEventListener('click', confirmAddStaff);
   document.getElementById('overlay-add-staff').addEventListener('click', e => {
-    if (e.target === e.currentTarget) e.currentTarget.classList.remove('show');
+    if (e.target === e.currentTarget && !shouldKeepPopupOpenForSelection()) e.currentTarget.classList.remove('show');
   });
   document.getElementById('ns-name').addEventListener('keydown', e => {
     if (e.key === 'Enter') confirmAddStaff();
@@ -7479,7 +8452,7 @@ document.addEventListener('DOMContentLoaded', async () => {
   });
   document.getElementById('add-web-user-confirm').addEventListener('click', confirmAddWebUser);
   document.getElementById('overlay-add-web-user').addEventListener('click', e => {
-    if (e.target === e.currentTarget) e.currentTarget.classList.remove('show');
+    if (e.target === e.currentTarget && !shouldKeepPopupOpenForSelection()) e.currentTarget.classList.remove('show');
   });
   document.getElementById('wu-in-raspis').addEventListener('change', e => {
     document.getElementById('wu-raspis-fields').style.display = e.target.checked ? '' : 'none';
@@ -7490,7 +8463,7 @@ document.addEventListener('DOMContentLoaded', async () => {
     document.getElementById(id).addEventListener('click', closeImportUnmatchedOverlay);
   });
   document.getElementById('overlay-import-unmatched').addEventListener('click', e => {
-    if (e.target === e.currentTarget) closeImportUnmatchedOverlay();
+    if (e.target === e.currentTarget && !shouldKeepPopupOpenForSelection()) closeImportUnmatchedOverlay();
   });
 
   // ── Edit staff modal ──
@@ -7501,7 +8474,7 @@ document.addEventListener('DOMContentLoaded', async () => {
     });
   });
   document.getElementById('overlay-edit-staff').addEventListener('click', e => {
-    if (e.target === e.currentTarget) e.currentTarget.classList.remove('show');
+    if (e.target === e.currentTarget && !shouldKeepPopupOpenForSelection()) e.currentTarget.classList.remove('show');
   });
 
   // ── Nastavení actions ──
@@ -7523,7 +8496,7 @@ document.addEventListener('DOMContentLoaded', async () => {
   document.getElementById('btn-fonds-save').addEventListener('click', saveFondsModal);
   // Zavřít klikem na pozadí overlaye
   document.getElementById('fonds-overlay').addEventListener('click', e => {
-    if (e.target === document.getElementById('fonds-overlay')) closeFondsModal();
+    if (e.target === document.getElementById('fonds-overlay') && !shouldKeepPopupOpenForSelection()) closeFondsModal();
   });
   // Enter v F+S inputech = uložit
   ['inp-fond-hpp','inp-fond-zpp','inp-holidays'].forEach(id => {
@@ -7559,6 +8532,9 @@ document.addEventListener('DOMContentLoaded', async () => {
   document.getElementById('pub-sel').addEventListener('change', e => {
     if (e.target.value) loadSchedule(e.target.value);
   });
+  document.getElementById('pub-sel-public').addEventListener('change', e => {
+    if (e.target.value) loadSchedule(e.target.value);
+  });
   document.getElementById('btn-delete-schedule').addEventListener('click', deleteSchedule);
   document.getElementById('btn-schedule-archive').addEventListener('click', showScheduleArchive);
   document.getElementById('btn-schedule-log').addEventListener('click', showScheduleLog);
@@ -7572,7 +8548,7 @@ document.addEventListener('DOMContentLoaded', async () => {
     document.getElementById('overlay-trash').classList.remove('show');
   });
   document.getElementById('overlay-trash').addEventListener('click', e => {
-    if (e.target === e.currentTarget) e.currentTarget.classList.remove('show');
+    if (e.target === e.currentTarget && !shouldKeepPopupOpenForSelection()) e.currentTarget.classList.remove('show');
   });
 
   // ── Archive modal (schedules) ──
@@ -7582,7 +8558,7 @@ document.addEventListener('DOMContentLoaded', async () => {
     });
   });
   document.getElementById('overlay-sched-archive').addEventListener('click', e => {
-    if (e.target === e.currentTarget) e.currentTarget.classList.remove('show');
+    if (e.target === e.currentTarget && !shouldKeepPopupOpenForSelection()) e.currentTarget.classList.remove('show');
   });
 
   // ── Log modal ──
@@ -7592,7 +8568,7 @@ document.addEventListener('DOMContentLoaded', async () => {
     });
   });
   document.getElementById('overlay-log').addEventListener('click', e => {
-    if (e.target === e.currentTarget) e.currentTarget.classList.remove('show');
+    if (e.target === e.currentTarget && !shouldKeepPopupOpenForSelection()) e.currentTarget.classList.remove('show');
   });
 
   // ── Hotel manager modal ──
@@ -7602,7 +8578,7 @@ document.addEventListener('DOMContentLoaded', async () => {
     });
   });
   document.getElementById('overlay-hotels').addEventListener('click', e => {
-    if (e.target === e.currentTarget) e.currentTarget.classList.remove('show');
+    if (e.target === e.currentTarget && !shouldKeepPopupOpenForSelection()) e.currentTarget.classList.remove('show');
   });
   document.getElementById('btn-hotels-save').addEventListener('click', saveHotelManager);
   document.getElementById('btn-hotel-add').addEventListener('click', () => {
@@ -7653,6 +8629,7 @@ document.addEventListener('DOMContentLoaded', async () => {
     if (!sizePanelOpen) return;
     const panel = document.getElementById('size-panel');
     if (!panel.contains(e.target)) {
+      if (shouldKeepPopupOpenForSelection()) return;
       panel.classList.remove('show');
       sizePanelOpen = false;
     }
@@ -7660,6 +8637,10 @@ document.addEventListener('DOMContentLoaded', async () => {
 
   // ── Global keyboard shortcuts ──
   document.addEventListener('keydown', e => {
+    if (shouldRouteKeyToFocusedCell(e)) {
+      routeKeyToFocusedCell(e);
+      return;
+    }
     if ((e.key === 'Delete' || e.key === 'Backspace') && hasCellSelection()) {
       e.preventDefault();
       e.stopPropagation();
@@ -7685,14 +8666,25 @@ document.addEventListener('DOMContentLoaded', async () => {
       e.preventDefault();
       copySelectionToClipboard();
     }
-    if (_copyMode && (e.ctrlKey || e.metaKey) && e.key === 'v') {
-      e.preventDefault();
-      // Paste at the start of the current selection (top-left corner)
-      const si = _copySelSi1 !== null ? Math.min(_copySelSi1, _copySelSi2 !== null ? _copySelSi2 : _copySelSi1) : 0;
-      const ci = _copySelCi1 !== null ? Math.min(_copySelCi1, _copySelCi2 !== null ? _copySelCi2 : _copySelCi1) : 0;
-      pasteFromClipboard(si, ci);
-    }
   });
+
+  document.addEventListener('paste', e => {
+    const activeTab = document.querySelector('.tb-tab.active')?.dataset.tab;
+    if (activeTab !== 'tvorba') return;
+    const text = e.clipboardData && e.clipboardData.getData('text/plain');
+    if (!text || !/[\t\n\r]/.test(text)) return;
+
+    const scheduleCell = e.target.closest && e.target.closest('#tvorba-tbl .sched-cell[data-si][data-ci]');
+    const nameCell = e.target.closest && e.target.closest('#tvorba-tbl .col-name-td[data-si]');
+    const canPasteHere = scheduleCell || nameCell || (focusedCell && focusedCell.tableId === 'tvorba-tbl');
+    if (!canPasteHere) return;
+
+    const startSi = scheduleCell ? +scheduleCell.dataset.si : nameCell ? +nameCell.dataset.si : focusedCell.si;
+    const startCi = scheduleCell ? +scheduleCell.dataset.ci : 0;
+    e.preventDefault();
+    e.stopPropagation();
+    pasteScheduleTextIntoTvorba(text, startSi, startCi);
+  }, true);
 
   // ── Regular picker ──
   document.getElementById('rp-apply').addEventListener('click', applyRegularPicker);
@@ -7720,6 +8712,7 @@ document.addEventListener('DOMContentLoaded', async () => {
       clearCellSelection();
       return;
     }
+    if (td.closest('#public-rozpis-tbl')) return;
     _selDragging = true;
     _selDragMoved = false;
     _selectionStartedOnName = td.classList.contains('col-name-td');
@@ -7759,6 +8752,7 @@ document.addEventListener('DOMContentLoaded', async () => {
     if (!_copyMode) return;
     const td = e.target.closest('.staff-tbody .sched-cell[data-si][data-ci]');
     if (!td) return;
+    if (td.closest('#public-rozpis-tbl')) return;
     // No preventDefault — allows wheel scroll to work during drag
     _copyDragging = true;
     _copySelSi1 = +td.dataset.si;
@@ -7794,7 +8788,7 @@ document.addEventListener('DOMContentLoaded', async () => {
   });
 
   // Tooltip delegation for schedule tables
-  ['tvorba-tbl', 'rozpis-tbl'].forEach(tblId => {
+  ['tvorba-tbl','rozpis-tbl'].forEach(tblId => {
     const tbl = document.getElementById(tblId);
     if (!tbl) return;
     tbl.addEventListener('mouseover', e => {

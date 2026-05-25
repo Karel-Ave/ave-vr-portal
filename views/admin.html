@@ -1301,9 +1301,21 @@
   // Init selects jednou při načtení
   initRaspisSelects();
 
+  let _modalPointerDownInside = false;
+  function modalSelectionDragActive() {
+    const sel = window.getSelection ? window.getSelection() : null;
+    const keep = _modalPointerDownInside || !!(sel && !sel.isCollapsed && String(sel).length);
+    _modalPointerDownInside = false;
+    return keep;
+  }
+  document.addEventListener('pointerdown', e => {
+    _modalPointerDownInside = !!e.target.closest('.modal');
+  }, true);
+
   ['user-overlay','pw-overlay','overrides-overlay','addgroup-overlay'].forEach(id => {
     document.getElementById(id).addEventListener('click', e => {
       if (e.target.id !== id) return;
+      if (modalSelectionDragActive()) return;
       if (id === 'user-overlay') closeUserModal();
       else if (id === 'pw-overlay') closePwModal();
       else if (id === 'overrides-overlay') closeOverridesModal();

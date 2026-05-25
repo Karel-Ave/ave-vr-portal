@@ -7,6 +7,15 @@ const { getPool, init } = require('./db');
 
 const app  = express();
 const PORT = process.env.PORT || 8080;
+const DEFAULT_AUTO_LOGOUT_MINUTES = 30;
+const AUTO_LOGOUT_OPTIONS = new Set([0, 10, 30, 60, 720]);
+
+function sessionMaxAgeFromMinutes(minutes) {
+  const mins = Number(minutes);
+  if (mins === 0) return 10 * 365 * 24 * 60 * 60 * 1000;
+  const safe = AUTO_LOGOUT_OPTIONS.has(mins) ? mins : DEFAULT_AUTO_LOGOUT_MINUTES;
+  return safe * 60 * 1000;
+}
 
 // ── Middleware ────────────────────────────────────────────────────────────────
 
@@ -29,7 +38,7 @@ app.use(session({
   secret: process.env.SESSION_SECRET || 'ave-portal-2026-secret',
   resave: false,
   saveUninitialized: false,
-  rolling: false,
+  rolling: true,
   cookie: { maxAge: 12 * 60 * 60 * 1000 }          // 12 hodin od přihlášení
 }));
 
@@ -179,9 +188,9 @@ app.get('/api/me', requireLogin, (req, res) => res.json(req.session.user));
 // Save theme preference for the current user
 app.patch('/api/me/theme', requireLogin, async (req, res) => {
   const theme = req.body.theme === 'dark' ? 'dark' : 'light';
-  const skinRaw = String(req.body.skin || req.session.user.theme_skin || 'mono').toLowerCase();
-  const allowedSkins = new Set(['mono','graphite','slate','blue','teal','green','olive','amber','rose','violet']);
-  const skin = allowedSkins.has(skinRaw) ? skinRaw : 'mono';
+  const skinRaw = String(req.body.skin || req.session.user.theme_skin || 'default').toLowerCase();
+  const allowedSkins = new Set(['default','mono','graphite','slate','blue','teal','green','olive','amber','rose','violet','indigo','cyan','mint','lime','yellow','orange','red','pink','plum','coffee','navy']);
+  const skin = allowedSkins.has(skinRaw) ? (skinRaw === 'mono' ? 'default' : skinRaw) : 'default';
   try {
     const db = getPool();
     await db.query('UPDATE users SET theme = $1, theme_skin = $2 WHERE id = $3', [theme, skin, req.session.user.id]);
@@ -202,21 +211,30 @@ app.post('/login', async (req, res) => {
     if (!user || !bcrypt.compareSync(password, user.password_hash)) {
       return res.redirect('/?error=1');
     }
+    const prefRows = await db.query('SELECT auto_logout_minutes FROM user_preferences WHERE user_id = $1', [user.id]);
+    const autoLogoutMinutes = Number(prefRows.rows[0]?.auto_logout_minutes ?? DEFAULT_AUTO_LOGOUT_MINUTES);
+    const themeSkin = (user.theme_skin && user.theme_skin !== 'mono') ? user.theme_skin : 'default';
     req.session.user = {
       id: user.id,
       name: user.name,
       username: user.username,
       role: user.role,
       theme: user.theme || 'light',
-      theme_skin: user.theme_skin || 'mono'
+      theme_skin: themeSkin,
+      auto_logout_minutes: AUTO_LOGOUT_OPTIONS.has(autoLogoutMinutes) ? autoLogoutMinutes : DEFAULT_AUTO_LOGOUT_MINUTES
     };
+    req.session.cookie.maxAge = sessionMaxAgeFromMinutes(req.session.user.auto_logout_minutes);
     logEvent(user.id, user.username, 'login', { role: user.role });
     // Widget-only uživatelé vždy na widget; ostatní dle ?next nebo na portál
     const next = req.body.next || '';
-    if (user.role === 'widget' || next === '/widget') {
-      return res.redirect('/widget');
-    }
-    res.redirect('/portal');
+    const target = (user.role === 'widget' || next === '/widget') ? '/widget' : '/portal';
+    req.session.save(err => {
+      if (err) {
+        console.error('Chyba ulozeni session:', err);
+        return res.redirect('/?error=1');
+      }
+      res.redirect(target);
+    });
   } catch (err) {
     console.error('Chyba přihlášení:', err);
     res.redirect('/?error=1');
@@ -930,12 +948,16 @@ app.get('/api/user-prefs', requireLogin, async (req, res) => {
   try {
     const db = getPool();
     const { rows } = await db.query(
-      'SELECT default_raspis_key FROM user_preferences WHERE user_id = $1',
+      'SELECT default_raspis_key, default_public_hotel, auto_logout_minutes FROM user_preferences WHERE user_id = $1',
       [req.session.user.id]
     );
-    res.json({ default_raspis_key: rows[0]?.default_raspis_key || null });
+    res.json({
+      default_raspis_key: rows[0]?.default_raspis_key || null,
+      default_public_hotel: rows[0]?.default_public_hotel || 'ALL',
+      auto_logout_minutes: Number(rows[0]?.auto_logout_minutes ?? req.session.user?.auto_logout_minutes ?? DEFAULT_AUTO_LOGOUT_MINUTES)
+    });
   } catch (err) {
-    res.json({ default_raspis_key: null });
+    res.json({ default_raspis_key: null, default_public_hotel: 'ALL', auto_logout_minutes: DEFAULT_AUTO_LOGOUT_MINUTES });
   }
 });
 
@@ -980,6 +1002,46 @@ app.post('/api/user-prefs/default', requireLogin, async (req, res) => {
       [req.session.user.id, key]
     );
     res.json({ ok: true });
+  } catch (err) {
+    res.json({ ok: false, msg: 'Chyba serveru.' });
+  }
+});
+
+app.post('/api/user-prefs/default-public-hotel', requireLogin, async (req, res) => {
+  const raw = Array.isArray(req.body.hotels) ? req.body.hotels.join(',') : String(req.body.hotel || 'ALL');
+  const parts = String(raw).toUpperCase().split(',').map(x => x.trim()).filter(Boolean);
+  const hotel = parts.some(x => x === 'ALL' || x === 'VSE' || x === 'VŠE')
+    ? 'ALL'
+    : Array.from(new Set(parts.map(x => x.replace(/[^A-Z0-9]/g, '').slice(0, 3)).filter(Boolean))).join(',');
+  if (!hotel) return res.json({ ok: false, msg: 'Chybí hotel.' });
+  try {
+    const db = getPool();
+    await db.query(
+      `INSERT INTO user_preferences (user_id, default_public_hotel, updated_at)
+       VALUES ($1, $2, NOW())
+       ON CONFLICT (user_id) DO UPDATE SET default_public_hotel = $2, updated_at = NOW()`,
+      [req.session.user.id, hotel]
+    );
+    res.json({ ok: true, default_public_hotel: hotel });
+  } catch (err) {
+    res.json({ ok: false, msg: 'Chyba serveru.' });
+  }
+});
+
+app.post('/api/user-prefs/auto-logout', requireLogin, async (req, res) => {
+  const minutes = Number(req.body.minutes);
+  if (!AUTO_LOGOUT_OPTIONS.has(minutes)) return res.json({ ok: false, msg: 'NeplatnĂˇ hodnota.' });
+  try {
+    const db = getPool();
+    await db.query(
+      `INSERT INTO user_preferences (user_id, auto_logout_minutes, updated_at)
+       VALUES ($1, $2, NOW())
+       ON CONFLICT (user_id) DO UPDATE SET auto_logout_minutes = $2, updated_at = NOW()`,
+      [req.session.user.id, minutes]
+    );
+    req.session.user.auto_logout_minutes = minutes;
+    req.session.cookie.maxAge = sessionMaxAgeFromMinutes(minutes);
+    req.session.save(() => res.json({ ok: true, auto_logout_minutes: minutes }));
   } catch (err) {
     res.json({ ok: false, msg: 'Chyba serveru.' });
   }

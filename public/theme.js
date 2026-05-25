@@ -1,9 +1,9 @@
 (function () {
   var THEME_KEY = 'ave-portal-theme';
   var SKIN_KEY = 'ave-portal-skin';
-  var DEFAULT_SKIN = 'mono';
+  var DEFAULT_SKIN = 'default';
   var SKINS = [
-    { id: 'mono', label: 'Mono' },
+    { id: 'default', label: 'Výchozí' },
     { id: 'graphite', label: 'Grafit' },
     { id: 'slate', label: 'Slate' },
     { id: 'blue', label: 'Modrá' },
@@ -12,7 +12,18 @@
     { id: 'olive', label: 'Oliva' },
     { id: 'amber', label: 'Amber' },
     { id: 'rose', label: 'Rose' },
-    { id: 'violet', label: 'Violet' }
+    { id: 'violet', label: 'Violet' },
+    { id: 'indigo', label: 'Indigo' },
+    { id: 'cyan', label: 'Cyan' },
+    { id: 'mint', label: 'Mint' },
+    { id: 'lime', label: 'Lime' },
+    { id: 'yellow', label: 'Žlutá' },
+    { id: 'orange', label: 'Oranžová' },
+    { id: 'red', label: 'Červená' },
+    { id: 'pink', label: 'Pink' },
+    { id: 'plum', label: 'Plum' },
+    { id: 'coffee', label: 'Coffee' },
+    { id: 'navy', label: 'Navy' }
   ];
   var SKIN_IDS = SKINS.map(function (s) { return s.id; });
 

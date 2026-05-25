@@ -71,7 +71,7 @@
     align-items: center;
     justify-content: center;
     gap: 6px;
-    width: 245px;
+    width: max-content;
     padding: 0;
     background: transparent;
     border: none;
@@ -82,9 +82,10 @@
     border-color: transparent;
   }
   #app-nav-current {
-    width: 100%;
+    position: relative;
+    width: max-content;
     height: 36px;
-    padding: 0 14px;
+    padding: 0 28px 0 13px;
     border: 1px solid var(--accent);
     border-radius: 8px;
     background: var(--surface);
@@ -100,7 +101,10 @@
   }
   #app-nav-current::after {
     content: "⌄";
-    float: right;
+    position: absolute;
+    right: 10px;
+    top: 50%;
+    transform: translateY(-50%);
     font-size: 12px;
     opacity: .75;
     margin-top: 1px;
@@ -117,7 +121,7 @@
     top: 43px;
     left: 50%;
     transform: translateX(-50%);
-    width: 260px;
+    width: max-content;
     padding: 6px;
     display: none;
     gap: 4px;
@@ -130,7 +134,8 @@
   .app-nav-btn {
     height: 32px;
     width: 100%;
-    padding: 0 11px;
+    min-width: 168px;
+    padding: 0 10px;
     border: 1px solid transparent;
     border-radius: 6px;
     background: transparent;
@@ -165,9 +170,9 @@
     color: #fff;
   }
   [data-theme="dark"] .app-nav-btn:hover:not(.active) {
-    background: var(--btn-top-hover-bg);
-    border-color: var(--border-strong);
-    color: var(--text-topbar);
+    background: var(--accent-light);
+    border-color: var(--accent);
+    color: var(--accent-h);
   }
   [data-theme="dark"] .app-nav-btn.active {
     background: var(--accent);
@@ -211,9 +216,9 @@
     color: var(--btn-top-color);
   }
   [data-theme="dark"] .btn-top:hover {
-    background: var(--btn-top-hover-bg);
-    color: var(--text-topbar);
-    border-color: var(--border-strong);
+    background: var(--accent-light);
+    color: var(--accent-h);
+    border-color: var(--accent);
   }
 
   /* ── Obsah ── */
@@ -413,7 +418,7 @@
     background: var(--modal-bg);
     border: 1px solid var(--modal-border);
     border-radius: 12px;
-    padding: 28px;
+    padding: 22px;
     width: 360px;
     box-shadow: var(--modal-shadow);
   }
@@ -422,7 +427,7 @@
     max-height: min(760px, calc(100vh - 32px));
     overflow-y: auto;
   }
-  .modal h2 { font-size: 15px; font-weight: 600; color: var(--text); margin-bottom: 20px; }
+  .modal h2 { font-size: 15px; font-weight: 600; color: var(--text); margin-bottom: 12px; }
   .modal label {
     display: block;
     font-size: 10px;
@@ -472,28 +477,55 @@
     transition: background .15s;
   }
   .btn-primary:hover { background: var(--accent-h); }
-  .theme-mode-row { display: flex; gap: 8px; margin-bottom: 18px; }
+  .theme-mode-row { display: flex; gap: 8px; margin-bottom: 12px; }
   .theme-mode-btn {
-    flex: 1; padding: 9px 12px; border: 1px solid var(--border); border-radius: 8px;
+    flex: 1; padding: 7px 12px; border: 1px solid var(--border); border-radius: 8px;
     background: var(--surface); color: var(--text); font-weight: 700; cursor: pointer; font-family: inherit;
   }
   .theme-mode-btn.active { background: var(--accent); border-color: var(--accent); color: #fff; }
-  .skin-grid { display: grid; grid-template-columns: repeat(5, minmax(0, 1fr)); gap: 10px; }
+  .skin-grid { display: grid; grid-template-columns: repeat(11, minmax(0, 1fr)); gap: 5px; }
+  .public-hotel-picks { display: flex; flex-wrap: wrap; gap: 4px; }
+  .public-hotel-pick {
+    min-width: 30px;
+    height: 24px;
+    padding: 0 7px;
+    border: 1px solid var(--border);
+    border-radius: 7px;
+    background: var(--surface);
+    color: var(--text);
+    font: inherit;
+    font-size: 13px;
+    line-height: 1;
+    font-weight: 700;
+    cursor: pointer;
+  }
+  .public-hotel-pick:hover { border-color: var(--accent); background: var(--accent-light); }
+  .public-hotel-pick.active { background: var(--accent); border-color: var(--accent); color: #fff; }
   .skin-card {
     border: 1px solid var(--border); border-radius: 10px; background: var(--surface);
-    padding: 8px; cursor: pointer; color: var(--text); font-family: inherit; text-align: left;
+    padding: 4px; cursor: pointer; color: var(--text); font-family: inherit; text-align: left;
     transition: border-color .15s, background .15s, transform .15s;
   }
-  .skin-card:hover { border-color: var(--border-strong); background: var(--surface-alt); }
+  .skin-card:hover { border-color: var(--accent); background: var(--accent-light); }
   .skin-card.active { border-color: var(--accent); box-shadow: 0 0 0 2px color-mix(in srgb, var(--accent) 22%, transparent); }
   .skin-preview {
-    height: 46px; border-radius: 7px; border: 1px solid rgba(0,0,0,.12);
-    display: grid; grid-template-columns: 1.1fr .9fr; overflow: hidden; margin-bottom: 7px;
+    height: 18px; border-radius: 5px; border: 1px solid rgba(0,0,0,.12);
+    display: grid; grid-template-columns: 1.1fr .9fr; overflow: hidden; margin-bottom: 3px;
   }
   .skin-preview span:first-child { display: block; }
   .skin-preview span:last-child { display: block; }
-  .skin-label { font-size: 12px; font-weight: 700; text-align: center; }
-  .settings-note { font-size: 12px; color: var(--text-muted); margin: -8px 0 16px; }
+  .skin-label { display: block; font-size: 9px; font-weight: 700; text-align: center; color: var(--text) !important; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  [data-theme="dark"] .skin-card { color: var(--text) !important; }
+  [data-theme="dark"] .skin-label { color: #E8E6DC !important; }
+  .settings-note { font-size: 11px; color: var(--text-muted); margin: -5px 0 10px; }
+  .settings-choice-row { display: flex; flex-wrap: wrap; gap: 5px; margin-bottom: 10px; }
+  .settings-choice {
+    height: 25px; padding: 0 9px; border: 1px solid var(--border); border-radius: 7px;
+    background: var(--surface); color: var(--text); font: inherit; font-size: 12px;
+    font-weight: 700; cursor: pointer;
+  }
+  .settings-choice:hover { border-color: var(--accent); background: var(--accent-light); }
+  .settings-choice.active { background: var(--accent); border-color: var(--accent); color: #fff; }
 
   /* Theme toggle button */
   #btn-theme {
@@ -514,8 +546,9 @@
     color: var(--btn-top-color);
   }
   [data-theme="dark"] #btn-theme:hover {
-    background: var(--btn-top-hover-bg);
-    color: var(--text-topbar);
+    background: var(--accent-light);
+    color: var(--accent-h);
+    border-color: var(--accent);
   }
 
   .msg { font-size: 12px; min-height: 18px; margin-top: 6px; }
@@ -767,6 +800,15 @@
     </div>
     <label>Barevný design</label>
     <div class="skin-grid" id="skin-grid"></div>
+    <div class="settings-section" style="margin-top:10px">
+      <label>Automatick&eacute; odhl&aacute;&scaron;en&iacute; p&rcaron;i ne&ccaron;innosti</label>
+      <div class="settings-choice-row" id="auto-logout-picks"></div>
+    </div>
+    <div class="settings-section" id="public-raspis-pref" style="display:none;margin-top:12px">
+      <label>V&yacute;choz&iacute; zobrazen&iacute; Rozpisu</label>
+      <div class="public-hotel-picks" id="default-public-hotels"></div>
+      <p class="settings-note" style="margin:6px 0 0">Pou&zcaron;ije se p&rcaron;i otev&rcaron;en&iacute; listu Rozpis.</p>
+    </div>
     <div class="modal-btns">
       <button class="btn-primary" onclick="closeUserSettings()">Hotovo</button>
     </div>
@@ -820,6 +862,8 @@
   let portalCards = [];
   let portalDefaultUrl = null;
   let currentAppUrl = null;
+  let portalUser = null;
+  let portalPrefs = {};
 
   function makeAppNavButton(c) {
     const btn = document.createElement('button');
@@ -893,6 +937,7 @@
     frame.onload = function() {
       loading.classList.remove('visible');
       frame.classList.add('visible');
+      bindIdleEventsInFrame();
     };
     replaceFrameUrl(frame, url);
     // Keep URL as /portal — app name stays hidden. State stored in sessionStorage for F5 restore.
@@ -937,12 +982,16 @@
 
   // ── Init: fetch user + permissions + app order, render cards ────────────
   (async () => {
-    const [user, perms, orderData] = await Promise.all([
+    const [user, perms, orderData, prefData] = await Promise.all([
       fetch('/api/me').then(r => r.json()).catch(() => null),
       fetch('/api/my-permissions').then(r => r.json()).catch(() => null),
-      fetch('/api/user-prefs/app-order').then(r => r.json()).catch(() => null)
+      fetch('/api/user-prefs/app-order').then(r => r.json()).catch(() => null),
+      fetch('/api/user-prefs').then(r => r.json()).catch(() => null)
     ]);
     if (!user) return;
+    portalUser = user;
+    portalPrefs = prefData || {};
+    setupIdleLogout();
 
     document.getElementById('user-label').textContent = user.username;
     document.getElementById('greet-name').textContent = user.name;
@@ -1005,7 +1054,7 @@
 
   // ── User appearance settings ──────────────────────────────────────────────
   const SKIN_PREVIEWS = {
-    mono:     ['#F7F7F6', '#202124'],
+    default:  ['#F5FAFE', '#2879B6'],
     graphite: ['#F4F4F5', '#17181B'],
     slate:    ['#F6F8FA', '#26323F'],
     blue:     ['#F5FAFE', '#2879B6'],
@@ -1014,16 +1063,52 @@
     olive:    ['#FAFAF3', '#70752A'],
     amber:    ['#FCF8F0', '#9A6422'],
     rose:     ['#FCF7F8', '#9B3F5B'],
-    violet:   ['#F9F7FC', '#64428A']
+    violet:   ['#F9F7FC', '#64428A'],
+    indigo:   ['#F6F7FF', '#3F51B5'],
+    cyan:     ['#F2FBFD', '#0E88A8'],
+    mint:     ['#F3FBF7', '#2E9273'],
+    lime:     ['#F9FBF1', '#7D9A20'],
+    yellow:   ['#FEFAEF', '#B08A00'],
+    orange:   ['#FFF7F0', '#C25B1E'],
+    red:      ['#FFF6F4', '#B63A32'],
+    pink:     ['#FEF6FA', '#C0447E'],
+    plum:     ['#FBF6FC', '#7E3C8C'],
+    coffee:   ['#FAF7F3', '#6B4A2E'],
+    navy:     ['#F4F8FC', '#173E70']
+  };
+  const SKIN_PREVIEWS_DARK = {
+    default:  ['#141618', '#C4A96A'],
+    graphite: ['#15171A', '#D7D9DD'],
+    slate:    ['#111820', '#8FA7C2'],
+    blue:     ['#101820', '#6BAFE3'],
+    teal:     ['#101918', '#6ECFC4'],
+    green:    ['#111911', '#93D27F'],
+    olive:    ['#17170F', '#D1D47A'],
+    amber:    ['#18130D', '#E2B86A'],
+    rose:     ['#180F13', '#E18AA5'],
+    violet:   ['#131018', '#C2A0E6'],
+    indigo:   ['#10121A', '#A8B7FF'],
+    cyan:     ['#0E1518', '#70D5EA'],
+    mint:     ['#0F1713', '#77D7B1'],
+    lime:     ['#15170F', '#C6DB6D'],
+    yellow:   ['#17130C', '#E4C451'],
+    orange:   ['#180F0B', '#F2A15F'],
+    red:      ['#180F0E', '#EC8B82'],
+    pink:     ['#180F14', '#EF8FC0'],
+    plum:     ['#151018', '#D59AE5'],
+    coffee:   ['#17120E', '#D2AD84'],
+    navy:     ['#10151B', '#89B7EA']
   };
 
   function renderSkinGrid() {
     const grid = document.getElementById('skin-grid');
     if (!grid) return;
     const skins = window.AVE_THEME_SKINS || [];
-    const active = window.AVE_THEME?.getSkin?.() || 'mono';
+    const active = window.AVE_THEME?.getSkin?.() || 'default';
+    const dark = document.documentElement.getAttribute('data-theme') === 'dark';
+    const previewSet = dark ? SKIN_PREVIEWS_DARK : SKIN_PREVIEWS;
     grid.innerHTML = skins.map(s => {
-      const c = SKIN_PREVIEWS[s.id] || SKIN_PREVIEWS.mono;
+      const c = previewSet[s.id] || previewSet.default;
       return `<button class="skin-card${s.id === active ? ' active' : ''}" type="button" data-skin="${s.id}" onclick="selectPortalSkin('${s.id}')">
         <span class="skin-preview"><span style="background:${c[0]}"></span><span style="background:${c[1]}"></span></span>
         <span class="skin-label">${s.label}</span>
@@ -1036,6 +1121,37 @@
     document.getElementById('mode-light')?.classList.toggle('active', !dark);
     document.getElementById('mode-dark')?.classList.toggle('active', dark);
     renderSkinGrid();
+    refreshAutoLogoutPref();
+    refreshPublicRaspisPref();
+  }
+
+  function refreshAutoLogoutPref() {
+    const wrap = document.getElementById('auto-logout-picks');
+    if (!wrap) return;
+    const value = Number(portalPrefs.auto_logout_minutes ?? portalUser?.auto_logout_minutes ?? 30);
+    const options = [
+      [10, '10 min.'],
+      [30, '30 min.'],
+      [60, '1 hod.'],
+      [720, '12 hod.'],
+      [0, 'Nikdy']
+    ];
+    wrap.innerHTML = options.map(([minutes, label]) =>
+      `<button type="button" class="settings-choice${minutes === value ? ' active' : ''}" onclick="saveAutoLogout(${minutes})">${label}</button>`
+    ).join('');
+  }
+
+  function refreshPublicRaspisPref() {
+    const wrap = document.getElementById('public-raspis-pref');
+    const grid = document.getElementById('default-public-hotels');
+    if (!wrap || !grid) return;
+    const isReception = String(portalUser?.role || '').toLowerCase().includes('recep');
+    wrap.style.display = isReception ? '' : 'none';
+    if (!isReception) return;
+    const value = String(portalPrefs.default_public_hotel || 'ALL').toUpperCase();
+    const active = new Set(value === 'ALL' ? ['ALL'] : value.split(',').filter(Boolean));
+    const hotels = ['ALL','A','B','C','D','E','G','H','I','J','L','M','N','S','T','U'];
+    grid.innerHTML = hotels.map(h => `<button type="button" class="public-hotel-pick${active.has(h) ? ' active' : ''}" data-hotel="${h}" onclick="toggleDefaultPublicHotel('${h}')">${h === 'ALL' ? 'V&Scaron;E' : h}</button>`).join('');
   }
 
   function openUserSettings() {
@@ -1058,8 +1174,66 @@
     refreshThemeSettingsState();
   }
 
+  function toggleDefaultPublicHotel(hotel) {
+    const h = String(hotel || 'ALL').toUpperCase();
+    const current = String(portalPrefs.default_public_hotel || 'ALL').toUpperCase();
+    const set = current === 'ALL' ? new Set(['ALL']) : new Set(current.split(',').filter(Boolean));
+    if (h === 'ALL') {
+      set.clear();
+      set.add('ALL');
+    } else {
+      set.delete('ALL');
+      if (set.has(h)) set.delete(h);
+      else set.add(h);
+      if (!set.size) set.add('ALL');
+    }
+    saveDefaultPublicHotel(Array.from(set).join(','));
+  }
+
+  async function saveDefaultPublicHotel(hotel) {
+    const val = String(hotel || 'ALL').toUpperCase();
+    portalPrefs.default_public_hotel = val;
+    refreshPublicRaspisPref();
+    try {
+      await fetch('/api/user-prefs/default-public-hotel', {
+        method: 'POST',
+        credentials: 'include',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ hotel: val })
+      });
+      document.getElementById('app-frame')?.contentWindow?.postMessage({ type: 'ave-public-default-hotel', hotel: val }, '*');
+    } catch(e) {}
+  }
+
+  async function saveAutoLogout(minutes) {
+    const val = Number(minutes);
+    portalPrefs.auto_logout_minutes = val;
+    if (portalUser) portalUser.auto_logout_minutes = val;
+    refreshAutoLogoutPref();
+    setupIdleLogout();
+    try {
+      await fetch('/api/user-prefs/auto-logout', {
+        method: 'POST',
+        credentials: 'include',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ minutes: val })
+      });
+    } catch(e) {}
+  }
+
+  let _modalPointerDownInside = false;
+  function modalSelectionDragActive() {
+    const sel = window.getSelection ? window.getSelection() : null;
+    const keep = _modalPointerDownInside || !!(sel && !sel.isCollapsed && String(sel).length);
+    _modalPointerDownInside = false;
+    return keep;
+  }
+  document.addEventListener('pointerdown', e => {
+    _modalPointerDownInside = !!e.target.closest('.modal');
+  }, true);
+
   document.getElementById('settings-overlay').addEventListener('click', e => {
-    if (e.target === document.getElementById('settings-overlay')) closeUserSettings();
+    if (e.target === document.getElementById('settings-overlay') && !modalSelectionDragActive()) closeUserSettings();
   });
 
   // ── Password change ───────────────────────────────────────────────────────
@@ -1089,7 +1263,7 @@
   }
 
   document.getElementById('pw-overlay').addEventListener('click', e => {
-    if (e.target === document.getElementById('pw-overlay')) closePwModal();
+    if (e.target === document.getElementById('pw-overlay') && !modalSelectionDragActive()) closePwModal();
   });
 
   // Otevřít modál změny hesla (přes hamburger menu i desktop tlačítko)
@@ -1137,49 +1311,51 @@
   // Activity is shared across ALL browser windows/tabs via localStorage,
   // so moving the mouse on another monitor (another window of the same
   // browser) also counts as activity and resets the timer here.
-  (function() {
-    const IDLE_MS   = 10 * 60 * 1000;
-    const LS_KEY    = 'ave-last-activity';
-    let idleTimer;
+  const IDLE_LS_KEY = 'ave-last-activity';
+  let idleTimer = null;
 
-    function resetIdle() {
-      clearTimeout(idleTimer);
-      idleTimer = setTimeout(() => { window.location.href = '/logout'; }, IDLE_MS);
-    }
+  function getAutoLogoutMinutes() {
+    return Number(portalPrefs.auto_logout_minutes ?? portalUser?.auto_logout_minutes ?? 30);
+  }
 
-    function signalActivity() {
-      // Write timestamp so other windows/tabs pick it up via storage event
-      try { localStorage.setItem(LS_KEY, Date.now()); } catch(e) {}
-      resetIdle();
-    }
+  function resetIdleTimer() {
+    clearTimeout(idleTimer);
+    const minutes = getAutoLogoutMinutes();
+    if (!minutes) return;
+    idleTimer = setTimeout(() => { window.location.href = '/logout'; }, minutes * 60 * 1000);
+  }
 
-    // Listen for activity signals from other windows / monitors
-    window.addEventListener('storage', function(e) {
-      if (e.key === LS_KEY) resetIdle();
-    });
+  function signalActivity() {
+    try { localStorage.setItem(IDLE_LS_KEY, String(Date.now())); } catch(e) {}
+    resetIdleTimer();
+  }
 
-    // This window's own events
-    document.addEventListener('mousemove',  signalActivity, true);
-    document.addEventListener('keydown',    signalActivity, true);
-    document.addEventListener('click',      signalActivity, true);
-    document.addEventListener('touchstart', signalActivity, true);
-
-    // Also track activity inside the iframe
+  function bindIdleEventsInFrame() {
     const frame = document.getElementById('app-frame');
-    if (frame) {
-      frame.addEventListener('load', function() {
-        try {
-          const d = frame.contentDocument || frame.contentWindow.document;
-          d.addEventListener('mousemove',  signalActivity, true);
-          d.addEventListener('keydown',    signalActivity, true);
-          d.addEventListener('click',      signalActivity, true);
-        } catch(e) {}
+    if (!frame) return;
+    try {
+      const d = frame.contentDocument || frame.contentWindow.document;
+      ['mousemove', 'keydown', 'click', 'touchstart', 'wheel'].forEach(ev => {
+        d.removeEventListener(ev, signalActivity, true);
+        d.addEventListener(ev, signalActivity, true);
       });
-    }
+    } catch(e) {}
+  }
 
-    // Start the timer
-    resetIdle();
-  })();
+  function handleIdleStorage(e) {
+    if (e.key === IDLE_LS_KEY) resetIdleTimer();
+  }
+
+  function setupIdleLogout() {
+    ['mousemove', 'keydown', 'click', 'touchstart', 'wheel'].forEach(ev => {
+      document.removeEventListener(ev, signalActivity, true);
+      document.addEventListener(ev, signalActivity, true);
+    });
+    window.removeEventListener('storage', handleIdleStorage);
+    window.addEventListener('storage', handleIdleStorage);
+    bindIdleEventsInFrame();
+    resetIdleTimer();
+  }
 
   function esc(s) { const d = document.createElement('div'); d.textContent = s || ''; return d.innerHTML; }
 </script>

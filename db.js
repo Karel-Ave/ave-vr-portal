@@ -37,7 +37,10 @@ async function init() {
     ALTER TABLE users ADD COLUMN IF NOT EXISTS theme VARCHAR(5) DEFAULT 'light'
   `);
   await db.query(`
-    ALTER TABLE users ADD COLUMN IF NOT EXISTS theme_skin VARCHAR(30) DEFAULT 'mono'
+    ALTER TABLE users ADD COLUMN IF NOT EXISTS theme_skin VARCHAR(30) DEFAULT 'default'
+  `);
+  await db.query(`
+    ALTER TABLE users ALTER COLUMN theme_skin SET DEFAULT 'default'
   `);
 
   await db.query(`
@@ -122,6 +125,9 @@ async function init() {
     )
   `);
   await db.query(`ALTER TABLE user_preferences ADD COLUMN IF NOT EXISTS app_order TEXT DEFAULT NULL`);
+  await db.query(`ALTER TABLE user_preferences ADD COLUMN IF NOT EXISTS default_public_hotel VARCHAR(80) DEFAULT NULL`);
+  await db.query(`ALTER TABLE user_preferences ALTER COLUMN default_public_hotel TYPE VARCHAR(80)`);
+  await db.query(`ALTER TABLE user_preferences ADD COLUMN IF NOT EXISTS auto_logout_minutes INTEGER DEFAULT 30`);
 
   // ── Blacklist ─────────────────────────────────────────────────────────────
 

@@ -1775,10 +1775,21 @@ document.getElementById('btn-edit-submit').addEventListener('click', submitEdit)
 
 document.getElementById('search').addEventListener('input', applyFilter);
 
+let _modalPointerDownInside = false;
+function modalSelectionDragActive() {
+  const sel = window.getSelection ? window.getSelection() : null;
+  const keep = _modalPointerDownInside || !!(sel && !sel.isCollapsed && String(sel).length);
+  _modalPointerDownInside = false;
+  return keep;
+}
+document.addEventListener('pointerdown', e => {
+  _modalPointerDownInside = !!e.target.closest('.modal');
+}, true);
+
 // Close overlays on backdrop click
 ['overlay-add','overlay-remove','overlay-intro','overlay-email-select','overlay-email','overlay-edit'].forEach(id => {
   document.getElementById(id).addEventListener('click', function(e) {
-    if (e.target === this) hideOverlay(id);
+    if (e.target === this && !modalSelectionDragActive()) hideOverlay(id);
   });
 });
 
