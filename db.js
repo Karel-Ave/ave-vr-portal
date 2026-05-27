@@ -480,6 +480,41 @@ async function init() {
       new_value    TEXT
     )
   `);
+  await db.query(`
+    CREATE TABLE IF NOT EXISTS rt_requirements (
+      key              VARCHAR(20) PRIMARY KEY,
+      month            INTEGER NOT NULL,
+      year             INTEGER NOT NULL,
+      label            VARCHAR(100) NOT NULL,
+      data             TEXT NOT NULL,
+      status           VARCHAR(20) NOT NULL DEFAULT 'draft',
+      allow_duplicates BOOLEAN NOT NULL DEFAULT TRUE,
+      xy_locks         TEXT NOT NULL DEFAULT '{}',
+      created_at       TIMESTAMPTZ DEFAULT NOW(),
+      updated_at       TIMESTAMPTZ DEFAULT NOW(),
+      created_by       VARCHAR(100),
+      updated_by       VARCHAR(100),
+      opened_at        TIMESTAMPTZ,
+      closed_at        TIMESTAMPTZ,
+      sent_to_tvorba_at TIMESTAMPTZ
+    )
+  `);
+  await db.query(`
+    CREATE TABLE IF NOT EXISTS rt_requirements_log (
+      id        BIGSERIAL PRIMARY KEY,
+      req_key   VARCHAR(20) NOT NULL,
+      timestamp TIMESTAMPTZ DEFAULT NOW(),
+      user_id   INTEGER REFERENCES users(id) ON DELETE SET NULL,
+      user_name VARCHAR(100) NOT NULL,
+      action    VARCHAR(50) NOT NULL,
+      details   TEXT
+    )
+  `);
+  await db.query(`ALTER TABLE rt_requirements ADD COLUMN IF NOT EXISTS allow_duplicates BOOLEAN NOT NULL DEFAULT TRUE`);
+  await db.query(`ALTER TABLE rt_requirements ADD COLUMN IF NOT EXISTS xy_locks TEXT NOT NULL DEFAULT '{}'`);
+  await db.query(`ALTER TABLE rt_requirements ADD COLUMN IF NOT EXISTS archived_at TIMESTAMPTZ`);
+  await db.query(`ALTER TABLE rt_requirements ADD COLUMN IF NOT EXISTS archived_by VARCHAR(100)`);
+  await db.query(`ALTER TABLE rt_requirements ADD COLUMN IF NOT EXISTS sent_to_tvorba_at TIMESTAMPTZ`);
   await db.query(`CREATE INDEX IF NOT EXISTS idx_rtcl_key ON rt_change_log (schedule_key, timestamp DESC)`);
 
   // Seed: pokud nejsou žádní uživatelé, vytvoř admina

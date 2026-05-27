@@ -180,7 +180,86 @@ body[data-active-tab="rozpis"] #btn-delete-schedule,
 body[data-active-tab="rozpis"] #btn-schedule-archive,
 body[data-active-tab="rozpis"] #btn-schedule-log { display: inline-flex; }
 body[data-active-tab="public"] #tb-right-actions { display: none; }
+body[data-active-tab="pozadavky"] #tb-right-actions { display: none; }
 #tb-act-public { margin-left: 18px; }
+#tb-act-pozadavky { margin-left: 0; flex: 1 1 auto; min-width: 0; }
+#tb-act-pozadavky .tb-btn {
+  background: var(--surface);
+  color: var(--text);
+  border-color: var(--border);
+}
+#tb-act-pozadavky .tb-btn:hover {
+  background: var(--surface-alt);
+  color: var(--text);
+}
+[data-theme="dark"] #tb-act-pozadavky .tb-btn {
+  background: rgba(255,255,255,.04);
+  color: var(--text-topbar);
+  border-color: var(--btn-top-border);
+}
+[data-theme="dark"] #tb-act-pozadavky .tb-btn:hover {
+  background: var(--accent-light);
+  color: var(--accent-h);
+  border-color: var(--accent);
+}
+#req-title {
+  min-width: 130px;
+  font-weight: 700;
+  color: var(--accent);
+}
+#req-status {
+  color: var(--accent-h);
+  font-weight: 600;
+}
+#req-fonds-info {
+  margin-left: auto;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 1px;
+  color: var(--text-topbar);
+  font-size: 11px;
+  line-height: 1.1;
+  white-space: nowrap;
+}
+#req-fonds-info strong { color: var(--accent-h); font-weight: 800; }
+[data-theme="dark"] #req-title,
+[data-theme="dark"] #req-fonds-info strong { color: var(--accent); }
+[data-theme="dark"] #req-status { color: var(--accent); }
+#req-actions-right {
+  display: none;
+  gap: 6px;
+  align-items: center;
+}
+#tb-act-pozadavky.req-has-entry #req-actions-right { display: inline-flex; }
+#btn-req-toggle-edit.req-state-toggle {
+  background: color-mix(in srgb, var(--accent) 18%, var(--surface));
+  color: var(--accent-h);
+  border-color: color-mix(in srgb, var(--accent) 45%, var(--border));
+}
+#btn-req-toggle-edit.req-state-toggle:hover {
+  background: color-mix(in srgb, var(--accent) 28%, var(--surface));
+  color: var(--accent-h);
+}
+#btn-req-send-tvorba.req-send-tvorba {
+  background: var(--accent-h);
+  color: #fff;
+  border-color: var(--accent-h);
+}
+#btn-req-send-tvorba.req-send-tvorba:hover {
+  background: color-mix(in srgb, var(--accent-h) 82%, #000);
+  color: #fff;
+}
+.req-create-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 10px;
+}
+.req-create-grid .field-wide { grid-column: 1 / -1; }
+.req-create-grid textarea {
+  min-height: 68px;
+  resize: vertical;
+}
 #btn-publish {
   background: var(--accent);
   color: #fff;
@@ -363,7 +442,8 @@ table.staff-tbl {
 }
 body[data-active-tab="tvorba"] .schedule-wrap.tvorba-wrap,
 body[data-active-tab="rozpis"] .schedule-wrap.view-wrap,
-body[data-active-tab="public"] .schedule-wrap.public-wrap {
+body[data-active-tab="public"] .schedule-wrap.public-wrap,
+body[data-active-tab="pozadavky"] .schedule-wrap.requests-wrap {
   height: calc(100dvh - 48px - var(--stb-h,0px) - 28px);
 }
 
@@ -563,6 +643,10 @@ table.sched-tbl {
 .sched-tbl .sum-extra:hover { background: var(--surface-alt) !important; }
 #public-rozpis-tbl .sum-extra { cursor: default; }
 #public-rozpis-tbl .sum-extra:hover { background: inherit !important; }
+#pozadavky-tbl .sum-extra,
+#pozadavky-tbl .th-sum-pm {
+  display: none !important;
+}
 .sched-tbl .sum-pm,
 .sched-tbl .th-sum-pm {
   min-width: var(--sched-pm-w);
@@ -574,6 +658,7 @@ table.sched-tbl {
 .col-hrs-red   { color: #e74c3c; font-weight: 700; cursor: pointer; }
 .sched-tbl .sum-hrs { cursor: pointer; }
 #public-rozpis-tbl .sum-hrs { cursor: default; }
+#pozadavky-tbl .sum-hrs { cursor: default; }
 .sched-tbl .sum-hrs,
 .sched-tbl .th-sum-hrs {
   min-width: var(--sched-hrs-w);
@@ -847,6 +932,16 @@ tbody tr.row-hidden { display: none !important; }
 #subtoolbar.tab-public #stb-export2 {
   display: none !important;
 }
+#subtoolbar.tab-pozadavky #stb-undo,
+#subtoolbar.tab-pozadavky #stb-redo,
+#subtoolbar.tab-pozadavky #stb-mark-sel,
+#subtoolbar.tab-pozadavky #stb-show-selected,
+#subtoolbar.tab-pozadavky #stb-hide-sums,
+#subtoolbar.tab-pozadavky #stb-save-req,
+#subtoolbar.tab-pozadavky #stb-hours-only,
+#subtoolbar.tab-pozadavky #stb-export2 {
+  display: none !important;
+}
 .stb-sep { width: 1px; height: 20px; background: var(--btn-top-border,#3E3E3E); flex-shrink: 0; margin: 0 2px; }
 .stb-spacer { flex: 1; }
 .stb-btn {
@@ -973,6 +1068,11 @@ body[data-active-tab="public"] #schedule-legend .legend-item:nth-child(2) { font
 body[data-active-tab="public"] #schedule-legend .legend-item:nth-child(2)::after {
   content: "Zm\011Bn\011Bno";
   font-size: 11px;
+}
+body[data-active-tab="pozadavky"] #schedule-legend .legend-item:nth-child(1),
+body[data-active-tab="pozadavky"] #schedule-legend .legend-item:nth-child(2),
+body[data-active-tab="pozadavky"] #schedule-legend .legend-item:nth-child(4) {
+  display: none;
 }
 [data-theme="dark"] #schedule-legend {
   background: color-mix(in srgb, var(--surface) 94%, transparent);
@@ -1144,6 +1244,21 @@ tbody tr.row-filtered { display: none; }
   background: #222; color: #fff; padding: 3px 7px; border-radius: 4px;
   font-size: 10px; white-space: nowrap; pointer-events: none; z-index: 100;
 }
+.sched-cell[data-dup-tip]:hover::after {
+  content: attr(data-dup-tip);
+  position: absolute; top: calc(100% + 4px); left: 50%; transform: translateX(-50%);
+  min-width: 210px; max-width: 300px;
+  background: color-mix(in srgb, var(--surface) 88%, var(--accent) 12%);
+  color: var(--text);
+  border: 1px solid color-mix(in srgb, var(--accent) 58%, var(--border));
+  box-shadow: 0 8px 20px rgba(0,0,0,.22);
+  padding: 6px 8px; border-radius: 7px;
+  font-size: 10px; line-height: 1.4; white-space: pre-line; pointer-events: none; z-index: 300;
+}
+.sched-cell[data-dup-tip]:hover {
+  z-index: 400;
+  overflow: visible;
+}
 .sched-cell { position: relative; }
 #sched-name-tip {
   background: color-mix(in srgb, var(--surface) 94%, var(--accent) 6%) !important;
@@ -1305,6 +1420,7 @@ tbody tr.row-filtered { display: none; }
     <button class="tb-tab" data-tab="tvorba" type="button">Tvorba</button>
     <button class="tb-tab" data-tab="rozpis" type="button">Rozpis VR</button>
     <button class="tb-tab" data-tab="public" type="button">Rozpis</button>
+    <button class="tb-tab" data-tab="pozadavky" type="button">Požadavky</button>
   </div>
 
   <!-- Nastavení actions — prázdné, tlačítka přesunuta do mode baru a Ostatní sekce -->
@@ -1335,6 +1451,24 @@ tbody tr.row-filtered { display: none; }
 
   <div class="tb-actions hidden" id="tb-act-public">
     <select id="pub-sel-public" class="tb-btn" style="padding:4px 6px;font-size:12px;"></select>
+  </div>
+
+  <div class="tb-actions hidden" id="tb-act-pozadavky">
+    <button class="tb-btn" id="btn-req-create">Vytvořit požadavky</button>
+    <span id="req-title" class="tb-status">Žádné požadavky</span>
+    <button class="tb-btn" id="btn-req-edit">Editovat</button>
+    <button class="tb-btn" id="btn-req-toggle-edit">Povolit editaci</button>
+    <button class="tb-btn" id="btn-req-send-tvorba">Odeslat do Tvorba</button>
+    <select id="req-sel" class="tb-btn" style="display:none"></select>
+    <span id="req-status" class="tb-status"></span>
+    <div id="req-fonds-info" style="display:none">
+      <div>Fond HPP: <strong id="req-fond-hpp-info">-</strong></div>
+      <div>Fond ZPP: <strong id="req-fond-zpp-info">-</strong></div>
+    </div>
+    <div id="req-actions-right">
+      <button class="tb-btn" id="btn-req-delete">Smazat</button>
+      <button class="tb-btn" id="btn-req-archive">Archiv</button>
+    </div>
   </div>
 
   <div id="tb-right-actions">
@@ -1459,6 +1593,70 @@ tbody tr.row-filtered { display: none; }
 </div>
 
 <!-- ═══════════════════════ SUB-TOOLBAR (Tvorba + Rozpis VR) ════════════════════════════ -->
+<div class="overlay" id="overlay-req-create">
+  <div class="modal" style="width:min(520px,100%)">
+    <div class="modal-header">
+      <h3>Vytvořit požadavky</h3>
+      <button class="modal-close" id="req-create-close">✕</button>
+    </div>
+    <div class="modal-body">
+      <div class="req-create-grid">
+        <div class="field">
+          <label>Měsíc</label>
+          <select id="req-create-month"></select>
+        </div>
+        <div class="field">
+          <label>Rok</label>
+          <select id="req-create-year"></select>
+        </div>
+        <div class="field">
+          <label>Fond HPP</label>
+          <input type="text" id="req-create-fond-hpp" inputmode="decimal" placeholder="např. 168">
+        </div>
+        <div class="field">
+          <label>Fond ZPP</label>
+          <input type="text" id="req-create-fond-zpp" inputmode="decimal" placeholder="např. 96">
+        </div>
+        <div class="field field-wide">
+          <label>Svátky v měsíci navíc</label>
+          <input type="text" id="req-create-holidays" inputmode="text" placeholder="např. 6, 9">
+        </div>
+        <div class="field field-wide">
+          <label>Zákaz x/y pro recepční</label>
+          <textarea id="req-create-xy-locks" placeholder="např. 3d, 3n, 12d nebo 5-7 n"></textarea>
+        </div>
+        <div class="field field-wide">
+          <label>Duplicitní směny</label>
+          <select id="req-create-allow-duplicates">
+            <option value="true">Povolit s upozorněním</option>
+            <option value="false">Zakázat recepčním uložit duplicitu</option>
+          </select>
+        </div>
+      </div>
+    </div>
+    <div class="modal-footer">
+      <button class="tb-btn" id="req-create-cancel">Zrušit</button>
+      <button class="tb-btn primary" id="req-create-submit">Vytvořit</button>
+    </div>
+  </div>
+</div>
+
+<div class="overlay" id="overlay-req-archive">
+  <div class="modal" style="width:min(560px,100%)">
+    <div class="modal-header">
+      <h3>Archiv požadavků</h3>
+      <button class="modal-close" id="req-archive-close">✕</button>
+    </div>
+    <div class="modal-body">
+      <ul class="trash-list" id="req-archive-list"></ul>
+      <div class="empty-state" id="req-archive-empty" style="display:none">Archiv je prázdný</div>
+    </div>
+    <div class="modal-footer">
+      <button class="tb-btn" id="req-archive-close2">Zavřít</button>
+    </div>
+  </div>
+</div>
+
 <div id="subtoolbar">
   <div class="stb-row" id="stb-row-hotels">
     <!-- Levá polovina: tlačítka hotelů -->
@@ -1519,6 +1717,14 @@ tbody tr.row-filtered { display: none; }
     <div class="spinner-wrap" id="public-spinner"><div class="spinner"></div></div>
     <table class="sched-tbl" id="public-rozpis-tbl" style="display:none"></table>
     <div class="empty-state" id="public-empty" style="display:none">Ĺ˝ĂˇdnĂ˝ publikovanĂ˝ rozpis</div>
+  </div>
+</div>
+
+<div class="tab-panel" id="tab-pozadavky">
+  <div class="schedule-wrap requests-wrap" id="requests-wrap">
+    <div class="spinner-wrap" id="requests-spinner"><div class="spinner"></div></div>
+    <table class="sched-tbl" id="pozadavky-tbl" style="display:none"></table>
+    <div class="empty-state" id="requests-empty" style="display:none">Žádné požadavky pro vybraný měsíc</div>
   </div>
 </div>
 
@@ -2448,6 +2654,8 @@ const state = {
   schedule: {},        // key: `${si}_${ci}` → string (cell value), current month
   extras: {},          // key: si → {hours: string}, current month
   requirements: {},    // snapshot of schedule used for req highlighting
+  reqXyLocks: {},
+  reqMeta: {},
   month: new Date().getMonth() + 1,
   year:  new Date().getFullYear(),
   fondHpp: '',
@@ -2647,6 +2855,11 @@ async function loadUserPrefs() {
 
 function isAdmin() {
   return _user && (_user.role === 'admin' || _user.admin === true);
+}
+
+function canManageRequirements() {
+  const role = String((_user && _user.role) || '').toLowerCase();
+  return isAdmin() || role.includes('ved');
 }
 
 /* ══════════════════════════════════════════════════════════════════════════════
@@ -3032,6 +3245,8 @@ function renderScheduleTable(tableId, editable) {
   const tbl = document.getElementById(tableId);
   if (!tbl) return;
   const isPublicView = isPublicScheduleTable(tableId);
+  const isRequirementsView = tableId === 'pozadavky-tbl';
+  const hideNonReceptionStaffForRequirements = isRequirementsView && isRequirementsReceptionistView();
   tbl.innerHTML = '';
   tbl.style.display = '';
   // Reset hidden-row button when re-rendering
@@ -3098,16 +3313,17 @@ function renderScheduleTable(tableId, editable) {
     }
     const dnLetter = document.createElement('span');
     dnLetter.className = 'th-dn-letter';
-    dnLetter.classList.add('dn-filter-click');
+    if (!isRequirementsView) dnLetter.classList.add('dn-filter-click');
     if (availableSlotFilter
         && availableSlotFilter.ci === ci
         && availableSlotFilter.month === state.month
         && availableSlotFilter.year === state.year) {
-      dnLetter.classList.add('dn-filter-active');
+      if (!isRequirementsView) dnLetter.classList.add('dn-filter-active');
     }
     dnLetter.textContent = col.dn;
-    dnLetter.title = `Zobrazit dostupné pro ${col.day}. ${state.month}. ${state.year} (${col.dn})`;
+    if (!isRequirementsView) dnLetter.title = `Zobrazit dostupné pro ${col.day}. ${state.month}. ${state.year} (${col.dn})`;
     dnLetter.addEventListener('click', e => {
+      if (isRequirementsView) return;
       e.preventDefault();
       e.stopPropagation();
       toggleAvailableSlotFilter(ci, col);
@@ -3238,6 +3454,7 @@ function renderScheduleTable(tableId, editable) {
 
   state.staff.forEach((s, si) => {
     if (isPublicView && isPublicHiddenStaff(s)) return;
+    if (hideNonReceptionStaffForRequirements && !isReceptionStaffType(s)) return;
     // Skip if not yet active in this month
     if (s.activeFrom) {
       const af = s.activeFrom;
@@ -3253,7 +3470,8 @@ function renderScheduleTable(tableId, editable) {
 
     const tr = document.createElement('tr');
     tr.dataset.si = si;
-    if (isPublicView && isCurrentUserStaff(s)) tr.classList.add('public-own-row');
+    if ((isPublicView || isRequirementsView) && isCurrentUserStaff(s)) tr.classList.add('public-own-row');
+    const rowEditable = editable && (!isRequirementsView || canEditRequirementStaff(s));
 
     // Name cell
     const nameTd = document.createElement('td');
@@ -3267,11 +3485,11 @@ function renderScheduleTable(tableId, editable) {
       nameTd.style.color = 'var(--text-muted)';
       nameTd.title = 'Toto jméno je z XLS a není v Nastavení';
     }
-    if (editable || tableId === 'rozpis-tbl') {
+    if ((editable && !isRequirementsView) || tableId === 'rozpis-tbl') {
       nameTd.style.cursor = 'pointer';
       nameTd.title = s.unmatchedXls
         ? 'Toto jméno je z XLS a není v Nastavení'
-        : editable ? 'Kliknutím skryješ řádek' : 'Označování zapneš tlačítkem Označ vybrané';
+        : rowEditable ? 'Kliknutím skryješ řádek' : 'Označování zapneš tlačítkem Označ vybrané';
       nameTd.addEventListener('click', () => {
         if (_suppressNextNameClick) {
           _suppressNextNameClick = false;
@@ -3289,7 +3507,7 @@ function renderScheduleTable(tableId, editable) {
           updateMarkedOnlyButton();
           applyRowFilters();
           historySave();
-        } else if (editable) {
+        } else if (rowEditable) {
           // Normal mode: hide/show the row
           tr.classList.toggle('row-hidden');
           const btn = document.getElementById('btn-show-hidden');
@@ -3313,7 +3531,7 @@ function renderScheduleTable(tableId, editable) {
       const val = state.schedule[`${si}_${ci}`] || '';
       if (isPublicView || !_dupeKeys.has(`${si}_${ci}`)) applyRegularAndReqClasses(td, si, ci, col, val);
 
-      if (editable) {
+      if (rowEditable) {
         const inp = document.createElement('input');
         inp.type = 'text'; inp.maxLength = 2;
         inp.value = val;
@@ -3346,7 +3564,7 @@ function renderScheduleTable(tableId, editable) {
         td.classList.add('sum-extra');
         const total = getExtraTotal(si);
         td.textContent = total !== 0 ? (total > 0 ? '+' + total : String(total)) : '';
-        if (!isPublicView) {
+        if (!isPublicView && !isRequirementsView) {
           td.style.cursor = 'pointer';
           td.addEventListener('click', () => showExtraPopup(si));
           td.addEventListener('mouseenter', e => showExtraTip(si, e.clientX, e.clientY));
@@ -3355,17 +3573,18 @@ function renderScheduleTable(tableId, editable) {
       } else if (idx === 6) {
         // Σhod — coloured by fond/maxHrs, click toggles override
         const hrs = sums.totalHrs;
-        const cls = isPublicView ? '' : getHrsClass(si, hrs);
+        const suppressHoursState = isPublicView || tableId === 'pozadavky-tbl';
+        const cls = suppressHoursState ? '' : getHrsClass(si, hrs);
         td.classList.add('sum-bold');
         if (cls) td.classList.add(cls);
         td.title = 'Kliknutím přepneš zvýraznění dle fondu';
-        if (isPublicView) td.removeAttribute('title');
+        if (suppressHoursState) td.removeAttribute('title');
         td.textContent = hrs % 1 === 0 ? hrs : hrs.toFixed(1);
-        if (isPublicView) {
+        if (suppressHoursState) {
           td.removeAttribute('title');
           td.classList.remove('col-hrs-green', 'col-hrs-red', 'col-hrs-warn');
         }
-        if (editable && !isPublicView) {
+        if (editable && !suppressHoursState) {
           td.addEventListener('click', () => {
             if (!state.hrsColorOverride) state.hrsColorOverride = {};
             if (state.hrsColorOverride[si]) delete state.hrsColorOverride[si];
@@ -3525,11 +3744,13 @@ function updateSumRow(si) {
       const vals = [sums.total, sums.dw, sums.nw, sums.dk, sums.nk, '', sums.totalHrs];
       if (idx === 6) {
         const isPublicView = tblId === 'public-rozpis-tbl';
+        const suppressHoursState = isPublicView || tblId === 'pozadavky-tbl';
         const hrs = sums.totalHrs;
         td.className = 'sum-cell sum-bold sum-hrs';
-        const cls = isPublicView ? '' : getHrsClass(si, hrs);
+        const cls = suppressHoursState ? '' : getHrsClass(si, hrs);
         if (cls) td.classList.add(cls);
         td.title = 'Kliknutím přepneš zvýraznění dle fondu';
+        if (suppressHoursState) td.removeAttribute('title');
         td.textContent = hrs % 1 === 0 ? hrs : hrs.toFixed(1);
       } else {
         td.textContent = vals[idx];
@@ -3583,11 +3804,12 @@ function getActiveScheduleTableId() {
   const activeTab = document.querySelector('.tb-tab.active')?.dataset.tab;
   if (activeTab === 'rozpis') return 'rozpis-tbl';
   if (activeTab === 'public') return 'public-rozpis-tbl';
+  if (activeTab === 'pozadavky') return 'pozadavky-tbl';
   return 'tvorba-tbl';
 }
 
 function scheduleTableIds() {
-  return ['tvorba-tbl', 'rozpis-tbl', 'public-rozpis-tbl'];
+  return ['tvorba-tbl', 'rozpis-tbl', 'public-rozpis-tbl', 'pozadavky-tbl'];
 }
 
 function isPublicScheduleTable(tableId) {
@@ -3622,6 +3844,7 @@ function focusCell(si, ci, tableId = null) {
   const tblId = tableId || focusedCell?.tableId || getActiveScheduleTableId();
   const tbl = document.getElementById(tblId);
   if (!tbl) return;
+  if (!canEditCellInTable(si, tblId)) return;
 
   // Unfocus old
   if (focusedCell) {
@@ -3656,6 +3879,10 @@ function setupKeyboardNav(tbl) {
     if (colShiftMode === 'night') return col.dn === 'n';
     return true;
   };
+  const canLandOnCell = (si, ci) => {
+    if (!isVisibleCi(ci) || !canEditCellInTable(si, tbl.id)) return false;
+    return !!tbl.querySelector(`.sched-cell[data-si="${si}"][data-ci="${ci}"] input`);
+  };
   const moveCell = (startSi, startCi, dir) => {
     let si = startSi;
     let ci = startCi;
@@ -3664,7 +3891,13 @@ function setupKeyboardNav(tbl) {
       if (ci >= numCols) { ci = 0; si++; }
       if (ci < 0) { ci = numCols - 1; si--; }
       if (si < 0 || si >= numRows) return { si: startSi, ci: startCi };
-      if (isVisibleCi(ci)) return { si, ci };
+      if (canLandOnCell(si, ci)) return { si, ci };
+    }
+    return { si: startSi, ci: startCi };
+  };
+  const moveRow = (startSi, startCi, dir) => {
+    for (let si = startSi + dir; si >= 0 && si < numRows; si += dir) {
+      if (canLandOnCell(si, startCi)) return { si, ci: startCi };
     }
     return { si: startSi, ci: startCi };
   };
@@ -3684,10 +3917,12 @@ function setupKeyboardNav(tbl) {
       focusCell(prev.si, prev.ci, tbl.id);
     } else if (e.key === 'ArrowDown' || e.key === 'Enter') {
       handled = true;
-      if (si + 1 < numRows) focusCell(si + 1, ci, tbl.id);
+      const next = moveRow(si, ci, 1);
+      focusCell(next.si, next.ci, tbl.id);
     } else if (e.key === 'ArrowUp') {
       handled = true;
-      if (si - 1 >= 0) focusCell(si - 1, ci, tbl.id);
+      const prev = moveRow(si, ci, -1);
+      focusCell(prev.si, prev.ci, tbl.id);
     } else if (e.key === 'Delete' || e.key === 'Backspace') {
       handled = true;
       if (!deleteSelectedCells()) setCellValue(si, ci, '');
@@ -3742,10 +3977,31 @@ function restoreScheduleScroll(snapshot) {
 }
 
 function setCellValue(si, ci, val) {
+  const activeTableId = getActiveScheduleTableId();
+  if (!canEditCellInTable(si, activeTableId)) return;
+  if (activeTableId === 'pozadavky-tbl' && !canManageRequirements() && /^[xy]$/i.test(String(val || '').trim()) && isRequirementXyLocked(ci)) {
+    toast('V tomto dni/noci není možné psát x ani y.', true);
+    return;
+  }
   const scrollSnapshot = captureScheduleScroll();
   const key = `${si}_${ci}`;
+  const oldVal = state.schedule[key] || '';
   if (val === '') delete state.schedule[key];
   else state.schedule[key] = val;
+  if (activeTableId === 'pozadavky-tbl' && oldVal !== val) {
+    state.reqMeta = state.reqMeta || {};
+    if (val) {
+      state.reqMeta[key] = {
+        value: val,
+        userId: _user?.id || null,
+        username: _user?.username || '',
+        userName: _user?.name || _user?.username || '',
+        timestamp: new Date().toISOString()
+      };
+    } else {
+      delete state.reqMeta[key];
+    }
+  }
   historySave();
 
   scheduleTableIds().forEach(tblId => {
@@ -3769,7 +4025,7 @@ function setCellValue(si, ci, val) {
   applyRowFilters();
   restoreScheduleScroll(scrollSnapshot);
   requestAnimationFrame(() => restoreScheduleScroll(scrollSnapshot));
-  scheduleAutoSave();
+  if (activeTableId !== 'pozadavky-tbl') scheduleAutoSave();
 }
 
 /* ══════════════════════════════════════════════════════════════════════════════
@@ -3779,8 +4035,9 @@ function setCellValue(si, ci, val) {
 function shouldRouteKeyToFocusedCell(e) {
   if (!focusedCell) return false;
   const activeTab = document.querySelector('.tb-tab.active')?.dataset.tab;
-  if (activeTab !== 'tvorba' && activeTab !== 'rozpis') return false;
+  if (activeTab !== 'tvorba' && activeTab !== 'rozpis' && activeTab !== 'pozadavky') return false;
   if (activeTab === 'rozpis' && !viewEditMode) return false;
+  if (activeTab === 'pozadavky' && !canEditCellInTable(focusedCell.si, 'pozadavky-tbl')) return false;
   if (focusedCell.tableId !== getActiveScheduleTableId()) return false;
   if (e.target && e.target.closest && e.target.closest(
     'input, textarea, select, button, a, [contenteditable="true"], .modal, #regular-picker, #dates-picker, #extra-popup, #size-panel'
@@ -4276,7 +4533,9 @@ function buildSaveData() {
     requirements: JSON.parse(JSON.stringify(state.requirements || {})),
     fondHpp:  state.fondHpp,
     fondZpp:  state.fondZpp,
-    holidays: state.holidays
+    holidays: state.holidays,
+    reqXyLocks: JSON.parse(JSON.stringify(state.reqXyLocks || {})),
+    reqMeta: JSON.parse(JSON.stringify(state.reqMeta || {}))
   };
   return {
     month: state.month,
@@ -4306,6 +4565,8 @@ function buildSaveData() {
     schedule: JSON.parse(JSON.stringify(state.schedule)),
     extras: JSON.parse(JSON.stringify(state.extras)),
     requirements: JSON.parse(JSON.stringify(state.requirements || {})),
+    reqXyLocks: JSON.parse(JSON.stringify(state.reqXyLocks || {})),
+    reqMeta: JSON.parse(JSON.stringify(state.reqMeta || {})),
     fondHpp: state.fondHpp,
     fondZpp: state.fondZpp,
     holidays: state.holidays,
@@ -4375,6 +4636,8 @@ function applyData(data) {
       schedule:     data.schedule     || {},
       extras:       data.extras       || {},
       requirements: data.requirements || {},
+      reqXyLocks:   data.reqXyLocks   || {},
+      reqMeta:      data.reqMeta      || {},
       fondHpp:  data.fondHpp  || '',
       fondZpp:  data.fondZpp  || '',
       holidays: data.holidays || ''
@@ -4387,6 +4650,8 @@ function applyData(data) {
     state.schedule     = md.schedule     || {};
     state.extras       = md.extras       || {};
     state.requirements = md.requirements || {};
+    state.reqXyLocks   = md.reqXyLocks   || data.reqXyLocks || {};
+    state.reqMeta      = md.reqMeta      || data.reqMeta || {};
     state.fondHpp  = md.fondHpp  || '';
     state.fondZpp  = md.fondZpp  || '';
     state.holidays = md.holidays || '';
@@ -4395,6 +4660,8 @@ function applyData(data) {
     state.schedule     = data.schedule     || {};
     state.extras       = data.extras       || {};
     state.requirements = data.requirements || {};
+    state.reqXyLocks   = data.reqXyLocks   || {};
+    state.reqMeta      = data.reqMeta      || {};
     state.fondHpp  = data.fondHpp  || '';
     state.fondZpp  = data.fondZpp  || '';
     state.holidays = data.holidays || '';
@@ -4422,6 +4689,7 @@ let dirtyFlag = false;
 let autoSaveTimer = null;
 let autoSaveIndClearTimer = null;
 let draftListCache = []; // cache seznamu draftů (pro init a findAndLoadMonthDraft)
+let activeScheduleSource = 'draft';
 
 function setAutosaveInd(msg) {
   const el = document.getElementById('autosave-ind');
@@ -4436,6 +4704,7 @@ function setAutosaveInd(msg) {
 }
 
 function scheduleAutoSave() {
+  if (document.body.dataset.activeTab === 'tvorba') activeScheduleSource = 'draft';
   dirtyFlag = true;
   clearTimeout(autoSaveTimer);
   setAutosaveInd('Čekám…');
@@ -4924,8 +5193,9 @@ async function switchMonth(newMonth, newYear) {
     state.schedule = {}; state.extras = {}; state.requirements = {};
     state.unmatchedXls = [];
     state.fondHpp = ''; state.fondZpp = ''; state.holidays = '';
-    currentDraftId = null; // vytvoří se nový draft při příštím uložení
-    scheduleAutoSave();
+  currentDraftId = null; // vytvoří se nový draft při příštím uložení
+  activeScheduleSource = 'draft';
+  scheduleAutoSave();
     toast(`Nový draft: ${MONTH_NAMES[newMonth - 1]} ${newYear}`);
   }
 
@@ -4945,7 +5215,8 @@ async function findAndLoadMonthDraft(month, year) {
     // Server má UNIQUE constraint (user_id, month, year) — nejvýše jeden draft na měsíc
     const match = draftListCache.find(d => d.month === month && d.year === year);
     if (!match) return false;
-    await loadDraft(match.id || match._id);
+    const loaded = await loadDraft(match.id || match._id);
+    if (!loaded) return false;
     // Zajistit správný měsíc (applyData ho obnoví ze savedMonth, ale potvrdíme)
     state.month = month; state.year = year;
     await loadDraftList();
@@ -4979,8 +5250,13 @@ function saveFondsModal() {
   state.fondHpp  = document.getElementById('inp-fond-hpp').value.trim();
   state.fondZpp  = document.getElementById('inp-fond-zpp').value.trim();
   state.holidays = document.getElementById('inp-holidays').value.trim();
-  renderScheduleTable('tvorba-tbl', true);
-  scheduleAutoSave();
+  if (document.body.dataset.activeTab === 'pozadavky') {
+    renderScheduleTable('pozadavky-tbl', false);
+    saveCurrentRequirementData();
+  } else {
+    renderScheduleTable('tvorba-tbl', true);
+    scheduleAutoSave();
+  }
   closeFondsModal();
 }
 
@@ -5005,12 +5281,13 @@ async function loadDraftList() {
 }
 
 async function loadDraft(id) {
-  if (!id) return;
+  if (!id) return false;
   try {
     const r = await fetch(`/api/rt/drafts/${id}`, {credentials:'include'});
-    if (!r.ok) { toast('Chyba načtení konceptu', true); return; }
+    if (!r.ok) { toast('Chyba načtení konceptu', true); return false; }
     const data = await r.json();
     applyData(data.data || data);
+    activeScheduleSource = 'draft';
     currentDraftId = id;
     dirtyFlag = false;
     sortStaffAlpha();
@@ -5023,8 +5300,41 @@ async function loadDraft(id) {
     buildHotelFilterButtons();
     historyReset();
     setAutosaveInd('Načteno');
+    return true;
   } catch(e) {
     toast('Chyba načtení konceptu', true);
+    return false;
+  }
+}
+
+async function restoreTvorbaDraftAfterRequirements() {
+  const spinner = document.getElementById('tvorba-spinner');
+  if (spinner) spinner.style.display = '';
+  try {
+    if (currentDraftId) {
+      if (await loadDraft(currentDraftId)) return true;
+      currentDraftId = null;
+    }
+    await loadDraftList();
+    const first = Array.isArray(draftListCache) ? draftListCache[0] : null;
+    if (first) {
+      await loadDraft(first.id || first._id);
+      return true;
+    }
+    state.staff = [];
+    state.schedule = {};
+    state.extras = {};
+    state.requirements = {};
+    state.unmatchedXls = [];
+    currentDraftId = null;
+    activeScheduleSource = 'draft';
+    renderStaffTable();
+    renderScheduleTable('tvorba-tbl', true);
+    buildHotelFilterButtons();
+    historyReset();
+    return true;
+  } finally {
+    if (spinner) spinner.style.display = 'none';
   }
 }
 
@@ -5063,6 +5373,7 @@ function newDraft() {
   updateImportUnmatchedButton();
   delete state.monthlyData[`${state.year}-${state.month}`];
   currentDraftId = null;
+  activeScheduleSource = 'draft';
   dirtyFlag = false;
   setAutosaveInd('');
   document.getElementById('rt-draft-sel').value = '';
@@ -5094,6 +5405,7 @@ async function deleteCurrentDraft() {
     delete state.monthlyData[`${state.year}-${state.month}`];
     state.fondHpp = ''; state.fondZpp = ''; state.holidays = '';
     currentDraftId = null; dirtyFlag = false;
+    activeScheduleSource = 'draft';
     clearTimeout(autoSaveTimer);
     setAutosaveInd('');
     await loadDraftList();
@@ -5198,6 +5510,7 @@ async function loadScheduleList() {
       if (publicSel) publicSel.innerHTML = sel.innerHTML;
       currentPubKey = null;
       rozpisHasLoadedTable = false;
+      clearPublishedTables();
       showRozpisEmpty(true);
       showPublicEmpty(true);
     } else {
@@ -5239,6 +5552,13 @@ function showPublicEmpty(yes) {
   if (tbl) tbl.style.display = yes ? 'none' : '';
 }
 
+function clearPublishedTables() {
+  const vr = document.getElementById('rozpis-tbl');
+  const pub = document.getElementById('public-rozpis-tbl');
+  if (vr) vr.innerHTML = '';
+  if (pub) pub.innerHTML = '';
+}
+
 async function loadSchedule(key) {
   if (!key) return;
   const spinner = document.getElementById('rozpis-spinner');
@@ -5263,6 +5583,7 @@ async function loadSchedule(key) {
     }
     if (!scheduleData) throw new Error('Prázdná data');
     applyData(scheduleData);
+    activeScheduleSource = 'published';
     spinner.style.display = 'none';
     if (publicSpinner) publicSpinner.style.display = 'none';
     renderScheduleTable('rozpis-tbl', false);
@@ -5290,10 +5611,584 @@ async function loadSchedule(key) {
       showRozpisEmpty(false);
       showPublicEmpty(false);
     } else {
+      clearPublishedTables();
       showRozpisEmpty(true);
       showPublicEmpty(true);
     }
   }
+}
+
+let currentReqKey = null;
+let currentReqEntry = null;
+let reqItemsCache = [];
+let requirementsLoadedKey = null;
+let reqEditMode = false;
+let reqSaveTimer = null;
+
+function showRequestsEmpty(yes) {
+  const empty = document.getElementById('requests-empty');
+  const tbl = document.getElementById('pozadavky-tbl');
+  if (empty) empty.style.display = yes ? '' : 'none';
+  if (tbl) tbl.style.display = yes ? 'none' : '';
+}
+
+function isReceptionStaffType(s) {
+  return ['Denní', 'Noční', 'Obojí'].includes((s && s.type) || '');
+}
+
+function isRequirementsReceptionistView() {
+  return !canManageRequirements();
+}
+
+function canEditRequirementStaff(s) {
+  if (!currentReqEntry) return false;
+  if (canManageRequirements()) return true;
+  return currentReqEntry.status === 'open' && isCurrentUserStaff(s);
+}
+
+function canEditCellInTable(si, tableId) {
+  if (tableId === 'pozadavky-tbl') return reqEditMode && canEditRequirementStaff(state.staff[si]);
+  if (tableId === 'rozpis-tbl') return viewEditMode;
+  if (tableId === 'tvorba-tbl') return true;
+  return false;
+}
+
+function parseRequirementXyLocks(raw) {
+  const text = String(raw || '').trim();
+  const cells = new Set();
+  const addRange = (from, to, dn) => {
+    const a = Math.max(1, Math.min(31, parseInt(from, 10)));
+    const b = Math.max(1, Math.min(31, parseInt(to || from, 10)));
+    for (let day = Math.min(a, b); day <= Math.max(a, b); day++) cells.add(`${day}-${dn}`);
+  };
+  text.split(/[,;\n]+/).map(p => p.trim().toLowerCase()).filter(Boolean).forEach(part => {
+    let m = part.match(/^(\d{1,2})(?:\s*[-–]\s*(\d{1,2}))?\s*[-\s]?(d|n)$/);
+    if (m) { addRange(m[1], m[2], m[3]); return; }
+    m = part.match(/^(d|n)\s*(\d{1,2})(?:\s*[-–]\s*(\d{1,2}))?$/);
+    if (m) addRange(m[2], m[3], m[1]);
+  });
+  return { raw: text, cells: Array.from(cells) };
+}
+
+function isRequirementXyLocked(ci) {
+  const col = getCalCols(state.month, state.year)[ci];
+  if (!col) return false;
+  const cells = Array.isArray(state.reqXyLocks?.cells) ? state.reqXyLocks.cells : [];
+  return cells.includes(`${col.day}-${col.dn}`);
+}
+
+function formatReqMeta(meta) {
+  if (!meta) return '';
+  const who = meta.userName || meta.username || '';
+  const when = meta.timestamp ? new Date(meta.timestamp).toLocaleString('cs-CZ') : '';
+  return [meta.value ? `Směna: ${meta.value}` : '', who ? `Zapsal: ${who}` : '', when ? `Čas: ${when}` : '']
+    .filter(Boolean)
+    .join('\n');
+}
+
+function getRequirementDuplicateTip(si, ci) {
+  const val = String(state.schedule?.[`${si}_${ci}`] || '').trim();
+  if (!val || SKIP_VALS.has(val)) return '';
+  const same = [];
+  state.staff.forEach((s, otherSi) => {
+    const key = `${otherSi}_${ci}`;
+    const otherVal = String(state.schedule?.[key] || '').trim();
+    if (!otherVal || SKIP_VALS.has(otherVal)) return;
+    if (otherVal.toUpperCase() !== val.toUpperCase()) return;
+    const meta = state.reqMeta?.[key];
+    const who = meta?.userName || meta?.username || '';
+    const ts = meta?.timestamp ? Date.parse(meta.timestamp) : NaN;
+    const when = Number.isFinite(ts) ? new Date(ts).toLocaleString('cs-CZ') : '';
+    const person = s?.name || `Řádek ${otherSi + 1}`;
+    same.push({ person, who, when, ts: Number.isFinite(ts) ? ts : Infinity });
+  });
+  if (same.length < 2) return '';
+  same.sort((a, b) => a.ts - b.ts || a.person.localeCompare(b.person, 'cs'));
+  const lines = same.map((item, idx) => {
+    const details = [item.who, item.when || 'čas zápisu není uložen'].filter(Boolean).join(', ');
+    return `${idx + 1}. ${item.person}${details ? ` - ${details}` : ''}`;
+  });
+  return [`Duplicitní směna: ${val}`, ...lines].join('\n');
+}
+
+function updateRequirementsStatus(entry) {
+  currentReqEntry = entry || null;
+  const el = document.getElementById('req-status');
+  const title = document.getElementById('req-title');
+  const createBtn = document.getElementById('btn-req-create');
+  const editBtn = document.getElementById('btn-req-edit');
+  const toggleBtn = document.getElementById('btn-req-toggle-edit');
+  const sendBtn = document.getElementById('btn-req-send-tvorba');
+  const act = document.getElementById('tb-act-pozadavky');
+  const deleteBtn = document.getElementById('btn-req-delete');
+  const archiveBtn = document.getElementById('btn-req-archive');
+  const manager = canManageRequirements();
+  if (act) act.classList.toggle('req-has-entry', manager);
+  if (createBtn) createBtn.style.display = manager ? '' : 'none';
+  if (toggleBtn) toggleBtn.style.display = (manager && entry) ? '' : 'none';
+  if (sendBtn) sendBtn.style.display = (manager && entry) ? '' : 'none';
+  if (deleteBtn) deleteBtn.style.display = (manager && entry) ? '' : 'none';
+  if (archiveBtn) archiveBtn.style.display = manager ? '' : 'none';
+  if (!entry) {
+    if (title) title.textContent = 'Žádné požadavky';
+    if (el) el.textContent = '';
+    if (editBtn) editBtn.style.display = 'none';
+    if (toggleBtn) toggleBtn.style.display = 'none';
+    if (sendBtn) sendBtn.style.display = 'none';
+    updateRequirementsFundsInfo(null);
+    return;
+  }
+  if (title) title.textContent = entry.label || entry.key || '';
+  if (el) {
+    el.textContent = manager
+      ? ''
+      : entry.status === 'draft'
+        ? 'Požadavky zatím není možné editovat'
+        : entry.status === 'closed'
+          ? 'Požadavky již není možné editovat'
+          : '';
+  }
+  if (editBtn) {
+    editBtn.textContent = reqEditMode ? 'Uložit' : (manager ? 'Editovat' : 'Edituj požadavky');
+    editBtn.style.display = (manager || entry.status === 'open') ? '' : 'none';
+    editBtn.classList.toggle('primary', reqEditMode);
+  }
+  if (toggleBtn) {
+    toggleBtn.textContent = entry.status === 'open' ? 'Ukončit editaci' : 'Povolit editaci';
+    toggleBtn.classList.add('req-state-toggle');
+  }
+  if (sendBtn) {
+    sendBtn.classList.add('req-send-tvorba');
+  }
+  updateRequirementsFundsInfo(entry);
+}
+
+function formatRequirementFond(raw) {
+  const value = parseFloat(String(raw || '').replace(',', '.'));
+  if (!Number.isFinite(value) || value <= 0) return '-';
+  const shifts = Math.round((value / 12) * 10) / 10;
+  const shiftsText = Number.isInteger(shifts) ? String(shifts) : String(shifts).replace('.', ',');
+  const hoursText = Number.isInteger(value) ? String(value) : String(value).replace('.', ',');
+  return `${shiftsText} směn / ${hoursText} h`;
+}
+
+function updateRequirementsFundsInfo(entry) {
+  const box = document.getElementById('req-fonds-info');
+  if (!box) return;
+  if (!entry && !currentReqKey) {
+    box.style.display = 'none';
+    return;
+  }
+  box.style.display = '';
+  const hpp = document.getElementById('req-fond-hpp-info');
+  const zpp = document.getElementById('req-fond-zpp-info');
+  if (hpp) hpp.textContent = formatRequirementFond(state.fondHpp);
+  if (zpp) zpp.textContent = formatRequirementFond(state.fondZpp);
+}
+
+async function loadRequirementsList(preferredKey = currentReqKey, shouldLoad = true) {
+  const sel = document.getElementById('req-sel');
+  if (!sel) return;
+  sel.innerHTML = '';
+  try {
+    const r = await fetch('/api/rt/requirements', { credentials: 'include' });
+    const d = await r.json();
+    reqItemsCache = Array.isArray(d.items) ? d.items : [];
+    if (!reqItemsCache.length) {
+      sel.innerHTML = '<option value="">Zadne pozadavky</option>';
+      currentReqKey = null;
+      currentReqEntry = null;
+      updateRequirementsStatus(null);
+      showRequestsEmpty(true);
+      return;
+    }
+    reqItemsCache.forEach(it => {
+      const opt = document.createElement('option');
+      opt.value = it.key;
+      opt.textContent = `${it.label || it.key} (${it.status || 'draft'})`;
+      sel.appendChild(opt);
+    });
+    const key = (preferredKey && reqItemsCache.some(it => it.key === preferredKey))
+      ? preferredKey
+      : reqItemsCache[0].key;
+    sel.value = key;
+    if (shouldLoad) {
+      await loadRequirement(key);
+    } else {
+      currentReqKey = key;
+      updateRequirementsStatus(reqItemsCache.find(it => it.key === key) || null);
+    }
+  } catch(e) {
+    sel.innerHTML = '<option value="">Chyba nacteni</option>';
+    showRequestsEmpty(true);
+  }
+}
+
+async function loadRequirement(key) {
+  if (!key) return;
+  const spinner = document.getElementById('requests-spinner');
+  const tbl = document.getElementById('pozadavky-tbl');
+  if (spinner) spinner.style.display = '';
+  if (tbl) tbl.style.display = 'none';
+  showRequestsEmpty(false);
+  try {
+    const r = await fetch(`/api/rt/requirements/${encodeURIComponent(key)}`, { credentials: 'include' });
+    const d = await r.json();
+    if (!r.ok || !d.ok) throw new Error(d.msg || r.status);
+    applyData(d.entry.data || {});
+    activeScheduleSource = 'requirements';
+    currentReqKey = key;
+    requirementsLoadedKey = key;
+    currentReqEntry = d.entry;
+    reqEditMode = false;
+    updateRequirementsStatus(d.entry);
+    renderScheduleTable('pozadavky-tbl', false);
+    updateDuplicateClasses();
+    updateCoverageRows();
+    updateRequirementClasses();
+    updatePManyCells();
+    buildHotelFilterButtons();
+    applyRowFilters();
+    showRequestsEmpty(false);
+  } catch(e) {
+    toast('Pozadavky se nepodarilo nacist', true);
+    showRequestsEmpty(true);
+  } finally {
+    if (spinner) spinner.style.display = 'none';
+  }
+}
+
+function openRequirementsCreateModal() {
+  const next = state.month === 12
+    ? { month: 1, year: state.year + 1 }
+    : { month: state.month + 1, year: state.year };
+  const monthSel = document.getElementById('req-create-month');
+  const yearSel = document.getElementById('req-create-year');
+  if (!monthSel || !yearSel) return;
+  monthSel.innerHTML = MONTH_NAMES.map((name, idx) => `<option value="${idx + 1}">${name}</option>`).join('');
+  const years = [];
+  for (let y = next.year - 1; y <= next.year + 3; y++) years.push(y);
+  yearSel.innerHTML = years.map(y => `<option value="${y}">${y}</option>`).join('');
+  monthSel.value = String(next.month);
+  yearSel.value = String(next.year);
+  document.getElementById('req-create-fond-hpp').value = state.fondHpp || '';
+  document.getElementById('req-create-fond-zpp').value = state.fondZpp || '';
+  document.getElementById('req-create-holidays').value = '';
+  document.getElementById('req-create-xy-locks').value = '';
+  document.getElementById('req-create-allow-duplicates').value = 'true';
+  document.getElementById('overlay-req-create')?.classList.add('show');
+}
+
+function closeRequirementsCreateModal() {
+  document.getElementById('overlay-req-create')?.classList.remove('show');
+}
+
+async function createRequirementsMonth() {
+  const month = parseInt(document.getElementById('req-create-month')?.value, 10);
+  const year = parseInt(document.getElementById('req-create-year')?.value, 10);
+  const fondHpp = document.getElementById('req-create-fond-hpp')?.value.trim() || '';
+  const fondZpp = document.getElementById('req-create-fond-zpp')?.value.trim() || '';
+  const holidays = document.getElementById('req-create-holidays')?.value.trim() || '';
+  const xyLocks = parseRequirementXyLocks(document.getElementById('req-create-xy-locks')?.value || '');
+  const allowDuplicates = document.getElementById('req-create-allow-duplicates')?.value !== 'false';
+  if (!month || !year) {
+    toast('Měsíc se nepodařilo rozpoznat', true);
+    return;
+  }
+  try {
+    const r = await fetch('/api/rt/requirements/create', {
+      method: 'POST',
+      credentials: 'include',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ month, year, fondHpp, fondZpp, holidays, xyLocks, allowDuplicates })
+    });
+    const d = await r.json();
+    if (!d.ok) {
+      toast(d.msg || 'Pozadavky se nepodarilo vytvorit', true);
+      if (d.key) await loadRequirementsList(d.key);
+      return;
+    }
+    toast('Pozadavky vytvoreny');
+    closeRequirementsCreateModal();
+    await loadRequirementsList(d.key);
+  } catch(e) {
+    toast('Chyba vytvareni pozadavku', true);
+  }
+}
+
+async function setRequirementsStatus(status) {
+  if (!currentReqKey) return;
+  try {
+    const r = await fetch('/api/rt/requirements/status', {
+      method: 'POST',
+      credentials: 'include',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ key: currentReqKey, status })
+    });
+    const d = await r.json();
+    if (!d.ok) return toast(d.msg || 'Stav se nepodarilo ulozit', true);
+    reqEditMode = false;
+    toast(status === 'open' ? 'Pozadavky otevreny recepcnim' : 'Pozadavky zavreny recepcnim');
+    await loadRequirementsList(currentReqKey);
+  } catch(e) {
+    toast('Chyba ulozeni stavu', true);
+  }
+}
+
+async function sendRequirementsToTvorba() {
+  if (!currentReqKey) return toast('Nejdřív vytvořte požadavky', true);
+  if (currentReqEntry?.status === 'open') {
+    toast('Nejdřív ukončete editaci recepčním', true);
+    return;
+  }
+  if (reqEditMode) {
+    const saved = await saveCurrentRequirementData();
+    if (saved === false) return;
+    reqEditMode = false;
+  }
+  const label = currentReqEntry?.label || currentReqKey;
+  if (!confirm(`Odeslat požadavky ${label} do Tvorby? Aktuální koncept Tvorby pro tento měsíc se tím přepíše a požadavky se přesunou do archivu.`)) return;
+  try {
+    const r = await fetch('/api/rt/requirements/send-to-tvorba', {
+      method: 'POST',
+      credentials: 'include',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ key: currentReqKey })
+    });
+    const d = await r.json();
+    if (!d.ok) return toast(d.msg || 'Požadavky se nepodařilo odeslat do Tvorby', true);
+    toast('Požadavky odeslány do Tvorby');
+    currentReqKey = null;
+    currentReqEntry = null;
+    requirementsLoadedKey = null;
+    if (d.draftId) {
+      await loadDraft(d.draftId);
+      await loadDraftList();
+      switchTab('tvorba');
+    } else {
+      await loadRequirementsList(null, true);
+    }
+  } catch(e) {
+    toast('Chyba odeslání do Tvorby', true);
+  }
+}
+
+async function archiveCurrentRequirement() {
+  if (!currentReqKey) return toast('Nejdřív vyberte požadavky', true);
+  if (!confirm('Přesunout tyto požadavky do archivu?')) return;
+  try {
+    const r = await fetch('/api/rt/requirements/archive', {
+      method: 'POST',
+      credentials: 'include',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ key: currentReqKey })
+    });
+    const d = await r.json();
+    if (!d.ok) return toast(d.msg || 'Požadavky se nepodařilo archivovat', true);
+    toast('Požadavky přesunuty do archivu');
+    currentReqKey = null;
+    currentReqEntry = null;
+    requirementsLoadedKey = null;
+    await loadRequirementsList(null, true);
+  } catch(e) {
+    toast('Chyba archivace požadavků', true);
+  }
+}
+
+function closeRequirementsArchive() {
+  document.getElementById('overlay-req-archive')?.classList.remove('show');
+}
+
+async function showRequirementsArchive() {
+  const list = document.getElementById('req-archive-list');
+  const empty = document.getElementById('req-archive-empty');
+  if (!list || !empty) return;
+  list.innerHTML = '';
+  empty.style.display = 'none';
+  document.getElementById('overlay-req-archive')?.classList.add('show');
+  try {
+    const r = await fetch('/api/rt/requirements/archive', { credentials: 'include' });
+    const d = await r.json();
+    const items = Array.isArray(d.items) ? d.items : [];
+    if (!items.length) {
+      empty.style.display = '';
+      return;
+    }
+    items.forEach(item => {
+      const li = document.createElement('li');
+      const archived = item.archived_at ? new Date(item.archived_at).toLocaleString('cs-CZ') : '';
+      li.innerHTML = `
+        <div class="trash-name">
+          <strong>${item.label || item.key}</strong>
+          <div class="trash-date">${archived ? `Archivováno: ${archived}` : ''}</div>
+        </div>
+        <button class="tb-btn" data-restore="${item.key}">Obnovit</button>
+        <button class="tb-btn" data-delete="${item.key}">Smazat trvale</button>
+      `;
+      li.querySelector('[data-restore]')?.addEventListener('click', () => restoreRequirement(item.key));
+      li.querySelector('[data-delete]')?.addEventListener('click', () => deleteArchivedRequirement(item.key));
+      list.appendChild(li);
+    });
+  } catch(e) {
+    empty.style.display = '';
+    empty.textContent = 'Archiv se nepodařilo načíst';
+  }
+}
+
+async function restoreRequirement(key) {
+  try {
+    const r = await fetch('/api/rt/requirements/restore', {
+      method: 'POST',
+      credentials: 'include',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ key })
+    });
+    const d = await r.json();
+    if (!d.ok) return toast(d.msg || 'Požadavky se nepodařilo obnovit', true);
+    closeRequirementsArchive();
+    toast('Požadavky obnoveny');
+    await loadRequirementsList(key, true);
+  } catch(e) {
+    toast('Chyba obnovy požadavků', true);
+  }
+}
+
+async function deleteArchivedRequirement(key) {
+  if (!confirm('Opravdu trvale smazat archivované požadavky?')) return;
+  try {
+    const r = await fetch(`/api/rt/requirements/${encodeURIComponent(key)}`, {
+      method: 'DELETE',
+      credentials: 'include'
+    });
+    const d = await r.json();
+    if (!d.ok) return toast(d.msg || 'Požadavky se nepodařilo smazat', true);
+    toast('Požadavky trvale smazány');
+    await showRequirementsArchive();
+  } catch(e) {
+    toast('Chyba mazání požadavků', true);
+  }
+}
+
+function parseRequirementMonthInput(raw) {
+  const txt = String(raw || '').trim().toLowerCase();
+  let m = txt.match(/(\d{1,2})\s*[./-]\s*(\d{4})/);
+  if (m) {
+    const month = parseInt(m[1], 10);
+    const year = parseInt(m[2], 10);
+    return month >= 1 && month <= 12 ? { month, year } : null;
+  }
+  m = txt.match(/(\d{4})\s*[-/]\s*(\d{1,2})/);
+  if (m) {
+    const year = parseInt(m[1], 10);
+    const month = parseInt(m[2], 10);
+    return month >= 1 && month <= 12 ? { month, year } : null;
+  }
+  const names = [
+    ['leden', 'ledna'],
+    ['únor', 'unor', 'února', 'unora'],
+    ['březen', 'brezen', 'března', 'brezna'],
+    ['duben', 'dubna'],
+    ['květen', 'kveten', 'května', 'kvetna'],
+    ['červen', 'cerven', 'června', 'cervna'],
+    ['červenec', 'cervenec', 'července', 'cervence'],
+    ['srpen', 'srpna'],
+    ['září', 'zari'],
+    ['říjen', 'rijen', 'října', 'rijna'],
+    ['listopad', 'listopadu'],
+    ['prosinec', 'prosince']
+  ];
+  const yearMatch = txt.match(/(20\d{2})/);
+  if (!yearMatch) return null;
+  const year = parseInt(yearMatch[1], 10);
+  const month = names.findIndex(list => list.some(name => txt.includes(name))) + 1;
+  return month ? { month, year } : null;
+}
+
+function scheduleRequirementsAutoSave() {
+  clearTimeout(reqSaveTimer);
+  reqSaveTimer = setTimeout(() => saveCurrentRequirementData({ silent: true }), 900);
+}
+
+async function saveCurrentRequirementData(options = {}) {
+  if (!currentReqKey) return;
+  const silent = !!options.silent;
+  const confirmDuplicates = !!options.confirmDuplicates;
+  const data = buildSaveData();
+  try {
+    const r = await fetch('/api/rt/requirements/save', {
+      method: 'POST',
+      credentials: 'include',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ key: currentReqKey, data, confirmDuplicates })
+    });
+    const d = await r.json();
+    if (!d.ok) {
+      if (d.duplicateWarning && Array.isArray(d.duplicates)) {
+        const shown = d.duplicates.slice(0, 12).join('\n');
+        const more = d.duplicates.length > 12 ? `\n... a další (${d.duplicates.length - 12})` : '';
+        const ok = confirm(`Tímto zápisem vznikne duplicitní směna:\n\n${shown}${more}\n\nUložit i přesto?`);
+        if (!ok) return false;
+        return saveCurrentRequirementData({ ...options, confirmDuplicates: true });
+      }
+      if (!silent) toast(d.msg || 'Požadavky se nepodařilo uložit', true);
+      return false;
+    }
+    if (!silent) toast('Požadavky uloženy');
+    await loadRequirement(currentReqKey);
+    return true;
+  } catch(e) {
+    if (!silent) toast('Chyba ukládání požadavků', true);
+    return false;
+  }
+}
+
+function openRequirementsHolidays() {
+  if (!currentReqKey) return toast('Nejdřív vytvořte požadavky', true);
+  openFondsModal();
+}
+
+function toggleRequirementsEditWindow() {
+  if (!currentReqEntry) return;
+  const manager = canManageRequirements();
+  if (!manager && currentReqEntry.status !== 'open') {
+    toast('Zatím není možné editovat', true);
+    return;
+  }
+  if (reqEditMode) {
+    clearTimeout(reqSaveTimer);
+    let confirmedLocalDuplicates = false;
+    const duplicates = getRequirementsDuplicateSummary();
+    if (duplicates.length) {
+      const shown = duplicates.slice(0, 12).join('\n');
+      const more = duplicates.length > 12 ? `\n... a další (${duplicates.length - 12})` : '';
+      const ok = confirm(`V požadavcích jsou duplicitní směny:\n\n${shown}${more}\n\nUložit i přesto?`);
+      if (!ok) return;
+      confirmedLocalDuplicates = true;
+    }
+    saveCurrentRequirementData({ confirmDuplicates: confirmedLocalDuplicates }).then(ok => {
+      if (ok !== false) {
+        reqEditMode = false;
+        renderScheduleTable('pozadavky-tbl', false);
+        updateRequirementsStatus(currentReqEntry);
+        applyRowFilters();
+      }
+    });
+    return;
+  }
+  if (!manager && !state.staff.some(s => isCurrentUserStaff(s))) {
+    toast('V požadavcích nemám přiřazený váš řádek', true);
+    return;
+  }
+  reqEditMode = true;
+  renderScheduleTable('pozadavky-tbl', true);
+  updateRequirementsStatus(currentReqEntry);
+  applyRowFilters();
+  toast(manager ? 'Editace požadavků aktivována' : 'Můžete editovat svůj řádek');
+}
+
+function toggleRequirementsReceptionistEdit() {
+  if (!currentReqEntry) return;
+  setRequirementsStatus(currentReqEntry.status === 'open' ? 'closed' : 'open');
 }
 
 /* Load published into Tvorba */
@@ -5302,6 +6197,7 @@ function pubToTvorba() {
   if (dirtyFlag && !confirm('Neuložené změny budou ztraceny. Pokračovat?')) return;
   dirtyFlag = false;
   currentDraftId = null;
+  activeScheduleSource = 'draft';
   setAutosaveInd('');
   renderScheduleTable('tvorba-tbl', true);
   historyReset();
@@ -5557,11 +6453,12 @@ function updateSubtoolbar() {
   const tab = document.querySelector('.tb-tab.active');
   const active = tab ? tab.dataset.tab : null;
   const stb = document.getElementById('subtoolbar');
-  const showStb = active === 'tvorba' || active === 'rozpis' || active === 'public';
+  const showStb = active === 'tvorba' || active === 'rozpis' || active === 'public' || active === 'pozadavky';
   stb.classList.toggle('show', showStb);
   stb.classList.toggle('tab-tvorba', active === 'tvorba');
   stb.classList.toggle('tab-rozpis', active === 'rozpis');
   stb.classList.toggle('tab-public', active === 'public');
+  stb.classList.toggle('tab-pozadavky', active === 'pozadavky');
   // Skupina měsíc+F+S jen v Tvorba
   if (showStb) {
     const h = stb.offsetHeight;
@@ -5614,6 +6511,29 @@ function computeDuplicateCells(calCols, staff, schedule) {
   return dupes;
 }
 
+function getRequirementsDuplicateSummary() {
+  const calCols = getCalCols(state.month, state.year);
+  const groups = new Map();
+  calCols.forEach((col, ci) => {
+    state.staff.forEach((s, si) => {
+      const raw = String(state.schedule[`${si}_${ci}`] || '').trim();
+      if (!raw || SKIP_VALS.has(raw)) return;
+      const val = raw.toUpperCase();
+      const key = `${ci}|${val}`;
+      if (!groups.has(key)) groups.set(key, { col, ci, val, people: [] });
+      groups.get(key).people.push({ si, name: s?.name || `Pracovnik ${si + 1}` });
+    });
+  });
+  const manager = canManageRequirements();
+  return Array.from(groups.values())
+    .filter(g => g.people.length > 1)
+    .filter(g => manager || g.people.some(p => isCurrentUserStaff(state.staff[p.si])))
+    .map(g => {
+      const label = `${g.col.day}. ${state.month}. ${state.year} ${g.col.dn}`;
+      return `${label} - ${g.val}: ${g.people.map(p => p.name).join(', ')}`;
+    });
+}
+
 function computePersonPMany(calCols, staff, schedule) {
   // Returns Set of 'si_ci' where worker has letter P more than once in the month
   const result = new Set();
@@ -5649,7 +6569,16 @@ function updateDuplicateClasses() {
     if (!tbl) return;
     tbl.querySelectorAll('.sched-cell[data-si][data-ci]').forEach(td => {
       const si = +td.dataset.si, ci = +td.dataset.ci;
-      td.classList.toggle('cell-duplicate', tblId !== 'public-rozpis-tbl' && dupeKeys.has(`${si}_${ci}`));
+      const key = `${si}_${ci}`;
+      const isDupe = tblId !== 'public-rozpis-tbl' && dupeKeys.has(key);
+      td.classList.toggle('cell-duplicate', isDupe);
+      if (isDupe && canManageRequirements()) {
+        const tip = getRequirementDuplicateTip(si, ci);
+        if (tip) td.dataset.dupTip = tip;
+        else delete td.dataset.dupTip;
+      } else {
+        delete td.dataset.dupTip;
+      }
     });
   });
 }
@@ -5824,6 +6753,10 @@ function updateDnCoverageColors() {
   scheduleTableIds().forEach(tblId => {
     const tbl = document.getElementById(tblId);
     if (!tbl) return;
+    if (tblId === 'pozadavky-tbl') {
+      tbl.querySelectorAll('thead th.th-dn').forEach(th => th.classList.remove('dn-uncovered'));
+      return;
+    }
     const thDns = Array.from(tbl.querySelectorAll('thead th.th-dn'));
     thDns.forEach((th, ci) => {
       if (hotelsToCheck.length === 0) { th.classList.remove('dn-uncovered'); return; }
@@ -5958,6 +6891,7 @@ function applyRowFilters() {
     const tbl = document.getElementById(tblId);
     if (!tbl) return;
     const isPublicTbl = tblId === 'public-rozpis-tbl';
+    const isReqTbl = tblId === 'pozadavky-tbl';
     tbl.querySelectorAll('tbody tr[data-si]').forEach(tr => {
       const si = +tr.dataset.si;
       const s = state.staff[si];
@@ -5979,10 +6913,10 @@ function applyRowFilters() {
       } else if (!hide && filterShift === 'night') {
         hide = s.type === 'Denní';
       }
-      if (!hide && availableSlotFilter) {
+      if (!hide && availableSlotFilter && !isReqTbl) {
         hide = !!String(state.schedule[`${si}_${availableSlotFilter.ci}`] || '').trim();
       }
-      if (isPublicTbl && isCurrentUserStaff(s)) hide = false;
+      if ((isPublicTbl || isReqTbl) && isCurrentUserStaff(s)) hide = false;
       tr.classList.toggle('row-filtered', hide);
     });
     // Coverage rows: toggle class on table — CSS handles display:none on covTbody
@@ -6004,6 +6938,7 @@ function applyRowFilters() {
     const tbl = document.getElementById(tblId);
     if (!tbl) return;
     const isPublicTbl = tblId === 'public-rozpis-tbl';
+    const isReqTbl = tblId === 'pozadavky-tbl';
     const staffTbody = tbl.querySelector('.staff-tbody');
     if (!staffTbody) return;
     const allRows = Array.from(staffTbody.querySelectorAll('tr[data-si]'));
@@ -6011,8 +6946,8 @@ function applyRowFilters() {
       allRows.sort((a, b) => {
         const aSi = +a.dataset.si;
         const bSi = +b.dataset.si;
-        const aOwn = isPublicTbl && isCurrentUserStaff(state.staff[aSi]) ? -1 : 0;
-        const bOwn = isPublicTbl && isCurrentUserStaff(state.staff[bSi]) ? -1 : 0;
+        const aOwn = (isPublicTbl || isReqTbl) && isCurrentUserStaff(state.staff[aSi]) ? -1 : 0;
+        const bOwn = (isPublicTbl || isReqTbl) && isCurrentUserStaff(state.staff[bSi]) ? -1 : 0;
         return aOwn - bOwn || rowFilterRank(aSi, state.staff[aSi]) - rowFilterRank(bSi, state.staff[bSi]) || aSi - bSi;
       });
       allRows.forEach(tr => staffTbody.appendChild(tr));
@@ -6021,8 +6956,8 @@ function applyRowFilters() {
       allRows.sort((a, b) => {
         const aSi = +a.dataset.si;
         const bSi = +b.dataset.si;
-        const aOwn = isPublicTbl && isCurrentUserStaff(state.staff[aSi]) ? -1 : 0;
-        const bOwn = isPublicTbl && isCurrentUserStaff(state.staff[bSi]) ? -1 : 0;
+        const aOwn = (isPublicTbl || isReqTbl) && isCurrentUserStaff(state.staff[aSi]) ? -1 : 0;
+        const bOwn = (isPublicTbl || isReqTbl) && isCurrentUserStaff(state.staff[bSi]) ? -1 : 0;
         return aOwn - bOwn || aSi - bSi;
       });
       allRows.forEach(tr => staffTbody.appendChild(tr));
@@ -6133,12 +7068,19 @@ function deleteSelectedCells() {
     toast('V Rozpis VR nejdřív klikni na Editovat', true);
     return true;
   }
+  if (activeTab === 'pozadavky' && !reqEditMode) {
+    toast('V Požadavkách nejdřív klikni na Editovat', true);
+    return true;
+  }
+  const activeTableId = activeTab === 'rozpis' ? 'rozpis-tbl'
+    : activeTab === 'pozadavky' ? 'pozadavky-tbl'
+    : 'tvorba-tbl';
   const keys = new Set();
   let focusTarget = null;
   document.querySelectorAll('.cell-selected.sched-cell[data-si][data-ci]').forEach(td => {
     const si = +td.dataset.si;
     const ci = +td.dataset.ci;
-    if (Number.isFinite(si) && Number.isFinite(ci)) {
+    if (Number.isFinite(si) && Number.isFinite(ci) && canEditCellInTable(si, activeTableId)) {
       keys.add(`${si}_${ci}`);
       if (!focusTarget) focusTarget = { si, ci };
     }
@@ -6149,14 +7091,14 @@ function deleteSelectedCells() {
   keys.forEach(key => {
     if (state.schedule[key]) {
       delete state.schedule[key];
+      if (activeTab === 'pozadavky' && state.reqMeta) delete state.reqMeta[key];
       changed = true;
     }
   });
   if (!changed) {
     clearCellSelection();
     if (focusTarget) {
-      const tableId = activeTab === 'rozpis' ? 'rozpis-tbl' : 'tvorba-tbl';
-      requestAnimationFrame(() => focusCell(focusTarget.si, focusTarget.ci, tableId));
+      requestAnimationFrame(() => focusCell(focusTarget.si, focusTarget.ci, activeTableId));
     }
     return true;
   }
@@ -6165,6 +7107,7 @@ function deleteSelectedCells() {
   renderCells('tvorba-tbl', true);
   renderCells('rozpis-tbl', viewEditMode);
   renderCells('public-rozpis-tbl', false);
+  renderCells('pozadavky-tbl', reqEditMode);
   updateAllSums();
   updateDuplicateClasses();
   updateCoverageRows();
@@ -6173,10 +7116,9 @@ function deleteSelectedCells() {
   updateShiftContextBorders();
   clearCellSelection();
   if (focusTarget) {
-    const tableId = activeTab === 'rozpis' ? 'rozpis-tbl' : 'tvorba-tbl';
-    requestAnimationFrame(() => focusCell(focusTarget.si, focusTarget.ci, tableId));
+    requestAnimationFrame(() => focusCell(focusTarget.si, focusTarget.ci, activeTableId));
   }
-  if (activeTab !== 'rozpis') scheduleAutoSave();
+  if (activeTab !== 'pozadavky' && activeTab !== 'rozpis') scheduleAutoSave();
   toast(`Smazáno ${keys.size} buněk`);
   return true;
 }
@@ -7133,7 +8075,7 @@ function applyColorProfile() {
 }
 
 function getScheduleTypeColor(type, tableId) {
-  const isScheduleTable = tableId === 'tvorba-tbl' || tableId === 'rozpis-tbl' || tableId === 'public-rozpis-tbl';
+  const isScheduleTable = tableId === 'tvorba-tbl' || tableId === 'rozpis-tbl' || tableId === 'public-rozpis-tbl' || tableId === 'pozadavky-tbl';
   if (isScheduleTable && /^(Denn|No|Oboj)/.test(String(type || ''))) return '';
   if (isScheduleTable && ['DennĂ­', 'NoÄŤnĂ­', 'ObojĂ­'].includes(type)) return '';
   const isDark = document.documentElement.getAttribute('data-theme') === 'dark';
@@ -8106,6 +9048,7 @@ function handleXlsImport(e) {
       state.staff = newStaff;
       state.schedule = newSchedule;
       state.unmatchedXls = finalUnmatched;
+      activeScheduleSource = 'draft';
       updateImportUnmatchedButton();
       renderStaffTable();
       renderScheduleTable('tvorba-tbl', true);
@@ -8187,12 +9130,12 @@ function switchTab(name) {
 
   const act = document.getElementById(`tb-act-${name}`);
   if (act) act.classList.remove('hidden');
-  document.getElementById('schedule-legend')?.classList.toggle('show', name === 'tvorba' || name === 'rozpis' || name === 'public');
+  document.getElementById('schedule-legend')?.classList.toggle('show', name === 'tvorba' || name === 'rozpis' || name === 'public' || name === 'pozadavky');
 
   // Show/hide subtoolbar
   updateSubtoolbar();
   fitScheduleToViewport();
-  if (name === 'tvorba' || name === 'rozpis' || name === 'public') {
+  if (name === 'tvorba' || name === 'rozpis' || name === 'public' || name === 'pozadavky') {
     buildHotelFilterButtons();
     // Re-apply active sums mode to tables
     scheduleTableIds().forEach(tblId => {
@@ -8207,6 +9150,10 @@ function switchTab(name) {
   }
 
   if (name === 'tvorba') {
+    if (activeScheduleSource !== 'draft') {
+      restoreTvorbaDraftAfterRequirements();
+      return;
+    }
     const tbl = document.getElementById('tvorba-tbl');
     const spinner = document.getElementById('tvorba-spinner');
     // Skip the lazy render during DOMContentLoaded init — loadDraft() renders authoritatively
@@ -8227,6 +9174,10 @@ function switchTab(name) {
     if (sumsMode !== 'all') setSumsMode('all');
     pollLock();
     scheduleLockPoll();
+    if (activeScheduleSource !== 'published') {
+      loadScheduleList();
+      return;
+    }
     if (!window._initRendering) {
       // Re-render the Rozpis VR table so name-cell inline TYPE_COLORS backgrounds
       // always reflect the latest color profile (they can't be updated via CSS
@@ -8236,11 +9187,26 @@ function switchTab(name) {
     }
   } else if (name === 'public') {
     if (sumsMode !== 'all') setSumsMode('all');
+    if (activeScheduleSource !== 'published') {
+      loadScheduleList();
+      return;
+    }
     applyPublicDefaultHotel();
     if (!window._initRendering) {
       renderScheduleTable('public-rozpis-tbl', false);
       refreshCoverageSticky();
       applyPublicDefaultHotel();
+    }
+  } else if (name === 'pozadavky') {
+    if (sumsMode !== 'all') setSumsMode('all');
+    if (!window._initRendering) {
+      if (!currentReqKey || requirementsLoadedKey !== currentReqKey) {
+        loadRequirementsList(currentReqKey, true);
+      } else {
+        renderScheduleTable('pozadavky-tbl', reqEditMode);
+        applyRowFilters();
+      }
+      refreshCoverageSticky();
     }
   } else if (name === 'nastaveni') {
     if (window._initRendering) renderStaffTable();
@@ -8264,6 +9230,7 @@ window.addEventListener('message', e => {
   renderScheduleTable('tvorba-tbl', true);
   renderScheduleTable('rozpis-tbl', viewEditMode);
   renderScheduleTable('public-rozpis-tbl', false);
+  renderScheduleTable('pozadavky-tbl', false);
   refreshCoverageSticky();
 });
 
@@ -8338,6 +9305,10 @@ document.addEventListener('DOMContentLoaded', async () => {
 
   // Load published schedules list
   await loadScheduleList();
+  await loadRequirementsList(currentReqKey, false);
+  if (document.body.dataset.activeTab === 'pozadavky' && currentReqKey) {
+    await loadRequirement(currentReqKey);
+  }
 
   // Show tvorba spinner initially hidden
   document.getElementById('tvorba-spinner').style.display = 'none';
@@ -8534,6 +9505,26 @@ document.addEventListener('DOMContentLoaded', async () => {
   });
   document.getElementById('pub-sel-public').addEventListener('change', e => {
     if (e.target.value) loadSchedule(e.target.value);
+  });
+  document.getElementById('req-sel')?.addEventListener('change', e => {
+    if (e.target.value) loadRequirement(e.target.value);
+  });
+  document.getElementById('btn-req-create')?.addEventListener('click', openRequirementsCreateModal);
+  document.getElementById('req-create-submit')?.addEventListener('click', createRequirementsMonth);
+  document.getElementById('req-create-close')?.addEventListener('click', closeRequirementsCreateModal);
+  document.getElementById('req-create-cancel')?.addEventListener('click', closeRequirementsCreateModal);
+  document.getElementById('overlay-req-create')?.addEventListener('click', e => {
+    if (e.target === document.getElementById('overlay-req-create') && !shouldKeepPopupOpenForSelection()) closeRequirementsCreateModal();
+  });
+  document.getElementById('btn-req-edit')?.addEventListener('click', toggleRequirementsEditWindow);
+  document.getElementById('btn-req-toggle-edit')?.addEventListener('click', toggleRequirementsReceptionistEdit);
+  document.getElementById('btn-req-send-tvorba')?.addEventListener('click', sendRequirementsToTvorba);
+  document.getElementById('btn-req-delete')?.addEventListener('click', archiveCurrentRequirement);
+  document.getElementById('btn-req-archive')?.addEventListener('click', showRequirementsArchive);
+  document.getElementById('req-archive-close')?.addEventListener('click', closeRequirementsArchive);
+  document.getElementById('req-archive-close2')?.addEventListener('click', closeRequirementsArchive);
+  document.getElementById('overlay-req-archive')?.addEventListener('click', e => {
+    if (e.target === document.getElementById('overlay-req-archive') && !shouldKeepPopupOpenForSelection()) closeRequirementsArchive();
   });
   document.getElementById('btn-delete-schedule').addEventListener('click', deleteSchedule);
   document.getElementById('btn-schedule-archive').addEventListener('click', showScheduleArchive);

@@ -3453,6 +3453,516 @@ app.post('/api/rt/schedules/save-edits', requireLogin, requirePerm('raspis', 'ed
 
 // ── Change log ────────────────────────────────────────────────────────────────
 
+function rtMonthKey(month, year) {
+  return `RT:${String(month).padStart(2, '0')}/${year}`;
+}
+
+function reqLabel(month, year) {
+  const names = ['', 'Leden', 'Únor', 'Březen', 'Duben', 'Květen', 'Červen', 'Červenec', 'Srpen', 'Září', 'Říjen', 'Listopad', 'Prosinec'];
+  return `${names[month] || String(month).padStart(2, '0')} ${year}`;
+}
+
+function previousMonth(month, year) {
+  return month === 1 ? { month: 12, year: year - 1 } : { month: month - 1, year };
+}
+
+function buildInitialRequirementsData(sourceData, month, year, reqSettings = {}) {
+  const clone = sourceData && typeof sourceData === 'object'
+    ? JSON.parse(JSON.stringify(sourceData))
+    : {};
+  const key = `${year}-${month}`;
+  clone.month = month;
+  clone.year = year;
+  clone.fondHpp = reqSettings.fondHpp || '';
+  clone.fondZpp = reqSettings.fondZpp || '';
+  clone.holidays = reqSettings.holidays || '';
+  clone.reqXyLocks = reqSettings.xyLocks || {};
+  clone.reqMeta = {};
+  clone.schedule = {};
+  clone.extras = {};
+  clone.requirements = {};
+  clone.monthlyData = clone.monthlyData && typeof clone.monthlyData === 'object' ? clone.monthlyData : {};
+  clone.monthlyData[key] = {
+    schedule: {},
+    extras: {},
+    requirements: {},
+    fondHpp: clone.fondHpp,
+    fondZpp: clone.fondZpp,
+    holidays: clone.holidays,
+    reqXyLocks: clone.reqXyLocks,
+    reqMeta: clone.reqMeta
+  };
+  clone.unmatchedXls = [];
+  return clone;
+}
+
+function normReqStaffKey(value) {
+  return String(value || '').trim().toLowerCase();
+}
+
+function isSessionUserRequirementStaff(staff, user) {
+  if (!staff || !user) return false;
+  const userKey = normReqStaffKey(user.username || user.login || user.name || user.fullName);
+  const userName = normReqStaffKey(user.name || user.fullName);
+  if (staff.userId && user.id && String(staff.userId) === String(user.id)) return true;
+  return normReqStaffKey(staff.login) === userKey ||
+    normReqStaffKey(staff.username) === userKey ||
+    normReqStaffKey(staff.userLogin) === userKey ||
+    normReqStaffKey(staff.code) === userKey ||
+    normReqStaffKey(staff.short) === userKey ||
+    normReqStaffKey(staff.name) === userKey ||
+    (!!userName && normReqStaffKey(staff.name) === userName);
+}
+
+function getReqCalCols(month, year) {
+  const days = new Date(year, month, 0).getDate();
+  const cols = [];
+  for (let day = 1; day <= days; day++) {
+    cols.push({ day, dn: 'd' });
+    cols.push({ day, dn: 'n' });
+  }
+  return cols;
+}
+
+function normalizeReqXyLocks(raw) {
+  const locks = raw && typeof raw === 'object' ? raw : {};
+  const cells = Array.isArray(locks.cells) ? locks.cells : [];
+  const set = new Set();
+  cells.forEach(item => {
+    const m = String(item || '').trim().toLowerCase().match(/^(\d{1,2})-(d|n)$/);
+    if (m) set.add(`${parseInt(m[1], 10)}-${m[2]}`);
+  });
+  return { raw: String(locks.raw || ''), cells: Array.from(set) };
+}
+
+function isReqXyLocked(data, ci) {
+  const locks = normalizeReqXyLocks(data && data.reqXyLocks);
+  const col = getReqCalCols(parseInt(data.month, 10), parseInt(data.year, 10))[ci];
+  return !!(col && locks.cells.includes(`${col.day}-${col.dn}`));
+}
+
+async function canManageRequirementsServer(req) {
+  const user = req.session.user;
+  if (!user) return false;
+  const role = String(user.role || '').toLowerCase();
+  return role === 'admin' || role.includes('ved');
+}
+
+function mergeRequirementStaffRow(currentData, incomingData, user) {
+  const current = currentData && typeof currentData === 'object' ? currentData : {};
+  const incoming = incomingData && typeof incomingData === 'object' ? incomingData : {};
+  const staff = Array.isArray(current.staff) ? current.staff : [];
+  const si = staff.findIndex(s => isSessionUserRequirementStaff(s, user));
+  if (si < 0) return { error: 'V požadavcích nemám přiřazený váš řádek.' };
+
+  const merged = JSON.parse(JSON.stringify(current));
+  merged.schedule = merged.schedule && typeof merged.schedule === 'object' ? merged.schedule : {};
+  const incomingSchedule = incoming.schedule && typeof incoming.schedule === 'object' ? incoming.schedule : {};
+  const prefix = `${si}_`;
+  for (const [key, val] of Object.entries(incomingSchedule)) {
+    if (!key.startsWith(prefix)) continue;
+    const ci = parseInt(key.split('_')[1], 10);
+    if (Number.isFinite(ci) && /^[xy]$/i.test(String(val || '').trim()) && isReqXyLocked(current, ci)) {
+      return { error: 'V tomto dni/noci není možné psát x ani y.' };
+    }
+  }
+  Object.keys(merged.schedule).forEach(key => {
+    if (key.startsWith(prefix)) delete merged.schedule[key];
+  });
+  Object.entries(incomingSchedule).forEach(([key, val]) => {
+    if (key.startsWith(prefix) && String(val || '').trim()) merged.schedule[key] = val;
+  });
+
+  const mKey = `${merged.year}-${merged.month}`;
+  if (mKey) {
+    merged.monthlyData = merged.monthlyData && typeof merged.monthlyData === 'object' ? merged.monthlyData : {};
+    const monthData = merged.monthlyData[mKey] && typeof merged.monthlyData[mKey] === 'object'
+      ? merged.monthlyData[mKey]
+      : {};
+    monthData.schedule = JSON.parse(JSON.stringify(merged.schedule));
+    monthData.extras = monthData.extras || {};
+    monthData.requirements = monthData.requirements || {};
+    monthData.fondHpp = merged.fondHpp || '';
+    monthData.fondZpp = merged.fondZpp || '';
+    monthData.holidays = merged.holidays || '';
+    merged.monthlyData[mKey] = monthData;
+  }
+  return { data: merged, staffIndex: si };
+}
+
+function updateRequirementMeta(currentData, nextData, user, staffIndex = null) {
+  const current = currentData && typeof currentData === 'object' ? currentData : {};
+  const next = nextData && typeof nextData === 'object' ? nextData : {};
+  const curSchedule = current.schedule && typeof current.schedule === 'object' ? current.schedule : {};
+  const nextSchedule = next.schedule && typeof next.schedule === 'object' ? next.schedule : {};
+  const meta = current.reqMeta && typeof current.reqMeta === 'object'
+    ? JSON.parse(JSON.stringify(current.reqMeta))
+    : {};
+  const keys = new Set([...Object.keys(curSchedule), ...Object.keys(nextSchedule)]);
+  const changedAt = new Date().toISOString();
+  keys.forEach(key => {
+    if (staffIndex !== null && !key.startsWith(`${staffIndex}_`)) return;
+    const oldVal = String(curSchedule[key] || '').trim();
+    const newVal = String(nextSchedule[key] || '').trim();
+    if (oldVal === newVal) return;
+    if (newVal) {
+      meta[key] = {
+        value: newVal,
+        userId: user.id || null,
+        username: user.username || '',
+        userName: user.name || user.username || '',
+        timestamp: changedAt
+      };
+    } else {
+      delete meta[key];
+    }
+  });
+  next.reqMeta = meta;
+  const mKey = `${next.year}-${next.month}`;
+  if (next.monthlyData && next.monthlyData[mKey]) {
+    next.monthlyData[mKey].reqMeta = JSON.parse(JSON.stringify(meta));
+  }
+  return next;
+}
+
+const REQ_DUP_SKIP = new Set(['X', 'Y', 'Z', 'Ž']);
+
+function isRequirementDuplicateValue(value) {
+  const val = String(value || '').trim();
+  return !!val && !REQ_DUP_SKIP.has(val.toUpperCase());
+}
+
+function summarizeRequirementDuplicates(data, staffIndex = null) {
+  const src = data && typeof data === 'object' ? data : {};
+  const staff = Array.isArray(src.staff) ? src.staff : [];
+  const schedule = src.schedule && typeof src.schedule === 'object' ? src.schedule : {};
+  const month = parseInt(src.month, 10);
+  const year = parseInt(src.year, 10);
+  const calCols = getReqCalCols(month, year);
+  const groups = new Map();
+  calCols.forEach((col, ci) => {
+    staff.forEach((s, si) => {
+      const raw = String(schedule[`${si}_${ci}`] || '').trim();
+      if (!isRequirementDuplicateValue(raw)) return;
+      const key = `${ci}|${raw.toUpperCase()}`;
+      if (!groups.has(key)) groups.set(key, { col, ci, val: raw.toUpperCase(), people: [] });
+      groups.get(key).people.push({ si, name: s && s.name ? s.name : `Řádek ${si + 1}` });
+    });
+  });
+  return Array.from(groups.values())
+    .filter(g => g.people.length > 1)
+    .filter(g => staffIndex === null || g.people.some(p => p.si === staffIndex))
+    .map(g => {
+      const label = `${g.col.day}. ${month}. ${year} ${g.col.dn}`;
+      return `${label} - ${g.val}: ${g.people.map(p => p.name).join(', ')}`;
+    });
+}
+
+app.get('/api/rt/requirements', requireLogin, async (req, res) => {
+  try {
+    const db = getPool();
+    const { rows } = await db.query(
+      `SELECT key, month, year, label, status, allow_duplicates, updated_at, opened_at, closed_at, archived_at
+       FROM rt_requirements
+       WHERE archived_at IS NULL
+       ORDER BY year DESC, month DESC`
+    );
+    res.json({ ok: true, items: rows });
+  } catch (err) {
+    console.error('GET /api/rt/requirements:', err);
+    res.status(500).json({ ok: false, items: [] });
+  }
+});
+
+app.get('/api/rt/requirements/archive', requireLogin, requirePerm('raspis', 'edit'), async (req, res) => {
+  try {
+    const db = getPool();
+    const { rows } = await db.query(
+      `SELECT key, month, year, label, status, updated_at, archived_at, archived_by
+       FROM rt_requirements
+       WHERE archived_at IS NOT NULL
+       ORDER BY archived_at DESC`
+    );
+    res.json({ ok: true, items: rows });
+  } catch (err) {
+    console.error('GET /api/rt/requirements/archive:', err);
+    res.status(500).json({ ok: false, items: [] });
+  }
+});
+
+app.get('/api/rt/requirements/:key', requireLogin, async (req, res) => {
+  const key = decodeURIComponent(req.params.key);
+  try {
+    const db = getPool();
+    const { rows } = await db.query('SELECT * FROM rt_requirements WHERE key = $1', [key]);
+    if (!rows.length) return res.status(404).json({ ok: false, msg: 'Nenalezeno.' });
+    const entry = rows[0];
+    let parsed = {};
+    try { parsed = typeof entry.data === 'string' ? JSON.parse(entry.data) : entry.data; } catch(e) { parsed = {}; }
+    res.json({ ok: true, entry: { ...entry, data: parsed } });
+  } catch (err) {
+    console.error('GET /api/rt/requirements/:key:', err);
+    res.status(500).json({ ok: false });
+  }
+});
+
+app.post('/api/rt/requirements/create', requireLogin, requirePerm('raspis', 'edit'), async (req, res) => {
+  const month = parseInt(req.body.month, 10);
+  const year = parseInt(req.body.year, 10);
+  const reqSettings = {
+    fondHpp: String(req.body.fondHpp || '').trim(),
+    fondZpp: String(req.body.fondZpp || '').trim(),
+    holidays: String(req.body.holidays || '').trim(),
+    xyLocks: normalizeReqXyLocks(req.body.xyLocks),
+    allowDuplicates: req.body.allowDuplicates !== false && String(req.body.allowDuplicates || 'true') !== 'false'
+  };
+  if (!month || !year || month < 1 || month > 12) return res.json({ ok: false, msg: 'Neplatny mesic.' });
+  const key = rtMonthKey(month, year);
+  const prev = previousMonth(month, year);
+  const prevKey = rtMonthKey(prev.month, prev.year);
+  try {
+    const db = getPool();
+    const existing = await db.query('SELECT key FROM rt_requirements WHERE key = $1', [key]);
+    if (existing.rows.length) return res.json({ ok: false, msg: 'Pozadavky pro tento mesic uz existuji.', key });
+    const source = await db.query('SELECT data FROM rt_schedules WHERE key = $1', [prevKey]);
+    if (!source.rows.length) {
+      return res.json({ ok: false, msg: `Nenalezen publikovany rozpis predchoziho mesice (${prevKey}).` });
+    }
+    const raw = source.rows[0].data;
+    const sourceData = typeof raw === 'string' ? JSON.parse(raw) : (raw || {});
+    const data = buildInitialRequirementsData(sourceData, month, year, reqSettings);
+    const label = reqLabel(month, year);
+    await db.query(
+      `INSERT INTO rt_requirements (key, month, year, label, data, status, allow_duplicates, xy_locks, created_by, updated_by)
+       VALUES ($1,$2,$3,$4,$5,'draft',$6,$7,$8,$8)`,
+      [key, month, year, label, JSON.stringify(data), reqSettings.allowDuplicates, JSON.stringify(reqSettings.xyLocks), req.session.user.name]
+    );
+    await db.query(
+      `INSERT INTO rt_requirements_log (req_key, user_id, user_name, action, details)
+       VALUES ($1,$2,$3,'create',$4)`,
+      [key, req.session.user.id, req.session.user.name, JSON.stringify({ from: prevKey })]
+    );
+    res.json({ ok: true, key });
+  } catch (err) {
+    console.error('POST /api/rt/requirements/create:', err);
+    res.json({ ok: false, msg: 'Chyba serveru.' });
+  }
+});
+
+app.post('/api/rt/requirements/archive', requireLogin, requirePerm('raspis', 'edit'), async (req, res) => {
+  const key = String(req.body.key || '');
+  if (!key) return res.json({ ok: false, msg: 'Chybí požadavky.' });
+  try {
+    const db = getPool();
+    const { rowCount } = await db.query(
+      `UPDATE rt_requirements
+       SET archived_at = NOW(), archived_by = $2, updated_at = NOW(), updated_by = $2
+       WHERE key = $1 AND archived_at IS NULL`,
+      [key, req.session.user.name]
+    );
+    if (!rowCount) return res.json({ ok: false, msg: 'Nenalezeno.' });
+    await db.query(
+      `INSERT INTO rt_requirements_log (req_key, user_id, user_name, action, details)
+       VALUES ($1,$2,$3,'archive',$4)`,
+      [key, req.session.user.id, req.session.user.name, '{}']
+    );
+    res.json({ ok: true });
+  } catch (err) {
+    console.error('POST /api/rt/requirements/archive:', err);
+    res.json({ ok: false, msg: 'Chyba serveru.' });
+  }
+});
+
+app.post('/api/rt/requirements/restore', requireLogin, requirePerm('raspis', 'edit'), async (req, res) => {
+  const key = String(req.body.key || '');
+  if (!key) return res.json({ ok: false, msg: 'Chybí požadavky.' });
+  try {
+    const db = getPool();
+    const { rowCount } = await db.query(
+      `UPDATE rt_requirements
+       SET archived_at = NULL, archived_by = NULL, updated_at = NOW(), updated_by = $2
+       WHERE key = $1`,
+      [key, req.session.user.name]
+    );
+    if (!rowCount) return res.json({ ok: false, msg: 'Nenalezeno.' });
+    await db.query(
+      `INSERT INTO rt_requirements_log (req_key, user_id, user_name, action, details)
+       VALUES ($1,$2,$3,'restore',$4)`,
+      [key, req.session.user.id, req.session.user.name, '{}']
+    );
+    res.json({ ok: true });
+  } catch (err) {
+    console.error('POST /api/rt/requirements/restore:', err);
+    res.json({ ok: false, msg: 'Chyba serveru.' });
+  }
+});
+
+app.delete('/api/rt/requirements/:key', requireLogin, requirePerm('raspis', 'edit'), async (req, res) => {
+  const key = decodeURIComponent(req.params.key);
+  try {
+    const db = getPool();
+    const { rowCount } = await db.query('DELETE FROM rt_requirements WHERE key = $1 AND archived_at IS NOT NULL', [key]);
+    if (!rowCount) return res.json({ ok: false, msg: 'Trvale smazat lze jen archivované požadavky.' });
+    await db.query(
+      `INSERT INTO rt_requirements_log (req_key, user_id, user_name, action, details)
+       VALUES ($1,$2,$3,'delete',$4)`,
+      [key, req.session.user.id, req.session.user.name, '{}']
+    ).catch(() => {});
+    res.json({ ok: true });
+  } catch (err) {
+    console.error('DELETE /api/rt/requirements/:key:', err);
+    res.json({ ok: false, msg: 'Chyba serveru.' });
+  }
+});
+
+app.post('/api/rt/requirements/status', requireLogin, requirePerm('raspis', 'edit'), async (req, res) => {
+  const key = String(req.body.key || '');
+  const status = String(req.body.status || '');
+  if (!key || !['draft', 'open', 'closed'].includes(status)) return res.json({ ok: false, msg: 'Neplatny stav.' });
+  try {
+    const db = getPool();
+    const opened = status === 'open' ? ', opened_at = NOW()' : '';
+    const closed = status === 'closed' ? ', closed_at = NOW()' : '';
+    const { rowCount } = await db.query(
+      `UPDATE rt_requirements
+       SET status = $2, updated_at = NOW(), updated_by = $3${opened}${closed}
+       WHERE key = $1`,
+      [key, status, req.session.user.name]
+    );
+    if (!rowCount) return res.json({ ok: false, msg: 'Nenalezeno.' });
+    await db.query(
+      `INSERT INTO rt_requirements_log (req_key, user_id, user_name, action, details)
+       VALUES ($1,$2,$3,'status',$4)`,
+      [key, req.session.user.id, req.session.user.name, JSON.stringify({ status })]
+    );
+    res.json({ ok: true });
+  } catch (err) {
+    console.error('POST /api/rt/requirements/status:', err);
+    res.json({ ok: false, msg: 'Chyba serveru.' });
+  }
+});
+
+app.post('/api/rt/requirements/send-to-tvorba', requireLogin, requirePerm('raspis', 'edit'), async (req, res) => {
+  const key = String(req.body.key || '');
+  if (!key) return res.json({ ok: false, msg: 'Chybí požadavky.' });
+  try {
+    const db = getPool();
+    const existing = await db.query('SELECT * FROM rt_requirements WHERE key = $1 AND archived_at IS NULL', [key]);
+    if (!existing.rows.length) return res.json({ ok: false, msg: 'Požadavky nejsou nalezené.' });
+    const entry = existing.rows[0];
+    if (entry.status === 'open') {
+      return res.json({ ok: false, msg: 'Nejdřív ukončete editaci recepčním.' });
+    }
+
+    let data = {};
+    try { data = typeof entry.data === 'string' ? JSON.parse(entry.data) : (entry.data || {}); } catch(e) { data = {}; }
+    const month = parseInt(entry.month, 10);
+    const year = parseInt(entry.year, 10);
+    const mKey = `${year}-${month}`;
+    const draftData = JSON.parse(JSON.stringify(data || {}));
+    draftData.month = month;
+    draftData.year = year;
+    draftData.schedule = draftData.schedule && typeof draftData.schedule === 'object' ? draftData.schedule : {};
+    draftData.extras = draftData.extras && typeof draftData.extras === 'object' ? draftData.extras : {};
+    draftData.requirements = JSON.parse(JSON.stringify(draftData.schedule));
+    draftData.monthlyData = draftData.monthlyData && typeof draftData.monthlyData === 'object' ? draftData.monthlyData : {};
+    const monthData = draftData.monthlyData[mKey] && typeof draftData.monthlyData[mKey] === 'object'
+      ? draftData.monthlyData[mKey]
+      : {};
+    monthData.schedule = JSON.parse(JSON.stringify(draftData.schedule));
+    monthData.extras = JSON.parse(JSON.stringify(draftData.extras));
+    monthData.requirements = JSON.parse(JSON.stringify(draftData.schedule));
+    monthData.fondHpp = draftData.fondHpp || '';
+    monthData.fondZpp = draftData.fondZpp || '';
+    monthData.holidays = draftData.holidays || '';
+    monthData.reqMeta = JSON.parse(JSON.stringify(draftData.reqMeta || {}));
+    monthData.reqXyLocks = JSON.parse(JSON.stringify(draftData.reqXyLocks || {}));
+    draftData.monthlyData[mKey] = monthData;
+
+    const { rows } = await db.query(
+      `INSERT INTO rt_drafts (user_id, month, year, data, saved_at)
+       VALUES ($1, $2, $3, $4, NOW())
+       ON CONFLICT (user_id, month, year) DO UPDATE SET data = $4, saved_at = NOW()
+       RETURNING id`,
+      [req.session.user.id, month, year, JSON.stringify(draftData)]
+    );
+
+    await db.query(
+      `UPDATE rt_requirements
+       SET status = 'closed',
+           sent_to_tvorba_at = NOW(),
+           archived_at = NOW(),
+           archived_by = $2,
+           updated_at = NOW(),
+           updated_by = $2
+       WHERE key = $1`,
+      [key, req.session.user.name]
+    );
+    await db.query(
+      `INSERT INTO rt_requirements_log (req_key, user_id, user_name, action, details)
+       VALUES ($1,$2,$3,'send_to_tvorba',$4)`,
+      [key, req.session.user.id, req.session.user.name, JSON.stringify({ draftId: rows[0].id, month, year })]
+    );
+    res.json({ ok: true, draftId: rows[0].id, month, year });
+  } catch (err) {
+    console.error('POST /api/rt/requirements/send-to-tvorba:', err);
+    res.json({ ok: false, msg: 'Chyba serveru.' });
+  }
+});
+
+app.post('/api/rt/requirements/save', requireLogin, async (req, res) => {
+  const key = String(req.body.key || '');
+  const data = req.body.data;
+  const confirmDuplicates = req.body.confirmDuplicates === true || String(req.body.confirmDuplicates || '') === 'true';
+  if (!key || !data) return res.json({ ok: false, msg: 'Chybí data.' });
+  try {
+    const db = getPool();
+    const existing = await db.query('SELECT status, data, allow_duplicates FROM rt_requirements WHERE key = $1 AND archived_at IS NULL', [key]);
+    if (!existing.rows.length) return res.json({ ok: false, msg: 'Nenalezeno.' });
+    const manager = await canManageRequirementsServer(req);
+    const raw = existing.rows[0].data;
+    const currentData = typeof raw === 'string' ? JSON.parse(raw) : (raw || {});
+    let saveData = data;
+    let logScope = 'full-data';
+    let staffIndex = null;
+    if (!manager) {
+      if (existing.rows[0].status !== 'open') {
+        return res.json({ ok: false, msg: 'Editace požadavků není povolena.' });
+      }
+      const merged = mergeRequirementStaffRow(currentData, data, req.session.user);
+      if (merged.error) return res.json({ ok: false, msg: merged.error });
+      saveData = merged.data;
+      staffIndex = merged.staffIndex;
+      if (!saveData) return res.json({ ok: false, msg: 'V požadavcích nemám přiřazený váš řádek.' });
+      const duplicates = summarizeRequirementDuplicates(saveData, staffIndex);
+      if (duplicates.length && !existing.rows[0].allow_duplicates) {
+        return res.json({ ok: false, msg: `Tato směna už je zapsaná jiným recepčním:\n${duplicates.slice(0, 12).join('\n')}` });
+      }
+      if (duplicates.length && !confirmDuplicates) {
+        return res.json({ ok: false, duplicateWarning: true, duplicates });
+      }
+      logScope = 'own-row';
+    }
+    saveData = updateRequirementMeta(currentData, saveData, req.session.user, staffIndex);
+    const { rowCount } = await db.query(
+      `UPDATE rt_requirements
+       SET data = $2, updated_at = NOW(), updated_by = $3
+       WHERE key = $1`,
+      [key, JSON.stringify(saveData), req.session.user.name]
+    );
+    if (!rowCount) return res.json({ ok: false, msg: 'Nenalezeno.' });
+    await db.query(
+      `INSERT INTO rt_requirements_log (req_key, user_id, user_name, action, details)
+       VALUES ($1,$2,$3,'save',$4)`,
+      [key, req.session.user.id, req.session.user.name, JSON.stringify({ scope: logScope })]
+    );
+    res.json({ ok: true });
+  } catch (err) {
+    console.error('POST /api/rt/requirements/save:', err);
+    res.json({ ok: false, msg: 'Chyba serveru.' });
+  }
+});
+
 app.get('/api/rt/log/:key', requireLogin, requireAdmin, async (req, res) => {
   const key = decodeURIComponent(req.params.key);
   try {
