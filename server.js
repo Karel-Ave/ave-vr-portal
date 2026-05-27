@@ -124,6 +124,78 @@ function getEffectiveBtnPerm(groupPerms, userOv, appKey, btnKey) {
   return val !== false;
 }
 
+function getEffectiveBtnPermDefault(groupPerms, userOv, appKey, btnKey, defaultValue = true) {
+  const gp = groupPerms[appKey] || {};
+  const uo = userOv[appKey]     || {};
+  const gb = (gp.buttons || {})[btnKey];
+  const ub = (uo.buttons || {})[btnKey];
+  const val = (ub != null) ? ub : (gb != null ? gb : defaultValue);
+  return val === true;
+}
+
+function userIdentityValues(user) {
+  return [...new Set([user?.username, user?.login, user?.name, user?.full_name]
+    .filter(Boolean)
+    .map(v => String(v).trim().toLowerCase())
+    .filter(Boolean))];
+}
+
+async function canViewAllPriplatky(user) {
+  if (!user) return false;
+  if (user.role === 'admin') return true;
+  const { groupPerms, userOv } = await getUserEffectivePerms(user);
+  return getEffectiveBtnPermDefault(groupPerms, userOv, 'priplatky', 'viewAll', false);
+}
+
+async function hasButtonPerm(user, appKey, btnKey, defaultValue = true) {
+  if (!user) return false;
+  if (user.role === 'admin') return true;
+  const { groupPerms, userOv } = await getUserEffectivePerms(user);
+  return getEffectiveBtnPermDefault(groupPerms, userOv, appKey, btnKey, defaultValue);
+}
+
+function requirePermDefault(appKey, btnKey, defaultValue = true) {
+  return async (req, res, next) => {
+    try {
+      if (await hasButtonPerm(req.session.user, appKey, btnKey, defaultValue)) return next();
+      return res.status(403).json({ ok: false, msg: 'Nemáte oprávnění pro tuto akci.' });
+    } catch (e) {
+      console.error('Chyba ověření oprávnění:', e);
+      return res.status(500).json({ ok: false, msg: 'Chyba ověření oprávnění.' });
+    }
+  };
+}
+
+async function priplatkyOwnFilter(user, alias = 'z', joinedAlias = 'rl') {
+  if (await canViewAllPriplatky(user)) return { where: '', params: [] };
+  const ids = userIdentityValues(user);
+  if (!ids.length) return { where: ' AND 1=0', params: [] };
+  return {
+    where: ` AND (LOWER(${alias}.login) = ANY($IDX::text[]) OR LOWER(COALESCE(${joinedAlias}.full_name,'')) = ANY($IDX::text[]))`,
+    params: [ids]
+  };
+}
+
+async function canTouchPriplatkyLogin(req, login) {
+  if (await canViewAllPriplatky(req.session.user)) return true;
+  return userIdentityValues(req.session.user).includes(String(login || '').trim().toLowerCase());
+}
+
+async function canTouchPriplatkyRecord(req, db, id) {
+  if (await canViewAllPriplatky(req.session.user)) return true;
+  const ids = userIdentityValues(req.session.user);
+  if (!ids.length) return false;
+  const { rows } = await db.query(
+    `SELECT z.id
+     FROM priplatky_zaznamy z
+     LEFT JOIN receptionist_logins rl ON rl.login = z.login
+     WHERE z.id = $1
+       AND (LOWER(z.login) = ANY($2::text[]) OR LOWER(COALESCE(rl.full_name,'')) = ANY($2::text[]))`,
+    [id, ids]
+  );
+  return rows.length > 0;
+}
+
 // Middleware: vyžaduje oprávnění pro danou aplikaci a tlačítko
 function requirePerm(appKey, btnKey) {
   return async (req, res, next) => {
@@ -470,22 +542,87 @@ app.get('/api/my-permissions', requireLogin, async (req, res) => {
     const userOv       = (ur.length && ur[0].perm_overrides) ? JSON.parse(ur[0].perm_overrides) : {};
     const result = {};
     const isAdm = user.role === 'admin';
-    const DEFAULTS = { raspis: { enabled: true, buttons: {
-      tab_nastaveni: isAdm, tab_tvorba: isAdm, tab_rozpis_vr: true, tab_rozpis: false,
-      import: isAdm, delete: isAdm, trash: isAdm, edit: true, export: true, log: isAdm
-    } } };
+    const isManager = isAdm || String(user.role || '').toLowerCase().includes('ved');
+    const DEFAULTS = {
+      raspis: { enabled: true, visible: true, buttons: {
+        tab_nastaveni: isManager,
+        tab_tvorba: isManager,
+        tab_rozpis_vr: isManager,
+        tab_rozpis: true,
+        tab_pozadavky: true,
+        filters: true,
+        show_qualified: isManager,
+        mark: isManager,
+        undo_redo: isManager,
+        colors: isAdm,
+        fonds: isManager,
+        paste_excel: isManager,
+        import: isAdm,
+        unmatched: isManager,
+        publish: isManager,
+        delete: isAdm,
+        trash: isAdm,
+        edit: isManager,
+        archive: isAdm,
+        log: isAdm,
+        export: isManager,
+        req_create: isManager,
+        req_edit: isManager,
+        req_toggle_reception: isManager,
+        req_send_tvorba: isManager,
+        req_delete: isAdm,
+        req_archive: isManager,
+        hotel_manager: isAdm,
+        settings_monthly: isManager,
+        settings_add_staff: isManager,
+        settings_clear_overrides: isAdm
+      } },
+      priplatky: { enabled: true, visible: true, buttons: {
+        viewAll: isAdm,
+        add: true,
+        edit: true,
+        delete: isAdm,
+        export: true,
+        template: isAdm,
+        settings: isAdm,
+        manageReceptionists: isAdm,
+        manageTexts: isAdm
+      } },
+      blacklist: { enabled: true, visible: true, buttons: {
+        view: true,
+        add: isManager,
+        remove: isManager,
+        edit: isManager,
+        export_pdf: isManager,
+        export_email: isManager,
+        edit_intro: isAdm,
+        history: isManager,
+        history_delete: isAdm
+      } },
+      admin: { enabled: isAdm, visible: isAdm, buttons: {
+        users_add: isAdm,
+        users_edit: isAdm,
+        users_delete: isAdm,
+        user_permissions: isAdm,
+        groups_manage: isAdm,
+        logs_view: isAdm,
+        logs_delete: isAdm
+      } }
+    };
     const allApps = new Set([...Object.keys(DEFAULTS), ...Object.keys(groupPerms), ...Object.keys(userOv)].filter(k => !k.startsWith('__')));
     for (const appKey of allApps) {
-      const gp   = groupPerms[appKey] || DEFAULTS[appKey] || { enabled: true, buttons: {} };
+      const dp   = DEFAULTS[appKey] || { enabled: true, buttons: {} };
+      const gp   = groupPerms[appKey] || dp;
       const uo   = userOv[appKey] || {};
       const enabled = (uo.enabled != null) ? uo.enabled : (gp.enabled != null ? gp.enabled : true);
       const visible = (uo.visible != null) ? uo.visible : (gp.visible != null ? gp.visible : true);
       const buttons = {};
-      const allBtns = new Set([...Object.keys(gp.buttons || {}), ...Object.keys(uo.buttons || {})]);
+      const allBtns = new Set([...Object.keys(dp.buttons || {}), ...Object.keys(gp.buttons || {}), ...Object.keys(uo.buttons || {})]);
       for (const btnKey of allBtns) {
-        const gb = (gp.buttons || {})[btnKey]; const ub = (uo.buttons || {})[btnKey];
-        buttons[btnKey] = (ub != null) ? ub : (gb != null ? gb : true);
+        const db = (dp.buttons || {})[btnKey]; const gb = (gp.buttons || {})[btnKey]; const ub = (uo.buttons || {})[btnKey];
+        buttons[btnKey] = (ub != null) ? ub : (gb != null ? gb : (db != null ? db : true));
       }
+      if (isAdm && appKey === 'priplatky') buttons.viewAll = true;
       result[appKey] = { enabled, visible, buttons };
     }
     result.__defaultApp = userOv.__defaultApp || groupPerms.__defaultApp ||
@@ -652,7 +789,7 @@ app.get('/api/rozpisy/:key', requireLogin, async (req, res) => {
   }
 });
 
-app.post('/api/rozpisy/publish', requireLogin, requireAdmin, async (req, res) => {
+app.post('/api/rozpisy/publish', requireLogin, requirePermDefault('raspis', 'publish', false), async (req, res) => {
   const { month, year, data } = req.body;
   if (!month || !year || !data) return res.json({ ok: false, msg: 'Chybí data.' });
   const key   = `${String(month).padStart(2, '0')}/${year}`;
@@ -1384,7 +1521,7 @@ function blBuildEmailHtml(adds, removes) {
   return html;
 }
 
-app.get('/api/blacklist/entries', requireLogin, async (req, res) => {
+app.get('/api/blacklist/entries', requireLogin, requirePermDefault('blacklist', 'view', true), async (req, res) => {
   try {
     const db = getPool();
     const { rows } = await db.query(
@@ -1398,7 +1535,7 @@ app.get('/api/blacklist/entries', requireLogin, async (req, res) => {
   }
 });
 
-app.post('/api/blacklist/entries', requireLogin, async (req, res) => {
+app.post('/api/blacklist/entries', requireLogin, requirePermDefault('blacklist', 'add', false), async (req, res) => {
   const { entries } = req.body;
   if (!Array.isArray(entries) || entries.length === 0)
     return res.status(400).json({ ok: false, msg: 'Chybí data.' });
@@ -1430,7 +1567,7 @@ app.post('/api/blacklist/entries', requireLogin, async (req, res) => {
   }
 });
 
-app.put('/api/blacklist/entries/:id', requireLogin, async (req, res) => {
+app.put('/api/blacklist/entries/:id', requireLogin, requirePermDefault('blacklist', 'edit', false), async (req, res) => {
   const { id } = req.params;
   const { name, hotel, birthDate, damage, stayDate, reason } = req.body;
   if (!name?.trim() || !reason?.trim())
@@ -1459,7 +1596,7 @@ app.put('/api/blacklist/entries/:id', requireLogin, async (req, res) => {
   }
 });
 
-app.post('/api/blacklist/remove', requireLogin, async (req, res) => {
+app.post('/api/blacklist/remove', requireLogin, requirePermDefault('blacklist', 'remove', false), async (req, res) => {
   const { removals } = req.body;
   if (!Array.isArray(removals) || removals.length === 0)
     return res.status(400).json({ ok: false, msg: 'Chybí data.' });
@@ -1503,7 +1640,7 @@ app.get('/api/blacklist/intro', requireLogin, async (req, res) => {
   }
 });
 
-app.put('/api/blacklist/intro', requireLogin, async (req, res) => {
+app.put('/api/blacklist/intro', requireLogin, requirePermDefault('blacklist', 'edit_intro', false), async (req, res) => {
   const { content } = req.body;
   if (!content?.trim()) return res.status(400).json({ ok: false, msg: 'Obsah nesmí být prázdný.' });
   const updatedBy = req.session.user.name;
@@ -1524,7 +1661,7 @@ app.put('/api/blacklist/intro', requireLogin, async (req, res) => {
   }
 });
 
-app.get('/api/blacklist/audit', requireLogin, async (req, res) => {
+app.get('/api/blacklist/audit', requireLogin, requirePermDefault('blacklist', 'history', false), async (req, res) => {
   try {
     const db = getPool();
     const { rows } = await db.query(
@@ -1538,7 +1675,7 @@ app.get('/api/blacklist/audit', requireLogin, async (req, res) => {
 });
 
 // DELETE multiple audit entries at once
-app.delete('/api/blacklist/audit/bulk', requireLogin, async (req, res) => {
+app.delete('/api/blacklist/audit/bulk', requireLogin, requirePermDefault('blacklist', 'history_delete', false), async (req, res) => {
   const { ids } = req.body;
   if (!Array.isArray(ids) || ids.length === 0)
     return res.status(400).json({ ok: false, msg: 'Chybí seznam ID.' });
@@ -1555,7 +1692,7 @@ app.delete('/api/blacklist/audit/bulk', requireLogin, async (req, res) => {
 });
 
 // DELETE a single audit/history entry permanently
-app.delete('/api/blacklist/audit/:id', requireLogin, async (req, res) => {
+app.delete('/api/blacklist/audit/:id', requireLogin, requirePermDefault('blacklist', 'history_delete', false), async (req, res) => {
   try {
     const db = getPool();
     const { rowCount } = await db.query(
@@ -1571,7 +1708,7 @@ app.delete('/api/blacklist/audit/:id', requireLogin, async (req, res) => {
 });
 
 // GET pending (unnotified) changes — for selection UI
-app.get('/api/blacklist/export/email/pending', requireLogin, async (req, res) => {
+app.get('/api/blacklist/export/email/pending', requireLogin, requirePermDefault('blacklist', 'export_email', false), async (req, res) => {
   try {
     const db = getPool();
     const { rows } = await db.query(
@@ -1588,7 +1725,7 @@ app.get('/api/blacklist/export/email/pending', requireLogin, async (req, res) =>
 });
 
 // POST generate email from selected IDs
-app.post('/api/blacklist/export/email', requireLogin, async (req, res) => {
+app.post('/api/blacklist/export/email', requireLogin, requirePermDefault('blacklist', 'export_email', false), async (req, res) => {
   const { ids } = req.body;
   if (!Array.isArray(ids) || ids.length === 0)
     return res.status(400).json({ ok: false, msg: 'Vyberte alespoň jednu změnu.' });
@@ -1618,7 +1755,7 @@ app.post('/api/blacklist/export/email', requireLogin, async (req, res) => {
   }
 });
 
-app.get('/api/blacklist/export/pdf', requireLogin, async (req, res) => {
+app.get('/api/blacklist/export/pdf', requireLogin, requirePermDefault('blacklist', 'export_pdf', false), async (req, res) => {
   try {
     const db = getPool();
     const [entRes, introRes] = await Promise.all([
@@ -1810,13 +1947,21 @@ app.get('/priplatky', requireLogin, (req, res) =>
 // Recepční (login ↔ jméno)
 app.get('/api/priplatky/recepni', requireLogin, async (req, res) => {
   const db = getPool();
-  const { rows } = await db.query(
-    `SELECT login, full_name, active FROM receptionist_logins ORDER BY full_name`
-  );
+  const all = await canViewAllPriplatky(req.session.user);
+  const ids = userIdentityValues(req.session.user);
+  const { rows } = all
+    ? await db.query(`SELECT login, full_name, active FROM receptionist_logins ORDER BY full_name`)
+    : await db.query(
+        `SELECT login, full_name, active
+         FROM receptionist_logins
+         WHERE LOWER(login) = ANY($1::text[]) OR LOWER(COALESCE(full_name,'')) = ANY($1::text[])
+         ORDER BY full_name`,
+        [ids]
+      );
   res.json(rows);
 });
 
-app.post('/api/priplatky/recepni', requireLogin, async (req, res) => {
+app.post('/api/priplatky/recepni', requireLogin, requirePermDefault('priplatky', 'manageReceptionists', false), async (req, res) => {
   const { login, full_name } = req.body;
   const db = getPool();
   try {
@@ -1831,7 +1976,7 @@ app.post('/api/priplatky/recepni', requireLogin, async (req, res) => {
   }
 });
 
-app.patch('/api/priplatky/recepni/:login', requireLogin, async (req, res) => {
+app.patch('/api/priplatky/recepni/:login', requireLogin, requirePermDefault('priplatky', 'manageReceptionists', false), async (req, res) => {
   const { full_name, active } = req.body;
   const db = getPool();
   await db.query(
@@ -1844,7 +1989,7 @@ app.patch('/api/priplatky/recepni/:login', requireLogin, async (req, res) => {
   res.json({ ok: true });
 });
 
-app.delete('/api/priplatky/recepni/:login', requireLogin, async (req, res) => {
+app.delete('/api/priplatky/recepni/:login', requireLogin, requirePermDefault('priplatky', 'manageReceptionists', false), async (req, res) => {
   const db = getPool();
   await db.query('DELETE FROM receptionist_logins WHERE login=$1', [req.params.login]);
   res.json({ ok: true });
@@ -1854,22 +1999,28 @@ app.delete('/api/priplatky/recepni/:login', requireLogin, async (req, res) => {
 app.get('/api/priplatky/zaznamy', requireLogin, async (req, res) => {
   const { rok, mesic } = req.query;
   const db = getPool();
+  const own = await priplatkyOwnFilter(req.session.user);
+  const params = [rok, mesic, ...own.params];
+  const ownWhere = own.where.replace(/\$IDX/g, `$${params.length}`);
   const { rows } = await db.query(
     `SELECT z.*,
             rl.full_name
      FROM priplatky_zaznamy z
      LEFT JOIN receptionist_logins rl ON rl.login = z.login
-     WHERE z.rok = $1 AND z.mesic = $2
+     WHERE z.rok = $1 AND z.mesic = $2${ownWhere}
      ORDER BY z.datum, z.id`,
-    [rok, mesic]
+    params
   );
   res.json(rows);
 });
 
-app.post('/api/priplatky/zaznamy', requireLogin, async (req, res) => {
+app.post('/api/priplatky/zaznamy', requireLogin, requirePermDefault('priplatky', 'add', true), async (req, res) => {
   const { den, mesic, rok, mesicDatum, rokDatum, sekce, login, hotel, castka,
           poznamka, partner, klient, koho_skolil } = req.body;
   const db = getPool();
+  if (!(await canTouchPriplatkyLogin(req, login))) {
+    return res.status(403).json({ ok: false, msg: 'Můžete přidat jen vlastní záznam.' });
+  }
   // mesicDatum/rokDatum = skutečné datum záznamu; mesic/rok = platební měsíc (přehled)
   const dM = mesicDatum || mesic;
   const dR = rokDatum   || rok;
@@ -1891,10 +2042,13 @@ app.post('/api/priplatky/zaznamy', requireLogin, async (req, res) => {
   }
 });
 
-app.patch('/api/priplatky/zaznamy/:id', requireLogin, async (req, res) => {
+app.patch('/api/priplatky/zaznamy/:id', requireLogin, requirePermDefault('priplatky', 'edit', true), async (req, res) => {
   const { den, mesic, rok, mesicDatum, rokDatum, sekce, login, hotel, castka,
           poznamka, partner, klient, koho_skolil } = req.body;
   const db = getPool();
+  if (!(await canTouchPriplatkyRecord(req, db, req.params.id)) || !(await canTouchPriplatkyLogin(req, login))) {
+    return res.status(403).json({ ok: false, msg: 'Nemáte oprávnění upravit tento záznam.' });
+  }
   const dM = mesicDatum || mesic;
   const dR = rokDatum   || rok;
   const datum = den
@@ -1918,8 +2072,11 @@ app.patch('/api/priplatky/zaznamy/:id', requireLogin, async (req, res) => {
   }
 });
 
-app.delete('/api/priplatky/zaznamy/:id', requireLogin, async (req, res) => {
+app.delete('/api/priplatky/zaznamy/:id', requireLogin, requirePermDefault('priplatky', 'delete', false), async (req, res) => {
   const db = getPool();
+  if (!(await canTouchPriplatkyRecord(req, db, req.params.id))) {
+    return res.status(403).json({ ok: false, msg: 'Nemáte oprávnění smazat tento záznam.' });
+  }
   await db.query(`DELETE FROM priplatky_zaznamy WHERE id=$1`, [req.params.id]);
   await logEvent(req.session.user.id, req.session.user.username,
     'priplatky_delete', { id: req.params.id });
@@ -1936,7 +2093,7 @@ app.get('/api/priplatky/poznamky', requireLogin, async (req, res) => {
   res.json(rows);
 });
 
-app.post('/api/priplatky/poznamky', requireLogin, async (req, res) => {
+app.post('/api/priplatky/poznamky', requireLogin, requirePermDefault('priplatky', 'manageTexts', false), async (req, res) => {
   const { text, poradi, typ } = req.body;
   const typVal = ['brani','obecne'].includes(typ) ? typ : 'brani';
   const db = getPool();
@@ -1947,7 +2104,7 @@ app.post('/api/priplatky/poznamky', requireLogin, async (req, res) => {
   res.json({ ok: true, row: r.rows[0] });
 });
 
-app.patch('/api/priplatky/poznamky/:id', requireLogin, async (req, res) => {
+app.patch('/api/priplatky/poznamky/:id', requireLogin, requirePermDefault('priplatky', 'manageTexts', false), async (req, res) => {
   const { text } = req.body;
   if (!text || !text.trim()) return res.status(400).json({ ok:false, msg:'Prázdný text.' });
   const db = getPool();
@@ -1958,7 +2115,7 @@ app.patch('/api/priplatky/poznamky/:id', requireLogin, async (req, res) => {
   res.json({ ok: true, row: r.rows[0] });
 });
 
-app.delete('/api/priplatky/poznamky/:id', requireLogin, async (req, res) => {
+app.delete('/api/priplatky/poznamky/:id', requireLogin, requirePermDefault('priplatky', 'manageTexts', false), async (req, res) => {
   const db = getPool();
   await db.query(`DELETE FROM priplatky_poznamky WHERE id=$1`, [req.params.id]);
   res.json({ ok: true });
@@ -1967,19 +2124,31 @@ app.delete('/api/priplatky/poznamky/:id', requireLogin, async (req, res) => {
 // Autocomplete pro "Koho školil"
 app.get('/api/priplatky/koho-skolil-hints', requireLogin, async (req, res) => {
   const db = getPool();
+  const own = await priplatkyOwnFilter(req.session.user);
+  const params = [...own.params];
+  const ownWhere = own.where
+    .replace(/^ AND /, ' WHERE ')
+    .replace(/\$IDX/g, `$${params.length || 1}`);
   const { rows } = await db.query(
     `SELECT DISTINCT koho_skolil
      FROM priplatky_zaznamy
-     WHERE koho_skolil IS NOT NULL AND koho_skolil <> ''
+     LEFT JOIN receptionist_logins rl ON rl.login = z.login
+     ${ownWhere || 'WHERE 1=1'}
+       AND koho_skolil IS NOT NULL AND koho_skolil <> ''
      ORDER BY koho_skolil`
+    .replace('FROM priplatky_zaznamy', 'FROM priplatky_zaznamy z'),
+    params
   );
   res.json(rows.map(r => r.koho_skolil));
 });
 
 // Export XLSX
-app.get('/api/priplatky/export/xlsx', requireLogin, async (req, res) => {
+app.get('/api/priplatky/export/xlsx', requireLogin, requirePermDefault('priplatky', 'export', true), async (req, res) => {
   const { rok, mesic } = req.query;
   const db = getPool();
+  const own = await priplatkyOwnFilter(req.session.user);
+  const params = [rok, mesic, ...own.params];
+  const ownWhere = own.where.replace(/\$IDX/g, `$${params.length}`);
 
   const SEKCE_ORDER = {'braní směn':1,'recenze':2,'školení':3,'ostatní':4,'pokuta':5};
 
@@ -1987,8 +2156,8 @@ app.get('/api/priplatky/export/xlsx', requireLogin, async (req, res) => {
     `SELECT z.*, rl.full_name
      FROM priplatky_zaznamy z
      LEFT JOIN receptionist_logins rl ON rl.login = z.login
-     WHERE z.rok=$1 AND z.mesic=$2`,
-    [rok, mesic]
+     WHERE z.rok=$1 AND z.mesic=$2${ownWhere}`,
+    params
   );
   zaznamy.sort((a,b) => {
     const lc = (a.login||'').localeCompare(b.login||'','cs');
@@ -2007,9 +2176,9 @@ app.get('/api/priplatky/export/xlsx', requireLogin, async (req, res) => {
        SUM(CASE WHEN z.sekce='pokuta'     THEN z.castka ELSE 0 END) AS pokuty
      FROM priplatky_zaznamy z
      LEFT JOIN receptionist_logins rl ON rl.login = z.login
-     WHERE z.rok=$1 AND z.mesic=$2
+     WHERE z.rok=$1 AND z.mesic=$2${ownWhere}
      GROUP BY z.login, rl.full_name ORDER BY z.login`,
-    [rok, mesic]
+    params
   );
 
   const XLSX = require('xlsx');
@@ -2069,7 +2238,7 @@ app.get('/api/priplatky/export/xlsx', requireLogin, async (req, res) => {
 });
 
 // Doplnit do šablony (File 2 – 2026_Pokuty_odmeny.xls)
-app.post('/api/priplatky/import-template', requireLogin, async (req, res) => {
+app.post('/api/priplatky/import-template', requireLogin, requirePermDefault('priplatky', 'template', false), async (req, res) => {
   const { rok, mesic, fileData, fileName } = req.body;
   if (!fileData) return res.status(400).json({ ok: false, msg: 'Chybí soubor.' });
 
@@ -3251,7 +3420,7 @@ app.get('/api/rt/drafts/:id', requireLogin, async (req, res) => {
   } catch (err) { console.error(err); res.status(500).json({ ok: false }); }
 });
 
-app.post('/api/rt/drafts/save', requireLogin, async (req, res) => {
+app.post('/api/rt/drafts/save', requireLogin, requirePermDefault('raspis', 'edit', false), async (req, res) => {
   const { month, year, data } = req.body;
   if (!month || !year || !data) return res.json({ ok: false, msg: 'Chybí data.' });
   try {
@@ -3267,7 +3436,7 @@ app.post('/api/rt/drafts/save', requireLogin, async (req, res) => {
   } catch (err) { console.error(err); res.json({ ok: false, msg: 'Chyba serveru.' }); }
 });
 
-app.delete('/api/rt/drafts/:id', requireLogin, async (req, res) => {
+app.delete('/api/rt/drafts/:id', requireLogin, requirePermDefault('raspis', 'delete', false), async (req, res) => {
   const id = parseInt(req.params.id, 10);
   try {
     const db = getPool();
@@ -3281,7 +3450,7 @@ app.delete('/api/rt/drafts/:id', requireLogin, async (req, res) => {
   } catch (err) { console.error(err); res.json({ ok: false }); }
 });
 
-app.get('/api/rt/drafts/trash/list', requireLogin, async (req, res) => {
+app.get('/api/rt/drafts/trash/list', requireLogin, requirePermDefault('raspis', 'trash', false), async (req, res) => {
   try {
     const db = getPool();
     const isAdmin = req.session.user.role === 'admin';
@@ -3292,7 +3461,7 @@ app.get('/api/rt/drafts/trash/list', requireLogin, async (req, res) => {
   } catch (err) { console.error(err); res.json([]); }
 });
 
-app.post('/api/rt/drafts/restore/:id', requireLogin, async (req, res) => {
+app.post('/api/rt/drafts/restore/:id', requireLogin, requirePermDefault('raspis', 'trash', false), async (req, res) => {
   const id = parseInt(req.params.id, 10);
   try {
     const db = getPool();
@@ -3372,7 +3541,7 @@ app.get('/api/rt/schedules/:key', requireLogin, async (req, res) => {
   } catch (err) { console.error(err); res.status(500).json({ ok: false }); }
 });
 
-app.post('/api/rt/schedules/publish', requireLogin, requireAdmin, async (req, res) => {
+app.post('/api/rt/schedules/publish', requireLogin, requirePermDefault('raspis', 'publish', false), async (req, res) => {
   const { month, year, data } = req.body;
   if (!month || !year || !data) return res.json({ ok: false, msg: 'Chybí data.' });
   const key   = `RT:${String(month).padStart(2,'0')}/${year}`;
@@ -3389,7 +3558,7 @@ app.post('/api/rt/schedules/publish', requireLogin, requireAdmin, async (req, re
   } catch (err) { console.error(err); res.json({ ok: false, msg: 'Chyba serveru.' }); }
 });
 
-app.delete('/api/rt/schedules/:key', requireLogin, requireAdmin, async (req, res) => {
+app.delete('/api/rt/schedules/:key', requireLogin, requirePermDefault('raspis', 'delete', false), async (req, res) => {
   const key = decodeURIComponent(req.params.key);
   try {
     const db = getPool();
@@ -3406,7 +3575,7 @@ app.delete('/api/rt/schedules/:key', requireLogin, requireAdmin, async (req, res
   } catch (err) { console.error(err); res.json({ ok: false }); }
 });
 
-app.get('/api/rt/schedules/trash/list', requireLogin, requireAdmin, async (req, res) => {
+app.get('/api/rt/schedules/trash/list', requireLogin, requirePermDefault('raspis', 'archive', false), async (req, res) => {
   try {
     const db = getPool();
     const { rows } = await db.query('SELECT id, key, month, year, label, deleted_at FROM rt_schedules_trash ORDER BY deleted_at DESC');
@@ -3414,7 +3583,7 @@ app.get('/api/rt/schedules/trash/list', requireLogin, requireAdmin, async (req, 
   } catch (err) { console.error(err); res.json([]); }
 });
 
-app.post('/api/rt/schedules/restore/:id', requireLogin, requireAdmin, async (req, res) => {
+app.post('/api/rt/schedules/restore/:id', requireLogin, requirePermDefault('raspis', 'archive', false), async (req, res) => {
   const id = parseInt(req.params.id, 10);
   try {
     const db = getPool();
@@ -3431,7 +3600,7 @@ app.post('/api/rt/schedules/restore/:id', requireLogin, requireAdmin, async (req
   } catch (err) { console.error(err); res.json({ ok: false }); }
 });
 
-app.delete('/api/rt/schedules/perma/:id', requireLogin, requireAdmin, async (req, res) => {
+app.delete('/api/rt/schedules/perma/:id', requireLogin, requirePermDefault('raspis', 'archive', false), async (req, res) => {
   try {
     const db = getPool();
     await db.query('DELETE FROM rt_schedules_trash WHERE id = $1', [parseInt(req.params.id, 10)]);
@@ -3544,8 +3713,7 @@ function isReqXyLocked(data, ci) {
 async function canManageRequirementsServer(req) {
   const user = req.session.user;
   if (!user) return false;
-  const role = String(user.role || '').toLowerCase();
-  return role === 'admin' || role.includes('ved');
+  return hasButtonPerm(user, 'raspis', 'req_edit', false);
 }
 
 function mergeRequirementStaffRow(currentData, incomingData, user) {
@@ -3674,7 +3842,7 @@ app.get('/api/rt/requirements', requireLogin, async (req, res) => {
   }
 });
 
-app.get('/api/rt/requirements/archive', requireLogin, requirePerm('raspis', 'edit'), async (req, res) => {
+app.get('/api/rt/requirements/archive', requireLogin, requirePermDefault('raspis', 'req_archive', false), async (req, res) => {
   try {
     const db = getPool();
     const { rows } = await db.query(
@@ -3706,7 +3874,7 @@ app.get('/api/rt/requirements/:key', requireLogin, async (req, res) => {
   }
 });
 
-app.post('/api/rt/requirements/create', requireLogin, requirePerm('raspis', 'edit'), async (req, res) => {
+app.post('/api/rt/requirements/create', requireLogin, requirePermDefault('raspis', 'req_create', false), async (req, res) => {
   const month = parseInt(req.body.month, 10);
   const year = parseInt(req.body.year, 10);
   const reqSettings = {
@@ -3749,7 +3917,7 @@ app.post('/api/rt/requirements/create', requireLogin, requirePerm('raspis', 'edi
   }
 });
 
-app.post('/api/rt/requirements/archive', requireLogin, requirePerm('raspis', 'edit'), async (req, res) => {
+app.post('/api/rt/requirements/archive', requireLogin, requirePermDefault('raspis', 'req_archive', false), async (req, res) => {
   const key = String(req.body.key || '');
   if (!key) return res.json({ ok: false, msg: 'Chybí požadavky.' });
   try {
@@ -3773,7 +3941,7 @@ app.post('/api/rt/requirements/archive', requireLogin, requirePerm('raspis', 'ed
   }
 });
 
-app.post('/api/rt/requirements/restore', requireLogin, requirePerm('raspis', 'edit'), async (req, res) => {
+app.post('/api/rt/requirements/restore', requireLogin, requirePermDefault('raspis', 'req_archive', false), async (req, res) => {
   const key = String(req.body.key || '');
   if (!key) return res.json({ ok: false, msg: 'Chybí požadavky.' });
   try {
@@ -3797,7 +3965,7 @@ app.post('/api/rt/requirements/restore', requireLogin, requirePerm('raspis', 'ed
   }
 });
 
-app.delete('/api/rt/requirements/:key', requireLogin, requirePerm('raspis', 'edit'), async (req, res) => {
+app.delete('/api/rt/requirements/:key', requireLogin, requirePermDefault('raspis', 'req_delete', false), async (req, res) => {
   const key = decodeURIComponent(req.params.key);
   try {
     const db = getPool();
@@ -3815,7 +3983,7 @@ app.delete('/api/rt/requirements/:key', requireLogin, requirePerm('raspis', 'edi
   }
 });
 
-app.post('/api/rt/requirements/status', requireLogin, requirePerm('raspis', 'edit'), async (req, res) => {
+app.post('/api/rt/requirements/status', requireLogin, requirePermDefault('raspis', 'req_toggle_reception', false), async (req, res) => {
   const key = String(req.body.key || '');
   const status = String(req.body.status || '');
   if (!key || !['draft', 'open', 'closed'].includes(status)) return res.json({ ok: false, msg: 'Neplatny stav.' });
@@ -3842,7 +4010,7 @@ app.post('/api/rt/requirements/status', requireLogin, requirePerm('raspis', 'edi
   }
 });
 
-app.post('/api/rt/requirements/send-to-tvorba', requireLogin, requirePerm('raspis', 'edit'), async (req, res) => {
+app.post('/api/rt/requirements/send-to-tvorba', requireLogin, requirePermDefault('raspis', 'req_send_tvorba', false), async (req, res) => {
   const key = String(req.body.key || '');
   if (!key) return res.json({ ok: false, msg: 'Chybí požadavky.' });
   try {
@@ -3963,7 +4131,7 @@ app.post('/api/rt/requirements/save', requireLogin, async (req, res) => {
   }
 });
 
-app.get('/api/rt/log/:key', requireLogin, requireAdmin, async (req, res) => {
+app.get('/api/rt/log/:key', requireLogin, requirePermDefault('raspis', 'log', false), async (req, res) => {
   const key = decodeURIComponent(req.params.key);
   try {
     const db = getPool();
@@ -3974,7 +4142,7 @@ app.get('/api/rt/log/:key', requireLogin, requireAdmin, async (req, res) => {
   } catch (err) { console.error(err); res.json([]); }
 });
 
-app.post('/api/rt/log', requireLogin, requireAdmin, async (req, res) => {
+app.post('/api/rt/log', requireLogin, requirePermDefault('raspis', 'log', false), async (req, res) => {
   const { key, entries } = req.body;
   if (!key || !Array.isArray(entries)) return res.json({ ok: false });
   try {

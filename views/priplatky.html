@@ -647,10 +647,42 @@ let recepniMap   = {};   // login (lowercase) → full_name
 let cachedData   = [];
 let duvodyBrani  = [];   // DB entries typ='brani'
 let duvodyObecne = [];   // DB entries typ='obecne'
+let canViewAllPriplatky = false;
+let priplatkyButtons = {};
 
 const MESICE = ['','Leden','Únor','Březen','Duben','Květen','Červen',
                 'Červenec','Srpen','Září','Říjen','Listopad','Prosinec'];
 const SEKCE_ORDER = {'braní směn':1,'recenze':2,'školení':3,'ostatní':4,'pokuta':5};
+
+function priplatkyCan(btnKey, fallback = true) {
+  const val = priplatkyButtons?.[btnKey];
+  return val == null ? fallback : val !== false;
+}
+
+function setPriplatkyVisible(id, visible) {
+  const el = document.getElementById(id);
+  if (el) el.style.display = visible ? '' : 'none';
+}
+
+function applyPriplatkyPermissions() {
+  const showSettings = priplatkyCan('settings', canViewAllPriplatky);
+  document.querySelectorAll('.tab-btn[data-tab="nastaveni"]').forEach(btn => {
+    btn.style.display = showSettings ? '' : 'none';
+  });
+  setPriplatkyVisible('btn-add', priplatkyCan('add', true));
+  setPriplatkyVisible('link-export', priplatkyCan('export', true));
+  const templateLabel = document.querySelector('label[for="inp-template-file"]');
+  if (templateLabel) templateLabel.style.display = priplatkyCan('template', false) ? '' : 'none';
+  setPriplatkyVisible('btn-add-rl', priplatkyCan('manageReceptionists', false));
+  setPriplatkyVisible('btn-add-duvod-brani', priplatkyCan('manageTexts', false));
+  setPriplatkyVisible('btn-add-duvod-obecne', priplatkyCan('manageTexts', false));
+  if (!showSettings) {
+    document.querySelectorAll('.tab-panel').forEach(p => p.classList.remove('active'));
+    document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
+    document.getElementById('tab-prehled').classList.add('active');
+    document.querySelector('.tab-btn[data-tab="prehled"]')?.classList.add('active');
+  }
+}
 
 // ═══ Záložky ════════════════════════════════════════════════════════════════
 document.querySelectorAll('.tab-btn').forEach(btn => btn.addEventListener('click', () => {
@@ -694,11 +726,24 @@ document.getElementById('btn-next').addEventListener('click', () => {
 
 // ═══ Inicializace ════════════════════════════════════════════════════════════
 async function init() {
+  await loadPriplatkyPermissions();
   updateMonthLabel();
   await loadRecepniDropdown();
   await loadDuvodyDropdowns();
   loadPrehled();
   initFormConds();
+}
+
+async function loadPriplatkyPermissions() {
+  try {
+    const perms = await fetch('/api/my-permissions').then(r => r.json());
+    priplatkyButtons = perms?.priplatky?.buttons || {};
+    canViewAllPriplatky = priplatkyButtons.viewAll === true;
+  } catch(e) {
+    priplatkyButtons = {};
+    canViewAllPriplatky = false;
+  }
+  applyPriplatkyPermissions();
 }
 
 // ═══ Recepční (pro formulář + AC) ════════════════════════════════════════════
@@ -932,14 +977,15 @@ function openDetail(login) {
     const dat   = z.datum ? z.datum.slice(0,10) : '';
     const extra = z.partner ? ` | ${z.partner}${z.klient?' / '+z.klient:''}` :
                   z.koho_skolil ? ` | Školil: ${z.koho_skolil}` : '';
+    const rowActions = `${priplatkyCan('edit', true) ? `<button class="icon-btn btn-sm" onclick="editZaznam(${z.id})">✏️</button>` : ''}
+        ${priplatkyCan('delete', false) ? `<button class="icon-btn btn-sm danger" onclick="deleteZaznam(${z.id})">🗑</button>` : ''}`;
     html += `<tr>
       <td>${dat}</td>
       <td>${esc(z.hotel||'')}</td>
       <td><strong>${z.castka} Kč</strong></td>
       <td>${esc((z.poznamka||'') + extra)}</td>
       <td style="white-space:nowrap">
-        <button class="icon-btn btn-sm" onclick="editZaznam(${z.id})">✏️</button>
-        <button class="icon-btn btn-sm danger" onclick="deleteZaznam(${z.id})">🗑</button>
+        ${rowActions}
       </td>
     </tr>
     <tr><td colspan="5" class="audit-info" style="padding-bottom:8px">
@@ -1241,8 +1287,8 @@ function renderDuvodItem(n, typ) {
   const bi = n.built_in ? ' built-in' : '';
   return `<div class="note-item${bi}" id="note-item-${n.id}">
     <span>${esc(n.text)}</span>
-    <button class="icon-btn" onclick="startEditDuvod(${n.id},'${typ}')" title="Upravit">✏️</button>
-    <button class="icon-btn danger" onclick="deleteDuvod(${n.id},'${typ}')" title="Smazat">🗑</button>
+    ${priplatkyCan('manageTexts', false) ? `<button class="icon-btn" onclick="startEditDuvod(${n.id},'${typ}')" title="Upravit">✏️</button>
+    <button class="icon-btn danger" onclick="deleteDuvod(${n.id},'${typ}')" title="Smazat">🗑</button>` : ''}
   </div>`;
 }
 
@@ -1344,8 +1390,8 @@ function rlRowHtml(r) {
   return `<div class="recepni-row" id="rl-row-${l}">
     <code style="font-size:12px">${l}</code>
     <span>${esc(r.full_name)}</span>
-    <button class="icon-btn" onclick="startEditRl('${l}','${n}')" title="Upravit">✏️</button>
-    <button class="icon-btn danger" onclick="deleteRecepni('${l}')" title="Smazat">🗑</button>
+    ${priplatkyCan('manageReceptionists', false) ? `<button class="icon-btn" onclick="startEditRl('${l}','${n}')" title="Upravit">✏️</button>
+    <button class="icon-btn danger" onclick="deleteRecepni('${l}')" title="Smazat">🗑</button>` : ''}
   </div>`;
 }
 

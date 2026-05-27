@@ -1086,6 +1086,33 @@ let sortDir = 'asc';
 let activeLetter = '';
 let editingId = null;
 let selectedHistory = new Set();
+let blacklistButtons = {};
+
+function blCan(btnKey, fallback = true) {
+  const val = blacklistButtons?.[btnKey];
+  return val == null ? fallback : val !== false;
+}
+
+function setBlVisible(id, visible) {
+  const el = document.getElementById(id);
+  if (el) el.style.display = visible ? '' : 'none';
+}
+
+function applyBlacklistPermissions() {
+  setBlVisible('btn-add', blCan('add', false));
+  setBlVisible('btn-pdf', blCan('export_pdf', false));
+  setBlVisible('bl-mob-pdf', blCan('export_pdf', false));
+  setBlVisible('btn-email', blCan('export_email', false));
+  setBlVisible('bl-mob-email', blCan('export_email', false));
+  setBlVisible('btn-intro', blCan('edit_intro', false));
+  setBlVisible('bl-mob-intro', blCan('edit_intro', false));
+  setBlVisible('btn-history', blCan('history', false));
+  setBlVisible('bl-mob-history', blCan('history', false));
+  document.body.classList.toggle('no-hist-delete', !blCan('history_delete', false));
+  const delSelBtn = document.getElementById('btn-hist-del-sel');
+  if (delSelBtn) delSelBtn.style.display = blCan('history_delete', false) ? '' : 'none';
+  renderTable();
+}
 
 // ── Helpers ──────────────────────────────────────────────────────────────────
 
@@ -1218,8 +1245,8 @@ function renderTable() {
       <td>${escHtml(formatDate(e.stay_date))}</td>
       <td class="col-reason">${escHtml(e.reason)}</td>
       <td class="col-edit">
-        <button class="btn-edit-row" onclick="openEditModal('${escHtml(e.id)}')" title="Upravit záznam">✎</button>
-        <button class="btn-del-row" onclick="openRemoveModal('${escHtml(e.id)}')" title="Odebrat z blacklistu">×</button>
+        ${blCan('edit', false) ? `<button class="btn-edit-row" onclick="openEditModal('${escHtml(e.id)}')" title="Upravit záznam">✎</button>` : ''}
+        ${blCan('remove', false) ? `<button class="btn-del-row" onclick="openRemoveModal('${escHtml(e.id)}')" title="Odebrat z blacklistu">×</button>` : ''}
       </td>
     </tr>`;
   }).join('');
@@ -2107,25 +2134,8 @@ async function init() {
   // ── Načti oprávnění a skryj zakázaná tlačítka ──
   try {
     const perms = await fetch('/api/my-permissions').then(r => r.json());
-    const bl = perms?.blacklist;
-    if (bl) {
-      const btns = bl.buttons || {};
-      // Upravit úvodní text
-      if (btns.edit_intro === false) {
-        ['btn-intro', 'bl-mob-intro'].forEach(id => {
-          const el = document.getElementById(id);
-          if (el) el.style.display = 'none';
-        });
-      }
-      // Mazání z historie
-      if (btns.history_delete === false) {
-        // Skryj "Smazat vybrané" tlačítko
-        const delSelBtn = document.getElementById('btn-hist-del-sel');
-        if (delSelBtn) delSelBtn.style.display = 'none';
-        // Skryj individuální × tlačítka — použijeme CSS třídu na body
-        document.body.classList.add('no-hist-delete');
-      }
-    }
+    blacklistButtons = perms?.blacklist?.buttons || {};
+    applyBlacklistPermissions();
   } catch(e) {}
 
   await loadEntries();

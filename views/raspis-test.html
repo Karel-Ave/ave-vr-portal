@@ -1409,6 +1409,9 @@ tbody tr.row-filtered { display: none; }
 #overlay-colors #btn-colors-save {
   display: none !important;
 }
+.perm-hidden {
+  display: none !important;
+}
 </style>
 </head>
 <body>
@@ -2860,6 +2863,86 @@ function isAdmin() {
 function canManageRequirements() {
   const role = String((_user && _user.role) || '').toLowerCase();
   return isAdmin() || role.includes('ved');
+}
+
+let rtPermissions = null;
+const RT_TAB_PERMS = {
+  nastaveni: 'tab_nastaveni',
+  tvorba: 'tab_tvorba',
+  rozpis: 'tab_rozpis_vr',
+  public: 'tab_rozpis',
+  pozadavky: 'tab_pozadavky'
+};
+
+async function loadRtPermissions() {
+  try {
+    const r = await fetch('/api/my-permissions', { credentials: 'include' });
+    rtPermissions = r.ok ? await r.json() : null;
+  } catch(e) {
+    rtPermissions = null;
+  }
+}
+
+function rtCan(btnKey, fallback = true) {
+  if (isAdmin()) return true;
+  const val = rtPermissions?.raspis?.buttons?.[btnKey];
+  return val == null ? fallback : val !== false;
+}
+
+function setPermHidden(el, hidden) {
+  if (!el) return;
+  el.classList.toggle('perm-hidden', !!hidden);
+}
+
+function setPermVisibleById(id, btnKey, fallback = true) {
+  setPermHidden(document.getElementById(id), !rtCan(btnKey, fallback));
+}
+
+function applyRaspisPermissions() {
+  document.querySelectorAll('.tb-tab[data-tab]').forEach(btn => {
+    const key = RT_TAB_PERMS[btn.dataset.tab];
+    if (key) setPermHidden(btn, !rtCan(key, btn.dataset.tab === 'public' || btn.dataset.tab === 'pozadavky'));
+  });
+
+  setPermVisibleById('btn-fonds', 'fonds', canManageRequirements());
+  setPermVisibleById('btn-template-dl', 'import', false);
+  setPermVisibleById('btn-import-xls', 'import', false);
+  setPermVisibleById('btn-paste-excel', 'paste_excel', canManageRequirements());
+  setPermVisibleById('btn-import-unmatched', 'unmatched', canManageRequirements());
+  setPermVisibleById('btn-draft-delete', 'delete', false);
+  setPermVisibleById('btn-draft-trash', 'trash', false);
+  setPermVisibleById('btn-publish', 'publish', canManageRequirements());
+  setPermVisibleById('btn-view-edit', 'edit', canManageRequirements());
+  setPermVisibleById('btn-delete-schedule', 'delete', false);
+  setPermVisibleById('btn-schedule-archive', 'archive', false);
+  setPermVisibleById('btn-schedule-log', 'log', false);
+  setPermVisibleById('btn-color-editor', 'colors', false);
+
+  setPermVisibleById('btn-req-create', 'req_create', canManageRequirements());
+  setPermVisibleById('btn-req-edit', 'req_edit', canManageRequirements());
+  setPermVisibleById('btn-req-toggle-edit', 'req_toggle_reception', canManageRequirements());
+  setPermVisibleById('btn-req-send-tvorba', 'req_send_tvorba', canManageRequirements());
+  setPermVisibleById('btn-req-delete', 'req_delete', false);
+  setPermVisibleById('btn-req-archive', 'req_archive', canManageRequirements());
+
+  setPermVisibleById('btn-hotel-manager', 'hotel_manager', false);
+  setPermVisibleById('btn-set-as-default', 'settings_monthly', canManageRequirements());
+  setPermVisibleById('btn-clear-month-overrides', 'settings_clear_overrides', false);
+  setPermVisibleById('btn-add-staff', 'settings_add_staff', canManageRequirements());
+
+  ['stb-vse','stb-hide-hotels','stb-day-only','stb-night-only','stb-cols-day','stb-cols-night','btn-show-hidden'].forEach(id => setPermVisibleById(id, 'filters', true));
+  setPermVisibleById('stb-show-qualified', 'show_qualified', canManageRequirements());
+  setPermVisibleById('stb-mark-sel', 'mark', canManageRequirements());
+  setPermVisibleById('stb-show-selected', 'mark', canManageRequirements());
+  setPermVisibleById('stb-undo', 'undo_redo', canManageRequirements());
+  setPermVisibleById('stb-redo', 'undo_redo', canManageRequirements());
+  setPermVisibleById('stb-export2', 'export', canManageRequirements());
+
+  const active = document.body.dataset.activeTab;
+  if (active && !document.querySelector(`.tb-tab[data-tab="${active}"]:not(.perm-hidden)`)) {
+    const first = document.querySelector('.tb-tab[data-tab]:not(.perm-hidden)');
+    if (first) switchTab(first.dataset.tab);
+  }
 }
 
 /* ══════════════════════════════════════════════════════════════════════════════
@@ -9259,6 +9342,8 @@ document.addEventListener('DOMContentLoaded', async () => {
   document.getElementById('sel-month-year').value = `${state.year}-${state.month}`;
 
   await fetchUser();
+  await loadRtPermissions();
+  applyRaspisPermissions();
   await loadUserPrefs();
 
 

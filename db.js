@@ -234,11 +234,80 @@ async function init() {
   await db.query(`ALTER TABLE users ADD COLUMN IF NOT EXISTS perm_overrides TEXT DEFAULT NULL`);
 
   // Seed výchozích skupin
-  const adminPerms  = JSON.stringify({ raspis: { enabled: true, buttons: { import: true, delete: true, trash: true, edit: true, export: true } } });
-  const vedPerms    = JSON.stringify({ raspis: { enabled: true, buttons: { import: false, delete: false, trash: false, edit: true, export: true } } });
+  const adminPerms  = JSON.stringify({
+    raspis: { enabled: true, visible: true, buttons: {
+      tab_nastaveni: true, tab_tvorba: true, tab_rozpis_vr: true, tab_rozpis: true, tab_pozadavky: true,
+      filters: true, show_qualified: true, mark: true, undo_redo: true, colors: true,
+      fonds: true, paste_excel: true, import: true, unmatched: true, publish: true,
+      delete: true, trash: true, edit: true, archive: true, log: true, export: true,
+      req_create: true, req_edit: true, req_toggle_reception: true, req_send_tvorba: true, req_delete: true, req_archive: true,
+      hotel_manager: true, settings_monthly: true, settings_add_staff: true, settings_clear_overrides: true
+    } },
+    priplatky: { enabled: true, visible: true, buttons: { viewAll: true, add: true, edit: true, delete: true, export: true, template: true, settings: true, manageReceptionists: true, manageTexts: true } },
+    blacklist: { enabled: true, visible: true, buttons: { view: true, add: true, remove: true, edit: true, export_pdf: true, export_email: true, edit_intro: true, history: true, history_delete: true } },
+    admin: { enabled: true, visible: true, buttons: { users_add: true, users_edit: true, users_delete: true, user_permissions: true, groups_manage: true, logs_view: true, logs_delete: true } }
+  });
+  const vedPerms    = JSON.stringify({
+    raspis: { enabled: true, visible: true, buttons: {
+      tab_nastaveni: true, tab_tvorba: true, tab_rozpis_vr: true, tab_rozpis: true, tab_pozadavky: true,
+      filters: true, show_qualified: true, mark: true, undo_redo: true, colors: false,
+      fonds: true, paste_excel: true, import: false, unmatched: true, publish: true,
+      delete: false, trash: false, edit: true, archive: false, log: false, export: true,
+      req_create: true, req_edit: true, req_toggle_reception: true, req_send_tvorba: true, req_delete: false, req_archive: true,
+      hotel_manager: false, settings_monthly: true, settings_add_staff: true, settings_clear_overrides: false
+    } },
+    priplatky: { enabled: true, visible: true, buttons: { viewAll: false, add: true, edit: true, delete: false, export: true, template: false, settings: false, manageReceptionists: false, manageTexts: false } },
+    blacklist: { enabled: true, visible: true, buttons: { view: true, add: true, remove: true, edit: true, export_pdf: true, export_email: true, edit_intro: false, history: true, history_delete: false } },
+    admin: { enabled: false, visible: false, buttons: { users_add: false, users_edit: false, users_delete: false, user_permissions: false, groups_manage: false, logs_view: false, logs_delete: false } }
+  });
   const widgetPerms = JSON.stringify({});
-  const recepPerms  = JSON.stringify({ raspis: { enabled: true, buttons: { import: false, delete: false, trash: false, edit: false, export: false } } });
+  const recepPerms  = JSON.stringify({
+    raspis: { enabled: true, visible: true, buttons: {
+      tab_nastaveni: false, tab_tvorba: false, tab_rozpis_vr: false, tab_rozpis: true, tab_pozadavky: true,
+      filters: true, show_qualified: false, mark: false, undo_redo: false, colors: false,
+      fonds: false, paste_excel: false, import: false, unmatched: false, publish: false,
+      delete: false, trash: false, edit: false, archive: false, log: false, export: false,
+      req_create: false, req_edit: false, req_toggle_reception: false, req_send_tvorba: false, req_delete: false, req_archive: false,
+      hotel_manager: false, settings_monthly: false, settings_add_staff: false, settings_clear_overrides: false
+    } },
+    priplatky: { enabled: true, visible: true, buttons: { viewAll: false, add: true, edit: true, delete: false, export: true, template: false, settings: false, manageReceptionists: false, manageTexts: false } },
+    blacklist: { enabled: true, visible: true, buttons: { view: true, add: false, remove: false, edit: false, export_pdf: false, export_email: false, edit_intro: false, history: false, history_delete: false } },
+    admin: { enabled: false, visible: false, buttons: { users_add: false, users_edit: false, users_delete: false, user_permissions: false, groups_manage: false, logs_view: false, logs_delete: false } }
+  });
   await db.query(`INSERT INTO permission_groups (name, display_name, perms, sublist) VALUES ('admin','Admin',$1,'VR'),('vedoucí','VR',$2,'VR'),('widget','Widget',$3,'Speciální'),('recepční','Recepční',$4,'Recepční') ON CONFLICT (name) DO NOTHING`, [adminPerms, vedPerms, widgetPerms, recepPerms]);
+  async function mergeGroupPermDefaults(groupName, defaults) {
+    const { rows } = await db.query('SELECT perms FROM permission_groups WHERE name = $1', [groupName]);
+    if (!rows.length) return;
+    let current = {};
+    try { current = rows[0].perms ? JSON.parse(rows[0].perms) : {}; } catch(e) { current = {}; }
+    let changed = false;
+    for (const [appKey, appDef] of Object.entries(defaults)) {
+      if (!current[appKey]) {
+        current[appKey] = appDef;
+        changed = true;
+        continue;
+      }
+      for (const key of ['enabled', 'visible']) {
+        if (appDef[key] !== undefined && current[appKey][key] === undefined) {
+          current[appKey][key] = appDef[key];
+          changed = true;
+        }
+      }
+      current[appKey].buttons = current[appKey].buttons || {};
+      for (const [btnKey, btnVal] of Object.entries(appDef.buttons || {})) {
+        if (current[appKey].buttons[btnKey] === undefined) {
+          current[appKey].buttons[btnKey] = btnVal;
+          changed = true;
+        }
+      }
+    }
+    if (changed) {
+      await db.query('UPDATE permission_groups SET perms = $1 WHERE name = $2', [JSON.stringify(current), groupName]);
+    }
+  }
+  await mergeGroupPermDefaults('admin', JSON.parse(adminPerms));
+  await mergeGroupPermDefaults('vedoucí', JSON.parse(vedPerms));
+  await mergeGroupPermDefaults('recepční', JSON.parse(recepPerms));
   // Nastav sublists pro existující skupiny (pokud ještě mají DEFAULT hodnotu nebo NULL)
   await db.query(`UPDATE permission_groups SET sublist='VR'        WHERE name IN ('admin','vedoucí') AND (sublist IS NULL OR sublist='VR')`);
   await db.query(`UPDATE permission_groups SET sublist='Speciální' WHERE name='widget'   AND (sublist IS NULL OR sublist='VR')`);
