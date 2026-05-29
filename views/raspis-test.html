@@ -1400,6 +1400,7 @@ tbody tr.row-filtered { display: none; }
 .mck-btn.mck-soft { font-size: 14px; font-weight: 700; }
 .mck-btn.mck-danger { color: #b43131; border-color: color-mix(in srgb, #d44 50%, var(--border)); }
 .mck-btn.mck-ok { background: var(--accent); border-color: var(--accent); color: var(--accent-fg,#fff); }
+.mck-btn.mck-wide { grid-column: span 2; }
 .mck-display {
   grid-column: 1 / -1;
   min-height: 42px; border-radius: 9px; border: 2px solid var(--accent);
@@ -1751,6 +1752,11 @@ tbody tr.row-filtered { display: none; }
     padding-right: 0;
   }
   #stb-collapse-controls { display: inline-flex !important; }
+  #stb-collapse-controls {
+    background: var(--accent) !important;
+    border-color: var(--accent) !important;
+    color: var(--accent-fg,#fff) !important;
+  }
   #stb-hotel-btns {
     display: contents;
   }
@@ -2214,7 +2220,7 @@ tbody tr.row-filtered { display: none; }
 </div>
 
 <div id="subtoolbar">
-  <button class="stb-btn" id="stb-mobile-toggle" type="button">Zobraz ovl. prvky</button>
+  <button class="stb-btn" id="stb-mobile-toggle" type="button">Zobrazit ovládací prvky</button>
   <div class="stb-row" id="stb-row-hotels">
     <!-- Levá polovina: tlačítka hotelů -->
     <div id="stb-hotels-left">
@@ -3442,8 +3448,9 @@ function openMobileScheduleKeypad(si, ci, tableId) {
   grid.innerHTML = '';
   const hotels = (typeof getUsedHotelLetters === 'function' ? getUsedHotelLetters() : Object.keys(HOTEL_HOURS_BUILTIN))
     .filter(v => /^[A-Z]$/.test(String(v || '')))
+    .filter(v => !['F', 'W'].includes(String(v || '').toUpperCase()))
     .filter((v, idx, arr) => arr.indexOf(v) === idx);
-  [...hotels, 'x', 'y', 'z', '\u017e'].forEach(k => {
+  [...hotels, 'x'].forEach(k => {
     const btn = document.createElement('button');
     btn.type = 'button';
     btn.className = 'mck-btn' + (/^[xyz\u017e]$/.test(k) ? ' mck-soft' : '');
@@ -3457,7 +3464,7 @@ function openMobileScheduleKeypad(si, ci, tableId) {
   });
   const clear = document.createElement('button');
   clear.type = 'button';
-  clear.className = 'mck-btn mck-danger mck-soft';
+  clear.className = 'mck-btn mck-danger mck-soft mck-wide';
   clear.textContent = 'DEL';
   clear.title = 'Smazat hodnotu';
   clear.addEventListener('click', () => {
