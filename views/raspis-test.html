@@ -276,6 +276,7 @@ body[data-active-tab="pozadavky"] #tb-right-actions { display: none; }
   background: #202124;
   color: #fff;
   border-color: #202124;
+  display: none !important;
 }
 #btn-color-editor:hover {
   background: #34363A;
@@ -473,7 +474,8 @@ body[data-active-tab="pozadavky"] .schedule-wrap.requests-wrap {
 }
 [data-theme="dark"] #tab-tvorba,
 [data-theme="dark"] #tab-rozpis,
-[data-theme="dark"] #tab-public {
+[data-theme="dark"] #tab-public,
+[data-theme="dark"] #tab-pozadavky {
   --sched-grid: rgba(0, 0, 0, .34);
   --sched-grid-soft: rgba(0, 0, 0, .24);
   --sched-grid-row: rgba(0, 0, 0, .16);
@@ -535,9 +537,9 @@ table.sched-tbl {
 /* ── Cell color variables (user-editable via 🎨 Editor barev) ── */
 :root {
   --col-wd-bg:#ffffff;  --col-wd-tx:#222222;
-  --col-wn-bg:#c8c8c8;  --col-wn-tx:#222222;
-  --col-kd-bg:#a8d8f0;  --col-kd-tx:#222222;
-  --col-kn-bg:#5b9dc9;  --col-kn-tx:#222222;
+  --col-wn-bg:#bfd7e9;  --col-wn-tx:#222222;
+  --col-kd-bg:#a9c9e2;  --col-kd-tx:#222222;
+  --col-kn-bg:#82b1d5;  --col-kn-tx:#222222;
   --col-dup-bg:#ffe0b8; --col-dup-tx:#3d2400; --col-dup-border:#c67812;
   --col-type-den:#F8FF35; --col-type-noc:#4DC3F5;
   --col-type-oba:#A8E05A; --col-type-ved:#FFB347; --col-type-spe:#FF8585;
@@ -634,7 +636,10 @@ table.sched-tbl {
 [data-theme="dark"] #tab-rozpis .sched-tbl td.sched-cell .cell-val,
 [data-theme="dark"] #tab-public .sched-tbl td.sched-cell,
 [data-theme="dark"] #tab-public .sched-tbl td.sched-cell input,
-[data-theme="dark"] #tab-public .sched-tbl td.sched-cell .cell-val {
+[data-theme="dark"] #tab-public .sched-tbl td.sched-cell .cell-val,
+[data-theme="dark"] #tab-pozadavky .sched-tbl td.sched-cell,
+[data-theme="dark"] #tab-pozadavky .sched-tbl td.sched-cell input,
+[data-theme="dark"] #tab-pozadavky .sched-tbl td.sched-cell .cell-val {
   color: #111 !important;
 }
 
@@ -862,7 +867,11 @@ tbody tr.row-hidden { display: none !important; }
 [data-theme="dark"] #tab-public .sched-tbl .th-dn,
 [data-theme="dark"] #tab-public .sched-tbl .th-sum,
 [data-theme="dark"] #tab-public .sched-tbl .col-name-th,
-[data-theme="dark"] #tab-public .sched-tbl .th-day {
+[data-theme="dark"] #tab-public .sched-tbl .th-day,
+[data-theme="dark"] #tab-pozadavky .sched-tbl .th-dn,
+[data-theme="dark"] #tab-pozadavky .sched-tbl .th-sum,
+[data-theme="dark"] #tab-pozadavky .sched-tbl .col-name-th,
+[data-theme="dark"] #tab-pozadavky .sched-tbl .th-day {
   background: #f4f2ea;
   color: #111;
 }
@@ -880,13 +889,15 @@ tbody tr.row-hidden { display: none !important; }
 [data-theme="dark"] #tab-public .cov-row .col-name-td,
 [data-theme="dark"] #tab-public .cov-tbody .col-name-td,
 [data-theme="dark"] #tab-public .cov-name-inner,
-[data-theme="dark"] #tab-public .cov-row td.sum-cell {
+[data-theme="dark"] #tab-public .cov-row td.sum-cell,
+[data-theme="dark"] #tab-pozadavky .sched-tbl .sum-cell {
   background: #f4f2ea !important;
   color: #111;
 }
 [data-theme="dark"] #tab-tvorba .sched-tbl thead th,
 [data-theme="dark"] #tab-rozpis .sched-tbl thead th,
-[data-theme="dark"] #tab-public .sched-tbl thead th {
+[data-theme="dark"] #tab-public .sched-tbl thead th,
+[data-theme="dark"] #tab-pozadavky .sched-tbl thead th {
   border-bottom-color: #8f8f8f !important;
 }
 [data-theme="dark"] #tab-tvorba .sched-tbl .th-day.is-weekend,
@@ -897,7 +908,10 @@ tbody tr.row-hidden { display: none !important; }
 [data-theme="dark"] #tab-rozpis .th-dn-day.is-weekend .th-day-dow,
 [data-theme="dark"] #tab-public .sched-tbl .th-day.is-weekend,
 [data-theme="dark"] #tab-public .th-dn-day.is-weekend .th-day-num,
-[data-theme="dark"] #tab-public .th-dn-day.is-weekend .th-day-dow {
+[data-theme="dark"] #tab-public .th-dn-day.is-weekend .th-day-dow,
+[data-theme="dark"] #tab-pozadavky .sched-tbl .th-day.is-weekend,
+[data-theme="dark"] #tab-pozadavky .th-dn-day.is-weekend .th-day-num,
+[data-theme="dark"] #tab-pozadavky .th-dn-day.is-weekend .th-day-dow {
   color: #4a9fd4 !important;
 }
 #subtoolbar.show { display: flex; }
@@ -1161,13 +1175,15 @@ tbody tr.row-filtered { display: none; }
 [data-theme="dark"] .sched-cell.cell-req-missing { background: var(--col-req-miss-bg,#33284e) !important; }
 [data-theme="dark"] #tab-tvorba .sched-cell.cell-regular-off,
 [data-theme="dark"] #tab-rozpis .sched-cell.cell-regular-off,
-[data-theme="dark"] #tab-public .sched-cell.cell-regular-off {
+[data-theme="dark"] #tab-public .sched-cell.cell-regular-off,
+[data-theme="dark"] #tab-pozadavky .sched-cell.cell-regular-off {
   background: var(--col-unavail-bg,#f9dce3) !important;
   color: #111 !important;
 }
 [data-theme="dark"] #tab-tvorba .sched-cell.cell-req-missing,
 [data-theme="dark"] #tab-rozpis .sched-cell.cell-req-missing,
-[data-theme="dark"] #tab-public .sched-cell.cell-req-missing {
+[data-theme="dark"] #tab-public .sched-cell.cell-req-missing,
+[data-theme="dark"] #tab-pozadavky .sched-cell.cell-req-missing {
   background: var(--col-req-miss-bg,#eadcff) !important;
   color: #111 !important;
 }
@@ -1505,7 +1521,7 @@ tbody tr.row-filtered { display: none; }
     order: 1;
     width: 100%;
     display: grid;
-    grid-template-columns: repeat(5, minmax(0, 1fr));
+    grid-template-columns: repeat(4, minmax(0, 1fr));
     gap: 4px;
     overflow: visible;
   }
@@ -1524,10 +1540,10 @@ tbody tr.row-filtered { display: none; }
     font-weight: 800;
   }
   .tb-tab[data-tab="nastaveni"]::after { content: "Nast."; }
-  .tb-tab[data-tab="tvorba"]::after { content: "Tvorba"; }
+  .tb-tab[data-tab="tvorba"] { display: none !important; }
   .tb-tab[data-tab="rozpis"]::after { content: "VR"; }
   .tb-tab[data-tab="public"]::after { content: "Rozpis"; }
-  .tb-tab[data-tab="pozadavky"]::after { content: "Pož."; }
+  .tb-tab[data-tab="pozadavky"]::after { content: "Požadavky"; }
 
   .tb-actions:not(.hidden),
   #tb-right-actions {
@@ -1705,14 +1721,14 @@ tbody tr.row-filtered { display: none; }
   }
   .stb-row-tools {
     display: flex;
-    justify-content: center;
+    justify-content: flex-start;
   }
   #stb-tools-left,
   #stb-tools-left {
     order: 1;
     flex: 1 1 100%;
     display: flex;
-    justify-content: center;
+    justify-content: flex-start;
     flex-wrap: wrap;
     gap: 5px;
     min-width: 0;
@@ -8605,7 +8621,7 @@ const SCHEDULE_SKIN_ACCENTS = {
   orange:'#C25B1E', red:'#B63A32', pink:'#C0447E', plum:'#7E3C8C', coffee:'#6B4A2E',
   navy:'#173E70'
 };
-const SCHEDULE_SKIN_COLOR_VERSION = 'readability10';
+const SCHEDULE_SKIN_COLOR_VERSION = 'readability11';
 
 function _hexToRgb(hex) {
   hex = String(hex || '#202124').replace('#','');
@@ -8625,9 +8641,10 @@ function _mix(a, b, t) {
 
 function schedulePaletteForSkin(skin) {
   const accent = SCHEDULE_SKIN_ACCENTS[skin] || SCHEDULE_SKIN_ACCENTS.default;
-  const lightSoft = _mix(accent, '#ffffff', .76);
+  const lightNight = _mix(accent, '#ffffff', .70);
+  const lightSoft = _mix(accent, '#ffffff', .60);
   const lightMid  = _mix(accent, '#ffffff', .58);
-  const lightDeep = _mix(accent, '#ffffff', .22);
+  const lightDeep = _mix(accent, '#ffffff', .42);
   const lightUnavailable = _mix('#fde8ee', accent, .07);
   const lightReqMissing = _mix('#dcd2ff', accent, .10);
   const lightDuplicate = _mix('#f6d99d', accent, .10);
@@ -8640,7 +8657,7 @@ function schedulePaletteForSkin(skin) {
   return {
     light: {
       wdBg:'#ffffff', wdTx:'#222222',
-      wnBg:_mix(accent, '#d8d8d8', .72), wnTx:'#222222',
+      wnBg:lightNight, wnTx:'#222222',
       kdBg:lightSoft, kdTx:'#222222',
       knBg:lightDeep, knTx:'#222222',
       dupBg:lightDuplicate, dupTx:'#3d2400', dupBorder:_mix('#a66700', accent, .20),
@@ -8787,7 +8804,8 @@ function applyColorProfile() {
     }
     [data-theme="dark"] #tab-tvorba,
     [data-theme="dark"] #tab-rozpis,
-    [data-theme="dark"] #tab-public {
+    [data-theme="dark"] #tab-public,
+    [data-theme="dark"] #tab-pozadavky {
       --col-wd-bg:${l.wdBg}; --col-wd-tx:${l.wdTx};
       --col-wn-bg:${l.wnBg}; --col-wn-tx:${l.wnTx};
       --col-kd-bg:${l.kdBg}; --col-kd-tx:${l.kdTx};
@@ -9874,8 +9892,16 @@ function addStaff() {
    TAB SWITCHING
 ══════════════════════════════════════════════════════════════════════════════ */
 
+function mobileTabFallback() {
+  return ['rozpis', 'public', 'pozadavky', 'nastaveni'].find(tab => {
+    const btn = document.querySelector(`.tb-tab[data-tab="${tab}"]`);
+    return btn && !btn.classList.contains('perm-hidden');
+  }) || 'rozpis';
+}
+
 function switchTab(name) {
   closeMobileKeypad();
+  if (name === 'tvorba' && isMobileLike()) name = mobileTabFallback();
   // Persist active tab so F5 stays on same tab
   try { sessionStorage.setItem('rt-active-tab', name); } catch(e) {}
   document.body.dataset.activeTab = name;
@@ -10078,6 +10104,10 @@ document.addEventListener('DOMContentLoaded', async () => {
   document.body.classList.add('rt-ready');
   window.addEventListener('resize', () => {
     updateChromeHeights();
+    if (isMobileLike() && document.body.dataset.activeTab === 'tvorba') {
+      switchTab(mobileTabFallback());
+      return;
+    }
     fitScheduleToViewport();
     const tbl = document.querySelector('.tab-panel.active .sched-tbl');
     if (tbl) fineTuneScheduleFit(tbl);
