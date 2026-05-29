@@ -98,9 +98,17 @@
     var btn = document.getElementById('btn-theme');
     if (btn) {
       btn.textContent = isDark() ? '☀️' : '🌙';
-      btn.addEventListener('click', function () {
+      var lastThemeTouch = 0;
+      function toggleThemeButton(e) {
+        if (e) e.preventDefault();
+        if (e && e.type === 'click' && Date.now() - lastThemeTouch < 650) return;
         setThemeMode(!isDark(), true);
-      });
+      }
+      btn.addEventListener('touchend', function(e) {
+        lastThemeTouch = Date.now();
+        toggleThemeButton(e);
+      }, { passive: false });
+      btn.addEventListener('click', toggleThemeButton);
     }
 
     fetch('/api/me').then(function (r) {

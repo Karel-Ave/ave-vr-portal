@@ -1362,6 +1362,9 @@ tbody tr.row-filtered { display: none; }
   border-top: 1px solid color-mix(in srgb, var(--accent) 45%, var(--border));
   box-shadow: 0 -10px 32px rgba(0,0,0,.22);
   padding: 8px 10px calc(10px + env(safe-area-inset-bottom,0px));
+  max-height: min(46dvh, 360px);
+  overflow-y: auto;
+  -webkit-overflow-scrolling: touch;
   touch-action: manipulation;
 }
 #mobile-cell-keypad.show { display: block; }
@@ -1479,9 +1482,12 @@ tbody tr.row-filtered { display: none; }
     width: 100vw;
     max-width: 100vw;
     overscroll-behavior: contain;
+    -webkit-overflow-scrolling: touch;
     scroll-padding-bottom: calc(120px + env(safe-area-inset-bottom,0px));
     padding-bottom: calc(72px + env(safe-area-inset-bottom,0px));
   }
+  .schedule-wrap.axis-lock-x { overflow-y: hidden !important; }
+  .schedule-wrap.axis-lock-y { overflow-x: hidden !important; }
   .schedule-wrap::after {
     content: '';
     display: block;
@@ -1509,7 +1515,15 @@ tbody tr.row-filtered { display: none; }
 }
 
 @media (max-width: 520px) {
-  .mck-grid { grid-template-columns: repeat(5, minmax(40px, 1fr)); }
+  #mobile-cell-keypad {
+    max-height: min(42dvh, 300px);
+    padding: 6px 8px calc(8px + env(safe-area-inset-bottom,0px));
+  }
+  .mck-head { margin-bottom: 6px; font-size: 11px; }
+  .mck-close { height: 30px; min-width: 36px; }
+  .mck-grid { grid-template-columns: repeat(5, minmax(34px, 1fr)); gap: 5px; }
+  .mck-btn { min-height: 35px; font-size: 16px; border-radius: 8px; }
+  .mck-btn.mck-soft { font-size: 12px; }
   .tb-tab { padding: 0 9px; }
   .tb-btn,
   .stb-btn { padding-left: 9px; padding-right: 9px; }
@@ -1597,8 +1611,8 @@ tbody tr.row-filtered { display: none; }
   #pub-sel,
   #pub-sel-public {
     width: auto;
-    min-width: 150px;
-    max-width: min(78vw, 230px);
+    min-width: 174px;
+    max-width: min(82vw, 250px);
   }
   #autosave-ind,
   #lock-info {
@@ -1718,8 +1732,8 @@ tbody tr.row-filtered { display: none; }
   }
   #stb-hotel-btns {
     display: grid;
-    grid-template-columns: repeat(auto-fit, minmax(32px, 1fr));
-    gap: 5px;
+    grid-template-columns: repeat(8, minmax(0, 1fr));
+    gap: 4px;
     width: 100%;
   }
   #stb-hotel-btns .stb-btn {
@@ -1748,14 +1762,17 @@ tbody tr.row-filtered { display: none; }
     order: 1;
     flex: 1 1 100%;
     display: grid;
-    grid-template-columns: repeat(auto-fit, minmax(82px, 1fr));
+    grid-template-columns: repeat(6, minmax(0, 1fr));
     justify-content: flex-start;
-    gap: 5px;
+    gap: 4px;
     min-width: 0;
   }
   #stb-tools-left .stb-btn {
     width: 100%;
     min-width: 0;
+    padding-left: 2px;
+    padding-right: 2px;
+    overflow: hidden;
   }
   .stb-row-tools #stb-undo,
   .stb-row-tools #stb-redo {
@@ -1768,7 +1785,7 @@ tbody tr.row-filtered { display: none; }
   .stb-row-tools > #stb-export2 {
     order: 3;
   }
-  #stb-hide-hotels::after { content: "Hotely"; }
+  #stb-hide-hotels::after { content: "Hot."; }
   #stb-day-only::after { content: "Denní"; }
   #stb-night-only::after { content: "Noční"; }
   #stb-show-qualified::after { content: "Možné"; }
@@ -1805,9 +1822,16 @@ tbody tr.row-filtered { display: none; }
   }
   #stb-cols-day,
   #stb-cols-night {
-    width: 48px;
-    min-width: 48px;
+    width: auto;
+    min-width: 0;
   }
+  #stb-hide-hotels::after { content: "Hot" !important; }
+  #stb-day-only::after { content: "Den" !important; }
+  #stb-night-only::after { content: "Noc" !important; }
+  #stb-mark-sel::after { content: "Ozn" !important; }
+  #stb-cols-day::after { content: "d" !important; }
+  #stb-cols-night::after { content: "n" !important; }
+  #stb-tools-left .stb-btn { min-width: 0 !important; }
   #stb-undo,
   #stb-redo {
     font-size: 0;
@@ -3350,8 +3374,19 @@ function getMobileKeypad() {
 
 function setMobileKeypadHeight(open) {
   const el = document.getElementById('mobile-cell-keypad');
+  if (open && el) updateMobileKeypadViewport();
   const h = open && el ? Math.ceil(el.getBoundingClientRect().height || 0) : 0;
   document.documentElement.style.setProperty('--mobile-keypad-h', h + 'px');
+}
+
+function updateMobileKeypadViewport() {
+  const el = document.getElementById('mobile-cell-keypad');
+  if (!el) return;
+  const vv = window.visualViewport;
+  const visibleH = Math.max(260, Math.floor(vv?.height || window.innerHeight || 520));
+  const bottomGap = Math.max(0, Math.floor((window.innerHeight || visibleH) - visibleH - (vv?.offsetTop || 0)));
+  el.style.bottom = bottomGap + 'px';
+  el.style.maxHeight = Math.max(210, Math.floor(visibleH * 0.38)) + 'px';
 }
 
 function closeMobileKeypad() {
@@ -3499,8 +3534,6 @@ function bindMobileAxisScroll() {
         wrap,
         x: t.clientX,
         y: t.clientY,
-        left: wrap.scrollLeft,
-        top: wrap.scrollTop,
         axis: null
       };
     }, { passive: true });
@@ -3512,38 +3545,40 @@ function bindMobileAxisScroll() {
       if (!mobileAxisScroll.axis) {
         if (Math.max(Math.abs(dx), Math.abs(dy)) < 8) return;
         mobileAxisScroll.axis = Math.abs(dx) >= Math.abs(dy) ? 'x' : 'y';
+        wrap.classList.toggle('axis-lock-x', mobileAxisScroll.axis === 'x');
+        wrap.classList.toggle('axis-lock-y', mobileAxisScroll.axis === 'y');
       }
       if (mobileScheduleTap) mobileScheduleTap.moved = true;
-      e.preventDefault();
-      if (mobileAxisScroll.axis === 'x') {
-        wrap.scrollLeft = mobileAxisScroll.left - dx;
-      } else {
-        wrap.scrollTop = mobileAxisScroll.top - dy;
-      }
-    }, { passive: false });
-    wrap.addEventListener('touchend', () => { if (mobileAxisScroll && mobileAxisScroll.wrap === wrap) mobileAxisScroll = null; }, { passive: true });
-    wrap.addEventListener('touchcancel', () => { if (mobileAxisScroll && mobileAxisScroll.wrap === wrap) mobileAxisScroll = null; }, { passive: true });
+    }, { passive: true });
+    const clearAxis = () => {
+      if (mobileAxisScroll && mobileAxisScroll.wrap === wrap) mobileAxisScroll = null;
+      setTimeout(() => {
+        wrap.classList.remove('axis-lock-x', 'axis-lock-y');
+      }, 120);
+    };
+    wrap.addEventListener('touchend', clearAxis, { passive: true });
+    wrap.addEventListener('touchcancel', clearAxis, { passive: true });
   });
 }
 
-function maybeAutoScrollCurrentDay(tableId) {
+function maybeAutoScrollCurrentDay(tableId, force = false) {
   if (!isMobileLike()) return;
   if (tableId !== 'rozpis-tbl' && tableId !== 'public-rozpis-tbl') return;
   const today = getPragueToday();
   if (today.month !== state.month || today.year !== state.year || today.day <= 4) return;
   const key = `${tableId}:${today.year}-${today.month}-${today.day}`;
-  if (mobileAutoScrolled[key]) return;
+  if (!force && mobileAutoScrolled[key]) return;
   const tbl = document.getElementById(tableId);
   const wrap = tbl && tbl.closest('.schedule-wrap');
   if (!tbl || !wrap) return;
   const applyScroll = () => {
-    if (!isMobileLike() || mobileAutoScrolled[key] || !wrap.clientWidth) return;
+    if (!isMobileLike() || (!force && mobileAutoScrolled[key]) || !wrap.clientWidth) return;
     const firstDay = Math.max(1, today.day - 3);
     const th = tbl.querySelector(`thead th.th-dn[data-dn="d"][data-day="${firstDay}"][data-next-year="0"]`);
     if (!th) return;
     const nameW = getSchedCssNumber('--sched-name-w', 150);
     const target = Math.max(0, th.offsetLeft - nameW);
-    if (target <= 0) return;
+    if (target <= 0) { mobileAutoScrolled[key] = true; return; }
     wrap.scrollLeft = target;
     if (Math.abs(wrap.scrollLeft - target) <= 6 || wrap.scrollLeft > 0) {
       mobileAutoScrolled[key] = true;
@@ -3552,6 +3587,13 @@ function maybeAutoScrollCurrentDay(tableId) {
   requestAnimationFrame(() => requestAnimationFrame(applyScroll));
   setTimeout(applyScroll, 120);
   setTimeout(applyScroll, 320);
+}
+
+function autoScrollActivePublishedDay(force = true) {
+  if (!isMobileLike()) return;
+  const tab = document.body.dataset.activeTab;
+  if (tab === 'rozpis') maybeAutoScrollCurrentDay('rozpis-tbl', force);
+  if (tab === 'public') maybeAutoScrollCurrentDay('public-rozpis-tbl', force);
 }
 
 function getExtraAdjustments(si) {
@@ -4028,9 +4070,10 @@ function fitScheduleToViewport(calCols = getCalCols(state.month, state.year)) {
   const available = Math.max(320, (activeWrap ? activeWrap.clientWidth : window.innerWidth) - 4);
   const activeTableId = document.querySelector('.tab-panel.active .sched-tbl')?.id;
   const sumCount = activeTableId === 'tvorba-tbl' ? 6 : 7;
-  const nameFit = Math.max(150, Math.min(230, getScheduleNameWidth()));
-  const base = { name: nameFit, col: 18, sum: 24, pm: 34, hrs: 36 };
-  const min = { name: nameFit, col: 14, sum: 19, pm: 32, hrs: 34 };
+  const mobile = isMobileLike();
+  const nameFit = Math.max(mobile ? 170 : 150, Math.min(mobile ? 260 : 230, getScheduleNameWidth()));
+  const base = { name: nameFit, col: mobile ? 30 : 18, sum: mobile ? 28 : 24, pm: mobile ? 34 : 34, hrs: mobile ? 44 : 36 };
+  const min = { name: nameFit, col: mobile ? 28 : 14, sum: mobile ? 24 : 19, pm: mobile ? 32 : 32, hrs: mobile ? 40 : 34 };
 
   let nameW = base.name;
   let colW = base.col;
@@ -4065,12 +4108,13 @@ function getSchedCssNumber(name, fallback) {
 function fineTuneScheduleFit(tbl) {
   const wrap = tbl && tbl.closest('.schedule-wrap');
   if (!tbl || !wrap || !wrap.clientWidth) return;
-  const minCol = 12, maxCol = 18;
-  const nameFit = Math.max(150, Math.min(230, getScheduleNameWidth()));
+  const mobile = isMobileLike();
+  const minCol = mobile ? 28 : 12, maxCol = mobile ? 34 : 18;
+  const nameFit = Math.max(mobile ? 170 : 150, Math.min(mobile ? 260 : 230, getScheduleNameWidth()));
   const minName = nameFit, maxName = Math.max(150, nameFit);
-  const minSum = 19, maxSum = 24;
+  const minSum = mobile ? 24 : 19, maxSum = mobile ? 29 : 24;
   const minPm = 32, maxPm = 36;
-  const minHrs = 34, maxHrs = 38;
+  const minHrs = mobile ? 40 : 34, maxHrs = mobile ? 48 : 38;
 
   for (let i = 0; i < 24; i++) {
     const diff = tbl.scrollWidth - wrap.clientWidth;
@@ -6375,6 +6419,16 @@ async function publishSchedule() {
 let currentPubKey = null;
 let rozpisHasLoadedTable = false;
 
+function currentPublishedScheduleKey() {
+  const today = getPragueToday();
+  return `RT:${String(today.month).padStart(2, '0')}/${today.year}`;
+}
+
+function publishedOptionExists(key) {
+  const sel = document.getElementById('pub-sel');
+  return !!(sel && [...sel.options].some(opt => opt.value === key));
+}
+
 async function loadScheduleList() {
   const sel = document.getElementById('pub-sel');
   const publicSel = document.getElementById('pub-sel-public');
@@ -6404,9 +6458,12 @@ async function loadScheduleList() {
       showRozpisEmpty(true);
       showPublicEmpty(true);
     } else {
-      const preferredKey = (currentPubKey && items.some(it => it.key === currentPubKey))
-        ? currentPubKey
-        : (currentKey || items[0].key);
+      const realMonthKey = currentPublishedScheduleKey();
+      const preferredKey = items.some(it => it.key === realMonthKey)
+        ? realMonthKey
+        : ((currentPubKey && items.some(it => it.key === currentPubKey))
+          ? currentPubKey
+          : (currentKey || items[0].key));
       sel.value = preferredKey;
       if (publicSel) publicSel.value = preferredKey;
       showRozpisEmpty(false);
@@ -6478,6 +6535,7 @@ async function loadSchedule(key) {
     if (publicSpinner) publicSpinner.style.display = 'none';
     renderScheduleTable('rozpis-tbl', false);
     renderScheduleTable('public-rozpis-tbl', false);
+    autoScrollActivePublishedDay(true);
     updateDuplicateClasses();
     updateCoverageRows();
     updateRequirementClasses();
@@ -10087,12 +10145,20 @@ function switchTab(name) {
       loadScheduleList();
       return;
     }
+    {
+      const realKey = currentPublishedScheduleKey();
+      if (currentPubKey !== realKey && publishedOptionExists(realKey)) {
+        loadSchedule(realKey);
+        return;
+      }
+    }
     if (!window._initRendering) {
       // Re-render the Rozpis VR table so name-cell inline TYPE_COLORS backgrounds
       // always reflect the latest color profile (they can't be updated via CSS
       // variables alone because they're set as inline style.background on render).
       renderScheduleTable('rozpis-tbl', false);
       refreshCoverageSticky();
+      autoScrollActivePublishedDay(true);
     }
   } else if (name === 'public') {
     if (sumsMode !== 'all') setSumsMode('all');
@@ -10100,11 +10166,19 @@ function switchTab(name) {
       loadScheduleList();
       return;
     }
+    {
+      const realKey = currentPublishedScheduleKey();
+      if (currentPubKey !== realKey && publishedOptionExists(realKey)) {
+        loadSchedule(realKey);
+        return;
+      }
+    }
     applyPublicDefaultHotel();
     if (!window._initRendering) {
       renderScheduleTable('public-rozpis-tbl', false);
       refreshCoverageSticky();
       applyPublicDefaultHotel();
+      autoScrollActivePublishedDay(true);
     }
   } else if (name === 'pozadavky') {
     if (sumsMode !== 'all') setSumsMode('all');
@@ -10151,8 +10225,11 @@ document.addEventListener('DOMContentLoaded', async () => {
   // loadDraft() will do the authoritative first render of tvorba-tbl.
   window._initRendering = true;
   {
-    const savedTab = sessionStorage.getItem('rt-active-tab') || 'rozpis';
-    switchTab(savedTab);
+    const urlTab = new URLSearchParams(location.search).get('tab');
+    const allowedTabs = new Set(['nastaveni', 'tvorba', 'rozpis', 'public', 'pozadavky']);
+    let initialTab = allowedTabs.has(urlTab) ? urlTab : (sessionStorage.getItem('rt-active-tab') || 'rozpis');
+    if (initialTab === 'tvorba' && isMobileLike()) initialTab = mobileTabFallback();
+    switchTab(initialTab);
   }
 
   // Load & apply color profile from localStorage first (before any render)
@@ -10216,7 +10293,11 @@ document.addEventListener('DOMContentLoaded', async () => {
 
   // Load published schedules list
   await loadScheduleList();
-  await loadRequirementsList(currentReqKey, false);
+  if (document.body.dataset.activeTab === 'pozadavky') {
+    await loadRequirementsList(currentReqKey, false);
+  } else {
+    loadRequirementsList(currentReqKey, false).catch(() => {});
+  }
   if (document.body.dataset.activeTab === 'pozadavky' && currentReqKey) {
     await loadRequirement(currentReqKey);
   }
@@ -10236,6 +10317,12 @@ document.addEventListener('DOMContentLoaded', async () => {
     const tbl = document.querySelector('.tab-panel.active .sched-tbl');
     if (tbl) fineTuneScheduleFit(tbl);
     refreshCoverageSticky();
+    setMobileKeypadHeight(document.getElementById('mobile-cell-keypad')?.classList.contains('show'));
+  });
+  window.visualViewport?.addEventListener('resize', () => {
+    setMobileKeypadHeight(document.getElementById('mobile-cell-keypad')?.classList.contains('show'));
+  });
+  window.visualViewport?.addEventListener('scroll', () => {
     setMobileKeypadHeight(document.getElementById('mobile-cell-keypad')?.classList.contains('show'));
   });
 

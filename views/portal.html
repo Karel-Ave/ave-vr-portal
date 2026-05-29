@@ -737,7 +737,7 @@
     <button id="btn-user-settings" class="btn-top" onclick="openUserSettings()">Nastavení</button>
 <button id="btn-pw-change" class="btn-top" onclick="document.getElementById('pw-overlay').classList.add('show')">Změnit heslo</button>
     <a id="btn-logout" href="/logout" class="btn-top">Odhlásit</a>
-    <button id="btn-theme" title="Přepnout světlé / tmavé téma">🌙</button>
+    <button id="btn-theme" type="button" title="Přepnout světlé / tmavé téma">🌙</button>
     <button id="btn-hamburger" onclick="toggleMobileMenu()" aria-label="Menu" title="Menu">☰</button>
   </div>
 </div>
@@ -809,6 +809,16 @@
       <div class="public-hotel-picks" id="default-public-hotels"></div>
       <p class="settings-note" style="margin:6px 0 0">Pou&zcaron;ije se p&rcaron;i otev&rcaron;en&iacute; listu Rozpis.</p>
     </div>
+    <div class="settings-section" style="margin-top:12px">
+      <label>V&yacute;choz&iacute; karta po otev&rcaron;en&iacute; port&aacute;lu - PC</label>
+      <div class="settings-choice-row" id="default-app-desktop"></div>
+      <label>V&yacute;choz&iacute; karta po otev&rcaron;en&iacute; port&aacute;lu - mobil</label>
+      <div class="settings-choice-row" id="default-app-mobile"></div>
+      <label>V&yacute;choz&iacute; list v Rozpis a po&zcaron;adavky - PC</label>
+      <div class="settings-choice-row" id="default-rt-desktop"></div>
+      <label>V&yacute;choz&iacute; list v Rozpis a po&zcaron;adavky - mobil</label>
+      <div class="settings-choice-row" id="default-rt-mobile"></div>
+    </div>
     <div class="modal-btns">
       <button class="btn-primary" onclick="closeUserSettings()">Hotovo</button>
     </div>
@@ -864,6 +874,7 @@
   let currentAppUrl = null;
   let portalUser = null;
   let portalPrefs = {};
+  let portalPerms = null;
 
   function makeAppNavButton(c) {
     const btn = document.createElement('button');
@@ -902,11 +913,72 @@
     });
   }
 
+  function isMobilePortal() {
+    return !!(window.matchMedia && window.matchMedia('(max-width: 700px), (pointer: coarse)').matches);
+  }
+
+  function portalDeviceKey() {
+    return isMobilePortal() ? 'mobile' : 'desktop';
+  }
+
+  function normalizedDefaultViews() {
+    const raw = portalPrefs.default_views && typeof portalPrefs.default_views === 'object'
+      ? portalPrefs.default_views
+      : {};
+    return {
+      desktop: { app: raw.desktop?.app || null, raspisTab: raw.desktop?.raspisTab || null },
+      mobile: { app: raw.mobile?.app || null, raspisTab: raw.mobile?.raspisTab || null }
+    };
+  }
+
   function getDefaultApp(cards, user, perms) {
+    const views = normalizedDefaultViews();
+    const devicePref = views[portalDeviceKey()]?.app;
+    if (devicePref) {
+      const picked = cards.find(c => c.id === devicePref && c.href);
+      if (picked) return picked.href;
+    }
     const defaultRoles = ['admin', 'vedoucí', 'recepční'];
     const preferredId = perms?.__defaultApp || (defaultRoles.includes(user?.role) ? 'raspis' : null);
     const preferred = preferredId ? cards.find(c => c.id === preferredId && c.href) : null;
     return preferred?.href || cards.find(c => c.href)?.href || null;
+  }
+
+  const RASPIS_TAB_LABELS = {
+    nastaveni: 'Nastavení',
+    tvorba: 'Tvorba',
+    rozpis: 'Rozpis VR',
+    public: 'Rozpis',
+    pozadavky: 'Požadavky'
+  };
+
+  const RASPIS_TAB_BTN_KEYS = {
+    nastaveni: 'tab_nastaveni',
+    tvorba: 'tab_tvorba',
+    rozpis: 'tab_rozpis_vr',
+    public: 'tab_rozpis',
+    pozadavky: 'tab_pozadavky'
+  };
+
+  function canOpenRaspisTab(tab, device = portalDeviceKey()) {
+    if (device === 'mobile' && tab === 'tvorba') return false;
+    const key = RASPIS_TAB_BTN_KEYS[tab];
+    if (!key) return false;
+    const val = portalPerms?.raspis?.buttons?.[key];
+    return val == null ? true : val !== false;
+  }
+
+  function defaultRaspisTab(device = portalDeviceKey()) {
+    const views = normalizedDefaultViews();
+    const picked = views[device]?.raspisTab;
+    if (picked && canOpenRaspisTab(picked, device)) return picked;
+    return ['public', 'rozpis', 'pozadavky', 'nastaveni', 'tvorba'].find(t => canOpenRaspisTab(t, device)) || 'public';
+  }
+
+  function decorateAppUrl(url) {
+    if (url !== '/raspis-test') return url;
+    const qs = new URLSearchParams({ tab: defaultRaspisTab(portalDeviceKey()) });
+    return `${url}?${qs.toString()}`;
   }
 
   try { history.replaceState({ app: null }, '', '/portal'); } catch(e) {}
@@ -939,7 +1011,7 @@
       frame.classList.add('visible');
       bindIdleEventsInFrame();
     };
-    replaceFrameUrl(frame, url);
+    replaceFrameUrl(frame, decorateAppUrl(url));
     // Keep URL as /portal — app name stays hidden. State stored in sessionStorage for F5 restore.
     if (pushHistory) history.pushState({ app: url }, '', '/portal');
     try { sessionStorage.setItem('portal-last-app', url); } catch(e) {}
@@ -991,6 +1063,7 @@
     if (!user) return;
     portalUser = user;
     portalPrefs = prefData || {};
+    portalPerms = perms || null;
     setupIdleLogout();
 
     document.getElementById('user-label').textContent = user.username;
@@ -1123,6 +1196,7 @@
     renderSkinGrid();
     refreshAutoLogoutPref();
     refreshPublicRaspisPref();
+    refreshDefaultViewsPref();
   }
 
   function refreshAutoLogoutPref() {
@@ -1152,6 +1226,42 @@
     const active = new Set(value === 'ALL' ? ['ALL'] : value.split(',').filter(Boolean));
     const hotels = ['ALL','A','B','C','D','E','G','H','I','J','L','M','N','S','T','U'];
     grid.innerHTML = hotels.map(h => `<button type="button" class="public-hotel-pick${active.has(h) ? ' active' : ''}" data-hotel="${h}" onclick="toggleDefaultPublicHotel('${h}')">${h === 'ALL' ? 'V&Scaron;E' : h}</button>`).join('');
+  }
+
+  function refreshDefaultViewsPref() {
+    const views = normalizedDefaultViews();
+    const appTargets = [
+      ['desktop', 'default-app-desktop'],
+      ['mobile', 'default-app-mobile']
+    ];
+    appTargets.forEach(([device, id]) => {
+      const wrap = document.getElementById(id);
+      if (!wrap) return;
+      const allowed = portalCards.filter(c => c.href);
+      const active = allowed.some(c => c.id === views[device].app)
+        ? views[device].app
+        : (allowed[0]?.id || null);
+      wrap.innerHTML = allowed.map(c =>
+        `<button type="button" class="settings-choice${c.id === active ? ' active' : ''}" onclick="saveDefaultView('${device}','app','${c.id}')">${c.title}</button>`
+      ).join('');
+    });
+
+    const tabOrder = ['nastaveni', 'tvorba', 'rozpis', 'public', 'pozadavky'];
+    const tabTargets = [
+      ['desktop', 'default-rt-desktop'],
+      ['mobile', 'default-rt-mobile']
+    ];
+    tabTargets.forEach(([device, id]) => {
+      const wrap = document.getElementById(id);
+      if (!wrap) return;
+      const allowed = tabOrder.filter(tab => canOpenRaspisTab(tab, device));
+      const active = allowed.includes(views[device].raspisTab)
+        ? views[device].raspisTab
+        : (allowed.includes(defaultRaspisTab(device)) ? defaultRaspisTab(device) : allowed[0]);
+      wrap.innerHTML = allowed.map(tab =>
+        `<button type="button" class="settings-choice${tab === active ? ' active' : ''}" onclick="saveDefaultView('${device}','raspisTab','${tab}')">${RASPIS_TAB_LABELS[tab]}</button>`
+      ).join('');
+    });
   }
 
   function openUserSettings() {
@@ -1202,6 +1312,32 @@
         body: JSON.stringify({ hotel: val })
       });
       document.getElementById('app-frame')?.contentWindow?.postMessage({ type: 'ave-public-default-hotel', hotel: val }, '*');
+    } catch(e) {}
+  }
+
+  async function saveDefaultView(device, field, value) {
+    const views = normalizedDefaultViews();
+    if (!views[device]) return;
+    if (field === 'app') {
+      const visible = new Set(portalCards.filter(c => c.href).map(c => c.id));
+      if (!visible.has(value)) return;
+      views[device].app = value;
+    } else if (field === 'raspisTab') {
+      if (!canOpenRaspisTab(value, device)) return;
+      views[device].raspisTab = value;
+    } else {
+      return;
+    }
+    portalPrefs.default_views = views;
+    portalDefaultUrl = getDefaultApp(portalCards, portalUser, portalPerms);
+    refreshDefaultViewsPref();
+    try {
+      await fetch('/api/user-prefs/default-views', {
+        method: 'POST',
+        credentials: 'include',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ default_views: views })
+      });
     } catch(e) {}
   }
 

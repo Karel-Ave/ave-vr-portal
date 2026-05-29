@@ -128,6 +128,7 @@ async function init() {
   await db.query(`ALTER TABLE user_preferences ADD COLUMN IF NOT EXISTS default_public_hotel VARCHAR(80) DEFAULT NULL`);
   await db.query(`ALTER TABLE user_preferences ALTER COLUMN default_public_hotel TYPE VARCHAR(80)`);
   await db.query(`ALTER TABLE user_preferences ADD COLUMN IF NOT EXISTS auto_logout_minutes INTEGER DEFAULT 30`);
+  await db.query(`ALTER TABLE user_preferences ADD COLUMN IF NOT EXISTS default_views TEXT DEFAULT NULL`);
 
   // ── Blacklist ─────────────────────────────────────────────────────────────
 

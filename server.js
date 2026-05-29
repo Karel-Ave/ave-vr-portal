@@ -1085,16 +1085,19 @@ app.get('/api/user-prefs', requireLogin, async (req, res) => {
   try {
     const db = getPool();
     const { rows } = await db.query(
-      'SELECT default_raspis_key, default_public_hotel, auto_logout_minutes FROM user_preferences WHERE user_id = $1',
+      'SELECT default_raspis_key, default_public_hotel, auto_logout_minutes, default_views FROM user_preferences WHERE user_id = $1',
       [req.session.user.id]
     );
+    let defaultViews = {};
+    try { defaultViews = rows[0]?.default_views ? JSON.parse(rows[0].default_views) : {}; } catch { defaultViews = {}; }
     res.json({
       default_raspis_key: rows[0]?.default_raspis_key || null,
       default_public_hotel: rows[0]?.default_public_hotel || 'ALL',
-      auto_logout_minutes: Number(rows[0]?.auto_logout_minutes ?? req.session.user?.auto_logout_minutes ?? DEFAULT_AUTO_LOGOUT_MINUTES)
+      auto_logout_minutes: Number(rows[0]?.auto_logout_minutes ?? req.session.user?.auto_logout_minutes ?? DEFAULT_AUTO_LOGOUT_MINUTES),
+      default_views: defaultViews
     });
   } catch (err) {
-    res.json({ default_raspis_key: null, default_public_hotel: 'ALL', auto_logout_minutes: DEFAULT_AUTO_LOGOUT_MINUTES });
+    res.json({ default_raspis_key: null, default_public_hotel: 'ALL', auto_logout_minutes: DEFAULT_AUTO_LOGOUT_MINUTES, default_views: {} });
   }
 });
 
@@ -1160,6 +1163,36 @@ app.post('/api/user-prefs/default-public-hotel', requireLogin, async (req, res) 
       [req.session.user.id, hotel]
     );
     res.json({ ok: true, default_public_hotel: hotel });
+  } catch (err) {
+    res.json({ ok: false, msg: 'Chyba serveru.' });
+  }
+});
+
+app.post('/api/user-prefs/default-views', requireLogin, async (req, res) => {
+  const allowedApps = new Set(['raspis', 'priplatky', 'blacklist', 'admin']);
+  const allowedTabs = new Set(['nastaveni', 'tvorba', 'rozpis', 'public', 'pozadavky']);
+  const raw = req.body && req.body.default_views && typeof req.body.default_views === 'object'
+    ? req.body.default_views
+    : {};
+  const clean = {
+    desktop: {
+      app: allowedApps.has(raw.desktop?.app) ? raw.desktop.app : 'raspis',
+      raspisTab: allowedTabs.has(raw.desktop?.raspisTab) ? raw.desktop.raspisTab : 'rozpis'
+    },
+    mobile: {
+      app: allowedApps.has(raw.mobile?.app) ? raw.mobile.app : 'raspis',
+      raspisTab: allowedTabs.has(raw.mobile?.raspisTab) ? raw.mobile.raspisTab : 'public'
+    }
+  };
+  try {
+    const db = getPool();
+    await db.query(
+      `INSERT INTO user_preferences (user_id, default_views, updated_at)
+       VALUES ($1, $2, NOW())
+       ON CONFLICT (user_id) DO UPDATE SET default_views = $2, updated_at = NOW()`,
+      [req.session.user.id, JSON.stringify(clean)]
+    );
+    res.json({ ok: true, default_views: clean });
   } catch (err) {
     res.json({ ok: false, msg: 'Chyba serveru.' });
   }
