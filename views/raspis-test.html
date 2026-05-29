@@ -11,16 +11,17 @@
 <style>
 * { box-sizing: border-box; margin: 0; padding: 0; }
 html, body { width: 100%; max-width: 100vw; overflow-x: hidden; overflow-y: hidden; }
-body { min-height: 100vh; background: var(--bg); font-family: 'Segoe UI', system-ui, sans-serif; color: var(--text); padding-top: 48px; opacity: 0; }
+html { min-height: 100%; overscroll-behavior: none; }
+body { min-height: 100vh; min-height: 100dvh; background: var(--bg); font-family: 'Segoe UI', system-ui, sans-serif; color: var(--text); padding-top: var(--topbar-h,48px); opacity: 0; overscroll-behavior: none; }
 body.rt-ready { opacity: 1; transition: opacity .18s ease; }
-body.with-subtoolbar { padding-top: calc(48px + var(--stb-h,68px)); }
+body.with-subtoolbar { padding-top: calc(var(--topbar-h,48px) + var(--stb-h,68px)); }
 body.with-subtoolbar:has(#schedule-legend.show) { padding-bottom: 30px; }
 
 /* ── Topbar ── */
 #topbar {
   position: fixed; top: 0; left: 0; right: 0; z-index: 900;
   width: 100vw; max-width: 100vw;
-  height: 48px; background: var(--bg-topbar); border-bottom: 1px solid var(--bg-controls-border);
+  min-height: var(--topbar-h,48px); background: var(--bg-topbar); border-bottom: 1px solid var(--bg-controls-border);
   display: flex; align-items: center; gap: 6px; padding: 0 10px;
   overflow: visible; scrollbar-width: none;
 }
@@ -303,7 +304,7 @@ body[data-active-tab="pozadavky"] #tb-right-actions { display: none; }
 }
 
 .tab-panel { display: none; max-width: 100vw; height: calc(100dvh - 48px); overflow-x: hidden; }
-body.with-subtoolbar .tab-panel { height: calc(100dvh - 48px - var(--stb-h,0px)); }
+body.with-subtoolbar .tab-panel { height: calc(100dvh - var(--topbar-h,48px) - var(--stb-h,0px)); }
 .tab-panel.active { display: block; }
 #tab-nastaveni { overflow-y: auto; }
 
@@ -435,16 +436,16 @@ table.staff-tbl {
   max-width: 100vw;
 }
 .schedule-wrap.tvorba-wrap {
-  height: calc(100dvh - 48px - var(--stb-h,0px));
+  height: calc(100dvh - var(--topbar-h,48px) - var(--stb-h,0px));
 }
 .schedule-wrap.view-wrap {
-  height: calc(100dvh - 48px - var(--stb-h,0px));
+  height: calc(100dvh - var(--topbar-h,48px) - var(--stb-h,0px));
 }
 body[data-active-tab="tvorba"] .schedule-wrap.tvorba-wrap,
 body[data-active-tab="rozpis"] .schedule-wrap.view-wrap,
 body[data-active-tab="public"] .schedule-wrap.public-wrap,
 body[data-active-tab="pozadavky"] .schedule-wrap.requests-wrap {
-  height: calc(100dvh - 48px - var(--stb-h,0px) - 28px);
+  height: calc(100dvh - var(--topbar-h,48px) - var(--stb-h,0px) - var(--legend-h,28px) - var(--mobile-keypad-h,0px));
 }
 
 /* CSS variables for live resizing */
@@ -455,6 +456,10 @@ body[data-active-tab="pozadavky"] .schedule-wrap.requests-wrap {
   --sched-sum-w: 27px;
   --sched-hrs-w: 36px;
   --sched-pm-w: 34px;
+  --topbar-h: 48px;
+  --stb-h: 0px;
+  --legend-h: 28px;
+  --mobile-keypad-h: 0px;
   --sched-grid: rgba(0, 0, 0, .34);
   --sched-grid-soft: rgba(0, 0, 0, .24);
   --sched-grid-row: rgba(0, 0, 0, .16);
@@ -788,7 +793,7 @@ tbody tr.row-hidden { display: none !important; }
 
 /* ── Sub-toolbar (Tvorba & Rozpis) ── */
 #subtoolbar {
-  position: fixed; top: 48px; left: 0; right: 0; z-index: 85;
+  position: fixed; top: var(--topbar-h,48px); left: 0; right: 0; z-index: 85;
   width: 100vw; max-width: 100vw;
   background: var(--bg-controls); border-bottom: 1px solid var(--bg-controls-border);
   display: none; flex-direction: column; padding: 4px 10px 4px;
@@ -1316,6 +1321,465 @@ tbody tr.row-filtered { display: none; }
 .modal-body { padding: 18px 20px; flex: 1; min-height: 0; overflow-y: auto; }
 .modal-footer { padding: 12px 20px 16px; display: flex; gap: 8px; justify-content: flex-end;
   border-top: 1px solid var(--border); flex-shrink: 0; }
+
+/* Mobile schedule editor: custom keypad prevents the native iOS keyboard from
+   covering the bottom rows while keeping the schedule itself scrollable. */
+#mobile-cell-keypad {
+  position: fixed;
+  left: 0; right: 0; bottom: 0;
+  z-index: 12000;
+  display: none;
+  background: color-mix(in srgb, var(--surface) 94%, var(--accent) 6%);
+  color: var(--text);
+  border-top: 1px solid color-mix(in srgb, var(--accent) 45%, var(--border));
+  box-shadow: 0 -10px 32px rgba(0,0,0,.22);
+  padding: 8px 10px calc(10px + env(safe-area-inset-bottom,0px));
+  touch-action: manipulation;
+}
+#mobile-cell-keypad.show { display: block; }
+.mck-head {
+  display: flex; align-items: center; justify-content: space-between; gap: 10px;
+  margin-bottom: 8px; font-size: 12px; font-weight: 700; color: var(--accent-h);
+}
+.mck-close {
+  min-width: 40px; height: 34px; border-radius: 8px; border: 1px solid var(--border);
+  background: var(--surface); color: var(--text); font-size: 18px; font-weight: 700;
+}
+.mck-grid {
+  display: grid;
+  grid-template-columns: repeat(6, minmax(38px, 1fr));
+  gap: 6px;
+}
+.mck-btn {
+  min-height: 42px; border-radius: 9px; border: 1px solid var(--border);
+  background: var(--surface); color: var(--text); font-size: 18px; font-weight: 800;
+  font-family: inherit; box-shadow: 0 1px 2px rgba(0,0,0,.08);
+}
+.mck-btn:active,
+.mck-btn:hover {
+  background: var(--accent);
+  border-color: var(--accent);
+  color: var(--accent-fg,#fff);
+}
+.mck-btn.mck-soft { font-size: 14px; font-weight: 700; }
+.mck-btn.mck-danger { color: #b43131; border-color: color-mix(in srgb, #d44 50%, var(--border)); }
+.mck-btn.mck-ok { background: var(--accent); border-color: var(--accent); color: var(--accent-fg,#fff); }
+.mck-display {
+  grid-column: 1 / -1;
+  min-height: 42px; border-radius: 9px; border: 2px solid var(--accent);
+  background: var(--input-bg,var(--surface)); color: var(--text);
+  display: flex; align-items: center; justify-content: center;
+  font-size: 22px; font-weight: 800;
+}
+
+@media (max-width: 900px), (pointer: coarse) {
+  html, body {
+    position: relative;
+    overflow: hidden;
+  }
+  body {
+    padding-bottom: env(safe-area-inset-bottom,0px);
+  }
+  #topbar {
+    height: auto;
+    min-height: 48px;
+    flex-wrap: wrap;
+    align-content: flex-start;
+    gap: 6px;
+    padding: 6px 8px;
+    overflow: visible;
+  }
+  #tb-tabs {
+    position: static;
+    transform: none;
+    order: 1;
+    width: 100%;
+    justify-content: center;
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+    scrollbar-width: none;
+  }
+  #tb-tabs::-webkit-scrollbar { display: none; }
+  .tb-tab {
+    min-height: 36px;
+    height: 36px;
+    padding: 0 11px;
+    font-size: 12px;
+  }
+  .tb-actions:not(.hidden),
+  #tb-right-actions {
+    order: 2;
+    width: 100%;
+    max-width: none !important;
+    flex-wrap: wrap;
+    justify-content: flex-start;
+    gap: 6px;
+  }
+  #tb-right-actions {
+    margin-left: 0;
+  }
+  .tb-btn,
+  .stb-btn {
+    min-height: 36px;
+    padding: 7px 11px;
+    font-size: 12px;
+  }
+  #subtoolbar {
+    padding: 5px 8px;
+    overflow: visible;
+  }
+  .stb-row {
+    align-items: flex-start;
+    gap: 6px;
+    min-height: 0;
+  }
+  #stb-hotels-left,
+  #stb-tools-left {
+    flex: 1 1 100%;
+    overflow: visible;
+    flex-wrap: wrap;
+  }
+  #stb-hotel-btns {
+    flex-wrap: wrap;
+  }
+  .stb-row-tools #stb-undo,
+  .stb-row-tools #stb-redo {
+    position: static;
+    transform: none;
+  }
+  .schedule-wrap {
+    width: 100vw;
+    max-width: 100vw;
+    overscroll-behavior: contain;
+    scroll-padding-bottom: calc(120px + env(safe-area-inset-bottom,0px));
+    padding-bottom: calc(72px + env(safe-area-inset-bottom,0px));
+  }
+  .schedule-wrap::after {
+    content: '';
+    display: block;
+    height: calc(120px + env(safe-area-inset-bottom,0px));
+  }
+  .modal,
+  .fonds-modal {
+    max-height: calc(100dvh - 20px - env(safe-area-inset-bottom,0px)) !important;
+  }
+  .modal-body,
+  .fonds-body {
+    -webkit-overflow-scrolling: touch;
+    padding-bottom: calc(22px + env(safe-area-inset-bottom,0px));
+  }
+  .modal-footer,
+  .fonds-footer {
+    position: sticky;
+    bottom: 0;
+    background: var(--modal-bg,var(--surface));
+    padding-bottom: calc(14px + env(safe-area-inset-bottom,0px));
+  }
+  #toast {
+    bottom: calc(14px + var(--mobile-keypad-h,0px) + env(safe-area-inset-bottom,0px));
+  }
+}
+
+@media (max-width: 520px) {
+  .mck-grid { grid-template-columns: repeat(5, minmax(40px, 1fr)); }
+  .tb-tab { padding: 0 9px; }
+  .tb-btn,
+  .stb-btn { padding-left: 9px; padding-right: 9px; }
+}
+
+@media (max-width: 700px), (pointer: coarse) and (max-height: 520px) {
+  body.with-subtoolbar:has(#schedule-legend.show) { padding-bottom: 0; }
+
+  #topbar {
+    display: flex;
+    flex-direction: column;
+    align-items: stretch;
+    justify-content: flex-start;
+    gap: 5px;
+    padding: 5px 6px;
+    overflow: visible;
+  }
+  #tb-tabs {
+    position: static;
+    transform: none;
+    order: 1;
+    width: 100%;
+    display: grid;
+    grid-template-columns: repeat(5, minmax(0, 1fr));
+    gap: 4px;
+    overflow: visible;
+  }
+  .tb-tab {
+    width: 100%;
+    min-width: 0;
+    height: 32px;
+    min-height: 32px;
+    padding: 0 4px;
+    font-size: 0;
+    border-radius: 8px;
+  }
+  .tb-tab::after {
+    font-size: 12px;
+    line-height: 1;
+    font-weight: 800;
+  }
+  .tb-tab[data-tab="nastaveni"]::after { content: "Nast."; }
+  .tb-tab[data-tab="tvorba"]::after { content: "Tvorba"; }
+  .tb-tab[data-tab="rozpis"]::after { content: "VR"; }
+  .tb-tab[data-tab="public"]::after { content: "Rozpis"; }
+  .tb-tab[data-tab="pozadavky"]::after { content: "Pož."; }
+
+  .tb-actions:not(.hidden),
+  #tb-right-actions {
+    position: static;
+    transform: none;
+    order: 2;
+    width: 100%;
+    max-width: none !important;
+    margin: 0;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex-wrap: wrap;
+    gap: 4px;
+  }
+  #tb-right-actions {
+    order: 3;
+  }
+  #tb-act-nastaveni {
+    position: static;
+    transform: none;
+  }
+  #tb-act-tvorba,
+  #tb-act-rozpis,
+  #tb-act-public,
+  #tb-act-pozadavky {
+    flex: 0 0 auto;
+  }
+  .tb-btn,
+  .stb-btn {
+    min-height: 32px;
+    height: 32px;
+    padding: 5px 8px;
+    border-radius: 8px;
+    font-size: 12px;
+    line-height: 1;
+  }
+  #sel-month-year,
+  #pub-sel,
+  #pub-sel-public {
+    width: 118px;
+    max-width: 42vw;
+  }
+  #autosave-ind,
+  #lock-info {
+    display: none !important;
+  }
+  #btn-paste-excel,
+  #btn-import-unmatched,
+  #btn-draft-delete,
+  #btn-draft-trash,
+  #btn-publish,
+  #btn-delete-schedule,
+  #btn-schedule-archive,
+  #btn-schedule-log,
+  #btn-color-editor,
+  #btn-view-edit,
+  #btn-req-create,
+  #btn-req-edit,
+  #btn-req-toggle-edit,
+  #btn-req-send-tvorba,
+  #btn-req-delete,
+  #btn-req-archive {
+    font-size: 0;
+    min-width: 40px;
+  }
+  #btn-paste-excel::after { content: "XLS"; }
+  #btn-import-unmatched::after { content: "Jména"; }
+  #btn-draft-delete::after,
+  #btn-delete-schedule::after,
+  #btn-req-delete::after { content: "Smaz."; }
+  #btn-draft-trash::after { content: "Koš"; }
+  #btn-publish::after { content: "Publ."; }
+  #btn-schedule-archive::after,
+  #btn-req-archive::after { content: "Archiv"; }
+  #btn-schedule-log::after { content: "Log"; }
+  #btn-color-editor::after { content: "Barvy"; }
+  #btn-view-edit::after,
+  #btn-req-edit::after { content: "Edit"; }
+  #btn-req-create::after { content: "Nové"; }
+  #btn-req-toggle-edit::after { content: "Povolit"; }
+  #btn-req-send-tvorba::after { content: "Do Tvorby"; }
+  #btn-paste-excel::after,
+  #btn-import-unmatched::after,
+  #btn-draft-delete::after,
+  #btn-draft-trash::after,
+  #btn-publish::after,
+  #btn-delete-schedule::after,
+  #btn-schedule-archive::after,
+  #btn-schedule-log::after,
+  #btn-color-editor::after,
+  #btn-view-edit::after,
+  #btn-req-create::after,
+  #btn-req-edit::after,
+  #btn-req-toggle-edit::after,
+  #btn-req-send-tvorba::after,
+  #btn-req-delete::after,
+  #btn-req-archive::after {
+    font-size: 12px;
+    font-weight: 800;
+  }
+  #req-title,
+  #req-status {
+    width: 100%;
+    min-width: 0;
+    text-align: center;
+    font-size: 12px;
+  }
+  #req-fonds-info {
+    width: 100%;
+    margin-left: 0;
+    align-items: center;
+    font-size: 10px;
+  }
+
+  #subtoolbar {
+    padding: 6px;
+    gap: 5px;
+    overflow: visible;
+  }
+  .stb-row {
+    width: 100%;
+    min-height: 0;
+    gap: 5px;
+  }
+  #stb-row-hotels {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    justify-content: center;
+  }
+  #stb-row-hotels .stb-spacer,
+  .stb-row-tools .stb-spacer,
+  .stb-sep {
+    display: none !important;
+  }
+  .stb-hotel-lbl {
+    display: none;
+  }
+  #stb-hotels-left {
+    order: 1;
+    flex: 1 1 100%;
+    display: grid;
+    grid-template-columns: auto 1fr;
+    align-items: center;
+    gap: 5px;
+    overflow: visible;
+  }
+  #stb-vse {
+    width: 50px;
+    min-width: 50px;
+  }
+  #stb-hotel-btns {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(32px, 1fr));
+    gap: 5px;
+    width: 100%;
+  }
+  #stb-hotel-btns .stb-btn {
+    width: 100%;
+    min-width: 0;
+    padding-left: 0;
+    padding-right: 0;
+    font-size: 12px;
+  }
+  #stb-row-hotels > #stb-hide-sums,
+  #stb-row-hotels > #stb-save-req {
+    order: 2;
+  }
+  #stb-hotels-right {
+    display: flex;
+    justify-content: center;
+    flex-wrap: wrap;
+    gap: 5px;
+  }
+  .stb-row-tools {
+    display: flex;
+    justify-content: center;
+  }
+  #stb-tools-left,
+  #stb-tools-left {
+    order: 1;
+    flex: 1 1 100%;
+    display: flex;
+    justify-content: center;
+    flex-wrap: wrap;
+    gap: 5px;
+    min-width: 0;
+  }
+  .stb-row-tools #stb-undo,
+  .stb-row-tools #stb-redo {
+    order: 2;
+    position: static;
+    transform: none;
+    width: 76px;
+  }
+  .stb-row-tools > #stb-hours-only,
+  .stb-row-tools > #stb-export2 {
+    order: 3;
+  }
+  #stb-hide-hotels::after { content: "Hotely"; }
+  #stb-day-only::after { content: "Denní"; }
+  #stb-night-only::after { content: "Noční"; }
+  #stb-show-qualified::after { content: "Možné"; }
+  #stb-mark-sel::after { content: "Označ"; }
+  #stb-show-selected::after { content: "Vybrané"; }
+  #stb-hide-sums::after { content: "Součty"; }
+  #stb-save-req::after { content: "Pož."; }
+  #stb-hours-only::after { content: "Hodiny"; }
+  #stb-export2::after { content: "XLS"; }
+  #stb-hide-hotels,
+  #stb-day-only,
+  #stb-night-only,
+  #stb-show-qualified,
+  #stb-mark-sel,
+  #stb-show-selected,
+  #stb-hide-sums,
+  #stb-save-req,
+  #stb-hours-only,
+  #stb-export2 {
+    font-size: 0;
+  }
+  #stb-hide-hotels::after,
+  #stb-day-only::after,
+  #stb-night-only::after,
+  #stb-show-qualified::after,
+  #stb-mark-sel::after,
+  #stb-show-selected::after,
+  #stb-hide-sums::after,
+  #stb-save-req::after,
+  #stb-hours-only::after,
+  #stb-export2::after {
+    font-size: 12px;
+    font-weight: 800;
+  }
+  #stb-cols-day,
+  #stb-cols-night {
+    width: 48px;
+    min-width: 48px;
+  }
+  #stb-undo,
+  #stb-redo {
+    font-size: 0;
+  }
+  #stb-undo::after,
+  #stb-redo::after {
+    font-size: 12px;
+    font-weight: 800;
+  }
+  #stb-undo::after { content: "Zpět"; }
+  #stb-redo::after { content: "Vpřed"; }
+}
 
 /* ── Toast ── */
 #toast {
@@ -2493,12 +2957,19 @@ function editExtraAdj(si, idx) {
   const a = adjs[idx];
   if (!a) return;
   _extraPopEditIdx = idx;
-  document.getElementById('extra-pop-val').value = a.val;
+  const valInp = document.getElementById('extra-pop-val');
+  valInp.value = a.val;
   document.getElementById('extra-pop-note').value = a.note || '';
   document.getElementById('extra-pop-date').value = a.date || '';
   document.getElementById('extra-pop-apply').textContent = 'Uložit';
   document.getElementById('extra-pop-title').textContent = '± Hodiny — upravit záznam';
-  document.getElementById('extra-pop-val').focus();
+  if (isMobileLike()) {
+    valInp.readOnly = true;
+    openMobileNumberKeypad(valInp, '± hodiny');
+  } else {
+    valInp.readOnly = false;
+    valInp.focus();
+  }
 }
 
 function deleteExtraAdj(si, idx) {
@@ -2529,7 +3000,15 @@ function showExtraPopup(si) {
   // Center popup
   pop.style.left = Math.round(window.innerWidth / 2 - 140) + 'px';
   pop.style.top = Math.round(window.innerHeight / 2 - 150) + 'px';
-  setTimeout(() => valInp.focus(), 30);
+  setTimeout(() => {
+    if (isMobileLike()) {
+      valInp.readOnly = true;
+      openMobileNumberKeypad(valInp, '± hodiny');
+    } else {
+      valInp.readOnly = false;
+      valInp.focus();
+    }
+  }, 30);
 }
 
 function applyExtraAdj() {
@@ -2789,6 +3268,167 @@ function smartCase(val) {
 /* ══════════════════════════════════════════════════════════════════════════════
    SUMS
 ══════════════════════════════════════════════════════════════════════════════ */
+
+/* Mobile helpers */
+const MOBILE_POINTER_QUERY = '(pointer: coarse), (max-width: 900px)';
+let mobileKeypadTarget = null;
+let mobileNumberValue = '';
+const mobileAutoScrolled = {};
+
+function isMobileLike() {
+  return !!(window.matchMedia && window.matchMedia(MOBILE_POINTER_QUERY).matches);
+}
+
+function updateChromeHeights() {
+  const topbar = document.getElementById('topbar');
+  const legend = document.getElementById('schedule-legend');
+  if (topbar) {
+    const h = Math.max(48, Math.ceil(topbar.getBoundingClientRect().height || topbar.offsetHeight || 48));
+    document.documentElement.style.setProperty('--topbar-h', h + 'px');
+  }
+  if (legend) {
+    const shown = legend.classList.contains('show');
+    const h = shown ? Math.max(28, Math.ceil(legend.getBoundingClientRect().height || legend.offsetHeight || 28)) : 0;
+    document.documentElement.style.setProperty('--legend-h', h + 'px');
+  }
+}
+
+function getMobileKeypad() {
+  let el = document.getElementById('mobile-cell-keypad');
+  if (el) return el;
+  el = document.createElement('div');
+  el.id = 'mobile-cell-keypad';
+  el.innerHTML = `
+    <div class="mck-head">
+      <span id="mck-title"></span>
+      <button type="button" class="mck-close" id="mck-close" aria-label="Zavrit">x</button>
+    </div>
+    <div class="mck-grid" id="mck-grid"></div>
+  `;
+  document.body.appendChild(el);
+  el.querySelector('#mck-close').addEventListener('click', closeMobileKeypad);
+  return el;
+}
+
+function setMobileKeypadHeight(open) {
+  const el = document.getElementById('mobile-cell-keypad');
+  const h = open && el ? Math.ceil(el.getBoundingClientRect().height || 0) : 0;
+  document.documentElement.style.setProperty('--mobile-keypad-h', h + 'px');
+}
+
+function closeMobileKeypad() {
+  const el = document.getElementById('mobile-cell-keypad');
+  if (el) el.classList.remove('show');
+  mobileKeypadTarget = null;
+  mobileNumberValue = '';
+  setMobileKeypadHeight(false);
+}
+
+function mobileScheduleLabel(si, ci) {
+  const s = state.staff[si];
+  const col = getCalCols(state.month, state.year)[ci];
+  const name = s ? (s.name || '') : '';
+  if (!col) return name;
+  return `${name} - ${col.day}. ${state.month}. ${col.dn === 'n' ? 'noc' : 'den'}`;
+}
+
+function openMobileScheduleKeypad(si, ci, tableId) {
+  if (!isMobileLike()) return false;
+  if (!canEditCellInTable(si, tableId)) return false;
+  mobileKeypadTarget = { type: 'schedule', si, ci, tableId };
+  const el = getMobileKeypad();
+  const grid = el.querySelector('#mck-grid');
+  el.querySelector('#mck-title').textContent = mobileScheduleLabel(si, ci);
+  grid.innerHTML = '';
+  const hotels = (typeof getUsedHotelLetters === 'function' ? getUsedHotelLetters() : Object.keys(HOTEL_HOURS_BUILTIN))
+    .filter(v => /^[A-Z]$/.test(String(v || '')))
+    .filter((v, idx, arr) => arr.indexOf(v) === idx);
+  [...hotels, 'x', 'y', 'z', '\u017e'].forEach(k => {
+    const btn = document.createElement('button');
+    btn.type = 'button';
+    btn.className = 'mck-btn' + (/^[xyz\u017e]$/.test(k) ? ' mck-soft' : '');
+    btn.textContent = k;
+    btn.addEventListener('click', () => {
+      setCellValue(si, ci, k);
+      focusCell(si, ci, tableId);
+      closeMobileKeypad();
+    });
+    grid.appendChild(btn);
+  });
+  const clear = document.createElement('button');
+  clear.type = 'button';
+  clear.className = 'mck-btn mck-danger mck-soft';
+  clear.textContent = 'Smazat';
+  clear.addEventListener('click', () => {
+    setCellValue(si, ci, '');
+    focusCell(si, ci, tableId);
+    closeMobileKeypad();
+  });
+  grid.appendChild(clear);
+  el.classList.add('show');
+  requestAnimationFrame(() => setMobileKeypadHeight(true));
+  return true;
+}
+
+function openMobileNumberKeypad(input, title = 'Hodnota') {
+  if (!isMobileLike() || !input) return false;
+  mobileKeypadTarget = { type: 'number', input };
+  mobileNumberValue = String(input.value || '');
+  const el = getMobileKeypad();
+  const grid = el.querySelector('#mck-grid');
+  el.querySelector('#mck-title').textContent = title;
+  grid.innerHTML = '';
+  const display = document.createElement('div');
+  display.className = 'mck-display';
+  display.textContent = mobileNumberValue || '-';
+  grid.appendChild(display);
+  ['7','8','9','<','4','5','6','-','1','2','3','OK','C','0','.'].forEach(k => {
+    const btn = document.createElement('button');
+    btn.type = 'button';
+    btn.className = 'mck-btn' + (k === 'OK' ? ' mck-ok' : '') + (k === '<' || k === 'C' ? ' mck-danger' : '');
+    btn.textContent = k;
+    btn.addEventListener('click', () => {
+      if (k === 'OK') {
+        input.value = mobileNumberValue;
+        input.dispatchEvent(new Event('input', { bubbles: true }));
+        input.dispatchEvent(new Event('change', { bubbles: true }));
+        closeMobileKeypad();
+        return;
+      }
+      if (k === 'C') mobileNumberValue = '';
+      else if (k === '<') mobileNumberValue = mobileNumberValue.slice(0, -1);
+      else if (k === '-') mobileNumberValue = mobileNumberValue.startsWith('-') ? mobileNumberValue.slice(1) : '-' + mobileNumberValue;
+      else if (k === '.') { if (!mobileNumberValue.includes('.')) mobileNumberValue += '.'; }
+      else if (mobileNumberValue.length < 7) mobileNumberValue += k;
+      display.textContent = mobileNumberValue || '-';
+    });
+    grid.appendChild(btn);
+  });
+  el.classList.add('show');
+  input.blur();
+  requestAnimationFrame(() => setMobileKeypadHeight(true));
+  return true;
+}
+
+function maybeAutoScrollCurrentDay(tableId) {
+  if (!isMobileLike()) return;
+  if (tableId !== 'rozpis-tbl' && tableId !== 'public-rozpis-tbl') return;
+  const today = getPragueToday();
+  if (today.month !== state.month || today.year !== state.year || today.day <= 4) return;
+  const key = `${tableId}:${today.year}-${today.month}-${today.day}`;
+  if (mobileAutoScrolled[key]) return;
+  const tbl = document.getElementById(tableId);
+  const wrap = tbl && tbl.closest('.schedule-wrap');
+  if (!tbl || !wrap) return;
+  requestAnimationFrame(() => {
+    const firstDay = Math.max(1, today.day - 3);
+    const th = tbl.querySelector(`thead th.th-dn[data-dn="d"][data-day="${firstDay}"][data-next-year="0"]`);
+    if (!th) return;
+    const nameW = getSchedCssNumber('--sched-name-w', 150);
+    wrap.scrollLeft = Math.max(0, th.offsetLeft - nameW);
+    mobileAutoScrolled[key] = true;
+  });
+}
 
 function getExtraAdjustments(si) {
   const e = state.extras && state.extras[si];
@@ -3365,6 +4005,8 @@ function renderScheduleTable(tableId, editable) {
     th.className = 'th-dn';
     th.dataset.dn = col.dn;
     th.dataset.ci = ci;
+    th.dataset.day = col.day;
+    th.dataset.nextYear = col.nextYear ? '1' : '0';
     const hol = isHoliday(col, state.month, state.year, holidaysList);
     const wkndTh = isWeekend(col, state.month, state.year);
     if (shouldMarkToday && !col.nextYear && col.day === pragueToday.day) {
@@ -3620,7 +4262,23 @@ function renderScheduleTable(tableId, editable) {
         inp.value = val;
         inp.dataset.si = si; inp.dataset.ci = ci;
         inp.tabIndex = -1;
+        inp.autocomplete = 'off';
+        inp.autocorrect = 'off';
+        inp.autocapitalize = 'characters';
+        inp.spellcheck = false;
+        inp.inputMode = isMobileLike() ? 'none' : 'text';
+        inp.readOnly = isMobileLike();
+        const openMobileEditor = e => {
+          if (!isMobileLike()) return;
+          e.preventDefault();
+          e.stopPropagation();
+          focusCell(si, ci, tableId);
+          openMobileScheduleKeypad(si, ci, tableId);
+        };
+        inp.addEventListener('pointerdown', openMobileEditor);
+        inp.addEventListener('touchstart', openMobileEditor, { passive: false });
         inp.addEventListener('mousedown', e => {
+          if (isMobileLike()) return;
           e.preventDefault();
           focusCell(si, ci, tableId);
         });
@@ -3649,7 +4307,12 @@ function renderScheduleTable(tableId, editable) {
         td.textContent = total !== 0 ? (total > 0 ? '+' + total : String(total)) : '';
         if (!isPublicView && !isRequirementsView) {
           td.style.cursor = 'pointer';
-          td.addEventListener('click', () => showExtraPopup(si));
+          td.addEventListener('click', () => {
+            showExtraPopup(si);
+            if (isMobileLike()) {
+              setTimeout(() => openMobileNumberKeypad(document.getElementById('extra-pop-val'), '± hodiny'), 50);
+            }
+          });
           td.addEventListener('mouseenter', e => showExtraTip(si, e.clientX, e.clientY));
           td.addEventListener('mouseleave', hideExtraTip);
         }
@@ -3779,6 +4442,7 @@ function renderScheduleTable(tableId, editable) {
   updateShiftContextBorders();
   updateCellSelection();
   fineTuneScheduleFit(tbl);
+  maybeAutoScrollCurrentDay(tableId);
 
   if (editable) {
     setupKeyboardNav(tbl);
@@ -3941,7 +4605,15 @@ function focusCell(si, ci, tableId = null) {
   if (!td) return;
   td.classList.add('focused');
   const inp = td.querySelector('input');
-  if (inp) inp.focus({preventScroll: true});
+  if (inp) {
+    if (isMobileLike()) {
+      inp.readOnly = true;
+      inp.blur();
+    } else {
+      inp.readOnly = false;
+      inp.focus({preventScroll: true});
+    }
+  }
 }
 
 function setupKeyboardNav(tbl) {
@@ -6533,6 +7205,7 @@ let overrideModeMonth = 1;
 let overrideModeYear  = 2026;
 
 function updateSubtoolbar() {
+  updateChromeHeights();
   const tab = document.querySelector('.tb-tab.active');
   const active = tab ? tab.dataset.tab : null;
   const stb = document.getElementById('subtoolbar');
@@ -6551,6 +7224,7 @@ function updateSubtoolbar() {
     document.documentElement.style.setProperty('--stb-h', '0px');
     document.body.classList.remove('with-subtoolbar');
   }
+  updateChromeHeights();
 }
 
 function getUsedHotelLetters() {
@@ -9201,6 +9875,7 @@ function addStaff() {
 ══════════════════════════════════════════════════════════════════════════════ */
 
 function switchTab(name) {
+  closeMobileKeypad();
   // Persist active tab so F5 stays on same tab
   try { sessionStorage.setItem('rt-active-tab', name); } catch(e) {}
   document.body.dataset.activeTab = name;
@@ -9214,6 +9889,7 @@ function switchTab(name) {
   const act = document.getElementById(`tb-act-${name}`);
   if (act) act.classList.remove('hidden');
   document.getElementById('schedule-legend')?.classList.toggle('show', name === 'tvorba' || name === 'rozpis' || name === 'public' || name === 'pozadavky');
+  updateChromeHeights();
 
   // Show/hide subtoolbar
   updateSubtoolbar();
@@ -9401,10 +10077,12 @@ document.addEventListener('DOMContentLoaded', async () => {
   // Vše načteno — zobraz stránku (fade-in), případně signalizuj portálu
   document.body.classList.add('rt-ready');
   window.addEventListener('resize', () => {
+    updateChromeHeights();
     fitScheduleToViewport();
     const tbl = document.querySelector('.tab-panel.active .sched-tbl');
     if (tbl) fineTuneScheduleFit(tbl);
     refreshCoverageSticky();
+    setMobileKeypadHeight(document.getElementById('mobile-cell-keypad')?.classList.contains('show'));
   });
 
   // ── Topbar tab buttons ──
@@ -9476,8 +10154,28 @@ document.addEventListener('DOMContentLoaded', async () => {
     if (e.key === 'Enter') applyExtraAdj();
     if (e.key === 'Escape') document.getElementById('extra-popup').style.display = 'none';
   });
+  document.getElementById('extra-pop-val').addEventListener('pointerdown', e => {
+    if (!isMobileLike()) return;
+    e.preventDefault();
+    e.currentTarget.readOnly = true;
+    openMobileNumberKeypad(e.currentTarget, '± hodiny');
+  });
+  document.getElementById('extra-pop-val').addEventListener('focus', e => {
+    if (!isMobileLike()) return;
+    e.currentTarget.blur();
+    openMobileNumberKeypad(e.currentTarget, '± hodiny');
+  });
+  document.addEventListener('pointerdown', e => {
+    const keypad = document.getElementById('mobile-cell-keypad');
+    if (!keypad || !keypad.classList.contains('show')) return;
+    if (keypad.contains(e.target)) return;
+    if (e.target.closest('.sched-cell, .sum-extra, #extra-popup')) return;
+    closeMobileKeypad();
+  }, true);
   document.addEventListener('click', e => {
     const pop = document.getElementById('extra-popup');
+    const keypad = document.getElementById('mobile-cell-keypad');
+    if (keypad && keypad.contains(e.target)) return;
     if (pop && pop.style.display !== 'none' && !pop.contains(e.target) &&
         !e.target.classList.contains('sum-extra')) {
       if (shouldKeepPopupOpenForSelection()) return;
