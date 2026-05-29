@@ -1516,13 +1516,13 @@ tbody tr.row-filtered { display: none; }
 
 @media (max-width: 520px) {
   #mobile-cell-keypad {
-    max-height: min(42dvh, 300px);
-    padding: 6px 8px calc(8px + env(safe-area-inset-bottom,0px));
+    max-height: min(36dvh, 260px);
+    padding: 5px 7px calc(6px + env(safe-area-inset-bottom,0px));
   }
-  .mck-head { margin-bottom: 6px; font-size: 11px; }
-  .mck-close { height: 30px; min-width: 36px; }
-  .mck-grid { grid-template-columns: repeat(5, minmax(34px, 1fr)); gap: 5px; }
-  .mck-btn { min-height: 35px; font-size: 16px; border-radius: 8px; }
+  .mck-head { margin-bottom: 5px; font-size: 11px; }
+  .mck-close { height: 28px; min-width: 34px; }
+  .mck-grid { grid-template-columns: repeat(5, minmax(32px, 1fr)); gap: 4px; }
+  .mck-btn { min-height: 30px; font-size: 15px; border-radius: 8px; }
   .mck-btn.mck-soft { font-size: 12px; }
   .tb-tab { padding: 0 9px; }
   .tb-btn,
@@ -1762,7 +1762,7 @@ tbody tr.row-filtered { display: none; }
     order: 1;
     flex: 1 1 100%;
     display: grid;
-    grid-template-columns: repeat(6, minmax(0, 1fr));
+    grid-template-columns: repeat(var(--stb-tool-cols, 6), minmax(0, 1fr));
     justify-content: flex-start;
     gap: 4px;
     min-width: 0;
@@ -1776,10 +1776,7 @@ tbody tr.row-filtered { display: none; }
   }
   .stb-row-tools #stb-undo,
   .stb-row-tools #stb-redo {
-    order: 2;
-    position: static;
-    transform: none;
-    width: 76px;
+    display: none !important;
   }
   .stb-row-tools > #stb-hours-only,
   .stb-row-tools > #stb-export2 {
@@ -1826,8 +1823,8 @@ tbody tr.row-filtered { display: none; }
     min-width: 0;
   }
   #stb-hide-hotels::after { content: "Hot" !important; }
-  #stb-day-only::after { content: "Den" !important; }
-  #stb-night-only::after { content: "Noc" !important; }
+  #stb-day-only::after { content: "Denní" !important; }
+  #stb-night-only::after { content: "Noční" !important; }
   #stb-mark-sel::after { content: "Ozn" !important; }
   #stb-cols-day::after { content: "d" !important; }
   #stb-cols-night::after { content: "n" !important; }
@@ -3386,7 +3383,7 @@ function updateMobileKeypadViewport() {
   const visibleH = Math.max(260, Math.floor(vv?.height || window.innerHeight || 520));
   const bottomGap = Math.max(0, Math.floor((window.innerHeight || visibleH) - visibleH - (vv?.offsetTop || 0)));
   el.style.bottom = bottomGap + 'px';
-  el.style.maxHeight = Math.max(210, Math.floor(visibleH * 0.38)) + 'px';
+  el.style.maxHeight = Math.max(180, Math.floor(visibleH * 0.34)) + 'px';
 }
 
 function closeMobileKeypad() {
@@ -3749,6 +3746,7 @@ function applyRaspisPermissions() {
     const first = document.querySelector('.tb-tab[data-tab]:not(.perm-hidden)');
     if (first) switchTab(first.dataset.tab);
   }
+  requestAnimationFrame(updateMobileToolGrid);
 }
 
 /* ══════════════════════════════════════════════════════════════════════════════
@@ -4072,8 +4070,8 @@ function fitScheduleToViewport(calCols = getCalCols(state.month, state.year)) {
   const sumCount = activeTableId === 'tvorba-tbl' ? 6 : 7;
   const mobile = isMobileLike();
   const nameFit = Math.max(mobile ? 170 : 150, Math.min(mobile ? 260 : 230, getScheduleNameWidth()));
-  const base = { name: nameFit, col: mobile ? 30 : 18, sum: mobile ? 28 : 24, pm: mobile ? 34 : 34, hrs: mobile ? 44 : 36 };
-  const min = { name: nameFit, col: mobile ? 28 : 14, sum: mobile ? 24 : 19, pm: mobile ? 32 : 32, hrs: mobile ? 40 : 34 };
+  const base = { name: nameFit, col: mobile ? 24 : 18, sum: mobile ? 28 : 24, pm: mobile ? 34 : 34, hrs: mobile ? 44 : 36 };
+  const min = { name: nameFit, col: mobile ? 22 : 14, sum: mobile ? 24 : 19, pm: mobile ? 32 : 32, hrs: mobile ? 40 : 34 };
 
   let nameW = base.name;
   let colW = base.col;
@@ -4109,7 +4107,7 @@ function fineTuneScheduleFit(tbl) {
   const wrap = tbl && tbl.closest('.schedule-wrap');
   if (!tbl || !wrap || !wrap.clientWidth) return;
   const mobile = isMobileLike();
-  const minCol = mobile ? 28 : 12, maxCol = mobile ? 34 : 18;
+  const minCol = mobile ? 22 : 12, maxCol = mobile ? 26 : 18;
   const nameFit = Math.max(mobile ? 170 : 150, Math.min(mobile ? 260 : 230, getScheduleNameWidth()));
   const minName = nameFit, maxName = Math.max(150, nameFit);
   const minSum = mobile ? 24 : 19, maxSum = mobile ? 29 : 24;
@@ -7402,6 +7400,18 @@ let nastaveniMode     = 'default'; // 'default' | 'monthly'
 let overrideModeMonth = 1;
 let overrideModeYear  = 2026;
 
+function updateMobileToolGrid() {
+  const left = document.getElementById('stb-tools-left');
+  if (!left) return;
+  const buttons = Array.from(left.querySelectorAll('.stb-btn')).filter(btn => {
+    if (btn.classList.contains('perm-hidden')) return false;
+    if (btn.style.display === 'none') return false;
+    return getComputedStyle(btn).display !== 'none';
+  });
+  const cols = Math.max(1, Math.min(6, buttons.length || 1));
+  left.style.setProperty('--stb-tool-cols', String(cols));
+}
+
 function updateSubtoolbar() {
   updateChromeHeights();
   const tab = document.querySelector('.tb-tab.active');
@@ -7422,6 +7432,7 @@ function updateSubtoolbar() {
     document.documentElement.style.setProperty('--stb-h', '0px');
     document.body.classList.remove('with-subtoolbar');
   }
+  requestAnimationFrame(updateMobileToolGrid);
   updateChromeHeights();
 }
 
