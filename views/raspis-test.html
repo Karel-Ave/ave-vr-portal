@@ -1531,10 +1531,20 @@ tbody tr.row-filtered { display: none; }
   .tb-tab { padding: 0 9px; }
   .tb-btn,
   .stb-btn { padding-left: 9px; padding-right: 9px; }
+  .sched-tbl td.sched-cell,
+  .sched-tbl td.sched-cell input,
+  .sched-tbl td.sched-cell .cell-val {
+    font-weight: 400 !important;
+  }
 }
 
 @media (max-width: 700px), (pointer: coarse) and (max-height: 520px) {
   body.with-subtoolbar:has(#schedule-legend.show) { padding-bottom: 0; }
+  .sched-tbl td.sched-cell,
+  .sched-tbl td.sched-cell input,
+  .sched-tbl td.sched-cell .cell-val {
+    font-weight: 400 !important;
+  }
 
   #topbar {
     display: flex;
@@ -1750,6 +1760,10 @@ tbody tr.row-filtered { display: none; }
     min-width: 0;
     padding-left: 0;
     padding-right: 0;
+    align-items: center;
+    justify-content: center;
+    text-align: center;
+    font-weight: 600;
   }
   #stb-collapse-controls { display: inline-flex !important; }
   #stb-collapse-controls {
@@ -1848,7 +1862,7 @@ tbody tr.row-filtered { display: none; }
   #stb-export2::after,
   #stb-collapse-controls::after {
     font-size: 12px;
-    font-weight: 800;
+    font-weight: 600;
   }
   #stb-cols-day,
   #stb-cols-night {
@@ -1862,6 +1876,7 @@ tbody tr.row-filtered { display: none; }
   #stb-cols-day::after { content: "d" !important; }
   #stb-cols-night::after { content: "n" !important; }
   #stb-collapse-controls::after { content: "SKR" !important; }
+  #stb-collapse-controls::after { font-weight: 600 !important; }
   #stb-tools-left .stb-btn { min-width: 0 !important; }
   #stb-undo,
   #stb-redo {
@@ -3418,7 +3433,7 @@ function updateMobileKeypadViewport() {
   const vv = window.visualViewport;
   const visibleH = Math.max(260, Math.floor(vv?.height || window.innerHeight || 520));
   const bottomGap = Math.max(0, Math.floor((window.innerHeight || visibleH) - visibleH - (vv?.offsetTop || 0)));
-  el.style.bottom = (bottomGap + 14) + 'px';
+  el.style.bottom = (bottomGap + 52) + 'px';
   el.style.maxHeight = Math.max(160, Math.floor(visibleH * 0.30)) + 'px';
 }
 
@@ -7448,6 +7463,10 @@ function setMobileControlsOpen(open) {
     updateMobileToolGrid();
     updateChromeHeights();
     fitScheduleToViewport();
+    if (mobileControlsOpen) {
+      const wrap = document.querySelector('.tab-panel.active .schedule-wrap');
+      if (wrap) wrap.scrollTop = 0;
+    }
   });
 }
 

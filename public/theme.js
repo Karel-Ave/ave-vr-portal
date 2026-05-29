@@ -88,7 +88,7 @@
       e.preventDefault();
       e.stopPropagation();
     }
-    if (Date.now() - lastThemeToggle < 350) return;
+    if (Date.now() - lastThemeToggle < 800) return;
     lastThemeToggle = Date.now();
     setThemeMode(!isDark(), true);
   }
@@ -111,9 +111,12 @@
     if (btn) {
       btn.textContent = isDark() ? '☀️' : '🌙';
       btn.style.touchAction = 'manipulation';
+      btn.style.webkitTapHighlightColor = 'transparent';
       function toggleThemeButton(e) {
         toggleFromEvent(e);
       }
+      btn.addEventListener('touchstart', toggleThemeButton, { passive: false });
+      btn.addEventListener('pointerdown', toggleThemeButton, { passive: false });
       btn.addEventListener('touchend', function(e) {
         toggleThemeButton(e);
       }, { passive: false });
@@ -163,7 +166,7 @@
     }
   });
 
-  ['touchend', 'pointerup', 'click'].forEach(function (evt) {
+  ['touchstart', 'touchend', 'pointerdown', 'pointerup', 'click'].forEach(function (evt) {
     document.addEventListener(evt, function (e) {
       var target = e.target && e.target.closest ? e.target.closest('#btn-theme') : null;
       if (!target) return;
