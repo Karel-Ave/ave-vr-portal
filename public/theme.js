@@ -26,6 +26,7 @@
     { id: 'navy', label: 'Navy' }
   ];
   var SKIN_IDS = SKINS.map(function (s) { return s.id; });
+  var lastThemeToggle = 0;
 
   function normalizeSkin(skin) {
     skin = String(skin || DEFAULT_SKIN).toLowerCase();
@@ -82,6 +83,16 @@
     if (persist !== false) saveToServer(dark, skin);
   }
 
+  function toggleFromEvent(e) {
+    if (e) {
+      e.preventDefault();
+      e.stopPropagation();
+    }
+    if (Date.now() - lastThemeToggle < 350) return;
+    lastThemeToggle = Date.now();
+    setThemeMode(!isDark(), true);
+  }
+
   applyTheme(localStorage.getItem(THEME_KEY) === 'dark', normalizeSkin(localStorage.getItem(SKIN_KEY)));
 
   window.AVE_THEME_SKINS = SKINS;
@@ -100,12 +111,8 @@
     if (btn) {
       btn.textContent = isDark() ? '☀️' : '🌙';
       btn.style.touchAction = 'manipulation';
-      var lastThemeTouch = 0;
       function toggleThemeButton(e) {
-        if (e) e.preventDefault();
-        if (Date.now() - lastThemeTouch < 350) return;
-        lastThemeTouch = Date.now();
-        setThemeMode(!isDark(), true);
+        toggleFromEvent(e);
       }
       btn.addEventListener('touchend', function(e) {
         toggleThemeButton(e);
@@ -154,6 +161,14 @@
       applyTheme(localStorage.getItem(THEME_KEY) === 'dark', normalizeSkin(localStorage.getItem(SKIN_KEY)));
       postThemeMessage(isDark(), getSkin());
     }
+  });
+
+  ['touchend', 'pointerup', 'click'].forEach(function (evt) {
+    document.addEventListener(evt, function (e) {
+      var target = e.target && e.target.closest ? e.target.closest('#btn-theme') : null;
+      if (!target) return;
+      toggleFromEvent(e);
+    }, { capture: true, passive: false });
   });
 
   if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', setup);

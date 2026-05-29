@@ -933,6 +933,11 @@ tbody tr.row-hidden { display: none !important; }
   box-shadow: none;
 }
 .stb-row { display: flex; align-items: center; gap: 4px; flex-wrap: wrap; min-height: 30px; }
+#stb-mobile-toggle,
+#stb-collapse-controls,
+#btn-color-editor {
+  display: none !important;
+}
 #stb-row-hotels { position: relative; }
 .stb-row-tools { position: relative; }
 .stb-row-tools #stb-undo,
@@ -1361,16 +1366,16 @@ tbody tr.row-filtered { display: none; }
   color: var(--text);
   border-top: 1px solid color-mix(in srgb, var(--accent) 45%, var(--border));
   box-shadow: 0 -10px 32px rgba(0,0,0,.22);
-  padding: 8px 10px calc(10px + env(safe-area-inset-bottom,0px));
-  max-height: min(46dvh, 360px);
+  padding: 6px 9px calc(12px + env(safe-area-inset-bottom,0px));
+  max-height: min(38dvh, 300px);
   overflow-y: auto;
   -webkit-overflow-scrolling: touch;
   touch-action: manipulation;
 }
 #mobile-cell-keypad.show { display: block; }
 .mck-head {
-  display: flex; align-items: center; justify-content: space-between; gap: 10px;
-  margin-bottom: 8px; font-size: 12px; font-weight: 700; color: var(--accent-h);
+  display: flex; align-items: center; justify-content: space-between; gap: 8px;
+  margin-bottom: 5px; font-size: 12px; font-weight: 700; color: var(--accent-h);
 }
 .mck-close {
   min-width: 40px; height: 34px; border-radius: 8px; border: 1px solid var(--border);
@@ -1379,10 +1384,10 @@ tbody tr.row-filtered { display: none; }
 .mck-grid {
   display: grid;
   grid-template-columns: repeat(6, minmax(38px, 1fr));
-  gap: 6px;
+  gap: 4px;
 }
 .mck-btn {
-  min-height: 42px; border-radius: 9px; border: 1px solid var(--border);
+  min-height: 36px; border-radius: 8px; border: 1px solid var(--border);
   background: var(--surface); color: var(--text); font-size: 18px; font-weight: 800;
   font-family: inherit; box-shadow: 0 1px 2px rgba(0,0,0,.08);
 }
@@ -1486,8 +1491,6 @@ tbody tr.row-filtered { display: none; }
     scroll-padding-bottom: calc(120px + env(safe-area-inset-bottom,0px));
     padding-bottom: calc(72px + env(safe-area-inset-bottom,0px));
   }
-  .schedule-wrap.axis-lock-x { overflow-y: hidden !important; }
-  .schedule-wrap.axis-lock-y { overflow-x: hidden !important; }
   .schedule-wrap::after {
     content: '';
     display: block;
@@ -1516,13 +1519,13 @@ tbody tr.row-filtered { display: none; }
 
 @media (max-width: 520px) {
   #mobile-cell-keypad {
-    max-height: min(36dvh, 260px);
-    padding: 5px 7px calc(6px + env(safe-area-inset-bottom,0px));
+    max-height: min(32dvh, 230px);
+    padding: 4px 7px calc(10px + env(safe-area-inset-bottom,0px));
   }
-  .mck-head { margin-bottom: 5px; font-size: 11px; }
-  .mck-close { height: 28px; min-width: 34px; }
-  .mck-grid { grid-template-columns: repeat(5, minmax(32px, 1fr)); gap: 4px; }
-  .mck-btn { min-height: 30px; font-size: 15px; border-radius: 8px; }
+  .mck-head { margin-bottom: 4px; font-size: 10px; }
+  .mck-close { height: 26px; min-width: 32px; }
+  .mck-grid { grid-template-columns: repeat(5, minmax(30px, 1fr)); gap: 3px; }
+  .mck-btn { min-height: 27px; font-size: 14px; border-radius: 7px; }
   .mck-btn.mck-soft { font-size: 12px; }
   .tb-tab { padding: 0 9px; }
   .tb-btn,
@@ -1698,16 +1701,30 @@ tbody tr.row-filtered { display: none; }
     gap: 5px;
     overflow: visible;
   }
+  #stb-mobile-toggle {
+    display: block !important;
+    width: 100%;
+    min-height: 36px;
+    border-radius: 9px;
+    font-size: 13px;
+    font-weight: 800;
+  }
+  #subtoolbar:not(.mobile-controls-open) .stb-row {
+    display: none !important;
+  }
+  #subtoolbar.mobile-controls-open #stb-mobile-toggle {
+    display: none !important;
+  }
   .stb-row {
     width: 100%;
     min-height: 0;
     gap: 5px;
   }
   #stb-row-hotels {
-    display: flex;
-    flex-wrap: wrap;
+    display: grid;
+    grid-template-columns: 1fr;
     align-items: center;
-    justify-content: center;
+    justify-content: stretch;
   }
   #stb-row-hotels .stb-spacer,
   .stb-row-tools .stb-spacer,
@@ -1721,20 +1738,21 @@ tbody tr.row-filtered { display: none; }
     order: 1;
     flex: 1 1 100%;
     display: grid;
-    grid-template-columns: auto 1fr;
+    grid-template-columns: repeat(9, minmax(0, 1fr));
     align-items: center;
-    gap: 5px;
+    gap: 4px;
     overflow: visible;
   }
-  #stb-vse {
-    width: 50px;
-    min-width: 50px;
-  }
-  #stb-hotel-btns {
-    display: grid;
-    grid-template-columns: repeat(8, minmax(0, 1fr));
-    gap: 4px;
+  #stb-vse,
+  #stb-collapse-controls {
     width: 100%;
+    min-width: 0;
+    padding-left: 0;
+    padding-right: 0;
+  }
+  #stb-collapse-controls { display: inline-flex !important; }
+  #stb-hotel-btns {
+    display: contents;
   }
   #stb-hotel-btns .stb-btn {
     width: 100%;
@@ -1743,6 +1761,8 @@ tbody tr.row-filtered { display: none; }
     padding-right: 0;
     font-size: 12px;
   }
+  #stb-hotels-left #stb-collapse-controls { order: 10; }
+  #stb-hotel-btns .stb-btn:nth-child(n+9) { order: 11; }
   #stb-row-hotels > #stb-hide-sums,
   #stb-row-hotels > #stb-save-req {
     order: 2;
@@ -1792,16 +1812,20 @@ tbody tr.row-filtered { display: none; }
   #stb-save-req::after { content: "Pož."; }
   #stb-hours-only::after { content: "Hodiny"; }
   #stb-export2::after { content: "XLS"; }
+  #stb-collapse-controls::after { content: "SKR"; }
   #stb-hide-hotels,
   #stb-day-only,
   #stb-night-only,
   #stb-show-qualified,
   #stb-mark-sel,
   #stb-show-selected,
+  #stb-cols-day,
+  #stb-cols-night,
   #stb-hide-sums,
   #stb-save-req,
   #stb-hours-only,
-  #stb-export2 {
+  #stb-export2,
+  #stb-collapse-controls {
     font-size: 0;
   }
   #stb-hide-hotels::after,
@@ -1810,10 +1834,13 @@ tbody tr.row-filtered { display: none; }
   #stb-show-qualified::after,
   #stb-mark-sel::after,
   #stb-show-selected::after,
+  #stb-cols-day::after,
+  #stb-cols-night::after,
   #stb-hide-sums::after,
   #stb-save-req::after,
   #stb-hours-only::after,
-  #stb-export2::after {
+  #stb-export2::after,
+  #stb-collapse-controls::after {
     font-size: 12px;
     font-weight: 800;
   }
@@ -1828,6 +1855,7 @@ tbody tr.row-filtered { display: none; }
   #stb-mark-sel::after { content: "Ozn" !important; }
   #stb-cols-day::after { content: "d" !important; }
   #stb-cols-night::after { content: "n" !important; }
+  #stb-collapse-controls::after { content: "SKR" !important; }
   #stb-tools-left .stb-btn { min-width: 0 !important; }
   #stb-undo,
   #stb-redo {
@@ -2186,10 +2214,12 @@ tbody tr.row-filtered { display: none; }
 </div>
 
 <div id="subtoolbar">
+  <button class="stb-btn" id="stb-mobile-toggle" type="button">Zobraz ovl. prvky</button>
   <div class="stb-row" id="stb-row-hotels">
     <!-- Levá polovina: tlačítka hotelů -->
     <div id="stb-hotels-left">
       <button class="stb-btn active" id="stb-vse">VŠE</button>
+      <button class="stb-btn" id="stb-collapse-controls" type="button">SKR</button>
       <div id="stb-hotel-btns"></div>
     </div>
     <!-- Měsíc/rok + F+S jsou v horní liště Tvorby. -->
@@ -3382,8 +3412,8 @@ function updateMobileKeypadViewport() {
   const vv = window.visualViewport;
   const visibleH = Math.max(260, Math.floor(vv?.height || window.innerHeight || 520));
   const bottomGap = Math.max(0, Math.floor((window.innerHeight || visibleH) - visibleH - (vv?.offsetTop || 0)));
-  el.style.bottom = bottomGap + 'px';
-  el.style.maxHeight = Math.max(180, Math.floor(visibleH * 0.34)) + 'px';
+  el.style.bottom = (bottomGap + 14) + 'px';
+  el.style.maxHeight = Math.max(160, Math.floor(visibleH * 0.30)) + 'px';
 }
 
 function closeMobileKeypad() {
@@ -3428,7 +3458,8 @@ function openMobileScheduleKeypad(si, ci, tableId) {
   const clear = document.createElement('button');
   clear.type = 'button';
   clear.className = 'mck-btn mck-danger mck-soft';
-  clear.textContent = 'Smazat';
+  clear.textContent = 'DEL';
+  clear.title = 'Smazat hodnotu';
   clear.addEventListener('click', () => {
     setCellValue(si, ci, '');
     focusCell(si, ci, tableId);
@@ -3531,6 +3562,8 @@ function bindMobileAxisScroll() {
         wrap,
         x: t.clientX,
         y: t.clientY,
+        left: wrap.scrollLeft,
+        top: wrap.scrollTop,
         axis: null
       };
     }, { passive: true });
@@ -3542,16 +3575,16 @@ function bindMobileAxisScroll() {
       if (!mobileAxisScroll.axis) {
         if (Math.max(Math.abs(dx), Math.abs(dy)) < 8) return;
         mobileAxisScroll.axis = Math.abs(dx) >= Math.abs(dy) ? 'x' : 'y';
-        wrap.classList.toggle('axis-lock-x', mobileAxisScroll.axis === 'x');
-        wrap.classList.toggle('axis-lock-y', mobileAxisScroll.axis === 'y');
+      }
+      if (mobileAxisScroll.axis === 'x') {
+        requestAnimationFrame(() => { if (mobileAxisScroll?.wrap === wrap) wrap.scrollTop = mobileAxisScroll.top; });
+      } else if (mobileAxisScroll.axis === 'y') {
+        requestAnimationFrame(() => { if (mobileAxisScroll?.wrap === wrap) wrap.scrollLeft = mobileAxisScroll.left; });
       }
       if (mobileScheduleTap) mobileScheduleTap.moved = true;
     }, { passive: true });
     const clearAxis = () => {
       if (mobileAxisScroll && mobileAxisScroll.wrap === wrap) mobileAxisScroll = null;
-      setTimeout(() => {
-        wrap.classList.remove('axis-lock-x', 'axis-lock-y');
-      }, 120);
     };
     wrap.addEventListener('touchend', clearAxis, { passive: true });
     wrap.addEventListener('touchcancel', clearAxis, { passive: true });
@@ -7399,6 +7432,17 @@ let sumsMode     = 'all'; // 'all' | 'hidden' | 'hoursonly'
 let nastaveniMode     = 'default'; // 'default' | 'monthly'
 let overrideModeMonth = 1;
 let overrideModeYear  = 2026;
+let mobileControlsOpen = false;
+
+function setMobileControlsOpen(open) {
+  mobileControlsOpen = !!open;
+  document.getElementById('subtoolbar')?.classList.toggle('mobile-controls-open', mobileControlsOpen);
+  requestAnimationFrame(() => {
+    updateMobileToolGrid();
+    updateChromeHeights();
+    fitScheduleToViewport();
+  });
+}
 
 function updateMobileToolGrid() {
   const left = document.getElementById('stb-tools-left');
@@ -7419,6 +7463,8 @@ function updateSubtoolbar() {
   const stb = document.getElementById('subtoolbar');
   const showStb = active === 'tvorba' || active === 'rozpis' || active === 'public' || active === 'pozadavky';
   stb.classList.toggle('show', showStb);
+  if (!isMobileLike()) mobileControlsOpen = true;
+  stb.classList.toggle('mobile-controls-open', !isMobileLike() || mobileControlsOpen);
   stb.classList.toggle('tab-tvorba', active === 'tvorba');
   stb.classList.toggle('tab-rozpis', active === 'rozpis');
   stb.classList.toggle('tab-public', active === 'public');
@@ -10095,6 +10141,7 @@ function mobileTabFallback() {
 function switchTab(name) {
   closeMobileKeypad();
   if (name === 'tvorba' && isMobileLike()) name = mobileTabFallback();
+  if (isMobileLike()) mobileControlsOpen = false;
   // Persist active tab so F5 stays on same tab
   try { sessionStorage.setItem('rt-active-tab', name); } catch(e) {}
   document.body.dataset.activeTab = name;
@@ -10343,6 +10390,8 @@ document.addEventListener('DOMContentLoaded', async () => {
   });
 
   // ── Sub-toolbar ──
+  document.getElementById('stb-mobile-toggle')?.addEventListener('click', () => setMobileControlsOpen(true));
+  document.getElementById('stb-collapse-controls')?.addEventListener('click', () => setMobileControlsOpen(false));
   document.getElementById('stb-vse').addEventListener('click', () => {
     filterHotels.clear();
     document.querySelectorAll('.staff-tbody tr.row-marked').forEach(tr => tr.classList.remove('row-marked'));
