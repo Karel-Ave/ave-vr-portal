@@ -83,14 +83,19 @@
     if (persist !== false) saveToServer(dark, skin);
   }
 
+  function toggleThemeNow() {
+    if (Date.now() - lastThemeToggle < 800) return false;
+    lastThemeToggle = Date.now();
+    setThemeMode(!isDark(), true);
+    return false;
+  }
+
   function toggleFromEvent(e) {
     if (e) {
       e.preventDefault();
       e.stopPropagation();
     }
-    if (Date.now() - lastThemeToggle < 800) return;
-    lastThemeToggle = Date.now();
-    setThemeMode(!isDark(), true);
+    return toggleThemeNow();
   }
 
   applyTheme(localStorage.getItem(THEME_KEY) === 'dark', normalizeSkin(localStorage.getItem(SKIN_KEY)));
@@ -102,7 +107,7 @@
     getSkin: getSkin,
     setMode: setThemeMode,
     setSkin: setSkin,
-    toggle: function () { setThemeMode(!isDark(), true); },
+    toggle: toggleThemeNow,
     skins: SKINS
   };
 
@@ -176,6 +181,8 @@
 
   if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', setup);
   else setup();
+
+  window.toggleAveTheme = toggleThemeNow;
 
   function setInvertedFavicon() {
     var img = new Image();

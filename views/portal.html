@@ -737,7 +737,7 @@
     <button id="btn-user-settings" class="btn-top" onclick="openUserSettings()">Nastavení</button>
 <button id="btn-pw-change" class="btn-top" onclick="document.getElementById('pw-overlay').classList.add('show')">Změnit heslo</button>
     <a id="btn-logout" href="/logout" class="btn-top">Odhlásit</a>
-    <button id="btn-theme" type="button" title="Přepnout světlé / tmavé téma">🌙</button>
+    <button id="btn-theme" type="button" onclick="return window.toggleAveTheme ? window.toggleAveTheme() : false;" title="Přepnout světlé / tmavé téma">🌙</button>
     <button id="btn-hamburger" onclick="toggleMobileMenu()" aria-label="Menu" title="Menu">☰</button>
   </div>
 </div>

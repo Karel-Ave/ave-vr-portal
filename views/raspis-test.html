@@ -435,6 +435,7 @@ table.staff-tbl {
   position: relative;
   width: 100vw;
   max-width: 100vw;
+  overflow-anchor: none;
 }
 .schedule-wrap.tvorba-wrap {
   height: calc(100dvh - var(--topbar-h,48px) - var(--stb-h,0px));
@@ -805,6 +806,7 @@ tbody tr.row-hidden { display: none !important; }
   background: var(--bg-controls); border-bottom: 1px solid var(--bg-controls-border);
   display: none; flex-direction: column; padding: 4px 10px 4px;
   overflow-x: hidden;
+  overflow-anchor: none;
   box-shadow: 0 1px 0 rgba(0,0,0,.03);
 }
 /* Light mode: subtoolbar uses light surface, dark text */
@@ -1642,8 +1644,10 @@ tbody tr.row-filtered { display: none; }
   #btn-schedule-log,
   #btn-color-editor,
   #btn-view-edit,
+  #btn-view-cancel,
   #btn-req-create,
   #btn-req-edit,
+  #btn-req-cancel,
   #btn-req-toggle-edit,
   #btn-req-send-tvorba,
   #btn-req-delete,
@@ -1663,7 +1667,9 @@ tbody tr.row-filtered { display: none; }
   #btn-schedule-log::after { content: "Log"; }
   #btn-color-editor::after { content: "Barvy"; }
   #btn-view-edit::after,
-  #btn-req-edit::after { content: attr(data-mobile-label); }
+  #btn-view-cancel::after,
+  #btn-req-edit::after,
+  #btn-req-cancel::after { content: attr(data-mobile-label); }
   #btn-req-create::after { content: "Nové"; }
   #btn-req-toggle-edit::after { content: attr(data-mobile-label); }
   #btn-req-send-tvorba::after { content: "Do Tvorby"; }
@@ -1677,8 +1683,10 @@ tbody tr.row-filtered { display: none; }
   #btn-schedule-log::after,
   #btn-color-editor::after,
   #btn-view-edit::after,
+  #btn-view-cancel::after,
   #btn-req-create::after,
   #btn-req-edit::after,
+  #btn-req-cancel::after,
   #btn-req-toggle-edit::after,
   #btn-req-send-tvorba::after,
   #btn-req-delete::after,
@@ -2023,6 +2031,7 @@ tbody tr.row-filtered { display: none; }
   <div class="tb-actions hidden" id="tb-act-rozpis">
     <select id="pub-sel" class="tb-btn" style="padding:4px 6px;font-size:12px;"></select>
     <button class="tb-btn" id="btn-view-edit" data-mobile-label="Editovat">Editovat</button>
+    <button class="tb-btn" id="btn-view-cancel" data-mobile-label="Zrušit" style="display:none">Zrušit</button>
     <span id="lock-info"></span>
   </div>
 
@@ -2034,6 +2043,7 @@ tbody tr.row-filtered { display: none; }
     <button class="tb-btn" id="btn-req-create">Vytvořit požadavky</button>
     <span id="req-title" class="tb-status">Žádné požadavky</span>
     <button class="tb-btn" id="btn-req-edit" data-mobile-label="Edituj">Editovat</button>
+    <button class="tb-btn" id="btn-req-cancel" data-mobile-label="Zrušit" style="display:none">Zrušit</button>
     <button class="tb-btn" id="btn-req-toggle-edit" data-mobile-label="Povolit Editaci">Povolit editaci</button>
     <button class="tb-btn" id="btn-req-send-tvorba">Odeslat do Tvorba</button>
     <select id="req-sel" class="tb-btn" style="display:none"></select>
@@ -3771,6 +3781,7 @@ function applyRaspisPermissions() {
   setPermVisibleById('btn-draft-trash', 'trash', false);
   setPermVisibleById('btn-publish', 'publish', canManageRequirements());
   setPermVisibleById('btn-view-edit', 'edit', canManageRequirements());
+  setPermVisibleById('btn-view-cancel', 'edit', canManageRequirements());
   setPermVisibleById('btn-delete-schedule', 'delete', false);
   setPermVisibleById('btn-schedule-archive', 'archive', false);
   setPermVisibleById('btn-schedule-log', 'log', false);
@@ -3778,6 +3789,7 @@ function applyRaspisPermissions() {
 
   setPermVisibleById('btn-req-create', 'req_create', canManageRequirements());
   setPermVisibleById('btn-req-edit', 'req_edit', canManageRequirements());
+  setPermVisibleById('btn-req-cancel', 'req_edit', canManageRequirements());
   setPermVisibleById('btn-req-toggle-edit', 'req_toggle_reception', canManageRequirements());
   setPermVisibleById('btn-req-send-tvorba', 'req_send_tvorba', canManageRequirements());
   setPermVisibleById('btn-req-delete', 'req_delete', false);
@@ -6625,6 +6637,7 @@ let reqItemsCache = [];
 let requirementsLoadedKey = null;
 let reqEditMode = false;
 let reqSaveTimer = null;
+let reqEditSnapshot = null;
 
 function showRequestsEmpty(yes) {
   const empty = document.getElementById('requests-empty');
@@ -6718,6 +6731,7 @@ function updateRequirementsStatus(entry) {
   const title = document.getElementById('req-title');
   const createBtn = document.getElementById('btn-req-create');
   const editBtn = document.getElementById('btn-req-edit');
+  const cancelBtn = document.getElementById('btn-req-cancel');
   const toggleBtn = document.getElementById('btn-req-toggle-edit');
   const sendBtn = document.getElementById('btn-req-send-tvorba');
   const act = document.getElementById('tb-act-pozadavky');
@@ -6734,6 +6748,7 @@ function updateRequirementsStatus(entry) {
     if (title) title.textContent = 'Žádné požadavky';
     if (el) el.textContent = '';
     if (editBtn) editBtn.style.display = 'none';
+    if (cancelBtn) cancelBtn.style.display = 'none';
     if (toggleBtn) toggleBtn.style.display = 'none';
     if (sendBtn) sendBtn.style.display = 'none';
     updateRequirementsFundsInfo(null);
@@ -6754,6 +6769,10 @@ function updateRequirementsStatus(entry) {
     editBtn.dataset.mobileLabel = reqEditMode ? 'Uložit' : (manager ? 'Editovat' : 'Edituj');
     editBtn.style.display = (manager || entry.status === 'open') ? '' : 'none';
     editBtn.classList.toggle('primary', reqEditMode);
+  }
+  if (cancelBtn) {
+    cancelBtn.style.display = reqEditMode ? '' : 'none';
+    cancelBtn.dataset.mobileLabel = 'Zrušit';
   }
   if (toggleBtn) {
     toggleBtn.textContent = entry.status === 'open' ? 'Ukončit editaci' : 'Povolit editaci';
@@ -6844,6 +6863,7 @@ async function loadRequirement(key) {
     requirementsLoadedKey = key;
     currentReqEntry = d.entry;
     reqEditMode = false;
+    reqEditSnapshot = null;
     updateRequirementsStatus(d.entry);
     renderScheduleTable('pozadavky-tbl', false);
     updateDuplicateClasses();
@@ -6931,6 +6951,7 @@ async function setRequirementsStatus(status) {
     const d = await r.json();
     if (!d.ok) return toast(d.msg || 'Stav se nepodarilo ulozit', true);
     reqEditMode = false;
+    reqEditSnapshot = null;
     toast(status === 'open' ? 'Pozadavky otevreny recepcnim' : 'Pozadavky zavreny recepcnim');
     await loadRequirementsList(currentReqKey);
   } catch(e) {
@@ -7137,6 +7158,7 @@ async function saveCurrentRequirementData(options = {}) {
       return false;
     }
     if (!silent) toast('Požadavky uloženy');
+    reqEditSnapshot = null;
     await loadRequirement(currentReqKey);
     return true;
   } catch(e) {
@@ -7148,6 +7170,20 @@ async function saveCurrentRequirementData(options = {}) {
 function openRequirementsHolidays() {
   if (!currentReqKey) return toast('Nejdřív vytvořte požadavky', true);
   openFondsModal();
+}
+
+function cancelRequirementsEdit() {
+  if (!reqEditMode) return;
+  clearTimeout(reqSaveTimer);
+  if (reqEditSnapshot) applyData(JSON.parse(JSON.stringify(reqEditSnapshot)));
+  reqEditMode = false;
+  reqEditSnapshot = null;
+  renderScheduleTable('pozadavky-tbl', false);
+  updateRequirementsStatus(currentReqEntry);
+  updateDuplicateClasses();
+  updateRequirementClasses();
+  applyRowFilters();
+  toast('Editace zrušena');
 }
 
 function toggleRequirementsEditWindow() {
@@ -7183,6 +7219,7 @@ function toggleRequirementsEditWindow() {
     return;
   }
   reqEditMode = true;
+  reqEditSnapshot = JSON.parse(JSON.stringify(buildSaveData()));
   renderScheduleTable('pozadavky-tbl', true);
   updateRequirementsStatus(currentReqEntry);
   applyRowFilters();
@@ -7295,6 +7332,7 @@ function formatLockSince(lock) {
 
 function updateLockUI() {
   const editBtn = document.getElementById('btn-view-edit');
+  const cancelBtn = document.getElementById('btn-view-cancel');
   const info = document.getElementById('lock-info');
   if (!editBtn || !info) return;
   if (viewEditMode && lockOwned) {
@@ -7302,6 +7340,7 @@ function updateLockUI() {
     editBtn.textContent = 'Uložit';
     editBtn.dataset.mobileLabel = 'Uložit';
     editBtn.classList.add('primary');
+    if (cancelBtn) cancelBtn.style.display = '';
     info.textContent = '';
     info.className = '';
   } else if (currentEditLock && !isOwnLock(currentEditLock)) {
@@ -7309,6 +7348,7 @@ function updateLockUI() {
     editBtn.style.display = 'none';
     editBtn.dataset.mobileLabel = 'Editovat';
     editBtn.classList.remove('primary');
+    if (cancelBtn) cancelBtn.style.display = 'none';
     info.textContent = `Právě edituje ${lockOwnerName(currentEditLock)}${since ? ` od ${since}` : ''}`;
     info.className = 'locked-by-other';
   } else {
@@ -7316,6 +7356,7 @@ function updateLockUI() {
     editBtn.textContent = 'Editovat';
     editBtn.dataset.mobileLabel = 'Editovat';
     editBtn.classList.remove('primary');
+    if (cancelBtn) cancelBtn.style.display = 'none';
     info.textContent = '';
     info.className = '';
   }
@@ -7456,18 +7497,37 @@ let overrideModeMonth = 1;
 let overrideModeYear  = 2026;
 let mobileControlsOpen = false;
 
+function keepActiveScheduleHeaderVisible() {
+  const wrap = document.querySelector('.tab-panel.active .schedule-wrap');
+  window.scrollTo(0, 0);
+  if (!wrap) return;
+  wrap.scrollTop = 0;
+  wrap.scrollTo({ top: 0, left: wrap.scrollLeft, behavior: 'auto' });
+}
+
 function setMobileControlsOpen(open) {
   mobileControlsOpen = !!open;
-  document.getElementById('subtoolbar')?.classList.toggle('mobile-controls-open', mobileControlsOpen);
+  const stb = document.getElementById('subtoolbar');
+  stb?.classList.toggle('mobile-controls-open', mobileControlsOpen);
+  if (stb?.classList.contains('show')) {
+    document.documentElement.style.setProperty('--stb-h', Math.ceil(stb.getBoundingClientRect().height || stb.offsetHeight || 0) + 'px');
+  }
   requestAnimationFrame(() => {
     updateMobileToolGrid();
+    updateSubtoolbar();
     updateChromeHeights();
     fitScheduleToViewport();
-    if (mobileControlsOpen) {
-      const wrap = document.querySelector('.tab-panel.active .schedule-wrap');
-      if (wrap) wrap.scrollTop = 0;
-    }
+    if (mobileControlsOpen) keepActiveScheduleHeaderVisible();
+    requestAnimationFrame(() => {
+      updateChromeHeights();
+      fitScheduleToViewport();
+      if (mobileControlsOpen) keepActiveScheduleHeaderVisible();
+    });
   });
+  if (mobileControlsOpen) {
+    setTimeout(keepActiveScheduleHeaderVisible, 80);
+    setTimeout(keepActiveScheduleHeaderVisible, 220);
+  }
 }
 
 function updateMobileToolGrid() {
@@ -9855,7 +9915,7 @@ async function toggleViewEdit() {
   const locked = await acquireLock();
   if (!locked) return;
   viewEditMode = true;
-  viewEditSnapshot = JSON.parse(JSON.stringify({ schedule: state.schedule, staff: state.staff, extras: state.extras }));
+  viewEditSnapshot = JSON.parse(JSON.stringify(buildSaveData()));
   renderScheduleTable('rozpis-tbl', true);
   updateLockUI();
   startViewEditIdleWatch();
@@ -9888,6 +9948,19 @@ async function saveViewEdits(options = {}) {
 /* ══════════════════════════════════════════════════════════════════════════════
    SIZE EDITOR
 ══════════════════════════════════════════════════════════════════════════════ */
+
+async function cancelViewEdit() {
+  if (!viewEditMode) return;
+  if (viewEditSnapshot) applyData(JSON.parse(JSON.stringify(viewEditSnapshot)));
+  viewEditMode = false;
+  viewEditSnapshot = null;
+  stopViewEditIdleWatch();
+  renderScheduleTable('rozpis-tbl', false);
+  renderScheduleTable('public-rozpis-tbl', false);
+  await releaseLock();
+  updateLockUI();
+  toast('Editace zrušena');
+}
 
 let sizePanelOpen = false;
 
@@ -10625,6 +10698,7 @@ document.addEventListener('DOMContentLoaded', async () => {
     if (e.target === document.getElementById('overlay-req-create') && !shouldKeepPopupOpenForSelection()) closeRequirementsCreateModal();
   });
   document.getElementById('btn-req-edit')?.addEventListener('click', toggleRequirementsEditWindow);
+  document.getElementById('btn-req-cancel')?.addEventListener('click', cancelRequirementsEdit);
   document.getElementById('btn-req-toggle-edit')?.addEventListener('click', toggleRequirementsReceptionistEdit);
   document.getElementById('btn-req-send-tvorba')?.addEventListener('click', sendRequirementsToTvorba);
   document.getElementById('btn-req-delete')?.addEventListener('click', archiveCurrentRequirement);
@@ -10638,6 +10712,7 @@ document.addEventListener('DOMContentLoaded', async () => {
   document.getElementById('btn-schedule-archive').addEventListener('click', showScheduleArchive);
   document.getElementById('btn-schedule-log').addEventListener('click', showScheduleLog);
   document.getElementById('btn-view-edit').addEventListener('click', toggleViewEdit);
+  document.getElementById('btn-view-cancel')?.addEventListener('click', cancelViewEdit);
 
   // ── Trash modal (drafts) ──
   document.getElementById('trash-close').addEventListener('click', () => {
