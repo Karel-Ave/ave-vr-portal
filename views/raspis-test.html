@@ -695,6 +695,8 @@ table.sched-tbl {
 .th-dn-day.is-weekend { color: var(--col-kn-bg); }
 .th-dn-day.is-weekend .th-day-num,
 .th-dn-day.is-weekend .th-day-dow { color: var(--col-kn-bg) !important; }
+.th-dn-day.is-holiday .th-day-num,
+.th-dn-day.is-holiday .th-day-dow { color: #e74c3c !important; }
 .th-day-num { display: block; font-size: 12px; font-weight: 700; }
 .th-day-dow { display: block; font-size: 8px; opacity: 0.8; }
 /* d/n letter — only this span gets red, day number area stays clean */
@@ -913,6 +915,16 @@ tbody tr.row-hidden { display: none !important; }
 [data-theme="dark"] #tab-pozadavky .th-dn-day.is-weekend .th-day-num,
 [data-theme="dark"] #tab-pozadavky .th-dn-day.is-weekend .th-day-dow {
   color: #4a9fd4 !important;
+}
+[data-theme="dark"] #tab-tvorba .th-dn-day.is-holiday .th-day-num,
+[data-theme="dark"] #tab-tvorba .th-dn-day.is-holiday .th-day-dow,
+[data-theme="dark"] #tab-rozpis .th-dn-day.is-holiday .th-day-num,
+[data-theme="dark"] #tab-rozpis .th-dn-day.is-holiday .th-day-dow,
+[data-theme="dark"] #tab-public .th-dn-day.is-holiday .th-day-num,
+[data-theme="dark"] #tab-public .th-dn-day.is-holiday .th-day-dow,
+[data-theme="dark"] #tab-pozadavky .th-dn-day.is-holiday .th-day-num,
+[data-theme="dark"] #tab-pozadavky .th-dn-day.is-holiday .th-day-dow {
+  color: #e74c3c !important;
 }
 #subtoolbar.show { display: flex; }
 [data-theme="dark"] #subtoolbar {
@@ -1584,8 +1596,9 @@ tbody tr.row-filtered { display: none; }
   #sel-month-year,
   #pub-sel,
   #pub-sel-public {
-    width: 118px;
-    max-width: 42vw;
+    width: auto;
+    min-width: 150px;
+    max-width: min(78vw, 230px);
   }
   #autosave-ind,
   #lock-info {
@@ -1622,9 +1635,9 @@ tbody tr.row-filtered { display: none; }
   #btn-schedule-log::after { content: "Log"; }
   #btn-color-editor::after { content: "Barvy"; }
   #btn-view-edit::after,
-  #btn-req-edit::after { content: "Edit"; }
+  #btn-req-edit::after { content: attr(data-mobile-label); }
   #btn-req-create::after { content: "Nové"; }
-  #btn-req-toggle-edit::after { content: "Povolit"; }
+  #btn-req-toggle-edit::after { content: attr(data-mobile-label); }
   #btn-req-send-tvorba::after { content: "Do Tvorby"; }
   #btn-paste-excel::after,
   #btn-import-unmatched::after,
@@ -1644,6 +1657,13 @@ tbody tr.row-filtered { display: none; }
   #btn-req-archive::after {
     font-size: 12px;
     font-weight: 800;
+  }
+  #btn-delete-schedule,
+  #btn-schedule-archive,
+  #btn-schedule-log,
+  #btn-req-delete,
+  #btn-req-archive {
+    display: none !important;
   }
   #req-title,
   #req-status {
@@ -1727,10 +1747,14 @@ tbody tr.row-filtered { display: none; }
   #stb-tools-left {
     order: 1;
     flex: 1 1 100%;
-    display: flex;
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(82px, 1fr));
     justify-content: flex-start;
-    flex-wrap: wrap;
     gap: 5px;
+    min-width: 0;
+  }
+  #stb-tools-left .stb-btn {
+    width: 100%;
     min-width: 0;
   }
   .stb-row-tools #stb-undo,
@@ -1928,7 +1952,7 @@ tbody tr.row-filtered { display: none; }
   <!-- Rozpis VR actions -->
   <div class="tb-actions hidden" id="tb-act-rozpis">
     <select id="pub-sel" class="tb-btn" style="padding:4px 6px;font-size:12px;"></select>
-    <button class="tb-btn" id="btn-view-edit">Editovat</button>
+    <button class="tb-btn" id="btn-view-edit" data-mobile-label="Editovat">Editovat</button>
     <span id="lock-info"></span>
   </div>
 
@@ -1939,8 +1963,8 @@ tbody tr.row-filtered { display: none; }
   <div class="tb-actions hidden" id="tb-act-pozadavky">
     <button class="tb-btn" id="btn-req-create">Vytvořit požadavky</button>
     <span id="req-title" class="tb-status">Žádné požadavky</span>
-    <button class="tb-btn" id="btn-req-edit">Editovat</button>
-    <button class="tb-btn" id="btn-req-toggle-edit">Povolit editaci</button>
+    <button class="tb-btn" id="btn-req-edit" data-mobile-label="Edituj">Editovat</button>
+    <button class="tb-btn" id="btn-req-toggle-edit" data-mobile-label="Povolit Editaci">Povolit editaci</button>
     <button class="tb-btn" id="btn-req-send-tvorba">Odeslat do Tvorba</button>
     <select id="req-sel" class="tb-btn" style="display:none"></select>
     <span id="req-status" class="tb-status"></span>
@@ -2981,7 +3005,6 @@ function editExtraAdj(si, idx) {
   document.getElementById('extra-pop-title').textContent = '± Hodiny — upravit záznam';
   if (isMobileLike()) {
     valInp.readOnly = true;
-    openMobileNumberKeypad(valInp, '± hodiny');
   } else {
     valInp.readOnly = false;
     valInp.focus();
@@ -3019,7 +3042,6 @@ function showExtraPopup(si) {
   setTimeout(() => {
     if (isMobileLike()) {
       valInp.readOnly = true;
-      openMobileNumberKeypad(valInp, '± hodiny');
     } else {
       valInp.readOnly = false;
       valInp.focus();
@@ -3426,6 +3448,84 @@ function openMobileNumberKeypad(input, title = 'Hodnota') {
   return true;
 }
 
+let mobileScheduleTap = null;
+
+function startMobileScheduleTap(e, si, ci, tableId) {
+  if (!isMobileLike()) return;
+  mobileScheduleTap = {
+    si,
+    ci,
+    tableId,
+    id: e.pointerId,
+    x: e.clientX,
+    y: e.clientY,
+    moved: false
+  };
+}
+
+function moveMobileScheduleTap(e) {
+  if (!mobileScheduleTap || mobileScheduleTap.id !== e.pointerId) return;
+  if (Math.abs(e.clientX - mobileScheduleTap.x) > 8 || Math.abs(e.clientY - mobileScheduleTap.y) > 8) {
+    mobileScheduleTap.moved = true;
+  }
+}
+
+function finishMobileScheduleTap(e) {
+  if (!mobileScheduleTap || mobileScheduleTap.id !== e.pointerId) return;
+  const tap = mobileScheduleTap;
+  mobileScheduleTap = null;
+  if (tap.moved) return;
+  e.preventDefault();
+  e.stopPropagation();
+  focusCell(tap.si, tap.ci, tap.tableId);
+  openMobileScheduleKeypad(tap.si, tap.ci, tap.tableId);
+}
+
+function cancelMobileScheduleTap(e) {
+  if (!mobileScheduleTap || (e && mobileScheduleTap.id !== e.pointerId)) return;
+  mobileScheduleTap = null;
+}
+
+let mobileAxisScroll = null;
+
+function bindMobileAxisScroll() {
+  document.querySelectorAll('.schedule-wrap').forEach(wrap => {
+    if (wrap.dataset.axisScrollBound === '1') return;
+    wrap.dataset.axisScrollBound = '1';
+    wrap.addEventListener('touchstart', e => {
+      if (!isMobileLike() || e.touches.length !== 1) return;
+      const t = e.touches[0];
+      mobileAxisScroll = {
+        wrap,
+        x: t.clientX,
+        y: t.clientY,
+        left: wrap.scrollLeft,
+        top: wrap.scrollTop,
+        axis: null
+      };
+    }, { passive: true });
+    wrap.addEventListener('touchmove', e => {
+      if (!isMobileLike() || !mobileAxisScroll || mobileAxisScroll.wrap !== wrap || e.touches.length !== 1) return;
+      const t = e.touches[0];
+      const dx = t.clientX - mobileAxisScroll.x;
+      const dy = t.clientY - mobileAxisScroll.y;
+      if (!mobileAxisScroll.axis) {
+        if (Math.max(Math.abs(dx), Math.abs(dy)) < 8) return;
+        mobileAxisScroll.axis = Math.abs(dx) >= Math.abs(dy) ? 'x' : 'y';
+      }
+      if (mobileScheduleTap) mobileScheduleTap.moved = true;
+      e.preventDefault();
+      if (mobileAxisScroll.axis === 'x') {
+        wrap.scrollLeft = mobileAxisScroll.left - dx;
+      } else {
+        wrap.scrollTop = mobileAxisScroll.top - dy;
+      }
+    }, { passive: false });
+    wrap.addEventListener('touchend', () => { if (mobileAxisScroll && mobileAxisScroll.wrap === wrap) mobileAxisScroll = null; }, { passive: true });
+    wrap.addEventListener('touchcancel', () => { if (mobileAxisScroll && mobileAxisScroll.wrap === wrap) mobileAxisScroll = null; }, { passive: true });
+  });
+}
+
 function maybeAutoScrollCurrentDay(tableId) {
   if (!isMobileLike()) return;
   if (tableId !== 'rozpis-tbl' && tableId !== 'public-rozpis-tbl') return;
@@ -3436,14 +3536,22 @@ function maybeAutoScrollCurrentDay(tableId) {
   const tbl = document.getElementById(tableId);
   const wrap = tbl && tbl.closest('.schedule-wrap');
   if (!tbl || !wrap) return;
-  requestAnimationFrame(() => {
+  const applyScroll = () => {
+    if (!isMobileLike() || mobileAutoScrolled[key] || !wrap.clientWidth) return;
     const firstDay = Math.max(1, today.day - 3);
     const th = tbl.querySelector(`thead th.th-dn[data-dn="d"][data-day="${firstDay}"][data-next-year="0"]`);
     if (!th) return;
     const nameW = getSchedCssNumber('--sched-name-w', 150);
-    wrap.scrollLeft = Math.max(0, th.offsetLeft - nameW);
-    mobileAutoScrolled[key] = true;
-  });
+    const target = Math.max(0, th.offsetLeft - nameW);
+    if (target <= 0) return;
+    wrap.scrollLeft = target;
+    if (Math.abs(wrap.scrollLeft - target) <= 6 || wrap.scrollLeft > 0) {
+      mobileAutoScrolled[key] = true;
+    }
+  };
+  requestAnimationFrame(() => requestAnimationFrame(applyScroll));
+  setTimeout(applyScroll, 120);
+  setTimeout(applyScroll, 320);
 }
 
 function getExtraAdjustments(si) {
@@ -3900,13 +4008,29 @@ function cellClass(col, month, year, holidaysList) {
   return 'cell-wd';
 }
 
+function getScheduleNameWidth() {
+  const names = (state.staff || []).map(s => String(s && s.name || '')).filter(Boolean);
+  const longest = names.reduce((max, name) => Math.max(max, name.length), 0);
+  if (!longest) return 150;
+  const canvas = getScheduleNameWidth._canvas || (getScheduleNameWidth._canvas = document.createElement('canvas'));
+  const ctx = canvas.getContext && canvas.getContext('2d');
+  let measured = 0;
+  if (ctx) {
+    ctx.font = '600 11px Arial, sans-serif';
+    names.forEach(name => { measured = Math.max(measured, ctx.measureText(name).width); });
+  }
+  const estimate = longest * 6.4;
+  return Math.ceil(Math.max(measured, estimate) + 18);
+}
+
 function fitScheduleToViewport(calCols = getCalCols(state.month, state.year)) {
   const activeWrap = document.querySelector('.tab-panel.active .schedule-wrap') || document.getElementById('tvorba-wrap') || document.getElementById('rozpis-wrap');
   const available = Math.max(320, (activeWrap ? activeWrap.clientWidth : window.innerWidth) - 4);
   const activeTableId = document.querySelector('.tab-panel.active .sched-tbl')?.id;
   const sumCount = activeTableId === 'tvorba-tbl' ? 6 : 7;
-  const base = { name: 150, col: 18, sum: 24, pm: 34, hrs: 36 };
-  const min = { name: 118, col: 14, sum: 19, pm: 32, hrs: 34 };
+  const nameFit = Math.max(150, Math.min(230, getScheduleNameWidth()));
+  const base = { name: nameFit, col: 18, sum: 24, pm: 34, hrs: 36 };
+  const min = { name: nameFit, col: 14, sum: 19, pm: 32, hrs: 34 };
 
   let nameW = base.name;
   let colW = base.col;
@@ -3942,7 +4066,8 @@ function fineTuneScheduleFit(tbl) {
   const wrap = tbl && tbl.closest('.schedule-wrap');
   if (!tbl || !wrap || !wrap.clientWidth) return;
   const minCol = 12, maxCol = 18;
-  const minName = 112, maxName = 150;
+  const nameFit = Math.max(150, Math.min(230, getScheduleNameWidth()));
+  const minName = nameFit, maxName = Math.max(150, nameFit);
   const minSum = 19, maxSum = 24;
   const minPm = 32, maxPm = 36;
   const minHrs = 34, maxHrs = 38;
@@ -4040,6 +4165,7 @@ function renderScheduleTable(tableId, editable) {
       const dayDiv = document.createElement('div');
       dayDiv.className = 'th-dn-day';
       if (wkndTh) dayDiv.classList.add('is-weekend');
+      if (hol) dayDiv.classList.add('is-holiday');
       const numSpan = document.createElement('span');
       numSpan.className = 'th-day-num';
       numSpan.textContent = dayLabel;
@@ -4284,15 +4410,10 @@ function renderScheduleTable(tableId, editable) {
         inp.spellcheck = false;
         inp.inputMode = isMobileLike() ? 'none' : 'text';
         inp.readOnly = isMobileLike();
-        const openMobileEditor = e => {
-          if (!isMobileLike()) return;
-          e.preventDefault();
-          e.stopPropagation();
-          focusCell(si, ci, tableId);
-          openMobileScheduleKeypad(si, ci, tableId);
-        };
-        inp.addEventListener('pointerdown', openMobileEditor);
-        inp.addEventListener('touchstart', openMobileEditor, { passive: false });
+        inp.addEventListener('pointerdown', e => startMobileScheduleTap(e, si, ci, tableId));
+        inp.addEventListener('pointermove', moveMobileScheduleTap);
+        inp.addEventListener('pointerup', finishMobileScheduleTap);
+        inp.addEventListener('pointercancel', cancelMobileScheduleTap);
         inp.addEventListener('mousedown', e => {
           if (isMobileLike()) return;
           e.preventDefault();
@@ -4325,9 +4446,6 @@ function renderScheduleTable(tableId, editable) {
           td.style.cursor = 'pointer';
           td.addEventListener('click', () => {
             showExtraPopup(si);
-            if (isMobileLike()) {
-              setTimeout(() => openMobileNumberKeypad(document.getElementById('extra-pop-val'), '± hodiny'), 50);
-            }
           });
           td.addEventListener('mouseenter', e => showExtraTip(si, e.clientX, e.clientY));
           td.addEventListener('mouseleave', hideExtraTip);
@@ -4458,6 +4576,7 @@ function renderScheduleTable(tableId, editable) {
   updateShiftContextBorders();
   updateCellSelection();
   fineTuneScheduleFit(tbl);
+  bindMobileAxisScroll();
   maybeAutoScrollCurrentDay(tableId);
 
   if (editable) {
@@ -6521,11 +6640,13 @@ function updateRequirementsStatus(entry) {
   }
   if (editBtn) {
     editBtn.textContent = reqEditMode ? 'Uložit' : (manager ? 'Editovat' : 'Edituj požadavky');
+    editBtn.dataset.mobileLabel = reqEditMode ? 'Uložit' : (manager ? 'Editovat' : 'Edituj');
     editBtn.style.display = (manager || entry.status === 'open') ? '' : 'none';
     editBtn.classList.toggle('primary', reqEditMode);
   }
   if (toggleBtn) {
     toggleBtn.textContent = entry.status === 'open' ? 'Ukončit editaci' : 'Povolit editaci';
+    toggleBtn.dataset.mobileLabel = entry.status === 'open' ? 'Ukončit editaci' : 'Povolit Editaci';
     toggleBtn.classList.add('req-state-toggle');
   }
   if (sendBtn) {
@@ -7068,18 +7189,21 @@ function updateLockUI() {
   if (viewEditMode && lockOwned) {
     editBtn.style.display = '';
     editBtn.textContent = 'Uložit';
+    editBtn.dataset.mobileLabel = 'Uložit';
     editBtn.classList.add('primary');
     info.textContent = '';
     info.className = '';
   } else if (currentEditLock && !isOwnLock(currentEditLock)) {
     const since = formatLockSince(currentEditLock);
     editBtn.style.display = 'none';
+    editBtn.dataset.mobileLabel = 'Editovat';
     editBtn.classList.remove('primary');
     info.textContent = `Právě edituje ${lockOwnerName(currentEditLock)}${since ? ` od ${since}` : ''}`;
     info.className = 'locked-by-other';
   } else {
     editBtn.style.display = '';
     editBtn.textContent = 'Editovat';
+    editBtn.dataset.mobileLabel = 'Editovat';
     editBtn.classList.remove('primary');
     info.textContent = '';
     info.className = '';
@@ -10188,12 +10312,10 @@ document.addEventListener('DOMContentLoaded', async () => {
     if (!isMobileLike()) return;
     e.preventDefault();
     e.currentTarget.readOnly = true;
-    openMobileNumberKeypad(e.currentTarget, '± hodiny');
   });
   document.getElementById('extra-pop-val').addEventListener('focus', e => {
     if (!isMobileLike()) return;
     e.currentTarget.blur();
-    openMobileNumberKeypad(e.currentTarget, '± hodiny');
   });
   document.addEventListener('pointerdown', e => {
     const keypad = document.getElementById('mobile-cell-keypad');
