@@ -3733,6 +3733,13 @@ function canManageRequirements() {
   return isAdmin() || role.includes('ved');
 }
 
+function getCurrentRequirementStaffIndexForSave() {
+  if (canManageRequirements()) return null;
+  const staff = Array.isArray(state.staff) ? state.staff : [];
+  const idx = staff.findIndex(s => isCurrentUserStaff(s));
+  return idx >= 0 ? idx : null;
+}
+
 let rtPermissions = null;
 const RT_TAB_PERMS = {
   nastaveni: 'tab_nastaveni',
@@ -7138,12 +7145,15 @@ async function saveCurrentRequirementData(options = {}) {
   const silent = !!options.silent;
   const confirmDuplicates = !!options.confirmDuplicates;
   const data = buildSaveData();
+  const staffIndex = getCurrentRequirementStaffIndexForSave();
+  const payload = { key: currentReqKey, data, confirmDuplicates };
+  if (staffIndex !== null) payload.staffIndex = staffIndex;
   try {
     const r = await fetch('/api/rt/requirements/save', {
       method: 'POST',
       credentials: 'include',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ key: currentReqKey, data, confirmDuplicates })
+      body: JSON.stringify(payload)
     });
     const d = await r.json();
     if (!d.ok) {

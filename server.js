@@ -3749,12 +3749,22 @@ async function canManageRequirementsServer(req) {
   return hasButtonPerm(user, 'raspis', 'req_edit', false);
 }
 
-function mergeRequirementStaffRow(currentData, incomingData, user) {
+function parseRequirementStaffIndex(value) {
+  if (value === null || value === undefined || value === '') return null;
+  const n = Number(value);
+  return Number.isInteger(n) && n >= 0 ? n : null;
+}
+
+function mergeRequirementStaffRow(currentData, incomingData, user, requestedStaffIndex = null) {
   const current = currentData && typeof currentData === 'object' ? currentData : {};
   const incoming = incomingData && typeof incomingData === 'object' ? incomingData : {};
   const staff = Array.isArray(current.staff) ? current.staff : [];
-  const si = staff.findIndex(s => isSessionUserRequirementStaff(s, user));
+  const ownSi = staff.findIndex(s => isSessionUserRequirementStaff(s, user));
+  const si = requestedStaffIndex !== null ? requestedStaffIndex : ownSi;
   if (si < 0) return { error: 'V požadavcích nemám přiřazený váš řádek.' };
+  if (!staff[si] || (requestedStaffIndex !== null && ownSi !== si)) {
+    return { error: 'Tento radek pozadavku nemuzete ulozit.' };
+  }
 
   const merged = JSON.parse(JSON.stringify(current));
   merged.schedule = merged.schedule && typeof merged.schedule === 'object' ? merged.schedule : {};
@@ -4115,52 +4125,66 @@ app.post('/api/rt/requirements/save', requireLogin, async (req, res) => {
   const key = String(req.body.key || '');
   const data = req.body.data;
   const confirmDuplicates = req.body.confirmDuplicates === true || String(req.body.confirmDuplicates || '') === 'true';
+  const requestedStaffIndex = parseRequirementStaffIndex(req.body.staffIndex);
   if (!key || !data) return res.json({ ok: false, msg: 'Chybí data.' });
+  const manager = await canManageRequirementsServer(req);
+  const db = getPool();
+  const client = await db.connect();
   try {
-    const db = getPool();
-    const existing = await db.query('SELECT status, data, allow_duplicates FROM rt_requirements WHERE key = $1 AND archived_at IS NULL', [key]);
-    if (!existing.rows.length) return res.json({ ok: false, msg: 'Nenalezeno.' });
-    const manager = await canManageRequirementsServer(req);
+    await client.query('BEGIN');
+    const rollbackJson = async (payload) => {
+      await client.query('ROLLBACK');
+      return res.json(payload);
+    };
+    const existing = await client.query('SELECT status, data, allow_duplicates FROM rt_requirements WHERE key = $1 AND archived_at IS NULL FOR UPDATE', [key]);
+    if (!existing.rows.length) {
+      return rollbackJson({ ok: false, msg: 'Nenalezeno.' });
+    }
     const raw = existing.rows[0].data;
     const currentData = typeof raw === 'string' ? JSON.parse(raw) : (raw || {});
     let saveData = data;
     let logScope = 'full-data';
     let staffIndex = null;
-    if (!manager) {
+    const rowScopedSave = requestedStaffIndex !== null || !manager;
+    if (rowScopedSave) {
       if (existing.rows[0].status !== 'open') {
-        return res.json({ ok: false, msg: 'Editace požadavků není povolena.' });
+        return rollbackJson({ ok: false, msg: 'Editace požadavků není povolena.' });
       }
-      const merged = mergeRequirementStaffRow(currentData, data, req.session.user);
-      if (merged.error) return res.json({ ok: false, msg: merged.error });
+      const merged = mergeRequirementStaffRow(currentData, data, req.session.user, requestedStaffIndex);
+      if (merged.error) return rollbackJson({ ok: false, msg: merged.error });
       saveData = merged.data;
       staffIndex = merged.staffIndex;
-      if (!saveData) return res.json({ ok: false, msg: 'V požadavcích nemám přiřazený váš řádek.' });
+      if (!saveData) return rollbackJson({ ok: false, msg: 'V požadavcích nemám přiřazený váš řádek.' });
       const duplicates = summarizeRequirementDuplicates(saveData, staffIndex);
       if (duplicates.length && !existing.rows[0].allow_duplicates) {
-        return res.json({ ok: false, msg: `Tato směna už je zapsaná jiným recepčním:\n${duplicates.slice(0, 12).join('\n')}` });
+        return rollbackJson({ ok: false, msg: `Tato směna už je zapsaná jiným recepčním:\n${duplicates.slice(0, 12).join('\n')}` });
       }
       if (duplicates.length && !confirmDuplicates) {
-        return res.json({ ok: false, duplicateWarning: true, duplicates });
+        return rollbackJson({ ok: false, duplicateWarning: true, duplicates });
       }
       logScope = 'own-row';
     }
     saveData = updateRequirementMeta(currentData, saveData, req.session.user, staffIndex);
-    const { rowCount } = await db.query(
+    const { rowCount } = await client.query(
       `UPDATE rt_requirements
        SET data = $2, updated_at = NOW(), updated_by = $3
        WHERE key = $1`,
       [key, JSON.stringify(saveData), req.session.user.name]
     );
-    if (!rowCount) return res.json({ ok: false, msg: 'Nenalezeno.' });
-    await db.query(
+    if (!rowCount) return rollbackJson({ ok: false, msg: 'Nenalezeno.' });
+    await client.query(
       `INSERT INTO rt_requirements_log (req_key, user_id, user_name, action, details)
        VALUES ($1,$2,$3,'save',$4)`,
       [key, req.session.user.id, req.session.user.name, JSON.stringify({ scope: logScope })]
     );
+    await client.query('COMMIT');
     res.json({ ok: true });
   } catch (err) {
+    try { await client.query('ROLLBACK'); } catch(e) {}
     console.error('POST /api/rt/requirements/save:', err);
     res.json({ ok: false, msg: 'Chyba serveru.' });
+  } finally {
+    client.release();
   }
 });
 
