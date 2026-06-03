@@ -538,7 +538,7 @@ table.sched-tbl {
 /* ── Cell color variables (user-editable via 🎨 Editor barev) ── */
 :root {
   --col-wd-bg:#ffffff;  --col-wd-tx:#222222;
-  --col-wn-bg:#bfd7e9;  --col-wn-tx:#222222;
+  --col-wn-bg:#d7dadd;  --col-wn-tx:#222222;
   --col-kd-bg:#a9c9e2;  --col-kd-tx:#222222;
   --col-kn-bg:#82b1d5;  --col-kn-tx:#222222;
   --col-dup-bg:#ffe0b8; --col-dup-tx:#3d2400; --col-dup-border:#c67812;
@@ -556,7 +556,7 @@ table.sched-tbl {
 }
 [data-theme="dark"] {
   --col-wd-bg:#343942;  --col-wd-tx:#ffffff;
-  --col-wn-bg:#2f343c;  --col-wn-tx:#ffffff;
+  --col-wn-bg:#3f444a;  --col-wn-tx:#ffffff;
   --col-kd-bg:#3d5264;  --col-kd-tx:#ffffff;
   --col-kn-bg:#435f76;  --col-kn-tx:#ffffff;
   --col-dup-bg:#5a3000; --col-dup-tx:#ffccaa; --col-dup-border:#d18a25;
@@ -4605,7 +4605,7 @@ function renderScheduleTable(tableId, editable) {
 
   // ── Řádky pro Neuložené (jména z XLS, která nejsou v Nastavení) — VŽDY za staffTbody ──
   if (!isPublicView && (state.unmatchedXls || []).some(u => !state.staff.some(s =>
-    s.unmatchedXls && (s.name || '').trim().toLowerCase() === (u.name || '').trim().toLowerCase()
+    s.unmatchedXls && normalizeStaffName(s.name) === normalizeStaffName(u.name)
   ))) {
     const unmatchedTbody = document.createElement('tbody');
     unmatchedTbody.className = 'staff-tbody unmatched-tbody';
@@ -5675,6 +5675,7 @@ function applyData(data) {
 
   // ── Neuložení pracovníci z XLS ──
   state.unmatchedXls = Array.isArray(data.unmatchedXls) ? data.unmatchedXls : [];
+  reconcileLoadedStaffWithSettings();
 
   // ── UI: sel-month-year ──
   populateMonthYearSelect();
@@ -6118,24 +6119,7 @@ async function syncRaspisStaff() {
 
     // Tvorbu nikdy nenaplňujeme automaticky z Nastavení. Jen obohatíme řádky,
     // které v Tvorbě už jsou (z draftu nebo XLS), pokud se shodují podle userId/jména.
-    const portalById = new Map(state.allPortalUsers.map(s => [s.userId, s]));
-    const settingsByName = new Map();
-    state.allSpecialStaff.forEach(s => {
-      const key = (s.name || '').trim().toLowerCase();
-      if (key) settingsByName.set(key, s);
-    });
-    state.allPortalUsers.forEach(s => {
-      const key = (s.name || '').trim().toLowerCase();
-      if (key) settingsByName.set(key, s);
-    });
-
-    state.staff = (state.staff || []).map(row => {
-      const byId = row.userId ? portalById.get(row.userId) : null;
-      const byName = settingsByName.get((row.name || '').trim().toLowerCase());
-      const matched = byId || byName;
-      if (!matched) return { ...row, unmatchedXls: row.unmatchedXls || true };
-      return { ...row, ...matched, name: row.name || matched.name || matched.displayName || '', unmatchedXls: false };
-    });
+    reconcileLoadedStaffWithSettings();
 
     renderStaffTable();
     renderScheduleTable('tvorba-tbl', true);
@@ -8549,7 +8533,105 @@ function parseClipboardTable(text) {
 }
 
 function normalizeStaffName(name) {
-  return String(name || '').trim().toLowerCase();
+  return String(name || '')
+    .trim()
+    .toLowerCase()
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '')
+    .replace(/\s+/g, ' ');
+}
+
+function remapStaffIndexedMap(obj, oldToNew, cellKeys = true) {
+  const out = {};
+  Object.entries(obj || {}).forEach(([key, val]) => {
+    if (cellKeys) {
+      const parts = key.split('_');
+      const oldSi = +parts[0];
+      const ci = parts[1];
+      const newSi = oldToNew[oldSi];
+      if (newSi !== undefined && ci !== undefined) out[`${newSi}_${ci}`] = val;
+    } else {
+      const newSi = oldToNew[+key];
+      if (newSi !== undefined) out[String(newSi)] = val;
+    }
+  });
+  return out;
+}
+
+function applyStaffIndexRemap(indexed) {
+  const oldToNew = {};
+  indexed.forEach((item, newIdx) => { oldToNew[item.oldIdx] = newIdx; });
+  state.staff = indexed.map(item => item.s);
+  state.schedule = remapStaffIndexedMap(state.schedule, oldToNew, true);
+  state.extras = remapStaffIndexedMap(state.extras, oldToNew, false);
+  state.requirements = remapStaffIndexedMap(state.requirements, oldToNew, true);
+  state.reqMeta = remapStaffIndexedMap(state.reqMeta, oldToNew, true);
+  state.hrsColorOverride = remapStaffIndexedMap(state.hrsColorOverride, oldToNew, false);
+  return oldToNew;
+}
+
+function removeStaleUnmatchedRows(settingsByName) {
+  const unmatchedNames = new Set((state.unmatchedXls || []).map(u => normalizeStaffName(u.name)));
+  const indexed = [];
+  let changed = false;
+
+  (state.staff || []).forEach((row, oldIdx) => {
+    const nameKey = normalizeStaffName(row.name);
+    const isStaleImportedRow = row.unmatchedXls && nameKey && !settingsByName.has(nameKey) && !unmatchedNames.has(nameKey);
+    if (isStaleImportedRow) {
+      changed = true;
+      return;
+    }
+    indexed.push({ s: row, oldIdx });
+  });
+
+  if (changed) applyStaffIndexRemap(indexed);
+
+  const scheduleUnmatchedNames = new Set((state.staff || [])
+    .filter(s => s.unmatchedXls)
+    .map(s => normalizeStaffName(s.name)));
+  const before = (state.unmatchedXls || []).length;
+  state.unmatchedXls = (state.unmatchedXls || []).filter(u => {
+    const key = normalizeStaffName(u.name);
+    return key && scheduleUnmatchedNames.has(key) && !settingsByName.has(key);
+  });
+  return changed || before !== state.unmatchedXls.length;
+}
+
+function getScheduleSettingsByName() {
+  const settingsByName = new Map();
+  (state.allSpecialStaff || []).forEach(s => {
+    const key = normalizeStaffName(s.name);
+    if (key) settingsByName.set(key, s);
+  });
+  (state.allPortalUsers || []).forEach(s => {
+    const key = normalizeStaffName(s.name);
+    if (key) settingsByName.set(key, s);
+  });
+  return settingsByName;
+}
+
+function reconcileLoadedStaffWithSettings() {
+  const portalById = new Map((state.allPortalUsers || []).map(s => [s.userId, s]));
+  const settingsByName = getScheduleSettingsByName();
+  if (!portalById.size && !settingsByName.size) return false;
+
+  let changed = false;
+  state.staff = (state.staff || []).map(row => {
+    const byId = row.userId ? portalById.get(row.userId) : null;
+    const byName = settingsByName.get(normalizeStaffName(row.name));
+    const matched = byId || byName;
+    if (!matched) {
+      if (!row.unmatchedXls) changed = true;
+      return { ...row, unmatchedXls: true };
+    }
+    changed = changed || row.unmatchedXls || row.name !== (matched.name || matched.displayName || row.name || '');
+    return { ...row, ...matched, name: matched.name || matched.displayName || row.name || '', unmatchedXls: false };
+  });
+
+  const cleaned = removeStaleUnmatchedRows(settingsByName);
+  if (cleaned) updateImportUnmatchedButton();
+  return changed || cleaned;
 }
 
 async function pasteScheduleFromExcel() {
@@ -8913,7 +8995,7 @@ function applyDatesPicker() {
 const COLOR_DEFAULTS = {
   light: {
     wdBg:'#ffffff', wdTx:'#222222',
-    wnBg:'#c8c8c8', wnTx:'#222222',
+    wnBg:'#d7dadd', wnTx:'#222222',
     kdBg:'#a8d8f0', kdTx:'#222222',
     knBg:'#5b9dc9', knTx:'#222222',
     dupBg:'#ffe0b8', dupTx:'#3d2400', dupBorder:'#c67812',
@@ -8931,7 +9013,7 @@ const COLOR_DEFAULTS = {
   },
   dark: {
     wdBg:'#343942', wdTx:'#ffffff',
-    wnBg:'#2f343c', wnTx:'#ffffff',
+    wnBg:'#3f444a', wnTx:'#ffffff',
     kdBg:'#3d5264', kdTx:'#ffffff',
     knBg:'#435f76', knTx:'#ffffff',
     dupBg:'#5a3000', dupTx:'#ffccaa', dupBorder:'#d18a25',
@@ -8956,7 +9038,7 @@ const SCHEDULE_SKIN_ACCENTS = {
   orange:'#C25B1E', red:'#B63A32', pink:'#C0447E', plum:'#7E3C8C', coffee:'#6B4A2E',
   navy:'#173E70'
 };
-const SCHEDULE_SKIN_COLOR_VERSION = 'readability11';
+const SCHEDULE_SKIN_COLOR_VERSION = 'weekday-night-gray-gold1';
 
 function _hexToRgb(hex) {
   hex = String(hex || '#202124').replace('#','');
@@ -8976,7 +9058,9 @@ function _mix(a, b, t) {
 
 function schedulePaletteForSkin(skin) {
   const accent = SCHEDULE_SKIN_ACCENTS[skin] || SCHEDULE_SKIN_ACCENTS.default;
-  const lightNight = _mix(accent, '#ffffff', .70);
+  const weekdayNightGray = '#d7dadd';
+  const darkWeekdayNightGray = '#3f444a';
+  const isDefaultSkin = String(skin || 'default').toLowerCase() === 'default';
   const lightSoft = _mix(accent, '#ffffff', .60);
   const lightMid  = _mix(accent, '#ffffff', .58);
   const lightDeep = _mix(accent, '#ffffff', .42);
@@ -8992,7 +9076,7 @@ function schedulePaletteForSkin(skin) {
   return {
     light: {
       wdBg:'#ffffff', wdTx:'#222222',
-      wnBg:lightNight, wnTx:'#222222',
+      wnBg:weekdayNightGray, wnTx:'#222222',
       kdBg:lightSoft, kdTx:'#222222',
       knBg:lightDeep, knTx:'#222222',
       dupBg:lightDuplicate, dupTx:'#3d2400', dupBorder:_mix('#a66700', accent, .20),
@@ -9010,9 +9094,9 @@ function schedulePaletteForSkin(skin) {
     },
     dark: {
       wdBg:'#343942', wdTx:'#ffffff',
-      wnBg:'#2f343c', wnTx:'#ffffff',
-      kdBg:darkMid, kdTx:'#ffffff',
-      knBg:darkDeep, knTx:'#ffffff',
+      wnBg:darkWeekdayNightGray, wnTx:'#ffffff',
+      kdBg:isDefaultSkin ? '#ead7a0' : darkMid, kdTx:isDefaultSkin ? '#211809' : '#ffffff',
+      knBg:isDefaultSkin ? '#c8a75e' : darkDeep, knTx:isDefaultSkin ? '#211809' : '#ffffff',
       dupBg:darkDuplicate, dupTx:'#ffccaa', dupBorder:_mix('#d18a25', accent, .22),
       tDen:darkMid, tNoc:darkMid, tOba:darkMid,
       tVed:'#A9844A', tSpe:'#9B6570', tPoh:'#4A4A42',
@@ -9100,6 +9184,12 @@ function applyColorProfile() {
     document.head.appendChild(styleEl);
   }
   const l = colorProfile.light, d = colorProfile.dark;
+  const currentPortalSkin = String(localStorage.getItem('ave-portal-skin') || 'default').toLowerCase();
+  const useDarkGoldWeekends = currentPortalSkin === 'default';
+  const darkScheduleKdBg = useDarkGoldWeekends ? d.kdBg : l.kdBg;
+  const darkScheduleKdTx = useDarkGoldWeekends ? d.kdTx : l.kdTx;
+  const darkScheduleKnBg = useDarkGoldWeekends ? d.knBg : l.knBg;
+  const darkScheduleKnTx = useDarkGoldWeekends ? d.knTx : l.knTx;
   styleEl.textContent = `
     :root {
       --col-wd-bg:${l.wdBg}; --col-wd-tx:${l.wdTx};
@@ -9143,8 +9233,8 @@ function applyColorProfile() {
     [data-theme="dark"] #tab-pozadavky {
       --col-wd-bg:${l.wdBg}; --col-wd-tx:${l.wdTx};
       --col-wn-bg:${l.wnBg}; --col-wn-tx:${l.wnTx};
-      --col-kd-bg:${l.kdBg}; --col-kd-tx:${l.kdTx};
-      --col-kn-bg:${l.knBg}; --col-kn-tx:${l.knTx};
+      --col-kd-bg:${darkScheduleKdBg}; --col-kd-tx:${darkScheduleKdTx};
+      --col-kn-bg:${darkScheduleKnBg}; --col-kn-tx:${darkScheduleKnTx};
       --col-dup-bg:${l.dupBg}; --col-dup-tx:${l.dupTx}; --col-dup-border:${l.dupBorder};
       --col-type-den:${l.tDen}; --col-type-noc:${l.tNoc};
       --col-type-oba:${l.tOba}; --col-type-ved:${l.tVed}; --col-type-spe:${l.tSpe}; --col-type-poh:${l.tPoh};
@@ -10093,26 +10183,26 @@ function handleXlsImport(e) {
       const _staffByName = new Map();
       // 1. Ne-portáloví pracovníci z Nastavení (Ostatní, Vedoucí…)
       (state.allSpecialStaff || []).forEach(s => {
-        const key = (s.name || '').trim().toLowerCase();
+        const key = normalizeStaffName(s.name);
         if (key) _staffByName.set(key, s);
       });
       // 2. Portáloví pracovníci z allPortalUsers (má přednost, přepíše state.staff pokud kolize)
       (state.allPortalUsers || []).forEach(s => {
-        const key = (s.name || '').trim().toLowerCase();
+        const key = normalizeStaffName(s.name);
         if (key) _staffByName.set(key, s);
       });
 
-      const _xlsNamesLower = new Set(); // track which names appeared in XLS
+      const _xlsNames = new Set(); // track which names appeared in XLS
       const newUnmatched = [];          // jména z XLS, která nejsou v Nastavení
 
       let newSi = 0;
       staffRows.forEach((row, _xlsRowIdx) => {
         if (!row[0] && row.slice(1, calCols.length + 1).every(v => v === '')) return;
         const xlsName = String(row[0] || '').trim();
-        _xlsNamesLower.add(xlsName.toLowerCase());
+        _xlsNames.add(normalizeStaffName(xlsName));
 
         // Hledáme přesnou shodu jména v Nastavení (portáloví i ostatní).
-        const _matched = _staffByName.get(xlsName.toLowerCase());
+        const _matched = _staffByName.get(normalizeStaffName(xlsName));
 
         if (!_matched) {
           // Jméno není v Nastavení → řádek z XLS zůstane v Tvorbě bez metadat z Nastavení.
@@ -10159,7 +10249,10 @@ function handleXlsImport(e) {
       newUnmatched.forEach(u => { _existingUnmatched.set(u.name.toLowerCase(), u); });
       const mergedUnmatched = [..._existingUnmatched.values()];
       // Odstraníme případné neuložené, jejichž jméno teď bylo nalezeno v Nastavení
-      const finalUnmatched = mergedUnmatched.filter(u => !_staffByName.has(u.name.toLowerCase()));
+      const finalUnmatched = newUnmatched.filter(u => {
+        const key = normalizeStaffName(u.name);
+        return key && _xlsNames.has(key) && !_staffByName.has(key);
+      });
 
       if (!newStaff.length && !finalUnmatched.length) { toast('Nenalezeni žádní pracovníci', true); return; }
 

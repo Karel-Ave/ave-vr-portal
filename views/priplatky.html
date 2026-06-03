@@ -269,9 +269,11 @@ input[type=number].no-spin { -moz-appearance: textfield; appearance: textfield; 
 .preset-row .btn { flex-shrink: 0; }
 
 /* Detail table (in modal) */
-table.dtbl { width: 100%; border-collapse: collapse; font-size: 13px; }
-.dtbl th { padding: 6px 8px; font-size: 11px; font-weight: 700; text-transform: uppercase; color: var(--text-muted); border-bottom: 1px solid var(--border); }
-.dtbl td { padding: 8px; border-bottom: 1px solid var(--border); vertical-align: top; }
+table.dtbl { width: 100%; border-collapse: collapse; table-layout: fixed; font-size: 13px; }
+.dtbl th { padding: 6px 8px; font-size: 11px; font-weight: 700; text-transform: uppercase; color: var(--text-muted); border-bottom: 1px solid var(--border); text-align: left; }
+.dtbl td { padding: 8px; border-bottom: 1px solid var(--border); vertical-align: top; text-align: left; }
+.dtbl th:nth-child(3), .dtbl td:nth-child(3) { text-align: right; white-space: nowrap; }
+.dtbl th:nth-child(5), .dtbl td:nth-child(5) { text-align: center; }
 .dtbl tr:last-child td { border-bottom: none; }
 .dtbl .sekce-header td { background: var(--surface-alt); font-weight: 700; font-size: 12px; text-transform: uppercase; color: var(--text-muted); letter-spacing: .05em; padding: 5px 8px; }
 .audit-info { font-size: 11px; color: var(--text-muted); margin-top: 2px; }
@@ -924,18 +926,19 @@ function renderPrehled(data) {
 
   const TH = (full, short) =>
     `<th><span class="col-full">${full}</span><span class="col-short">${short}</span></th>`;
+  const totalsFooter = canViewAllPriplatky ? `<tfoot><tr>
+      <td>Celkem</td>
+      <td>${totals.bs||''}</td><td>${totals.re||''}</td><td>${totals.sk||''}</td>
+      <td>${totals.os||''}</td><td>${totals.po||''}</td>
+      <td class="soucet ${totSoucet<0?'neg':'pos'}">${totSoucet}</td>
+    </tr></tfoot>` : '';
   let html = `<table class="stbl">
     <thead><tr>
       <th><span class="col-full">Login / Jméno</span><span class="col-short">Login</span></th>
       ${TH('Braní směn','BS')}${TH('Recenze','Re')}${TH('Školení','Sk')}${TH('Ostatní','Os')}${TH('Pokuty','Po')}${TH('Součet','∑')}
     </tr></thead>
     <tbody>${tableRows(known)}</tbody>
-    <tfoot><tr>
-      <td>Celkem</td>
-      <td>${totals.bs||''}</td><td>${totals.re||''}</td><td>${totals.sk||''}</td>
-      <td>${totals.os||''}</td><td>${totals.po||''}</td>
-      <td class="soucet ${totSoucet<0?'neg':'pos'}">${totSoucet}</td>
-    </tr></tfoot>
+    ${totalsFooter}
   </table>`;
 
   if (Object.keys(unknown).length) {
@@ -963,7 +966,9 @@ function openDetail(login) {
     return so !== 0 ? so : (a.datum||'').localeCompare(b.datum||'');
   });
 
-  let html = `<table class="dtbl"><thead><tr>
+  let html = `<table class="dtbl"><colgroup>
+    <col style="width:150px"><col style="width:90px"><col style="width:120px"><col><col style="width:72px">
+  </colgroup><thead><tr>
     <th>Datum</th><th>Hotel</th><th>Částka</th><th>Poznámka</th><th></th>
   </tr></thead><tbody>`;
 
