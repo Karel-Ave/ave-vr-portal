@@ -3449,6 +3449,7 @@ app.get('/api/rt/drafts/:id', requireLogin, async (req, res) => {
     const draft = rows[0];
     let parsed;
     try { parsed = JSON.parse(draft.data); } catch(e) { parsed = draft.data; }
+    parsed = await augmentRtDataWithActiveReceptionists(parsed, db);
     res.json({ ok: true, data: parsed, month: draft.month, year: draft.year });
   } catch (err) { console.error(err); res.status(500).json({ ok: false }); }
 });
@@ -3570,17 +3571,22 @@ app.get('/api/rt/schedules/:key', requireLogin, async (req, res) => {
     const db = getPool();
     const { rows } = await db.query('SELECT * FROM rt_schedules WHERE key = $1', [key]);
     if (!rows.length) return res.status(404).json({ ok: false });
-    res.json({ ok: true, entry: rows[0] });
+    const entry = rows[0];
+    let parsed;
+    try { parsed = typeof entry.data === 'string' ? JSON.parse(entry.data) : entry.data; } catch(e) { parsed = entry.data; }
+    entry.data = await augmentRtDataWithActiveReceptionists(parsed, db);
+    res.json({ ok: true, entry });
   } catch (err) { console.error(err); res.status(500).json({ ok: false }); }
 });
 
 app.post('/api/rt/schedules/publish', requireLogin, requirePermDefault('raspis', 'publish', false), async (req, res) => {
-  const { month, year, data } = req.body;
+  let { month, year, data } = req.body;
   if (!month || !year || !data) return res.json({ ok: false, msg: 'Chybí data.' });
   const key   = `RT:${String(month).padStart(2,'0')}/${year}`;
   const label = `${['','Leden','Únor','Březen','Duben','Květen','Červen','Červenec','Srpen','Září','Říjen','Listopad','Prosinec'][month]} ${year}`;
   try {
     const db = getPool();
+    data = await augmentRtDataWithActiveReceptionists(data, db);
     await db.query(
       `INSERT INTO rt_schedules (key, month, year, label, data, published_at, published_by)
        VALUES ($1,$2,$3,$4,$5,NOW(),$6)
@@ -3644,10 +3650,11 @@ app.delete('/api/rt/schedules/perma/:id', requireLogin, requirePermDefault('rasp
 // ── Uložit editace publikovaného (Rozpis VR tab) ──────────────────────────────
 
 app.post('/api/rt/schedules/save-edits', requireLogin, requirePerm('raspis', 'edit'), async (req, res) => {
-  const { key, data } = req.body;
+  let { key, data } = req.body;
   if (!key || !data) return res.json({ ok: false, msg: 'Chybí data.' });
   try {
     const db = getPool();
+    data = await augmentRtDataWithActiveReceptionists(data, db);
     await db.query('UPDATE rt_schedules SET data = $1 WHERE key = $2', [JSON.stringify(data), key]);
     res.json({ ok: true });
   } catch (err) { console.error(err); res.json({ ok: false }); }
@@ -3666,6 +3673,142 @@ function reqLabel(month, year) {
 
 function previousMonth(month, year) {
   return month === 1 ? { month: 12, year: year - 1 } : { month: month - 1, year };
+}
+
+function rtStaffMonthValue(value) {
+  if (!value) return null;
+  if (typeof value === 'string') {
+    const m = value.match(/^(\d{4})-(\d{1,2})/);
+    if (m) return { year: +m[1], month: +m[2] };
+  }
+  if (Number.isFinite(+value.year) && Number.isFinite(+value.month)) {
+    return { year: +value.year, month: +value.month };
+  }
+  return null;
+}
+
+function rtMonthIndex(month, year) {
+  return (+year * 12) + +month;
+}
+
+function rtNormalizeStaffName(name) {
+  return String(name || '')
+    .trim()
+    .toLowerCase()
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '')
+    .replace(/\s+/g, ' ');
+}
+
+function rtIsReceptionistType(type) {
+  const key = rtNormalizeStaffName(type);
+  return key === 'denni' || key === 'nocni' || key === 'oboji';
+}
+
+function rtIsStaffActiveForMonth(staff, month, year) {
+  if (!staff || staff.inactive) return false;
+  const current = rtMonthIndex(month, year);
+  const from = rtStaffMonthValue(staff.activeFrom);
+  const until = rtStaffMonthValue(staff.activeUntil);
+  if (from && rtMonthIndex(from.month, from.year) > current) return false;
+  if (until && rtMonthIndex(until.month, until.year) < current) return false;
+  return true;
+}
+
+async function loadRtPortalReceptionists(db) {
+  const { rows } = await db.query(
+    'SELECT id, name, username, perm_overrides FROM users WHERE perm_overrides IS NOT NULL'
+  );
+  const out = [];
+  for (const u of rows) {
+    let overrides = null;
+    try {
+      overrides = typeof u.perm_overrides === 'string'
+        ? JSON.parse(u.perm_overrides)
+        : u.perm_overrides;
+    } catch (e) { continue; }
+    const rs = overrides?.raspis_staff;
+    if (!rs || !rs.active || !rtIsReceptionistType(rs.type)) continue;
+    out.push({
+      userId: u.id,
+      name: rs.displayName || u.name || '',
+      login: rs.login || u.username || '',
+      type: rs.type || '',
+      contract: rs.contract || '',
+      hotelSkills: Array.isArray(rs.hotels) ? rs.hotels : [],
+      noStandby: !!rs.noStandby,
+      activeFrom: rtStaffMonthValue(rs.activeFrom) || rs.activeFrom || null,
+      activeUntil: rtStaffMonthValue(rs.activeUntil) || rs.activeUntil || null,
+      inactive: false
+    });
+  }
+  return out;
+}
+
+function rtRemapStaffIndexedMap(obj, oldToNew, cellKeys = true) {
+  const out = {};
+  Object.entries(obj || {}).forEach(([key, val]) => {
+    if (cellKeys) {
+      const parts = key.split('_');
+      const oldSi = +parts[0];
+      const ci = parts[1];
+      const newSi = oldToNew[oldSi];
+      if (newSi !== undefined && ci !== undefined) out[`${newSi}_${ci}`] = val;
+    } else {
+      const newSi = oldToNew[+key];
+      if (newSi !== undefined) out[String(newSi)] = val;
+    }
+  });
+  return out;
+}
+
+function rtRemapDataStaffIndexes(data, oldToNew) {
+  data.schedule = rtRemapStaffIndexedMap(data.schedule, oldToNew, true);
+  data.extras = rtRemapStaffIndexedMap(data.extras, oldToNew, false);
+  data.requirements = rtRemapStaffIndexedMap(data.requirements, oldToNew, true);
+  data.reqMeta = rtRemapStaffIndexedMap(data.reqMeta, oldToNew, true);
+  data.hrsColorOverride = rtRemapStaffIndexedMap(data.hrsColorOverride, oldToNew, false);
+  Object.values(data.monthlyData || {}).forEach(md => {
+    if (!md || typeof md !== 'object') return;
+    md.schedule = rtRemapStaffIndexedMap(md.schedule, oldToNew, true);
+    md.extras = rtRemapStaffIndexedMap(md.extras, oldToNew, false);
+    md.requirements = rtRemapStaffIndexedMap(md.requirements, oldToNew, true);
+    md.reqMeta = rtRemapStaffIndexedMap(md.reqMeta, oldToNew, true);
+  });
+}
+
+async function augmentRtDataWithActiveReceptionists(data, db = getPool()) {
+  if (!data || typeof data !== 'object') return data;
+  const month = parseInt(data.month, 10);
+  const year = parseInt(data.year, 10);
+  if (!month || !year || !Array.isArray(data.staff) || !data.staff.length) return data;
+
+  const active = (await loadRtPortalReceptionists(db))
+    .filter(s => rtIsStaffActiveForMonth(s, month, year));
+  if (!active.length) return data;
+
+  const byId = new Set(data.staff.filter(s => s && s.userId).map(s => String(s.userId)));
+  const byName = new Set(data.staff.map(s => rtNormalizeStaffName(s && s.name)).filter(Boolean));
+  let changed = false;
+  for (const s of active) {
+    const idKey = s.userId ? String(s.userId) : '';
+    const nameKey = rtNormalizeStaffName(s.name);
+    if ((idKey && byId.has(idKey)) || (nameKey && byName.has(nameKey))) continue;
+    data.staff.push(JSON.parse(JSON.stringify(s)));
+    if (idKey) byId.add(idKey);
+    if (nameKey) byName.add(nameKey);
+    changed = true;
+  }
+  if (!changed) return data;
+
+  const indexed = data.staff.map((s, oldIdx) => ({ s, oldIdx }));
+  indexed.sort((a, b) => String(a.s.name || '').localeCompare(String(b.s.name || ''), 'cs', { sensitivity: 'base' }));
+  const oldToNew = {};
+  indexed.forEach((item, newIdx) => { oldToNew[item.oldIdx] = newIdx; });
+  data.staff = indexed.map(item => item.s);
+  data.staffOrder = data.staff.map(s => s.userId || null);
+  rtRemapDataStaffIndexes(data, oldToNew);
+  return data;
 }
 
 function buildInitialRequirementsData(sourceData, month, year, reqSettings = {}) {
@@ -3910,6 +4053,7 @@ app.get('/api/rt/requirements/:key', requireLogin, async (req, res) => {
     const entry = rows[0];
     let parsed = {};
     try { parsed = typeof entry.data === 'string' ? JSON.parse(entry.data) : entry.data; } catch(e) { parsed = {}; }
+    parsed = await augmentRtDataWithActiveReceptionists(parsed, db);
     res.json({ ok: true, entry: { ...entry, data: parsed } });
   } catch (err) {
     console.error('GET /api/rt/requirements/:key:', err);
@@ -3941,7 +4085,7 @@ app.post('/api/rt/requirements/create', requireLogin, requirePermDefault('raspis
     }
     const raw = source.rows[0].data;
     const sourceData = typeof raw === 'string' ? JSON.parse(raw) : (raw || {});
-    const data = buildInitialRequirementsData(sourceData, month, year, reqSettings);
+    const data = await augmentRtDataWithActiveReceptionists(buildInitialRequirementsData(sourceData, month, year, reqSettings), db);
     const label = reqLabel(month, year);
     await db.query(
       `INSERT INTO rt_requirements (key, month, year, label, data, status, allow_duplicates, xy_locks, created_by, updated_by)
@@ -4069,6 +4213,9 @@ app.post('/api/rt/requirements/send-to-tvorba', requireLogin, requirePermDefault
     try { data = typeof entry.data === 'string' ? JSON.parse(entry.data) : (entry.data || {}); } catch(e) { data = {}; }
     const month = parseInt(entry.month, 10);
     const year = parseInt(entry.year, 10);
+    data.month = data.month || month;
+    data.year = data.year || year;
+    data = await augmentRtDataWithActiveReceptionists(data, db);
     const mKey = `${year}-${month}`;
     const draftData = JSON.parse(JSON.stringify(data || {}));
     draftData.month = month;
@@ -4141,7 +4288,8 @@ app.post('/api/rt/requirements/save', requireLogin, async (req, res) => {
       return rollbackJson({ ok: false, msg: 'Nenalezeno.' });
     }
     const raw = existing.rows[0].data;
-    const currentData = typeof raw === 'string' ? JSON.parse(raw) : (raw || {});
+    let currentData = typeof raw === 'string' ? JSON.parse(raw) : (raw || {});
+    currentData = await augmentRtDataWithActiveReceptionists(currentData, client);
     let saveData = data;
     let logScope = 'full-data';
     let staffIndex = null;

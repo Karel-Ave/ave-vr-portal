@@ -212,20 +212,24 @@ body[data-active-tab="pozadavky"] #tb-right-actions { display: none; }
   color: var(--accent-h);
   font-weight: 600;
 }
-#req-fonds-info {
+.rt-fonds-info {
   margin-left: auto;
-  display: flex;
-  flex-direction: column;
-  align-items: flex-end;
-  gap: 1px;
+  display: grid;
+  grid-template-columns: max-content max-content;
+  column-gap: 5px;
+  row-gap: 1px;
+  align-items: baseline;
+  justify-content: end;
   color: var(--text-topbar);
   font-size: 11px;
   line-height: 1.1;
   white-space: nowrap;
+  text-align: right;
 }
-#req-fonds-info strong { color: var(--accent-h); font-weight: 800; }
+.rt-fonds-info .fonds-label { text-align: right; }
+.rt-fonds-info strong { color: var(--accent-h); font-weight: 800; text-align: left; }
 [data-theme="dark"] #req-title,
-[data-theme="dark"] #req-fonds-info strong { color: var(--accent); }
+[data-theme="dark"] .rt-fonds-info strong { color: var(--accent); }
 [data-theme="dark"] #req-status { color: var(--accent); }
 #req-actions-right {
   display: none;
@@ -951,7 +955,8 @@ tbody tr.row-hidden { display: none !important; }
 .stb-row-tools #stb-undo { left: auto; right: calc(50% + 7px); }
 .stb-row-tools #stb-redo { left: calc(50% + 7px); }
 #subtoolbar.tab-tvorba #stb-hide-sums,
-#subtoolbar.tab-tvorba #stb-hours-only {
+#subtoolbar.tab-tvorba #stb-hours-only,
+#subtoolbar.tab-tvorba #stb-export2 {
   display: none !important;
 }
 #subtoolbar.tab-rozpis #stb-hide-sums,
@@ -1708,10 +1713,10 @@ tbody tr.row-filtered { display: none; }
     text-align: center;
     font-size: 12px;
   }
-  #req-fonds-info {
+  .rt-fonds-info {
     width: 100%;
     margin-left: 0;
-    align-items: center;
+    justify-content: center;
     font-size: 10px;
   }
 
@@ -2009,7 +2014,12 @@ tbody tr.row-filtered { display: none; }
   </div>
 
   <!-- Nastavení actions — prázdné, tlačítka přesunuta do mode baru a Ostatní sekce -->
-  <div class="tb-actions hidden" id="tb-act-nastaveni"></div>
+  <div class="tb-actions hidden" id="tb-act-nastaveni">
+    <div class="rt-fonds-info" style="display:none">
+      <span class="fonds-label">Fond HPP:</span><strong class="rt-fond-hpp-info">-</strong>
+      <span class="fonds-label">Fond ZPP:</span><strong class="rt-fond-zpp-info">-</strong>
+    </div>
+  </div>
 
   <!-- Tvorba actions -->
   <div class="tb-actions hidden" id="tb-act-tvorba">
@@ -2024,6 +2034,10 @@ tbody tr.row-filtered { display: none; }
     <button class="tb-btn" id="btn-import-unmatched" style="display:none">Neznámá jména</button>
     <button class="tb-btn" id="btn-draft-delete">Smazat</button>
     <button class="tb-btn" id="btn-draft-trash">Koš</button>
+    <div class="rt-fonds-info" style="display:none">
+      <span class="fonds-label">Fond HPP:</span><strong class="rt-fond-hpp-info">-</strong>
+      <span class="fonds-label">Fond ZPP:</span><strong class="rt-fond-zpp-info">-</strong>
+    </div>
     <input type="file" id="xls-file-input" accept=".xls,.xlsx" style="display:none">
   </div>
 
@@ -2033,10 +2047,18 @@ tbody tr.row-filtered { display: none; }
     <button class="tb-btn" id="btn-view-edit" data-mobile-label="Editovat">Editovat</button>
     <button class="tb-btn" id="btn-view-cancel" data-mobile-label="Zrušit" style="display:none">Zrušit</button>
     <span id="lock-info"></span>
+    <div class="rt-fonds-info" style="display:none">
+      <span class="fonds-label">Fond HPP:</span><strong class="rt-fond-hpp-info">-</strong>
+      <span class="fonds-label">Fond ZPP:</span><strong class="rt-fond-zpp-info">-</strong>
+    </div>
   </div>
 
   <div class="tb-actions hidden" id="tb-act-public">
     <select id="pub-sel-public" class="tb-btn" style="padding:4px 6px;font-size:12px;"></select>
+    <div class="rt-fonds-info" style="display:none">
+      <span class="fonds-label">Fond HPP:</span><strong class="rt-fond-hpp-info">-</strong>
+      <span class="fonds-label">Fond ZPP:</span><strong class="rt-fond-zpp-info">-</strong>
+    </div>
   </div>
 
   <div class="tb-actions hidden" id="tb-act-pozadavky">
@@ -2048,9 +2070,9 @@ tbody tr.row-filtered { display: none; }
     <button class="tb-btn" id="btn-req-send-tvorba">Odeslat do Tvorba</button>
     <select id="req-sel" class="tb-btn" style="display:none"></select>
     <span id="req-status" class="tb-status"></span>
-    <div id="req-fonds-info" style="display:none">
-      <div>Fond HPP: <strong id="req-fond-hpp-info">-</strong></div>
-      <div>Fond ZPP: <strong id="req-fond-zpp-info">-</strong></div>
+    <div id="req-fonds-info" class="rt-fonds-info" style="display:none">
+      <span class="fonds-label">Fond HPP:</span><strong class="rt-fond-hpp-info">-</strong>
+      <span class="fonds-label">Fond ZPP:</span><strong class="rt-fond-zpp-info">-</strong>
     </div>
     <div id="req-actions-right">
       <button class="tb-btn" id="btn-req-delete">Smazat</button>
@@ -5110,6 +5132,34 @@ function isStaffActiveInCurrentMonth(s) {
   return true;
 }
 
+function isReceptionistScheduleType(s) {
+  const key = normalizeStaffName((s && s.type) || '');
+  return key === 'denni' || key === 'nocni' || key === 'oboji';
+}
+
+function ensureActiveReceptionistsInCurrentSchedule() {
+  if (!state.staff || !state.staff.length || !state.allPortalUsers || !state.allPortalUsers.length) return false;
+  let changed = false;
+  const byId = new Set(state.staff.filter(s => s.userId).map(s => String(s.userId)));
+  const byName = new Set(state.staff.map(s => normalizeStaffName(s.name)).filter(Boolean));
+
+  (state.allPortalUsers || []).forEach(s => {
+    if (!s || !isReceptionistScheduleType(s) || !isStaffActiveInCurrentMonth(s)) return;
+    const idKey = s.userId ? String(s.userId) : '';
+    const nameKey = normalizeStaffName(s.name || s.displayName || '');
+    if ((idKey && byId.has(idKey)) || (nameKey && byName.has(nameKey))) return;
+    const row = makeScheduleStaffFromSettings(s);
+    row.unmatchedXls = false;
+    state.staff.push(row);
+    if (idKey) byId.add(idKey);
+    if (nameKey) byName.add(nameKey);
+    changed = true;
+  });
+
+  if (changed) sortStaffAlpha();
+  return changed;
+}
+
 function endSpecialStaffFromMonth(s) {
   const label = `${state.year}-${String(state.month).padStart(2, '0')}`;
   const input = prompt('Od kterého měsíce se nemá zobrazovat v Tvorbě/Rozpisu VR? Zadejte RRRR-MM.', label);
@@ -5673,8 +5723,10 @@ function applyData(data) {
   }
 
   // ── Neuložení pracovníci z XLS ──
+  updateRequirementsFundsInfo();
   state.unmatchedXls = Array.isArray(data.unmatchedXls) ? data.unmatchedXls : [];
   reconcileLoadedStaffWithSettings();
+  ensureActiveReceptionistsInCurrentSchedule();
 
   // ── UI: sel-month-year ──
   populateMonthYearSelect();
@@ -5989,6 +6041,8 @@ async function confirmAddWebUser() {
             hotelSkills: Array.isArray(as.hotels) ? [...as.hotels] : (Array.isArray(custom.hotelSkills) ? [...custom.hotelSkills] : []),
             noStandby: !!as.noStandby || !!custom.noStandby,
             monthlyOverrides: custom.monthlyOverrides ? JSON.parse(JSON.stringify(custom.monthlyOverrides)) : {},
+            activeFrom: staffMonthValue(as.activeFrom) || as.activeFrom || null,
+            activeUntil: staffMonthValue(as.activeUntil) || as.activeUntil || null,
             inactive: false
           };
         });
@@ -6007,6 +6061,8 @@ async function confirmAddWebUser() {
               regular: custom.regular || '', hotel: custom.hotel || '',
               hotelSkills: Array.isArray(newApiEntry.hotels) ? [...newApiEntry.hotels] : (Array.isArray(custom.hotelSkills) ? [...custom.hotelSkills] : []),
               noStandby: !!newApiEntry.noStandby || !!custom.noStandby,
+              activeFrom: staffMonthValue(newApiEntry.activeFrom) || newApiEntry.activeFrom || null,
+              activeUntil: staffMonthValue(newApiEntry.activeUntil) || newApiEntry.activeUntil || null,
               monthlyOverrides: {}, inactive: false
             };
             const existingSi = state.staff.findIndex(s =>
@@ -6027,6 +6083,7 @@ async function confirmAddWebUser() {
       }
     }
 
+    sortStaffAlpha();
     renderStaffTable();
     renderScheduleTable('tvorba-tbl', true);
     renderImportUnmatchedOverlay();
@@ -6119,6 +6176,7 @@ async function syncRaspisStaff() {
     // Tvorbu nikdy nenaplňujeme automaticky z Nastavení. Jen obohatíme řádky,
     // které v Tvorbě už jsou (z draftu nebo XLS), pokud se shodují podle userId/jména.
     reconcileLoadedStaffWithSettings();
+    ensureActiveReceptionistsInCurrentSchedule();
 
     renderStaffTable();
     renderScheduleTable('tvorba-tbl', true);
@@ -6239,6 +6297,7 @@ function saveFondsModal() {
   state.fondHpp  = document.getElementById('inp-fond-hpp').value.trim();
   state.fondZpp  = document.getElementById('inp-fond-zpp').value.trim();
   state.holidays = document.getElementById('inp-holidays').value.trim();
+  updateRequirementsFundsInfo();
   if (document.body.dataset.activeTab === 'pozadavky') {
     renderScheduleTable('pozadavky-tbl', false);
     saveCurrentRequirementData();
@@ -6785,17 +6844,13 @@ function formatRequirementFond(raw) {
 }
 
 function updateRequirementsFundsInfo(entry) {
-  const box = document.getElementById('req-fonds-info');
-  if (!box) return;
-  if (!entry && !currentReqKey) {
-    box.style.display = 'none';
-    return;
-  }
-  box.style.display = '';
-  const hpp = document.getElementById('req-fond-hpp-info');
-  const zpp = document.getElementById('req-fond-zpp-info');
-  if (hpp) hpp.textContent = formatRequirementFond(state.fondHpp);
-  if (zpp) zpp.textContent = formatRequirementFond(state.fondZpp);
+  document.querySelectorAll('.rt-fonds-info').forEach(box => {
+    box.style.display = '';
+    const hpp = box.querySelector('.rt-fond-hpp-info');
+    const zpp = box.querySelector('.rt-fond-zpp-info');
+    if (hpp) hpp.textContent = formatRequirementFond(state.fondHpp);
+    if (zpp) zpp.textContent = formatRequirementFond(state.fondZpp);
+  });
 }
 
 async function loadRequirementsList(preferredKey = currentReqKey, shouldLoad = true) {
@@ -9560,36 +9615,9 @@ function sortStaffAlpha() {
   indexed.sort((a, b) => (a.s.name || '').localeCompare(b.s.name || '', 'cs'));
   // Check if already sorted
   if (indexed.every((item, i) => item.oldIdx === i)) return false;
-  // Build old→new index mapping
-  const oldToNew = {};
-  indexed.forEach((item, newIdx) => { oldToNew[item.oldIdx] = newIdx; });
-  // Remap schedule
-  const newSchedule = {};
-  Object.entries(state.schedule).forEach(([key, val]) => {
-    const parts = key.split('_');
-    const oldSi = +parts[0], ci = parts[1];
-    const newSi = oldToNew[oldSi];
-    if (newSi !== undefined) newSchedule[`${newSi}_${ci}`] = val;
-  });
-  // Remap extras
-  const newExtras = {};
-  Object.entries(state.extras).forEach(([siStr, val]) => {
-    const newSi = oldToNew[+siStr];
-    if (newSi !== undefined) newExtras[String(newSi)] = val;
-  });
-  // Remap remembered requirements with the same staff index mapping.
-  const newRequirements = {};
-  Object.entries(state.requirements || {}).forEach(([key, val]) => {
-    const parts = key.split('_');
-    const oldSi = +parts[0], ci = parts[1];
-    const newSi = oldToNew[oldSi];
-    if (newSi !== undefined) newRequirements[`${newSi}_${ci}`] = val;
-  });
-  state.staff = indexed.map(item => item.s);
-  state.schedule = newSchedule;
-  state.extras = newExtras;
-  state.requirements = newRequirements;
+  applyStaffIndexRemap(indexed);
   return true;
+  // Build old→new index mapping
 }
 
 const MONTH_SHORT = ['','Led','Úno','Bře','Dub','Kvě','Čvn','Čvc','Srp','Zář','Říj','Lis','Pro'];
@@ -10355,6 +10383,7 @@ function switchTab(name) {
 
   const act = document.getElementById(`tb-act-${name}`);
   if (act) act.classList.remove('hidden');
+  updateRequirementsFundsInfo();
   document.getElementById('schedule-legend')?.classList.toggle('show', name === 'tvorba' || name === 'rozpis' || name === 'public' || name === 'pozadavky');
   updateChromeHeights();
 

@@ -909,9 +909,9 @@ function renderPrehled(data) {
     return sortedEntries(bucket).map(([login, b]) => {
       const soucet = b.bs + b.re + b.sk + b.os - b.po;
       const sClass = soucet < 0 ? 'neg' : (soucet > 0 ? 'pos' : '');
+      const label = cssClass ? login : b.name;
       return `<tr>
-        <td><span class="${cssClass || 'login-link'}" onclick="openDetail('${esc(login)}')">${esc(login)}</span>
-            <br><small style="color:var(--text-muted)">${esc(b.name)}</small></td>
+        <td><span class="${cssClass || 'login-link'}" onclick="openDetail('${esc(login)}')">${esc(label)}</span></td>
         <td>${b.bs||''}</td><td>${b.re||''}</td><td>${b.sk||''}</td>
         <td>${b.os||''}</td><td>${b.po||''}</td>
         <td class="soucet ${sClass}">${soucet}</td>
@@ -934,7 +934,7 @@ function renderPrehled(data) {
     </tr></tfoot>` : '';
   let html = `<table class="stbl">
     <thead><tr>
-      <th><span class="col-full">Login / Jméno</span><span class="col-short">Login</span></th>
+      <th><span class="col-full">Jméno</span><span class="col-short">Jméno</span></th>
       ${TH('Braní směn','BS')}${TH('Recenze','Re')}${TH('Školení','Sk')}${TH('Ostatní','Os')}${TH('Pokuty','Po')}${TH('Součet','∑')}
     </tr></thead>
     <tbody>${tableRows(known)}</tbody>
@@ -959,7 +959,7 @@ function renderPrehled(data) {
 function openDetail(login) {
   const rows = cachedData.filter(z => z.login === login);
   const name = recepniName(login) || (rows[0]?.full_name) || login;
-  document.getElementById('detail-title').textContent = `${login} – ${name}`;
+  document.getElementById('detail-title').textContent = name;
 
   const sorted = [...rows].sort((a, b) => {
     const so = (SEKCE_ORDER[a.sekce]||9) - (SEKCE_ORDER[b.sekce]||9);
