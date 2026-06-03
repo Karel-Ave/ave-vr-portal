@@ -123,12 +123,17 @@ body.with-subtoolbar:has(#schedule-legend.show) { padding-bottom: 30px; }
 /* Tab actions groups */
 .tb-actions { display: flex; align-items: center; gap: 5px; min-width: 0; }
 .tb-actions.hidden { display: none; }
-#tb-act-nastaveni { position: absolute; left: 50%; transform: translateX(-50%); }
-#tb-act-tvorba {
-  flex: 0 1 auto;
-  margin-left: 0;
+#tb-act-nastaveni,
+#tb-act-tvorba,
+#tb-act-rozpis,
+#tb-act-public,
+#tb-act-pozadavky {
+  flex: 1 1 auto;
   min-width: 0;
-  max-width: calc(50vw - 24px);
+  margin-left: 0;
+}
+#tb-act-tvorba {
+  max-width: none;
 }
 #tb-act-tvorba .tb-btn,
 #tb-act-tvorba #sel-month-year {
@@ -182,7 +187,6 @@ body[data-active-tab="rozpis"] #btn-schedule-archive,
 body[data-active-tab="rozpis"] #btn-schedule-log { display: inline-flex; }
 body[data-active-tab="public"] #tb-right-actions { display: none; }
 body[data-active-tab="pozadavky"] #tb-right-actions { display: none; }
-#tb-act-public { margin-left: 18px; }
 #tb-act-pozadavky { margin-left: 0; flex: 1 1 auto; min-width: 0; }
 #tb-act-pozadavky .tb-btn {
   background: var(--surface);
