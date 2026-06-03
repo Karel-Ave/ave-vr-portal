@@ -512,7 +512,7 @@ table.sched-tbl {
   text-align: center; font-weight: 700; min-width: 36px;
   padding: 2px 0; font-size: 11px; border-bottom: 1px solid var(--sched-grid);
 }
-.sched-tbl .th-day.is-weekend { color: #7ec8f0; }
+.sched-tbl .th-day.is-weekend { color: var(--col-kn-bg); }
 .sched-tbl .th-day.is-holiday { color: #f08080; }
 .sched-tbl .th-dn {
   background: var(--thead-bg); color: var(--thead-text);
@@ -858,7 +858,7 @@ tbody tr.row-hidden { display: none !important; }
   border-bottom-color: var(--border-strong) !important;
 }
 /* Weekends/holidays keep their colored text even in light mode */
-:root:not([data-theme="dark"]) .sched-tbl .th-day.is-weekend { color: #4a9fd4; }
+:root:not([data-theme="dark"]) .sched-tbl .th-day.is-weekend { color: var(--col-kn-bg); }
 :root:not([data-theme="dark"]) .sched-tbl .th-day.is-holiday { color: #c0392b; }
 [data-theme="dark"] #tab-tvorba .sched-tbl .th-dn,
 [data-theme="dark"] #tab-tvorba .sched-tbl .th-sum,
@@ -916,7 +916,7 @@ tbody tr.row-hidden { display: none !important; }
 [data-theme="dark"] #tab-pozadavky .sched-tbl .th-day.is-weekend,
 [data-theme="dark"] #tab-pozadavky .th-dn-day.is-weekend .th-day-num,
 [data-theme="dark"] #tab-pozadavky .th-dn-day.is-weekend .th-day-dow {
-  color: #4a9fd4 !important;
+  color: var(--col-kn-bg) !important;
 }
 [data-theme="dark"] #tab-tvorba .th-dn-day.is-holiday .th-day-num,
 [data-theme="dark"] #tab-tvorba .th-dn-day.is-holiday .th-day-dow,
@@ -4269,9 +4269,8 @@ function renderScheduleTable(tableId, editable) {
     if (shouldMarkToday && !col.nextYear && col.day === pragueToday.day) {
       th.classList.add('is-today');
     }
-    // Header cells always keep the dark thead background — only text is colored
-    // (weekends → blue, holidays → red, weekdays → default white)
-    const dayTextColor = hol ? '#e74c3c' : wkndTh ? '#7ec8f0' : '';
+    // Header cells keep their background; holidays are red, weekends use skin accent via CSS.
+    const dayTextColor = hol ? '#e74c3c' : '';
     if (col.dn === 'd' || col.dn === 'n') {
       const m2 = col.nextYear ? 1 : state.month;
       const y2 = col.nextYear ? state.year + 1 : state.year;
