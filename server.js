@@ -3796,19 +3796,45 @@ async function augmentRtDataWithActiveReceptionists(data, db = getPool()) {
     .filter(s => rtIsStaffActiveForMonth(s, month, year));
   if (!active.length) return data;
 
-  const byId = new Set(data.staff.filter(s => s && s.userId).map(s => String(s.userId)));
-  const byName = new Set(data.staff.map(s => rtNormalizeStaffName(s && s.name)).filter(Boolean));
   let changed = false;
+  let added = false;
   for (const s of active) {
     const idKey = s.userId ? String(s.userId) : '';
     const nameKey = rtNormalizeStaffName(s.name);
-    if ((idKey && byId.has(idKey)) || (nameKey && byName.has(nameKey))) continue;
+    const existingIdx = data.staff.findIndex(row => {
+      if (!row) return false;
+      if (idKey && row.userId && String(row.userId) === idKey) return true;
+      return nameKey && rtNormalizeStaffName(row.name) === nameKey;
+    });
+    if (existingIdx >= 0) {
+      const current = data.staff[existingIdx] || {};
+      const refreshed = {
+        ...current,
+        userId: s.userId || current.userId || null,
+        name: s.name || current.name || '',
+        login: s.login || current.login || '',
+        type: s.type || current.type || '',
+        contract: s.contract || current.contract || '',
+        hotelSkills: Array.isArray(s.hotelSkills) ? s.hotelSkills : (Array.isArray(current.hotelSkills) ? current.hotelSkills : []),
+        noStandby: !!s.noStandby,
+        reqXLimit: rtReqLimit(s.reqXLimit, rtReqLimit(current.reqXLimit, 7)),
+        reqYLimit: rtReqLimit(s.reqYLimit, rtReqLimit(current.reqYLimit, 0)),
+        activeFrom: s.activeFrom || current.activeFrom || null,
+        activeUntil: s.activeUntil || current.activeUntil || null,
+        inactive: false
+      };
+      if (JSON.stringify(current) !== JSON.stringify(refreshed)) {
+        data.staff[existingIdx] = refreshed;
+        changed = true;
+      }
+      continue;
+    }
     data.staff.push(JSON.parse(JSON.stringify(s)));
-    if (idKey) byId.add(idKey);
-    if (nameKey) byName.add(nameKey);
+    added = true;
     changed = true;
   }
   if (!changed) return data;
+  if (!added) return data;
 
   const indexed = data.staff.map((s, oldIdx) => ({ s, oldIdx }));
   indexed.sort((a, b) => String(a.s.name || '').localeCompare(String(b.s.name || ''), 'cs', { sensitivity: 'base' }));
@@ -3917,6 +3943,38 @@ function getRequirementHotelLetters(data) {
   return letters;
 }
 
+function rtFindLiveRequirementStaff(row, user, liveStaff, month, year) {
+  const staff = Array.isArray(liveStaff) ? liveStaff : [];
+  const rowId = row && row.userId ? String(row.userId) : '';
+  const rowName = rtNormalizeStaffName(row && row.name);
+  return staff.find(s => {
+    if (!rtIsStaffActiveForMonth(s, month, year)) return false;
+    if (rowId && s.userId && String(s.userId) === rowId) return true;
+    if (isSessionUserRequirementStaff(s, user)) return true;
+    return rowName && rtNormalizeStaffName(s.name) === rowName;
+  }) || null;
+}
+
+function rtRefreshRequirementStaffRow(row, live) {
+  if (!live) return row || {};
+  const current = row || {};
+  return {
+    ...current,
+    userId: live.userId || current.userId || null,
+    name: live.name || current.name || '',
+    login: live.login || current.login || '',
+    type: live.type || current.type || '',
+    contract: live.contract || current.contract || '',
+    hotelSkills: Array.isArray(live.hotelSkills) ? live.hotelSkills : (Array.isArray(current.hotelSkills) ? current.hotelSkills : []),
+    noStandby: !!live.noStandby,
+    reqXLimit: rtReqLimit(live.reqXLimit, rtReqLimit(current.reqXLimit, 7)),
+    reqYLimit: rtReqLimit(live.reqYLimit, rtReqLimit(current.reqYLimit, 0)),
+    activeFrom: live.activeFrom || current.activeFrom || null,
+    activeUntil: live.activeUntil || current.activeUntil || null,
+    inactive: false
+  };
+}
+
 function validateRequirementStaffRowValues(currentData, incomingSchedule, si) {
   const staff = Array.isArray(currentData.staff) ? currentData.staff : [];
   const row = staff[si] || {};
@@ -3934,7 +3992,6 @@ function validateRequirementStaffRowValues(currentData, incomingSchedule, si) {
     const up = val.toUpperCase();
     if (up === 'X') { xCount += 1; continue; }
     if (up === 'Y') { yCount += 1; continue; }
-    if (val === '+') continue;
     if (up === 'Z' || up === 'Ž') return 'Nemáte oprávnění psát z ani ž.';
     if (/^[A-Z]$/.test(up)) {
       if (hotelLetters.size && !hotelLetters.has(up)) return `Hotel ${up} není v požadavcích povolený.`;
@@ -3951,7 +4008,7 @@ function validateRequirementStaffRowValues(currentData, incomingSchedule, si) {
   return '';
 }
 
-function mergeRequirementStaffRow(currentData, incomingData, user, requestedStaffIndex = null) {
+function mergeRequirementStaffRow(currentData, incomingData, user, requestedStaffIndex = null, liveStaff = []) {
   const current = currentData && typeof currentData === 'object' ? currentData : {};
   const incoming = incomingData && typeof incomingData === 'object' ? incomingData : {};
   const staff = Array.isArray(current.staff) ? current.staff : [];
@@ -3963,10 +4020,12 @@ function mergeRequirementStaffRow(currentData, incomingData, user, requestedStaf
   }
 
   const merged = JSON.parse(JSON.stringify(current));
+  const live = rtFindLiveRequirementStaff(merged.staff[si], user, liveStaff, merged.month, merged.year);
+  if (live) merged.staff[si] = rtRefreshRequirementStaffRow(merged.staff[si], live);
   merged.schedule = merged.schedule && typeof merged.schedule === 'object' ? merged.schedule : {};
   const incomingSchedule = incoming.schedule && typeof incoming.schedule === 'object' ? incoming.schedule : {};
   const prefix = `${si}_`;
-  const validationError = validateRequirementStaffRowValues(current, incomingSchedule, si);
+  const validationError = validateRequirementStaffRowValues(merged, incomingSchedule, si);
   if (validationError) return { error: validationError };
   for (const [key, val] of Object.entries(incomingSchedule)) {
     if (!key.startsWith(prefix)) continue;
@@ -4034,7 +4093,7 @@ function updateRequirementMeta(currentData, nextData, user, staffIndex = null) {
   return next;
 }
 
-const REQ_DUP_SKIP = new Set(['X', 'Y', 'Z', 'Ž', '+']);
+const REQ_DUP_SKIP = new Set(['X', 'Y', 'Z', 'Ž']);
 
 function isRequirementDuplicateValue(value) {
   const val = String(value || '').trim();
@@ -4353,7 +4412,8 @@ app.post('/api/rt/requirements/save', requireLogin, async (req, res) => {
       if (existing.rows[0].status !== 'open') {
         return rollbackJson({ ok: false, msg: 'Editace požadavků není povolena.' });
       }
-      const merged = mergeRequirementStaffRow(currentData, data, req.session.user, requestedStaffIndex);
+      const liveStaff = await loadRtPortalReceptionists(client);
+      const merged = mergeRequirementStaffRow(currentData, data, req.session.user, requestedStaffIndex, liveStaff);
       if (merged.error) return rollbackJson({ ok: false, msg: merged.error });
       saveData = merged.data;
       staffIndex = merged.staffIndex;

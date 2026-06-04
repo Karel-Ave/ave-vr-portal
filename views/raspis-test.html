@@ -386,11 +386,32 @@ table.staff-tbl {
 .mode-btn { padding:5px 18px; border:1px solid var(--border); border-radius:5px; cursor:pointer; font-size:12px; background:var(--surface); color:var(--text-muted); transition:all .15s; }
 .mode-btn.active { background:var(--accent); color:#fff; border-color:var(--accent); font-weight:600; }
 .mode-btn:hover:not(.active) { background:var(--surface-alt); }
-#override-info { margin:0 0 8px; padding:6px 14px; border-radius:5px; font-size:12px; color:var(--text-muted); background:rgba(255,200,0,0.12); border:1px solid rgba(180,140,0,0.25); text-align:center; }
-[data-theme="dark"] #override-info { background:rgba(180,140,0,0.18); border-color:rgba(220,170,0,0.3); }
+#override-info {
+  margin:0 0 8px; padding:6px 14px; border-radius:5px; font-size:12px;
+  color:var(--text-muted);
+  background:color-mix(in srgb, var(--accent) 13%, var(--surface) 87%);
+  border:1px solid color-mix(in srgb, var(--accent) 34%, var(--border) 66%);
+  text-align:center;
+}
+#override-info .override-info-mark {
+  background:color-mix(in srgb, var(--accent) 22%, transparent);
+  color:var(--accent-h);
+  padding:0 3px;
+  border-radius:2px;
+}
 /* Override-highlighted cells */
-.override-cell { background: rgba(255,200,0,0.18) !important; position:relative; }
-[data-theme="dark"] .override-cell { background: rgba(180,140,0,0.22) !important; }
+.override-cell { background: color-mix(in srgb, var(--accent) 18%, transparent) !important; position:relative; }
+[data-theme="dark"] .override-cell { background: color-mix(in srgb, var(--accent) 22%, transparent) !important; }
+#btn-clear-month-overrides.mode-btn {
+  background: var(--accent) !important;
+  color: var(--hotel-btn-active-color, #fff) !important;
+  border-color: var(--accent) !important;
+}
+#btn-clear-month-overrides.mode-btn:hover {
+  background: var(--accent-h) !important;
+  border-color: var(--accent-h) !important;
+  color: var(--hotel-btn-active-color, #fff) !important;
+}
 /* Clear override button */
 .btn-ovr-clear { font-size:9px; padding:0 2px; border:none; background:none; color:var(--accent); cursor:pointer; opacity:0.7; vertical-align:middle; margin-left:2px; flex-shrink:0; }
 .btn-ovr-clear:hover { opacity:1; }
@@ -762,6 +783,10 @@ table.sched-tbl {
 .cov-row .col-name-td { font-size: 10px; font-weight: 700; background: var(--surface);
   padding: 0; overflow: visible; height: var(--sched-row-h); }
 .cov-tbody .col-name-td { position: sticky; left: auto !important; /* Override .sched-tbl .col-name-td left:0 — Chrome ignores top when left is set (bi-directional sticky bug) */ z-index: 62 !important; /* Must be > date-cell z-index so name cell stacks on top; CSS !important beats inline style */ background: var(--surface) !important; overflow: visible !important; }
+@media (pointer: coarse), (max-width: 900px) {
+  .cov-tbody .col-name-td { left: 0 !important; z-index: 64 !important; }
+  .cov-name-inner { position: relative; left: auto; }
+}
 .cov-row td,
 .cov-row th {
   height: var(--sched-row-h) !important;
@@ -2139,11 +2164,11 @@ tbody tr.row-filtered { display: none; }
         </select>
         <input type="number" id="override-year-inp" min="2020" max="2099" onchange="setOverrideMonth()" style="width:68px;padding:3px 6px;font-size:12px;border:1px solid var(--border);border-radius:4px;background:var(--surface);color:var(--text);">
         <button id="btn-set-as-default" class="mode-btn" style="margin-left:6px;" onclick="setOverridesAsDefault()" title="Zkopíruje přepisy tohoto měsíce do výchozích hodnot a přepisy smaže">✔ Nastavit jako výchozí</button>
-        <button id="btn-clear-month-overrides" class="mode-btn" style="color:#c00;border-color:#fcc;" onclick="clearMonthOverrides()" title="Smazat přepisy pro tento měsíc">Smazat přepis</button>
+        <button id="btn-clear-month-overrides" class="mode-btn" onclick="clearMonthOverrides()" title="Smazat přepisy pro tento měsíc">Smazat přepis</button>
       </div>
     </div>
     <div id="override-info" style="display:none;">
-      🗓 Editujete <strong>přepisy</strong> pro <strong id="override-info-label"></strong> — <span style="background:rgba(255,200,0,0.3);padding:0 3px;border-radius:2px;">žlutě podbarvená</span> pole platí jen pro tento měsíc, ostatní ukazují výchozí hodnotu.
+      🗓 Editujete <strong>přepisy</strong> pro <strong id="override-info-label"></strong> — <span class="override-info-mark">měsíčně podbarvená</span> pole platí jen pro tento měsíc, ostatní ukazují výchozí hodnotu.
     </div>
     <!-- Recepční table: login, max.hod, notes — no action buttons -->
     <div class="staff-table-wrap">
@@ -2600,7 +2625,7 @@ tbody tr.row-filtered { display: none; }
 <div class="overlay" id="overlay-hotels">
   <div class="modal" style="width:min(620px,100%)">
     <div class="modal-header">
-      <h3>🏨 Správa hotelů</h3>
+      <h3>Správa hotelů</h3>
       <button class="modal-close" id="hotels-close">✕</button>
     </div>
     <div class="modal-body">
@@ -2634,7 +2659,7 @@ tbody tr.row-filtered { display: none; }
     </div>
     <div class="modal-footer">
       <button class="btn btn-secondary" id="hotels-close2">Zavřít</button>
-      <button class="btn btn-primary" id="btn-hotels-save">💾 Uložit</button>
+      <button class="btn btn-primary" id="btn-hotels-save">Uložit</button>
     </div>
   </div>
 </div>
@@ -3278,7 +3303,7 @@ const HOTEL_HOURS_BUILTIN = {
   L:12, M:12, N:12, P:0,  Q:0,  S:10, T:12, U:12
 };
 const DEFAULT_HOURS = 12;
-const SKIP_VALS = new Set(['X','x','Y','y','Z','z','Ž','ž','+']);
+const SKIP_VALS = new Set(['X','x','Y','y','Z','z','Ž','ž']);
 
 const HOTELS_DEFAULT = [
   {letter:'A',name:'',hours:12,dayOnly:false,active:true},
@@ -3482,7 +3507,6 @@ function renderScheduleLegend() {
   items.push(makeLegendItem('x/y = nemůžu vzít směnu'));
   items.push(makeLegendItem('z = dovolená'));
   items.push(makeLegendItem('ž = školení'));
-  items.push(makeLegendItem('+ = chci směnu'));
 
   if (activeTab === 'pozadavky') {
     items.push(makeLegendItem('Duplicitní směna', 'legend-dup'));
@@ -3571,11 +3595,20 @@ function openMobileScheduleKeypad(si, ci, tableId) {
   const grid = el.querySelector('#mck-grid');
   el.querySelector('#mck-title').textContent = mobileScheduleLabel(si, ci);
   grid.innerHTML = '';
-  const mobileKeys = ['A','B','C','D','E','G','H','I','J','L','M','N','P','Q','S','T','U','x','y','+'];
+  const preferredHotelKeys = ['A','B','C','D','E','F','G','H','I','J','L','M','N','P','Q','R','S','T','U','W'];
+  const allowedHotelKeys = getAllowedScheduleHotelLetterSet();
+  const extraHotelKeys = Array.from(allowedHotelKeys).filter(k => !preferredHotelKeys.includes(k)).sort((a, b) => a.localeCompare(b, 'cs'));
+  const mobileKeys = [
+    ...preferredHotelKeys.filter(k => allowedHotelKeys.has(k)),
+    ...extraHotelKeys,
+    'x',
+    'y',
+    ...((tableId !== 'pozadavky-tbl' || canManageRequirements()) ? ['z', 'ž'] : [])
+  ];
   mobileKeys.forEach(k => {
     const btn = document.createElement('button');
     btn.type = 'button';
-    btn.className = 'mck-btn' + (/^[xy]$/.test(k) || k === '+' ? ' mck-soft' : '');
+    btn.className = 'mck-btn' + (/^[xy]$/.test(k) ? ' mck-soft' : '');
     btn.textContent = k;
     btn.addEventListener('click', () => {
       const ok = setCellValue(si, ci, k);
@@ -4776,7 +4809,7 @@ function renderScheduleTable(tableId, editable) {
       // (Chrome ignores top when left is set on the same element).
       cell.style.position = 'sticky';
       cell.style.top = topPx;
-      if (_isName) cell.style.left = 'auto';
+      if (_isName) cell.style.left = isMobileLike() ? '0px' : 'auto';
       cell.style.zIndex = _isName ? '62' : '60';
       // Ensure solid background so staff rows don't bleed through
       if (!cell.style.background) cell.style.background = 'var(--surface)';
@@ -5097,7 +5130,53 @@ function getRequirementHotelLetterSet() {
   return letters;
 }
 
+function getAllowedScheduleHotelLetterSet() {
+  ensureHotels();
+  const letters = new Set();
+  (state.hotels || []).forEach(h => {
+    const letter = String(h?.letter || '').trim().toUpperCase();
+    if (letter && h.active !== false) letters.add(letter);
+  });
+  if (!letters.size) {
+    Object.keys(HOTEL_HOURS_BUILTIN || {}).forEach(letter => letters.add(letter));
+    (HOTELS_DEFAULT || []).forEach(h => {
+      const letter = String(h?.letter || '').trim().toUpperCase();
+      if (letter && h.active !== false) letters.add(letter);
+    });
+  }
+  return letters;
+}
+
+function normalizeScheduleCellValue(val) {
+  const raw = String(val || '').trim();
+  if (!raw) return '';
+  const up = raw.toUpperCase();
+  if (raw.length !== 1) return null;
+  if (up === 'X' || up === 'Y' || up === 'Z' || up === 'Ž') return smartCase(raw);
+  const allowed = getAllowedScheduleHotelLetterSet();
+  return allowed.has(up) ? up : null;
+}
+
+function sanitizeScheduleMapValues(schedule) {
+  const clean = {};
+  Object.entries(schedule || {}).forEach(([key, val]) => {
+    const normalized = normalizeScheduleCellValue(val);
+    if (normalized) clean[key] = normalized;
+  });
+  return clean;
+}
+
+function toastDisallowedScheduleValue(val) {
+  const raw = String(val || '').trim();
+  if (!raw) return;
+  toast(`Hodnota "${raw}" není v rozpisu povolená.`, true);
+}
+
 function validateRequirementCellValue(si, ci, val) {
+  if (normalizeScheduleCellValue(val) === null) {
+    toastDisallowedScheduleValue(val);
+    return false;
+  }
   if (getActiveScheduleTableId() !== 'pozadavky-tbl' || canManageRequirements()) return true;
   const raw = String(val || '').trim();
   if (!raw) return true;
@@ -5121,7 +5200,6 @@ function validateRequirementCellValue(si, ci, val) {
     }
     return true;
   }
-  if (raw === '+') return true;
   if (/^[A-Z]$/i.test(raw)) {
     const allowed = getRequirementHotelLetterSet();
     if (allowed.size && !allowed.has(up)) {
@@ -5161,6 +5239,12 @@ function validateRequirementLimitsBeforeSave() {
 function setCellValue(si, ci, val) {
   const activeTableId = getActiveScheduleTableId();
   if (!canEditCellInTable(si, activeTableId)) return false;
+  const normalizedVal = normalizeScheduleCellValue(val);
+  if (normalizedVal === null) {
+    toastDisallowedScheduleValue(val);
+    return false;
+  }
+  val = normalizedVal;
   if (!validateRequirementCellValue(si, ci, val)) return false;
   if (activeTableId === 'pozadavky-tbl' && !canManageRequirements() && /^[xy]$/i.test(String(val || '').trim()) && isRequirementXyLocked(ci)) {
     toast('V tomto dni/noci není možné psát x ani y.', true);
@@ -5738,6 +5822,7 @@ function renderStaffTable() {
 
 function buildSaveData() {
   ensureHotels();
+  state.schedule = sanitizeScheduleMapValues(state.schedule);
   // Snapshot aktuálního měsíce do monthlyData před serializací
   const currentKey = `${state.year}-${state.month}`;
   const mdSnapshot = JSON.parse(JSON.stringify(state.monthlyData || {}));
@@ -8138,7 +8223,7 @@ function refreshCoverageSticky() {
         // because Chrome ignores `top` when `left` is also set on the same td.
         cell.style.position = 'sticky';
         cell.style.top = topPx;
-        if (isName) cell.style.left = 'auto';
+        if (isName) cell.style.left = isMobileLike() ? '0px' : 'auto';
         cell.style.zIndex = isName ? '62' : '60';
         if (!cell.style.background) cell.style.background = 'var(--surface)';
       });
@@ -8511,10 +8596,11 @@ function pasteFromClipboard(startSi, startCi) {
       cols.slice(colStart).forEach((rawVal, colOff) => {
         const ci = startCi + colOff;
         if (ci >= calCols.length) return;
-        const v = rawVal.trim().toUpperCase();
+        const v = normalizeScheduleCellValue(rawVal);
+        if (v === null) return;
         const key = `${si}_${ci}`;
-        // Accept hotel letters, blank, and known values
-        if (v === '' || /^[A-Z]$/.test(v)) {
+        if (v === '') delete state.schedule[key];
+        else {
           state.schedule[key] = v;
         }
       });
@@ -8629,7 +8715,9 @@ function pasteScheduleTextIntoTvorba(text, startSi = null, startCi = 0) {
 
   changes.forEach(({ si, ci, val }) => {
     const key = `${si}_${ci}`;
-    if (val) state.schedule[key] = val;
+    const normalized = normalizeScheduleCellValue(val);
+    if (normalized === null) return;
+    if (normalized) state.schedule[key] = normalized;
     else delete state.schedule[key];
   });
   historySave();
@@ -8748,7 +8836,9 @@ function pasteScheduleTextIntoTvorba(text, startSi = null, startCi = 0) {
 
   changes.forEach(({ si, ci, val }) => {
     const key = `${si}_${ci}`;
-    if (val) state.schedule[key] = val;
+    const normalized = normalizeScheduleCellValue(val);
+    if (normalized === null) return;
+    if (normalized) state.schedule[key] = normalized;
     else delete state.schedule[key];
   });
   historySave();
@@ -8980,7 +9070,9 @@ async function pasteScheduleFromExcel() {
 
     changes.forEach(({ si, ci, val }) => {
       const key = `${si}_${ci}`;
-      if (val) state.schedule[key] = val;
+      const normalized = normalizeScheduleCellValue(val);
+      if (normalized === null) return;
+      if (normalized) state.schedule[key] = normalized;
       else delete state.schedule[key];
     });
     historySave();
@@ -9409,11 +9501,9 @@ function saveColorProfileStorage() {
 }
 
 function syncScheduleColorsToPortalSkin(skin, persist = false) {
-  skin = String(skin || localStorage.getItem('ave-portal-skin') || 'default').toLowerCase();
+  skin = String(skin || document.documentElement.getAttribute('data-skin') || localStorage.getItem('ave-portal-skin') || 'default').toLowerCase();
   if (!SCHEDULE_SKIN_ACCENTS[skin]) skin = 'default';
-  const prev = localStorage.getItem('rt-color-profile-skin');
   const skinVersion = `${skin}:${SCHEDULE_SKIN_COLOR_VERSION}`;
-  if (prev === skinVersion) return false;
   const p = schedulePaletteForSkin(skin);
   colorProfile.light = Object.assign({}, p.light);
   colorProfile.dark = Object.assign({}, p.dark);
@@ -9431,7 +9521,7 @@ function applyColorProfile() {
     document.head.appendChild(styleEl);
   }
   const l = colorProfile.light, d = colorProfile.dark;
-  const currentPortalSkin = String(localStorage.getItem('ave-portal-skin') || 'default').toLowerCase();
+  const currentPortalSkin = String(document.documentElement.getAttribute('data-skin') || localStorage.getItem('ave-portal-skin') || 'default').toLowerCase();
   const useDarkGoldWeekends = currentPortalSkin === 'default';
   const darkScheduleKdBg = useDarkGoldWeekends ? d.kdBg : l.kdBg;
   const darkScheduleKdTx = useDarkGoldWeekends ? d.kdTx : l.kdTx;
@@ -10433,7 +10523,7 @@ function handleXlsImport(e) {
           // Jméno není v Nastavení → řádek z XLS zůstane v Tvorbě bez metadat z Nastavení.
           const unmatchedShifts = {};
           calCols.forEach((_, ci) => {
-            const val = String(row[1 + ci] || '').trim();
+            const val = normalizeScheduleCellValue(row[1 + ci]);
             if (val) unmatchedShifts[ci] = val;
           });
           newUnmatched.push({ name: xlsName, schedule: unmatchedShifts });
@@ -10449,7 +10539,7 @@ function handleXlsImport(e) {
           };
           newStaff.push(staffEntry);
           calCols.forEach((_, ci) => {
-            const val = String(row[1 + ci] || '').trim();
+            const val = normalizeScheduleCellValue(row[1 + ci]);
             if (val) newSchedule[`${newSi}_${ci}`] = val;
           });
           newSi++;
@@ -10463,7 +10553,7 @@ function handleXlsImport(e) {
         staffEntry.noteP = row[noteCol] || staffEntry.noteP || '';
         newStaff.push(staffEntry);
         calCols.forEach((_, ci) => {
-          const val = String(row[1 + ci] || '').trim();
+          const val = normalizeScheduleCellValue(row[1 + ci]);
           if (val) newSchedule[`${newSi}_${ci}`] = val;
         });
         newSi++;
@@ -10694,8 +10784,8 @@ window.addEventListener('message', e => {
     applyPublicDefaultHotel();
     return;
   }
-  if (!e.data || e.data.type !== 'ave-theme' || !e.data.skin) return;
-  if (!syncScheduleColorsToPortalSkin(e.data.skin, true)) return;
+  if (!e.data || e.data.type !== 'ave-theme') return;
+  syncScheduleColorsToPortalSkin(e.data.skin || document.documentElement.getAttribute('data-skin') || localStorage.getItem('ave-portal-skin') || 'default', true);
   applyColorProfile();
   renderScheduleTable('tvorba-tbl', true);
   renderScheduleTable('rozpis-tbl', viewEditMode);

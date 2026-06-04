@@ -328,12 +328,12 @@
     <h2 id="modal-title">Přidat uživatele</h2>
     <div class="form-row">
       <div class="form-group">
-        <label>Jméno</label>
-        <input type="text" id="u-name" placeholder="Karel">
+        <label>Jméno <span style="font-weight:400;color:var(--text-muted)">(Příjmení Jméno)</span></label>
+        <input type="text" id="u-name" placeholder="Nováková Romana">
       </div>
       <div class="form-group">
-        <label>Uživatelské jméno</label>
-        <input type="text" id="u-username" placeholder="Karel-Ave">
+        <label>Uživatelské jméno / login</label>
+        <input type="text" id="u-username" placeholder="ROMANA">
       </div>
     </div>
     <div class="form-group">
@@ -345,11 +345,11 @@
       <select id="u-role"></select>
     </div>
 
-    <!-- Raspis Test sekce -->
+    <!-- Zobrazení v rozpisu -->
     <div class="raspis-section">
       <div class="raspis-header" onclick="toggleRaspisSection()">
-        <span class="raspis-header-label">Raspis Test</span>
-        <div class="toggle" onclick="toggleRaspisActive(event)" title="Zobrazit v Raspis Test">
+        <span class="raspis-header-label">Zobrazit v rozpisu</span>
+        <div class="toggle" onclick="toggleRaspisActive(event)" title="Zobrazit v rozpisu">
           <div class="toggle-track" id="raspis-active-track"></div>
         </div>
         <span class="raspis-expand" id="raspis-expand">▶</span>
@@ -1302,6 +1302,15 @@
     return !!document.getElementById('raspis-no-standby')?.checked;
   }
 
+  function syncRaspisIdentityFields(force = false) {
+    const nameField = document.getElementById('raspis-name');
+    const loginField = document.getElementById('raspis-login');
+    const sourceName = document.getElementById('u-name')?.value.trim() || '';
+    const sourceLogin = document.getElementById('u-username')?.value.trim().toUpperCase() || '';
+    if (nameField && (force || !nameField.value.trim())) nameField.value = sourceName;
+    if (loginField && (force || !loginField.value.trim())) loginField.value = sourceLogin;
+  }
+
   function populateRaspisFields(rs) {
     if (!rs) return;
     document.getElementById('raspis-name').value = rs.displayName || '';
@@ -1341,21 +1350,22 @@
       // Zapnout → rozbalit sekci, doplnit jméno pokud prázdné
       body.style.display = '';
       exp.classList.add('open');
-      const nameField = document.getElementById('raspis-name');
-      if (!nameField.value) nameField.value = document.getElementById('u-name').value;
+      syncRaspisIdentityFields(false);
     }
   }
 
   function toggleRaspisSection() {
     const body = document.getElementById('raspis-body');
     const exp  = document.getElementById('raspis-expand');
-    const open = body.style.display !== 'none' && body.style.display !== '';
+    const open = body.style.display !== 'none';
     body.style.display = open ? 'none' : '';
     exp.classList.toggle('open', !open);
+    if (!open) syncRaspisIdentityFields(false);
   }
 
   async function saveRaspisOverride(userId) {
     const active      = document.getElementById('raspis-active-track').classList.contains('on');
+    if (active) syncRaspisIdentityFields(false);
     const displayName = document.getElementById('raspis-name').value.trim();
     const fMonth = parseInt(document.getElementById('raspis-from-month').value)  || null;
     const fYear  = parseInt(document.getElementById('raspis-from-year').value)   || null;
