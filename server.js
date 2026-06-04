@@ -694,11 +694,12 @@ app.post('/api/settings', requireLogin, async (req, res) => {
     const db = getPool();
     const { rows } = await db.query("SELECT value FROM settings WHERE key = 'main'");
     const current = rows.length > 0 ? JSON.parse(rows[0].value) : {};
-    const { staff, hotels, hotelOverrides, customHotels, fondHpp, fondZpp, holidays } = req.body;
+    const { staff, hotels, hotelOverrides, customHotels, mobileKeypadConfig, fondHpp, fondZpp, holidays } = req.body;
     if (staff !== undefined)        current.staff = staff;
     if (hotels !== undefined)       current.hotels = hotels;
     if (hotelOverrides !== undefined) current.hotelOverrides = hotelOverrides;
     if (customHotels !== undefined) current.customHotels = customHotels;
+    if (mobileKeypadConfig !== undefined) current.mobileKeypadConfig = mobileKeypadConfig;
     if (fondHpp !== undefined)      current.fondHpp = fondHpp;
     if (fondZpp !== undefined)      current.fondZpp = fondZpp;
     if (holidays !== undefined)     current.holidays = holidays;

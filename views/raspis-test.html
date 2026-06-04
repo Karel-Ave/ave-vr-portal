@@ -465,6 +465,26 @@ table.staff-tbl {
 .hotel-letter-inp { width:48px; padding:5px 6px; border:2px solid var(--accent); border-radius:5px;
   background:var(--input-bg,var(--bg)); color:var(--text); font-size:14px; font-weight:700;
   text-transform:uppercase; text-align:center; font-family:inherit; }
+.mobile-keypad-config { margin-top:14px; padding-top:12px; border-top:2px solid var(--border); }
+.mobile-keypad-config h4 {
+  margin:0 0 8px; font-size:11px; text-transform:uppercase; letter-spacing:.07em; color:var(--text-muted);
+}
+.mobile-keypad-config-grid {
+  display:grid; grid-template-columns:repeat(2,minmax(0,1fr)); gap:10px;
+}
+.mobile-keypad-config label {
+  display:block; font-size:11px; font-weight:700; color:var(--text-muted); margin-bottom:4px;
+}
+.mobile-keypad-config textarea {
+  width:100%; min-height:84px; resize:vertical; border:1px solid var(--border); border-radius:6px;
+  background:var(--input-bg,var(--bg)); color:var(--text); padding:7px 8px; font:12px inherit;
+}
+.mobile-keypad-config-row { display:flex; align-items:center; gap:8px; flex-wrap:wrap; margin-top:8px; }
+.mobile-keypad-config-row input {
+  width:76px; border:1px solid var(--border); border-radius:6px;
+  background:var(--input-bg,var(--bg)); color:var(--text); padding:5px 7px; font:12px inherit;
+}
+.mobile-keypad-hint { font-size:11px; color:var(--text-muted); }
 
 /* ── Schedule table ── */
 .schedule-wrap {
@@ -1583,7 +1603,7 @@ tbody tr.row-filtered { display: none; }
   .mck-head { margin-bottom: 4px; font-size: 10px; }
   .mck-close { height: 26px; min-width: 32px; }
   .mck-grid { grid-template-columns: repeat(5, minmax(30px, 1fr)); gap: 3px; }
-  .mck-btn { min-height: 27px; font-size: 14px; border-radius: 7px; }
+  .mck-btn { min-height: var(--mobile-keypad-btn-h, 34px); font-size: 14px; border-radius: 7px; }
   .mck-btn.mck-soft { font-size: 12px; }
   .tb-tab { padding: 0 9px; }
   .tb-btn,
@@ -1593,6 +1613,22 @@ tbody tr.row-filtered { display: none; }
   .sched-tbl td.sched-cell .cell-val {
     font-weight: 400 !important;
   }
+}
+
+@media (pointer: coarse) and (orientation: landscape) and (max-height: 520px) {
+  #mobile-cell-keypad {
+    left: auto;
+    width: min(360px, 42vw);
+    top: calc(8px + env(safe-area-inset-top,0px));
+    bottom: calc(8px + env(safe-area-inset-bottom,0px)) !important;
+    border-top: 0;
+    border-left: 1px solid color-mix(in srgb, var(--accent) 45%, var(--border));
+    box-shadow: -10px 0 32px rgba(0,0,0,.22);
+    max-height: none !important;
+    padding: 6px 8px;
+  }
+  .mck-grid { gap: 4px; }
+  .mck-btn { min-height: max(32px, calc(var(--mobile-keypad-btn-h, 34px) * .86)); }
 }
 
 @media (max-width: 700px), (pointer: coarse) and (max-height: 520px) {
@@ -2656,6 +2692,24 @@ tbody tr.row-filtered { display: none; }
         </div>
         <button class="btn btn-primary btn-sm" id="btn-hotel-add">+ Přidat hotel</button>
       </div>
+      <div class="mobile-keypad-config">
+        <h4>Mobilní klávesnice</h4>
+        <div class="mobile-keypad-config-grid">
+          <div>
+            <label for="mobile-keypad-receptionist">Recepční</label>
+            <textarea id="mobile-keypad-receptionist" spellcheck="false"></textarea>
+          </div>
+          <div>
+            <label for="mobile-keypad-manager">Admin / VR</label>
+            <textarea id="mobile-keypad-manager" spellcheck="false"></textarea>
+          </div>
+        </div>
+        <div class="mobile-keypad-config-row">
+          <label for="mobile-keypad-height" style="margin:0">Výška tlačítek</label>
+          <input type="number" id="mobile-keypad-height" min="28" max="64" step="1">
+          <span class="mobile-keypad-hint">Klávesy oddělte mezerou nebo čárkou. Šířka: např. <b>DEL:2</b>.</span>
+        </div>
+      </div>
     </div>
     <div class="modal-footer">
       <button class="btn btn-secondary" id="hotels-close2">Zavřít</button>
@@ -3343,6 +3397,7 @@ const state = {
   hotels: [],           // [{letter, name, hours, dayOnly, active}]
   hotelOverrides: {},   // legacy compat
   customHotels: [],     // legacy compat
+  mobileKeypadConfig: null,
   monthlyData: {},      // key: "YYYY-M" → {schedule, extras, requirements, fondHpp, fondZpp, holidays}
   unmatchedXls: [],     // [{name, schedule:{ci:val}}] — jména z XLS, která nebyla nalezena v Nastavení
   allPortalUsers: [],   // všichni portáloví pracovníci z API — pro zobrazení v Nastavení (NEPOUŽÍVÁ se pro Tvorbu)
@@ -3475,6 +3530,82 @@ function isMobileLike() {
   return !!(window.matchMedia && window.matchMedia(MOBILE_POINTER_QUERY).matches);
 }
 
+const MOBILE_KEYPAD_DEFAULT_ROWS = [
+  ['A','B','C','D','E'],
+  ['G','H','I','J','L'],
+  ['M','N','S','T','U'],
+  ['P','x','y','DEL:2']
+];
+
+function cloneMobileKeypadRows(rows) {
+  return (Array.isArray(rows) ? rows : MOBILE_KEYPAD_DEFAULT_ROWS)
+    .map(row => (Array.isArray(row) ? row : []).map(key => String(key || '').trim()).filter(Boolean))
+    .filter(row => row.length);
+}
+
+function defaultMobileKeypadConfig() {
+  return {
+    buttonHeight: 34,
+    receptionist: cloneMobileKeypadRows(MOBILE_KEYPAD_DEFAULT_ROWS),
+    manager: cloneMobileKeypadRows(MOBILE_KEYPAD_DEFAULT_ROWS)
+  };
+}
+
+function normalizeMobileKeypadConfig(config) {
+  const def = defaultMobileKeypadConfig();
+  const src = config && typeof config === 'object' ? config : {};
+  const h = parseInt(src.buttonHeight, 10);
+  return {
+    buttonHeight: Number.isFinite(h) ? Math.max(28, Math.min(64, h)) : def.buttonHeight,
+    receptionist: cloneMobileKeypadRows(src.receptionist || def.receptionist),
+    manager: cloneMobileKeypadRows(src.manager || def.manager)
+  };
+}
+
+function getMobileKeypadConfig() {
+  state.mobileKeypadConfig = normalizeMobileKeypadConfig(state.mobileKeypadConfig);
+  return state.mobileKeypadConfig;
+}
+
+function parseMobileKeypadRows(text) {
+  const rows = String(text || '')
+    .split(/\r?\n/)
+    .map(line => line.split(/[,\s]+/).map(x => x.trim()).filter(Boolean))
+    .filter(row => row.length);
+  return rows.length ? rows : cloneMobileKeypadRows(MOBILE_KEYPAD_DEFAULT_ROWS);
+}
+
+function mobileKeypadRowsToText(rows) {
+  return cloneMobileKeypadRows(rows).map(row => row.join(' ')).join('\n');
+}
+
+function parseMobileKeyToken(token) {
+  const raw = String(token || '').trim();
+  const [keyRaw, spanRaw] = raw.split(':');
+  const key = keyRaw.trim();
+  const span = Math.max(1, Math.min(5, parseInt(spanRaw, 10) || (key.toUpperCase() === 'SMAZAT' || key.toUpperCase() === 'DEL' ? 1 : 1)));
+  return { key, span };
+}
+
+function canUseMobileKey(key, si, tableId) {
+  const raw = String(key || '').trim();
+  if (!raw) return false;
+  const up = raw.toUpperCase();
+  if (up === 'DEL' || up === 'SMAZAT') return true;
+  const normalized = normalizeScheduleCellValue(raw);
+  if (normalized === null) return false;
+  if (tableId === 'pozadavky-tbl' && !canManageRequirements()) {
+    const staff = state.staff[si] || {};
+    if (up === 'Z' || up === 'Ž') return false;
+    if (up === 'Y') return getRequirementLimitForStaff(staff, 'reqYLimit', 0) > 0;
+    if (/^[A-Z]$/.test(up)) {
+      const allowed = getRequirementHotelLetterSet();
+      return !allowed.size || allowed.has(up);
+    }
+  }
+  return true;
+}
+
 function makeLegendItem(text, swatchClass = '') {
   const item = document.createElement('span');
   item.className = 'legend-item schedule-dynamic-legend';
@@ -3564,6 +3695,8 @@ function setMobileKeypadHeight(open) {
 function updateMobileKeypadViewport() {
   const el = document.getElementById('mobile-cell-keypad');
   if (!el) return;
+  const cfg = getMobileKeypadConfig();
+  document.documentElement.style.setProperty('--mobile-keypad-btn-h', `${cfg.buttonHeight}px`);
   const vv = window.visualViewport;
   const visibleH = Math.max(260, Math.floor(vv?.height || window.innerHeight || 520));
   const bottomGap = Math.max(0, Math.floor((window.innerHeight || visibleH) - visibleH - (vv?.offsetTop || 0)));
@@ -3595,23 +3728,19 @@ function openMobileScheduleKeypad(si, ci, tableId) {
   const grid = el.querySelector('#mck-grid');
   el.querySelector('#mck-title').textContent = mobileScheduleLabel(si, ci);
   grid.innerHTML = '';
-  const preferredHotelKeys = ['A','B','C','D','E','F','G','H','I','J','L','M','N','P','Q','R','S','T','U','W'];
-  const allowedHotelKeys = getAllowedScheduleHotelLetterSet();
-  const extraHotelKeys = Array.from(allowedHotelKeys).filter(k => !preferredHotelKeys.includes(k)).sort((a, b) => a.localeCompare(b, 'cs'));
-  const mobileKeys = [
-    ...preferredHotelKeys.filter(k => allowedHotelKeys.has(k)),
-    ...extraHotelKeys,
-    'x',
-    'y',
-    ...((tableId !== 'pozadavky-tbl' || canManageRequirements()) ? ['z', 'ž'] : [])
-  ];
-  mobileKeys.forEach(k => {
+  const cfg = getMobileKeypadConfig();
+  const rows = cloneMobileKeypadRows(canManageRequirements() ? cfg.manager : cfg.receptionist);
+  rows.flatMap(row => row).forEach(token => {
+    const parsed = parseMobileKeyToken(token);
+    if (!canUseMobileKey(parsed.key, si, tableId)) return;
     const btn = document.createElement('button');
     btn.type = 'button';
-    btn.className = 'mck-btn' + (/^[xy]$/.test(k) ? ' mck-soft' : '');
-    btn.textContent = k;
+    const isDelete = ['DEL','SMAZAT'].includes(parsed.key.toUpperCase());
+    btn.className = 'mck-btn' + (/^[xy]$/i.test(parsed.key) ? ' mck-soft' : '') + (isDelete ? ' mck-danger mck-soft' : '');
+    if (parsed.span > 1) btn.style.gridColumn = `span ${parsed.span}`;
+    btn.textContent = isDelete ? 'DEL' : parsed.key;
     btn.addEventListener('click', () => {
-      const ok = setCellValue(si, ci, k);
+      const ok = setCellValue(si, ci, isDelete ? '' : parsed.key);
       if (ok) {
         focusCell(si, ci, tableId);
         closeMobileKeypad();
@@ -3619,19 +3748,6 @@ function openMobileScheduleKeypad(si, ci, tableId) {
     });
     grid.appendChild(btn);
   });
-  const clear = document.createElement('button');
-  clear.type = 'button';
-  clear.className = 'mck-btn mck-danger mck-soft mck-full';
-  clear.textContent = 'SMAZAT';
-  clear.title = 'Smazat hodnotu';
-  clear.addEventListener('click', () => {
-    const ok = setCellValue(si, ci, '');
-    if (ok) {
-      focusCell(si, ci, tableId);
-      closeMobileKeypad();
-    }
-  });
-  grid.appendChild(clear);
   el.classList.add('show');
   requestAnimationFrame(() => setMobileKeypadHeight(true));
   return true;
@@ -3723,11 +3839,17 @@ function bindMobileAxisScroll() {
     wrap.dataset.axisScrollBound = '1';
     wrap.addEventListener('touchstart', e => {
       if (!isMobileLike() || e.touches.length !== 1) return;
+      if (mobileAxisScroll?.raf) cancelAnimationFrame(mobileAxisScroll.raf);
       const t = e.touches[0];
       mobileAxisScroll = {
         wrap,
         x: t.clientX,
         y: t.clientY,
+        lastX: t.clientX,
+        lastY: t.clientY,
+        lastT: performance.now(),
+        vx: 0,
+        vy: 0,
         left: wrap.scrollLeft,
         top: wrap.scrollTop,
         axis: null
@@ -3738,19 +3860,50 @@ function bindMobileAxisScroll() {
       const t = e.touches[0];
       const dx = t.clientX - mobileAxisScroll.x;
       const dy = t.clientY - mobileAxisScroll.y;
+      const now = performance.now();
+      const dt = Math.max(1, now - mobileAxisScroll.lastT);
+      mobileAxisScroll.vx = (t.clientX - mobileAxisScroll.lastX) / dt;
+      mobileAxisScroll.vy = (t.clientY - mobileAxisScroll.lastY) / dt;
+      mobileAxisScroll.lastX = t.clientX;
+      mobileAxisScroll.lastY = t.clientY;
+      mobileAxisScroll.lastT = now;
       if (!mobileAxisScroll.axis) {
         if (Math.max(Math.abs(dx), Math.abs(dy)) < 8) return;
         mobileAxisScroll.axis = Math.abs(dx) >= Math.abs(dy) ? 'x' : 'y';
       }
+      e.preventDefault();
       if (mobileAxisScroll.axis === 'x') {
-        requestAnimationFrame(() => { if (mobileAxisScroll?.wrap === wrap) wrap.scrollTop = mobileAxisScroll.top; });
+        wrap.scrollLeft = mobileAxisScroll.left - dx;
+        wrap.scrollTop = mobileAxisScroll.top;
       } else if (mobileAxisScroll.axis === 'y') {
-        requestAnimationFrame(() => { if (mobileAxisScroll?.wrap === wrap) wrap.scrollLeft = mobileAxisScroll.left; });
+        wrap.scrollTop = mobileAxisScroll.top - dy;
+        wrap.scrollLeft = mobileAxisScroll.left;
       }
       if (mobileScheduleTap) mobileScheduleTap.moved = true;
-    }, { passive: true });
+    }, { passive: false });
     const clearAxis = () => {
-      if (mobileAxisScroll && mobileAxisScroll.wrap === wrap) mobileAxisScroll = null;
+      if (!mobileAxisScroll || mobileAxisScroll.wrap !== wrap) return;
+      const stateAxis = mobileAxisScroll;
+      const axis = stateAxis.axis;
+      let velocity = axis === 'x' ? -stateAxis.vx * 18 : -stateAxis.vy * 18;
+      const step = () => {
+        if (mobileAxisScroll !== stateAxis) return;
+        if (!axis || Math.abs(velocity) < 0.25) {
+          if (mobileAxisScroll === stateAxis) mobileAxisScroll = null;
+          return;
+        }
+        if (axis === 'x') {
+          wrap.scrollLeft += velocity;
+          wrap.scrollTop = stateAxis.top;
+        } else {
+          wrap.scrollTop += velocity;
+          wrap.scrollLeft = stateAxis.left;
+        }
+        velocity *= 0.90;
+        stateAxis.raf = requestAnimationFrame(step);
+      };
+      if (axis) stateAxis.raf = requestAnimationFrame(step);
+      else mobileAxisScroll = null;
     };
     wrap.addEventListener('touchend', clearAxis, { passive: true });
     wrap.addEventListener('touchcancel', clearAxis, { passive: true });
@@ -5873,6 +6026,7 @@ function buildSaveData() {
     holidays: state.holidays,
     hrsColorOverride: JSON.parse(JSON.stringify(state.hrsColorOverride || {})),
     hotels: JSON.parse(JSON.stringify(state.hotels)),
+    mobileKeypadConfig: normalizeMobileKeypadConfig(state.mobileKeypadConfig),
     monthlyData: mdSnapshot,
     // legacy fields kept for backward compat
     hotelOverrides: JSON.parse(JSON.stringify(state.hotelOverrides)),
@@ -5922,6 +6076,8 @@ function applyData(data) {
     if (data.customHotels) state.customHotels = data.customHotels;
     ensureHotels();
   }
+  state.mobileKeypadConfig = normalizeMobileKeypadConfig(data.mobileKeypadConfig);
+  document.documentElement.style.setProperty('--mobile-keypad-btn-h', `${state.mobileKeypadConfig.buttonHeight}px`);
 
   // ── monthlyData ──
   state.monthlyData = data.monthlyData ? JSON.parse(JSON.stringify(data.monthlyData)) : {};
@@ -7522,7 +7678,7 @@ function toggleRequirementsEditWindow() {
       return;
     }
     let confirmedLocalDuplicates = false;
-    const duplicates = getRequirementsDuplicateSummary();
+    const duplicates = manager ? [] : getRequirementsDuplicateSummary();
     if (duplicates.length) {
       const shown = duplicates.slice(0, 12).join('\n');
       const more = duplicates.length > 12 ? `\n... a další (${duplicates.length - 12})` : '';
@@ -8338,7 +8494,8 @@ function applyRowFilters() {
         hide = s.type === 'Denní';
       }
       if (!hide && availableSlotFilter && !isReqTbl) {
-        hide = !!String(state.schedule[`${si}_${availableSlotFilter.ci}`] || '').trim();
+        const slotVal = String(state.schedule[`${si}_${availableSlotFilter.ci}`] || '').trim().toUpperCase();
+        hide = !!(slotVal && slotVal !== 'P');
       }
       if ((isPublicTbl || isReqTbl) && isCurrentUserStaff(s)) hide = false;
       tr.classList.toggle('row-filtered', hide);
@@ -10187,6 +10344,13 @@ function showHotelManager() {
   document.getElementById('hotel-new-name').value = '';
   document.getElementById('hotel-new-hours').value = '12';
   document.getElementById('hotel-new-dayonly').checked = false;
+  const keypadCfg = getMobileKeypadConfig();
+  const recTA = document.getElementById('mobile-keypad-receptionist');
+  const mgrTA = document.getElementById('mobile-keypad-manager');
+  const heightInp = document.getElementById('mobile-keypad-height');
+  if (recTA) recTA.value = mobileKeypadRowsToText(keypadCfg.receptionist);
+  if (mgrTA) mgrTA.value = mobileKeypadRowsToText(keypadCfg.manager);
+  if (heightInp) heightInp.value = keypadCfg.buttonHeight;
   document.getElementById('overlay-hotels').classList.add('show');
 }
 
@@ -10207,6 +10371,12 @@ function saveHotelManager() {
     });
   });
   state.hotels = newHotels;
+  state.mobileKeypadConfig = normalizeMobileKeypadConfig({
+    receptionist: parseMobileKeypadRows(document.getElementById('mobile-keypad-receptionist')?.value || ''),
+    manager: parseMobileKeypadRows(document.getElementById('mobile-keypad-manager')?.value || ''),
+    buttonHeight: document.getElementById('mobile-keypad-height')?.value || 34
+  });
+  document.documentElement.style.setProperty('--mobile-keypad-btn-h', `${state.mobileKeypadConfig.buttonHeight}px`);
   // Update legacy fields for backward compat
   state.hotelOverrides = {};
   state.customHotels = [];
