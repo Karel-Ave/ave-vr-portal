@@ -232,6 +232,7 @@ body[data-active-tab="pozadavky"] #tb-right-actions { display: none; }
 }
 .rt-fonds-info .fonds-label { text-align: right; }
 .rt-fonds-info strong { color: var(--accent-h); font-weight: 800; text-align: left; }
+#tb-act-nastaveni .rt-fonds-info { display: none !important; }
 [data-theme="dark"] #req-title,
 [data-theme="dark"] .rt-fonds-info strong { color: var(--accent); }
 [data-theme="dark"] #req-status { color: var(--accent); }
@@ -269,14 +270,18 @@ body[data-active-tab="pozadavky"] #tb-right-actions { display: none; }
   min-height: 68px;
   resize: vertical;
 }
-#btn-publish {
+#btn-publish,
+#btn-view-edit,
+#btn-req-edit {
   background: var(--accent);
-  color: #fff;
+  color: var(--hotel-btn-active-color, #fff);
   border-color: var(--accent);
 }
-#btn-publish:hover {
+#btn-publish:hover,
+#btn-view-edit:hover,
+#btn-req-edit:hover {
   background: var(--accent-h);
-  color: #fff;
+  color: var(--hotel-btn-active-color, #fff);
   border-color: var(--accent-h);
   opacity: 1;
 }
@@ -291,15 +296,19 @@ body[data-active-tab="pozadavky"] #tb-right-actions { display: none; }
   color: #fff;
   border-color: #34363A;
 }
-[data-theme="dark"] #btn-publish {
-  background: #fff;
-  color: #111;
-  border-color: #fff;
+[data-theme="dark"] #btn-publish,
+[data-theme="dark"] #btn-view-edit,
+[data-theme="dark"] #btn-req-edit {
+  background: var(--accent);
+  color: var(--hotel-btn-active-color, #1A1A18);
+  border-color: var(--accent);
 }
-[data-theme="dark"] #btn-publish:hover {
-  background: #f3f3f3;
-  color: #111;
-  border-color: #f3f3f3;
+[data-theme="dark"] #btn-publish:hover,
+[data-theme="dark"] #btn-view-edit:hover,
+[data-theme="dark"] #btn-req-edit:hover {
+  background: var(--accent-h);
+  color: var(--hotel-btn-active-color, #1A1A18);
+  border-color: var(--accent-h);
 }
 [data-theme="dark"] #btn-color-editor {
   background: #101418;
@@ -354,7 +363,7 @@ table.staff-tbl {
 }
 .staff-tbl input:focus, .staff-tbl select:focus { outline: 1px solid var(--accent); border-radius: 3px; }
 .staff-tbl .col-num { width: 30px; text-align: center; color: var(--text-muted); }
-.staff-tbl .col-name { min-width: 65px; max-width: 65px; overflow: hidden; white-space: nowrap; }
+.staff-tbl .col-name { min-width: 180px; max-width: 240px; overflow: hidden; white-space: nowrap; }
 .staff-tbl .col-login { width: 60px; min-width: 60px; max-width: 60px; }
 .staff-tbl .col-type { width: 110px; }
 .staff-tbl .col-contract { width: 70px; }
@@ -1082,13 +1091,15 @@ tbody tr.row-hidden { display: none !important; }
 #schedule-legend {
   position: fixed;
   left: 0; right: 0; bottom: 0; z-index: 120;
-  display: none; align-items: center; justify-content: center; gap: 12px;
+  display: none; align-items: center; justify-content: center; gap: 8px 12px; flex-wrap: wrap;
   min-height: 26px; padding: 3px 10px;
   background: color-mix(in srgb, var(--surface) 92%, transparent);
   border-top: 1px solid var(--border);
   box-shadow: 0 -2px 12px rgba(0,0,0,.08);
   font-size: 10px; color: var(--text-muted);
-  pointer-events: none;
+  pointer-events: auto;
+  max-height: 74px;
+  overflow: auto;
 }
 #schedule-legend.show { display: flex; }
 .legend-item { display: inline-flex; align-items: center; gap: 5px; white-space: nowrap; }
@@ -1120,6 +1131,15 @@ body[data-active-tab="pozadavky"] #schedule-legend .legend-item:nth-child(1),
 body[data-active-tab="pozadavky"] #schedule-legend .legend-item:nth-child(2),
 body[data-active-tab="pozadavky"] #schedule-legend .legend-item:nth-child(4) {
   display: none;
+}
+body[data-active-tab="public"] #schedule-legend .legend-item.schedule-dynamic-legend,
+body[data-active-tab="pozadavky"] #schedule-legend .legend-item.schedule-dynamic-legend {
+  display: inline-flex;
+  font-size: 10px;
+}
+body[data-active-tab="public"] #schedule-legend .legend-item.schedule-dynamic-legend::after,
+body[data-active-tab="pozadavky"] #schedule-legend .legend-item.schedule-dynamic-legend::after {
+  content: none !important;
 }
 [data-theme="dark"] #schedule-legend {
   background: color-mix(in srgb, var(--surface) 94%, transparent);
@@ -1412,6 +1432,7 @@ tbody tr.row-filtered { display: none; }
 .mck-btn.mck-danger { color: #b43131; border-color: color-mix(in srgb, #d44 50%, var(--border)); }
 .mck-btn.mck-ok { background: var(--accent); border-color: var(--accent); color: var(--accent-fg,#fff); }
 .mck-btn.mck-wide { grid-column: span 2; }
+.mck-btn.mck-full { grid-column: 1 / -1; }
 .mck-display {
   grid-column: 1 / -1;
   min-height: 42px; border-radius: 9px; border: 2px solid var(--accent);
@@ -1722,6 +1743,10 @@ tbody tr.row-filtered { display: none; }
     margin-left: 0;
     justify-content: center;
     font-size: 10px;
+  }
+  #tb-act-rozpis .rt-fonds-info,
+  #tb-act-public .rt-fonds-info {
+    display: none !important;
   }
 
   #subtoolbar {
@@ -3253,7 +3278,7 @@ const HOTEL_HOURS_BUILTIN = {
   L:12, M:12, N:12, P:0,  Q:0,  S:10, T:12, U:12
 };
 const DEFAULT_HOURS = 12;
-const SKIP_VALS = new Set(['X','x','Y','y','Z','z','Ž','ž']);
+const SKIP_VALS = new Set(['X','x','Y','y','Z','z','Ž','ž','+']);
 
 const HOTELS_DEFAULT = [
   {letter:'A',name:'',hours:12,dayOnly:false,active:true},
@@ -3425,9 +3450,58 @@ function isMobileLike() {
   return !!(window.matchMedia && window.matchMedia(MOBILE_POINTER_QUERY).matches);
 }
 
+function makeLegendItem(text, swatchClass = '') {
+  const item = document.createElement('span');
+  item.className = 'legend-item schedule-dynamic-legend';
+  if (swatchClass) {
+    const swatch = document.createElement('span');
+    swatch.className = `legend-swatch ${swatchClass}`;
+    item.appendChild(swatch);
+  }
+  item.appendChild(document.createTextNode(text));
+  return item;
+}
+
+function renderScheduleLegend() {
+  const legend = document.getElementById('schedule-legend');
+  if (!legend || typeof state === 'undefined') return;
+  const activeTab = document.querySelector('.tb-tab.active')?.dataset.tab || '';
+  const items = [];
+  try {
+    ensureHotels();
+    (state.hotels || [])
+      .filter(h => h && h.active !== false && String(h.letter || '').toUpperCase() !== 'F')
+      .sort((a, b) => String(a.letter || '').localeCompare(String(b.letter || ''), 'cs', { sensitivity: 'base' }))
+      .forEach(h => {
+        const letter = String(h.letter || '').toUpperCase();
+        const name = String(h.name || h.label || '').trim();
+        if (letter) items.push(makeLegendItem(`${letter} = ${name}`));
+      });
+  } catch (e) {}
+
+  items.push(makeLegendItem('x/y = nemůžu vzít směnu'));
+  items.push(makeLegendItem('z = dovolená'));
+  items.push(makeLegendItem('ž = školení'));
+  items.push(makeLegendItem('+ = chci směnu'));
+
+  if (activeTab === 'pozadavky') {
+    items.push(makeLegendItem('Duplicitní směna', 'legend-dup'));
+  } else if (activeTab === 'public') {
+    items.push(makeLegendItem('Změněno', 'legend-req'));
+  } else {
+    items.push(makeLegendItem('Nemůže', 'legend-unavail'));
+    items.push(makeLegendItem('Změna proti požadavkům', 'legend-req'));
+    items.push(makeLegendItem('Duplicitní směna', 'legend-dup'));
+    items.push(makeLegendItem('Označeno', 'legend-selected'));
+  }
+
+  legend.replaceChildren(...items);
+}
+
 function updateChromeHeights() {
   const topbar = document.getElementById('topbar');
   const legend = document.getElementById('schedule-legend');
+  renderScheduleLegend();
   if (topbar) {
     const h = Math.max(48, Math.ceil(topbar.getBoundingClientRect().height || topbar.offsetHeight || 48));
     document.documentElement.style.setProperty('--topbar-h', h + 'px');
@@ -3497,31 +3571,32 @@ function openMobileScheduleKeypad(si, ci, tableId) {
   const grid = el.querySelector('#mck-grid');
   el.querySelector('#mck-title').textContent = mobileScheduleLabel(si, ci);
   grid.innerHTML = '';
-  const hotels = (typeof getUsedHotelLetters === 'function' ? getUsedHotelLetters() : Object.keys(HOTEL_HOURS_BUILTIN))
-    .filter(v => /^[A-Z]$/.test(String(v || '')))
-    .filter(v => !['F', 'W'].includes(String(v || '').toUpperCase()))
-    .filter((v, idx, arr) => arr.indexOf(v) === idx);
-  [...hotels, 'x'].forEach(k => {
+  const mobileKeys = ['A','B','C','D','E','G','H','I','J','L','M','N','P','Q','S','T','U','x','y','+'];
+  mobileKeys.forEach(k => {
     const btn = document.createElement('button');
     btn.type = 'button';
-    btn.className = 'mck-btn' + (/^[xyz\u017e]$/.test(k) ? ' mck-soft' : '');
+    btn.className = 'mck-btn' + (/^[xy]$/.test(k) || k === '+' ? ' mck-soft' : '');
     btn.textContent = k;
     btn.addEventListener('click', () => {
-      setCellValue(si, ci, k);
-      focusCell(si, ci, tableId);
-      closeMobileKeypad();
+      const ok = setCellValue(si, ci, k);
+      if (ok) {
+        focusCell(si, ci, tableId);
+        closeMobileKeypad();
+      }
     });
     grid.appendChild(btn);
   });
   const clear = document.createElement('button');
   clear.type = 'button';
-  clear.className = 'mck-btn mck-danger mck-soft mck-wide';
-  clear.textContent = 'DEL';
+  clear.className = 'mck-btn mck-danger mck-soft mck-full';
+  clear.textContent = 'SMAZAT';
   clear.title = 'Smazat hodnotu';
   clear.addEventListener('click', () => {
-    setCellValue(si, ci, '');
-    focusCell(si, ci, tableId);
-    closeMobileKeypad();
+    const ok = setCellValue(si, ci, '');
+    if (ok) {
+      focusCell(si, ci, tableId);
+      closeMobileKeypad();
+    }
   });
   grid.appendChild(clear);
   el.classList.add('show');
@@ -5007,9 +5082,90 @@ function restoreScheduleScroll(snapshot) {
   window.scrollTo(snapshot.x, snapshot.y);
 }
 
+function getRequirementLimitForStaff(s, field, fallback) {
+  const n = Number(s && s[field]);
+  return Number.isFinite(n) && n >= 0 ? n : fallback;
+}
+
+function getRequirementHotelLetterSet() {
+  ensureHotels();
+  const letters = new Set();
+  (state.hotels || []).forEach(h => {
+    const letter = String(h?.letter || '').trim().toUpperCase();
+    if (letter && h.active !== false) letters.add(letter);
+  });
+  return letters;
+}
+
+function countRequirementValueForStaff(si, letter, changedKey, changedVal) {
+  const target = String(letter || '').toUpperCase();
+  let count = 0;
+  const prefix = `${si}_`;
+  Object.entries(state.schedule || {}).forEach(([key, raw]) => {
+    if (!key.startsWith(prefix)) return;
+    const val = key === changedKey ? changedVal : raw;
+    if (String(val || '').trim().toUpperCase() === target) count += 1;
+  });
+  if (!Object.prototype.hasOwnProperty.call(state.schedule || {}, changedKey) &&
+      String(changedVal || '').trim().toUpperCase() === target) {
+    count += 1;
+  }
+  return count;
+}
+
+function validateRequirementCellValue(si, ci, val) {
+  if (getActiveScheduleTableId() !== 'pozadavky-tbl' || canManageRequirements()) return true;
+  const raw = String(val || '').trim();
+  if (!raw) return true;
+  const up = raw.toUpperCase();
+  const key = `${si}_${ci}`;
+  const staff = state.staff[si] || {};
+
+  if (/^[xy]$/i.test(raw) && isRequirementXyLocked(ci)) {
+    toast('V tomto dni/noci není možné psát x ani y.', true);
+    return false;
+  }
+  if (up === 'Z' || up === 'Ž') {
+    toast('Nemáte oprávnění psát z ani ž.', true);
+    return false;
+  }
+  if (up === 'X') {
+    const limit = getRequirementLimitForStaff(staff, 'reqXLimit', 7);
+    if (countRequirementValueForStaff(si, 'X', key, raw) > limit) {
+      toast(`Je možné napsat maximálně ${limit} x.`, true);
+      return false;
+    }
+    return true;
+  }
+  if (up === 'Y') {
+    const limit = getRequirementLimitForStaff(staff, 'reqYLimit', 0);
+    if (limit <= 0) {
+      toast('Nemáte oprávnění psát y.', true);
+      return false;
+    }
+    if (countRequirementValueForStaff(si, 'Y', key, raw) > limit) {
+      toast(`Je možné napsat maximálně ${limit} y.`, true);
+      return false;
+    }
+    return true;
+  }
+  if (raw === '+') return true;
+  if (/^[A-Z]$/i.test(raw)) {
+    const allowed = getRequirementHotelLetterSet();
+    if (allowed.size && !allowed.has(up)) {
+      toast(`Hotel ${up} není v požadavcích povolený.`, true);
+      return false;
+    }
+    return true;
+  }
+  toast(`Hodnota "${raw}" není v požadavcích povolená.`, true);
+  return false;
+}
+
 function setCellValue(si, ci, val) {
   const activeTableId = getActiveScheduleTableId();
-  if (!canEditCellInTable(si, activeTableId)) return;
+  if (!canEditCellInTable(si, activeTableId)) return false;
+  if (!validateRequirementCellValue(si, ci, val)) return false;
   if (activeTableId === 'pozadavky-tbl' && !canManageRequirements() && /^[xy]$/i.test(String(val || '').trim()) && isRequirementXyLocked(ci)) {
     toast('V tomto dni/noci není možné psát x ani y.', true);
     return;
@@ -5056,7 +5212,9 @@ function setCellValue(si, ci, val) {
   applyRowFilters();
   restoreScheduleScroll(scrollSnapshot);
   requestAnimationFrame(() => restoreScheduleScroll(scrollSnapshot));
-  if (activeTableId !== 'pozadavky-tbl') scheduleAutoSave();
+  if (activeTableId === 'pozadavky-tbl') scheduleRequirementsAutoSave();
+  else scheduleAutoSave();
+  return true;
 }
 
 /* ══════════════════════════════════════════════════════════════════════════════
@@ -5210,6 +5368,8 @@ function makeScheduleStaffFromSettings(s) {
     noteP: s.noteP || '',
     hotelSkills: Array.isArray(s.hotelSkills) ? [...s.hotelSkills] : (Array.isArray(s.hotels) ? [...s.hotels] : []),
     noStandby: !!s.noStandby,
+    reqXLimit: Number.isFinite(Number(s.reqXLimit)) ? Number(s.reqXLimit) : 7,
+    reqYLimit: Number.isFinite(Number(s.reqYLimit)) ? Number(s.reqYLimit) : 0,
     monthlyOverrides: s.monthlyOverrides || undefined,
     userId: s.userId || undefined,
     activeFrom: staffMonthValue(s.activeFrom) || s.activeFrom || null,
@@ -5615,6 +5775,8 @@ function buildSaveData() {
           x: s.x || '', xa: s.xa || '', dates: s.dates || '', regular: s.regular || '',
           hotel: s.hotel || '', hotelSkills: Array.isArray(s.hotelSkills) ? [...s.hotelSkills] : [],
           noStandby: !!s.noStandby,
+          reqXLimit: Number.isFinite(Number(s.reqXLimit)) ? Number(s.reqXLimit) : 7,
+          reqYLimit: Number.isFinite(Number(s.reqYLimit)) ? Number(s.reqYLimit) : 0,
           monthlyOverrides: s.monthlyOverrides || {},
         };
       });
@@ -5667,6 +5829,8 @@ function applyData(data) {
     s.hotel  = custom.hotel  || '';
     s.hotelSkills = Array.isArray(custom.hotelSkills) ? [...custom.hotelSkills] : [];
     s.noStandby = !!custom.noStandby || !!s.noStandby;
+    s.reqXLimit = Number.isFinite(Number(custom.reqXLimit ?? s.reqXLimit)) ? Number(custom.reqXLimit ?? s.reqXLimit) : 7;
+    s.reqYLimit = Number.isFinite(Number(custom.reqYLimit ?? s.reqYLimit)) ? Number(custom.reqYLimit ?? s.reqYLimit) : 0;
     s.monthlyOverrides = custom.monthlyOverrides ? JSON.parse(JSON.stringify(custom.monthlyOverrides)) : {};
   });
   state.hrsColorOverride = data.hrsColorOverride || {};
@@ -5890,6 +6054,7 @@ function addUnmatchedToOstalni(ui) {
     login:    '',
     contract: '',
     maxHrs: '', noteM: '', noteP: '', x: '', xa: '', dates: '', regular: '', hotel: '', hotelSkills: [], noStandby: false,
+    reqXLimit: 7, reqYLimit: 0,
     activeFrom: { month: now.getMonth() + 1, year: now.getFullYear() },
     monthlyOverrides: {}
   };
@@ -6006,6 +6171,8 @@ async function confirmAddWebUser() {
           login:       username,
           type,
           contract,
+          reqXLimit:   7,
+          reqYLimit:   0,
           activeFrom:  `${activeYear}-${String(activeMonth).padStart(2,'0')}`,
           activeUntil: null
         }
@@ -6044,6 +6211,8 @@ async function confirmAddWebUser() {
             regular: custom.regular || '', hotel: custom.hotel || '',
             hotelSkills: Array.isArray(as.hotels) ? [...as.hotels] : (Array.isArray(custom.hotelSkills) ? [...custom.hotelSkills] : []),
             noStandby: !!as.noStandby || !!custom.noStandby,
+            reqXLimit: Number.isFinite(Number(as.reqXLimit ?? custom.reqXLimit)) ? Number(as.reqXLimit ?? custom.reqXLimit) : 7,
+            reqYLimit: Number.isFinite(Number(as.reqYLimit ?? custom.reqYLimit)) ? Number(as.reqYLimit ?? custom.reqYLimit) : 0,
             monthlyOverrides: custom.monthlyOverrides ? JSON.parse(JSON.stringify(custom.monthlyOverrides)) : {},
             activeFrom: staffMonthValue(as.activeFrom) || as.activeFrom || null,
             activeUntil: staffMonthValue(as.activeUntil) || as.activeUntil || null,
@@ -6065,6 +6234,8 @@ async function confirmAddWebUser() {
               regular: custom.regular || '', hotel: custom.hotel || '',
               hotelSkills: Array.isArray(newApiEntry.hotels) ? [...newApiEntry.hotels] : (Array.isArray(custom.hotelSkills) ? [...custom.hotelSkills] : []),
               noStandby: !!newApiEntry.noStandby || !!custom.noStandby,
+              reqXLimit: Number.isFinite(Number(newApiEntry.reqXLimit ?? custom.reqXLimit)) ? Number(newApiEntry.reqXLimit ?? custom.reqXLimit) : 7,
+              reqYLimit: Number.isFinite(Number(newApiEntry.reqYLimit ?? custom.reqYLimit)) ? Number(newApiEntry.reqYLimit ?? custom.reqYLimit) : 0,
               activeFrom: staffMonthValue(newApiEntry.activeFrom) || newApiEntry.activeFrom || null,
               activeUntil: staffMonthValue(newApiEntry.activeUntil) || newApiEntry.activeUntil || null,
               monthlyOverrides: {}, inactive: false
@@ -6163,6 +6334,8 @@ async function syncRaspisStaff() {
         hotel:    custom.hotel   || '',
         hotelSkills: Array.isArray(as.hotels) ? [...as.hotels] : (Array.isArray(custom.hotelSkills) ? [...custom.hotelSkills] : []),
         noStandby: !!as.noStandby || !!custom.noStandby,
+        reqXLimit: Number.isFinite(Number(as.reqXLimit ?? custom.reqXLimit)) ? Number(as.reqXLimit ?? custom.reqXLimit) : 7,
+        reqYLimit: Number.isFinite(Number(as.reqYLimit ?? custom.reqYLimit)) ? Number(as.reqYLimit ?? custom.reqYLimit) : 0,
         monthlyOverrides: custom.monthlyOverrides
           ? JSON.parse(JSON.stringify(custom.monthlyOverrides)) : {},
         activeFrom:  staffMonthValue(as.activeFrom)  || as.activeFrom  || null,
@@ -6849,6 +7022,12 @@ function formatRequirementFond(raw) {
 
 function updateRequirementsFundsInfo(entry) {
   document.querySelectorAll('.rt-fonds-info').forEach(box => {
+    const hiddenInContext = box.closest('#tb-act-nastaveni')
+      || (isMobileLike() && (box.closest('#tb-act-rozpis') || box.closest('#tb-act-public')));
+    if (hiddenInContext) {
+      box.style.display = 'none';
+      return;
+    }
     box.style.display = '';
     const hpp = box.querySelector('.rt-fond-hpp-info');
     const zpp = box.querySelector('.rt-fond-zpp-info');
@@ -7184,6 +7363,7 @@ function scheduleRequirementsAutoSave() {
 
 async function saveCurrentRequirementData(options = {}) {
   if (!currentReqKey) return;
+  clearTimeout(reqSaveTimer);
   const silent = !!options.silent;
   const confirmDuplicates = !!options.confirmDuplicates;
   const data = buildSaveData();
@@ -9648,7 +9828,7 @@ function getEffectiveForSchedule(s, field) {
   return s[field] || '';
 }
 
-const SETTINGS_SYNC_FIELDS = ['maxHrs','noteM','noteP','x','xa','dates','regular','hotel','hotelSkills','noStandby','monthlyOverrides'];
+const SETTINGS_SYNC_FIELDS = ['maxHrs','noteM','noteP','x','xa','dates','regular','hotel','hotelSkills','noStandby','reqXLimit','reqYLimit','monthlyOverrides'];
 
 function copySettingsFields(source, target) {
   if (!source || !target) return;
@@ -9659,6 +9839,9 @@ function copySettingsFields(source, target) {
       target[field] = source[field] ? JSON.parse(JSON.stringify(source[field])) : {};
     } else if (field === 'noStandby') {
       target[field] = !!source[field];
+    } else if (field === 'reqXLimit' || field === 'reqYLimit') {
+      const fallback = field === 'reqXLimit' ? 7 : 0;
+      target[field] = Number.isFinite(Number(source[field])) ? Number(source[field]) : fallback;
     } else {
       target[field] = source[field] || '';
     }
@@ -9681,6 +9864,8 @@ function syncPortalCustomDataFrom(source) {
     hotel: source.hotel || '',
     hotelSkills: Array.isArray(source.hotelSkills) ? [...source.hotelSkills] : [],
     noStandby: !!source.noStandby,
+    reqXLimit: Number.isFinite(Number(source.reqXLimit)) ? Number(source.reqXLimit) : 7,
+    reqYLimit: Number.isFinite(Number(source.reqYLimit)) ? Number(source.reqYLimit) : 0,
     monthlyOverrides: source.monthlyOverrides ? JSON.parse(JSON.stringify(source.monthlyOverrides)) : {}
   };
 }
@@ -10249,6 +10434,7 @@ function handleXlsImport(e) {
             login: '',
             contract: '',
             maxHrs: '', noteM: '', noteP: '', x: '', xa: '', dates: '', regular: '', hotel: '', hotelSkills: [], noStandby: false,
+            reqXLimit: 7, reqYLimit: 0,
             monthlyOverrides: {},
             unmatchedXls: true
           };
@@ -10601,6 +10787,7 @@ document.addEventListener('DOMContentLoaded', async () => {
   document.body.classList.add('rt-ready');
   window.addEventListener('resize', () => {
     updateChromeHeights();
+    updateRequirementsFundsInfo();
     if (isMobileLike() && document.body.dataset.activeTab === 'tvorba') {
       switchTab(mobileTabFallback());
       return;

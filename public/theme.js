@@ -1,6 +1,7 @@
 (function () {
   var THEME_KEY = 'ave-portal-theme';
   var SKIN_KEY = 'ave-portal-skin';
+  var USER_KEY = 'ave-portal-theme-user';
   var DEFAULT_SKIN = 'default';
   var SKINS = [
     { id: 'default', label: 'Výchozí' },
@@ -27,6 +28,7 @@
   ];
   var SKIN_IDS = SKINS.map(function (s) { return s.id; });
   var lastThemeToggle = 0;
+  var lastLocalThemeChange = 0;
 
   function normalizeSkin(skin) {
     skin = String(skin || DEFAULT_SKIN).toLowerCase();
@@ -60,6 +62,7 @@
     try {
       fetch('/api/me/theme', {
         method: 'PATCH',
+        credentials: 'include',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ theme: dark ? 'dark' : 'light', skin: normalizeSkin(skin) })
       }).catch(function () {});
@@ -68,6 +71,7 @@
 
   function setThemeMode(dark, persist) {
     var skin = getSkin();
+    if (persist !== false) lastLocalThemeChange = Date.now();
     localStorage.setItem(THEME_KEY, dark ? 'dark' : 'light');
     applyTheme(dark, skin);
     postThemeMessage(dark, skin);
@@ -77,6 +81,7 @@
   function setSkin(skin, persist) {
     skin = normalizeSkin(skin);
     var dark = isDark();
+    if (persist !== false) lastLocalThemeChange = Date.now();
     localStorage.setItem(SKIN_KEY, skin);
     applyTheme(dark, skin);
     postThemeMessage(dark, skin);
@@ -129,29 +134,22 @@
       btn.addEventListener('click', toggleThemeButton);
     }
 
-    fetch('/api/me').then(function (r) {
+    fetch('/api/me', { credentials: 'include' }).then(function (r) {
       return r.ok ? r.json() : null;
     }).then(function (user) {
       if (!user) return;
       var serverDark = user.theme === 'dark';
       var serverSkin = normalizeSkin(user.theme_skin || DEFAULT_SKIN);
-      var localTheme = localStorage.getItem(THEME_KEY);
-      var localSkin = localStorage.getItem(SKIN_KEY);
+      var userKey = String(user.id || user.username || '');
 
-      if (localTheme === null) {
-        localStorage.setItem(THEME_KEY, serverDark ? 'dark' : 'light');
-        applyTheme(serverDark, localSkin || serverSkin);
-      } else if (serverDark !== (localTheme === 'dark')) {
-        saveToServer(localTheme === 'dark', normalizeSkin(localSkin || serverSkin));
-      }
-
-      if (localSkin === null) {
-        localStorage.setItem(SKIN_KEY, serverSkin);
-        applyTheme(localStorage.getItem(THEME_KEY) === 'dark', serverSkin);
-      } else if (serverSkin !== normalizeSkin(localSkin)) {
-        saveToServer(localStorage.getItem(THEME_KEY) === 'dark', localSkin);
-      }
-      postThemeMessage(isDark(), getSkin());
+      // Server preference belongs to the logged-in user. Local storage is only a
+      // fast paint cache, so it must not leak the previous user's skin/mode.
+      if (Date.now() - lastLocalThemeChange < 1500) return;
+      localStorage.setItem(USER_KEY, userKey);
+      localStorage.setItem(THEME_KEY, serverDark ? 'dark' : 'light');
+      localStorage.setItem(SKIN_KEY, serverSkin);
+      applyTheme(serverDark, serverSkin);
+      postThemeMessage(serverDark, serverSkin);
     }).catch(function () {});
   }
 

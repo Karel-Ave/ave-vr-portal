@@ -3396,6 +3396,8 @@ app.get('/api/raspis-staff', requireLogin, async (req, res) => {
           contract:    rs.contract    || '',
           hotels:      Array.isArray(rs.hotels) ? rs.hotels : [],
           noStandby:   !!rs.noStandby,
+          reqXLimit:   rtReqLimit(rs.reqXLimit, 7),
+          reqYLimit:   rtReqLimit(rs.reqYLimit, 0),
           activeFrom:  rs.activeFrom  || null,
           activeUntil: rs.activeUntil || null
         });
@@ -3715,6 +3717,11 @@ function rtIsStaffActiveForMonth(staff, month, year) {
   return true;
 }
 
+function rtReqLimit(value, fallback) {
+  const n = parseInt(value, 10);
+  return Number.isFinite(n) && n >= 0 ? n : fallback;
+}
+
 async function loadRtPortalReceptionists(db) {
   const { rows } = await db.query(
     'SELECT id, name, username, perm_overrides FROM users WHERE perm_overrides IS NOT NULL'
@@ -3737,6 +3744,8 @@ async function loadRtPortalReceptionists(db) {
       contract: rs.contract || '',
       hotelSkills: Array.isArray(rs.hotels) ? rs.hotels : [],
       noStandby: !!rs.noStandby,
+      reqXLimit: rtReqLimit(rs.reqXLimit, 7),
+      reqYLimit: rtReqLimit(rs.reqYLimit, 0),
       activeFrom: rtStaffMonthValue(rs.activeFrom) || rs.activeFrom || null,
       activeUntil: rtStaffMonthValue(rs.activeUntil) || rs.activeUntil || null,
       inactive: false
@@ -3898,6 +3907,50 @@ function parseRequirementStaffIndex(value) {
   return Number.isInteger(n) && n >= 0 ? n : null;
 }
 
+function getRequirementHotelLetters(data) {
+  const letters = new Set();
+  const hotels = Array.isArray(data && data.hotels) ? data.hotels : [];
+  hotels.forEach(h => {
+    const letter = String(h && h.letter || '').trim().toUpperCase();
+    if (letter && h.active !== false) letters.add(letter);
+  });
+  return letters;
+}
+
+function validateRequirementStaffRowValues(currentData, incomingSchedule, si) {
+  const staff = Array.isArray(currentData.staff) ? currentData.staff : [];
+  const row = staff[si] || {};
+  const prefix = `${si}_`;
+  const hotelLetters = getRequirementHotelLetters(currentData);
+  const xLimit = rtReqLimit(row.reqXLimit, 7);
+  const yLimit = rtReqLimit(row.reqYLimit, 0);
+  let xCount = 0;
+  let yCount = 0;
+
+  for (const [key, rawVal] of Object.entries(incomingSchedule || {})) {
+    if (!key.startsWith(prefix)) continue;
+    const val = String(rawVal || '').trim();
+    if (!val) continue;
+    const up = val.toUpperCase();
+    if (up === 'X') { xCount += 1; continue; }
+    if (up === 'Y') { yCount += 1; continue; }
+    if (val === '+') continue;
+    if (up === 'Z' || up === 'Ž') return 'Nemáte oprávnění psát z ani ž.';
+    if (/^[A-Z]$/.test(up)) {
+      if (hotelLetters.size && !hotelLetters.has(up)) return `Hotel ${up} není v požadavcích povolený.`;
+      continue;
+    }
+    return `Hodnota "${val}" není v požadavcích povolená.`;
+  }
+
+  if (xCount > xLimit) return `Je možné napsat maximálně ${xLimit} x.`;
+  if (yCount > yLimit) {
+    if (yLimit <= 0) return 'Nemáte oprávnění psát y.';
+    return `Je možné napsat maximálně ${yLimit} y.`;
+  }
+  return '';
+}
+
 function mergeRequirementStaffRow(currentData, incomingData, user, requestedStaffIndex = null) {
   const current = currentData && typeof currentData === 'object' ? currentData : {};
   const incoming = incomingData && typeof incomingData === 'object' ? incomingData : {};
@@ -3913,6 +3966,8 @@ function mergeRequirementStaffRow(currentData, incomingData, user, requestedStaf
   merged.schedule = merged.schedule && typeof merged.schedule === 'object' ? merged.schedule : {};
   const incomingSchedule = incoming.schedule && typeof incoming.schedule === 'object' ? incoming.schedule : {};
   const prefix = `${si}_`;
+  const validationError = validateRequirementStaffRowValues(current, incomingSchedule, si);
+  if (validationError) return { error: validationError };
   for (const [key, val] of Object.entries(incomingSchedule)) {
     if (!key.startsWith(prefix)) continue;
     const ci = parseInt(key.split('_')[1], 10);
@@ -3979,7 +4034,7 @@ function updateRequirementMeta(currentData, nextData, user, staffIndex = null) {
   return next;
 }
 
-const REQ_DUP_SKIP = new Set(['X', 'Y', 'Z', 'Ž']);
+const REQ_DUP_SKIP = new Set(['X', 'Y', 'Z', 'Ž', '+']);
 
 function isRequirementDuplicateValue(value) {
   const val = String(value || '').trim();

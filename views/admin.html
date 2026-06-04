@@ -155,7 +155,27 @@
 
   /* ── Modály s fixní šířkou: maximální šířka místo pevné ── */
   #user-overlay .modal    { width: 460px; max-width: 100%; }
-  #overrides-overlay .modal { width: 500px; max-width: 100%; max-height: 82vh; overflow-y: auto; }
+  #overrides-overlay .modal {
+    width: 500px;
+    max-width: 100%;
+    max-height: min(86dvh, 760px);
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+  }
+  #overrides-content {
+    min-height: 0;
+    overflow: auto;
+    padding-right: 4px;
+    -webkit-overflow-scrolling: touch;
+  }
+  #overrides-overlay .modal-btns {
+    flex-shrink: 0;
+    margin-top: 12px;
+    padding-top: 12px;
+    border-top: 1px solid var(--border);
+    background: var(--modal-bg);
+  }
   #addgroup-overlay .modal  { width: 380px; max-width: 100%; }
   #pw-overlay .modal        { width: 360px; max-width: 100%; }
 
@@ -221,7 +241,7 @@
     .form-group input, .form-group select { min-height: 46px; }
 
     /* Modal scrollovatelný */
-    #overrides-overlay .modal { max-height: 90vh; }
+    #overrides-overlay .modal { max-height: 88dvh; }
   }
 </style>
 </head>
@@ -383,6 +403,16 @@
         </div>
         <div class="form-group">
           <label><input type="checkbox" id="raspis-no-standby" style="width:auto;margin-right:6px"> Nemůže mít pohotovost (P)</label>
+        </div>
+        <div class="raspis-row">
+          <div class="form-group">
+            <label>Max. x v požadavcích</label>
+            <input type="number" id="raspis-req-x-limit" min="0" max="62" step="1" value="7">
+          </div>
+          <div class="form-group">
+            <label>Max. y v požadavcích</label>
+            <input type="number" id="raspis-req-y-limit" min="0" max="62" step="1" value="0">
+          </div>
         </div>
       </div>
     </div>
@@ -1249,6 +1279,8 @@
     document.getElementById('raspis-until-month').value = '';
     document.getElementById('raspis-until-year').value = '';
     document.getElementById('raspis-no-standby').checked = false;
+    document.getElementById('raspis-req-x-limit').value = 7;
+    document.getElementById('raspis-req-y-limit').value = 0;
     renderRaspisHotelSkills([]);
   }
 
@@ -1277,6 +1309,8 @@
     document.getElementById('raspis-type').value = rs.type || '';
     document.getElementById('raspis-contract').value = rs.contract || '';
     document.getElementById('raspis-no-standby').checked = !!rs.noStandby;
+    document.getElementById('raspis-req-x-limit').value = Number.isFinite(Number(rs.reqXLimit)) ? Number(rs.reqXLimit) : 7;
+    document.getElementById('raspis-req-y-limit').value = Number.isFinite(Number(rs.reqYLimit)) ? Number(rs.reqYLimit) : 0;
     if (rs.activeFrom) {
       document.getElementById('raspis-from-month').value = rs.activeFrom.month;
       document.getElementById('raspis-from-year').value  = rs.activeFrom.year;
@@ -1327,6 +1361,8 @@
     const fYear  = parseInt(document.getElementById('raspis-from-year').value)   || null;
     const uMonth = parseInt(document.getElementById('raspis-until-month').value) || null;
     const uYear  = parseInt(document.getElementById('raspis-until-year').value)  || null;
+    const reqXLimit = Math.max(0, parseInt(document.getElementById('raspis-req-x-limit').value, 10) || 0);
+    const reqYLimit = Math.max(0, parseInt(document.getElementById('raspis-req-y-limit').value, 10) || 0);
 
     // Načti stávající overrides, abychom nepřepsali oprávnění
     let current = {};
@@ -1344,6 +1380,8 @@
         contract:    document.getElementById('raspis-contract').value,
         hotels:      getSelectedRaspisHotels(),
         noStandby:   getRaspisNoStandby(),
+        reqXLimit,
+        reqYLimit,
         activeFrom:  (fMonth && fYear)  ? { month: fMonth,  year: fYear  } : null,
         activeUntil: (uMonth && uYear)  ? { month: uMonth,  year: uYear  } : null
       };

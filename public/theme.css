@@ -237,6 +237,13 @@
 [data-theme="dark"][data-skin="coffee"] { --accent:#D2AD84; --accent-h:#E2C59F; --accent-light:#33281E; --spinner-top:#D2AD84; --hotel-btn-active-bg:#D2AD84; --hotel-btn-active-border:#D2AD84; --hotel-btn-active-color:#17120E; }
 [data-theme="dark"][data-skin="navy"] { --accent:#89B7EA; --accent-h:#A9CCF2; --accent-light:#172B40; --spinner-top:#89B7EA; --hotel-btn-active-bg:#89B7EA; --hotel-btn-active-border:#89B7EA; --hotel-btn-active-color:#10151B; }
 
+[data-theme="dark"]:not([data-skin="default"]) {
+  --thead-text: var(--accent);
+  --btn-top-color: color-mix(in srgb, var(--accent) 72%, #E8E6DC);
+  --text-topbar: color-mix(in srgb, var(--accent) 58%, #E8E6DC);
+  --portal-badge-text: color-mix(in srgb, var(--accent) 62%, #E8E6DC);
+}
+
 /* ═══════════════════════════════════════════════════════════════════════
    Mobilní responzivita — sdílená základna pro všechny stránky
    ───────────────────────────────────────────────────────────────────────
