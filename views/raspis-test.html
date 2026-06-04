@@ -5097,28 +5097,11 @@ function getRequirementHotelLetterSet() {
   return letters;
 }
 
-function countRequirementValueForStaff(si, letter, changedKey, changedVal) {
-  const target = String(letter || '').toUpperCase();
-  let count = 0;
-  const prefix = `${si}_`;
-  Object.entries(state.schedule || {}).forEach(([key, raw]) => {
-    if (!key.startsWith(prefix)) return;
-    const val = key === changedKey ? changedVal : raw;
-    if (String(val || '').trim().toUpperCase() === target) count += 1;
-  });
-  if (!Object.prototype.hasOwnProperty.call(state.schedule || {}, changedKey) &&
-      String(changedVal || '').trim().toUpperCase() === target) {
-    count += 1;
-  }
-  return count;
-}
-
 function validateRequirementCellValue(si, ci, val) {
   if (getActiveScheduleTableId() !== 'pozadavky-tbl' || canManageRequirements()) return true;
   const raw = String(val || '').trim();
   if (!raw) return true;
   const up = raw.toUpperCase();
-  const key = `${si}_${ci}`;
   const staff = state.staff[si] || {};
 
   if (/^[xy]$/i.test(raw) && isRequirementXyLocked(ci)) {
@@ -5129,22 +5112,11 @@ function validateRequirementCellValue(si, ci, val) {
     toast('Nemáte oprávnění psát z ani ž.', true);
     return false;
   }
-  if (up === 'X') {
-    const limit = getRequirementLimitForStaff(staff, 'reqXLimit', 7);
-    if (countRequirementValueForStaff(si, 'X', key, raw) > limit) {
-      toast(`Je možné napsat maximálně ${limit} x.`, true);
-      return false;
-    }
-    return true;
-  }
+  if (up === 'X') return true;
   if (up === 'Y') {
     const limit = getRequirementLimitForStaff(staff, 'reqYLimit', 0);
     if (limit <= 0) {
       toast('Nemáte oprávnění psát y.', true);
-      return false;
-    }
-    if (countRequirementValueForStaff(si, 'Y', key, raw) > limit) {
-      toast(`Je možné napsat maximálně ${limit} y.`, true);
       return false;
     }
     return true;
@@ -5162,13 +5134,37 @@ function validateRequirementCellValue(si, ci, val) {
   return false;
 }
 
+function validateRequirementLimitsBeforeSave() {
+  if (getActiveScheduleTableId() !== 'pozadavky-tbl' || canManageRequirements()) return '';
+  const si = getCurrentRequirementStaffIndexForSave();
+  if (si === null) return '';
+  const staff = state.staff[si] || {};
+  const xLimit = getRequirementLimitForStaff(staff, 'reqXLimit', 7);
+  const yLimit = getRequirementLimitForStaff(staff, 'reqYLimit', 0);
+  let xCount = 0;
+  let yCount = 0;
+  const prefix = `${si}_`;
+  Object.entries(state.schedule || {}).forEach(([key, raw]) => {
+    if (!key.startsWith(prefix)) return;
+    const val = String(raw || '').trim().toUpperCase();
+    if (val === 'X') xCount += 1;
+    if (val === 'Y') yCount += 1;
+  });
+  if (xCount > xLimit) return `Překročen max. povolený počet x (${xCount}/${xLimit}).`;
+  if (yCount > yLimit) {
+    if (yLimit <= 0) return 'Nemáte oprávnění psát y.';
+    return `Překročen max. povolený počet y (${yCount}/${yLimit}).`;
+  }
+  return '';
+}
+
 function setCellValue(si, ci, val) {
   const activeTableId = getActiveScheduleTableId();
   if (!canEditCellInTable(si, activeTableId)) return false;
   if (!validateRequirementCellValue(si, ci, val)) return false;
   if (activeTableId === 'pozadavky-tbl' && !canManageRequirements() && /^[xy]$/i.test(String(val || '').trim()) && isRequirementXyLocked(ci)) {
     toast('V tomto dni/noci není možné psát x ani y.', true);
-    return;
+    return false;
   }
   const scrollSnapshot = captureScheduleScroll();
   const key = `${si}_${ci}`;
@@ -5212,8 +5208,7 @@ function setCellValue(si, ci, val) {
   applyRowFilters();
   restoreScheduleScroll(scrollSnapshot);
   requestAnimationFrame(() => restoreScheduleScroll(scrollSnapshot));
-  if (activeTableId === 'pozadavky-tbl') scheduleRequirementsAutoSave();
-  else scheduleAutoSave();
+  if (activeTableId !== 'pozadavky-tbl') scheduleAutoSave();
   return true;
 }
 
@@ -7366,6 +7361,14 @@ async function saveCurrentRequirementData(options = {}) {
   clearTimeout(reqSaveTimer);
   const silent = !!options.silent;
   const confirmDuplicates = !!options.confirmDuplicates;
+  const limitMessage = validateRequirementLimitsBeforeSave();
+  if (limitMessage) {
+    if (!silent) {
+      toast(limitMessage, true);
+      alert(limitMessage);
+    }
+    return false;
+  }
   const data = buildSaveData();
   const staffIndex = getCurrentRequirementStaffIndexForSave();
   const payload = { key: currentReqKey, data, confirmDuplicates };
@@ -7427,6 +7430,12 @@ function toggleRequirementsEditWindow() {
   }
   if (reqEditMode) {
     clearTimeout(reqSaveTimer);
+    const limitMessage = validateRequirementLimitsBeforeSave();
+    if (limitMessage) {
+      toast(limitMessage, true);
+      alert(limitMessage);
+      return;
+    }
     let confirmedLocalDuplicates = false;
     const duplicates = getRequirementsDuplicateSummary();
     if (duplicates.length) {
