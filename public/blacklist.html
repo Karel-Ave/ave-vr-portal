@@ -1330,6 +1330,7 @@ function createPersonBlock(num) {
   }
   nameInp.addEventListener('input', checkDup);
   bdateInp.addEventListener('change', checkDup);
+  div.querySelector('.f-hotel')?.setAttribute('list', 'hotel-options');
   initDatePickers(div);
   return div;
 }
@@ -2138,9 +2139,50 @@ async function init() {
     applyBlacklistPermissions();
   } catch(e) {}
 
+  await loadHotelHints();
   await loadEntries();
   initDatePickers(document);
   document.getElementById('main-content').scrollTop = 0;
+}
+
+function blHotelMonthIndex(value) {
+  if (!value) return null;
+  if (typeof value === 'string') {
+    const m = value.match(/^(\d{4})-(\d{1,2})/);
+    return m ? (parseInt(m[1], 10) * 12 + parseInt(m[2], 10)) : null;
+  }
+  const y = parseInt(value.year, 10);
+  const mo = parseInt(value.month, 10);
+  return Number.isFinite(y) && Number.isFinite(mo) ? (y * 12 + mo) : null;
+}
+
+async function loadHotelHints() {
+  let letters = [];
+  try {
+    const settings = await fetch('/api/settings', { credentials: 'include' }).then(r => r.ok ? r.json() : null);
+    const now = new Date();
+    const nowIdx = now.getFullYear() * 12 + now.getMonth() + 1;
+    letters = (Array.isArray(settings?.hotels) ? settings.hotels : [])
+      .filter(h => {
+        if (!h || h.active === false) return false;
+        const letter = String(h.letter || '').trim().toUpperCase();
+        if (!letter || letter === 'P' || letter === 'Q') return false;
+        const inactive = blHotelMonthIndex(h.inactiveFrom);
+        return inactive === null || inactive > nowIdx;
+      })
+      .map(h => String(h.letter || '').trim().toUpperCase())
+      .filter(Boolean)
+      .sort((a, b) => a.localeCompare(b, 'cs', { sensitivity: 'base' }));
+  } catch(e) {}
+  if (!letters.length) return;
+  let dl = document.getElementById('hotel-options');
+  if (!dl) {
+    dl = document.createElement('datalist');
+    dl.id = 'hotel-options';
+    document.body.appendChild(dl);
+  }
+  dl.innerHTML = letters.map(h => `<option value="${escHtml(h)}"></option>`).join('');
+  document.querySelectorAll('#edit-hotel, .f-hotel').forEach(inp => inp.setAttribute('list', 'hotel-options'));
 }
 
 init();

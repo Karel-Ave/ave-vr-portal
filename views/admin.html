@@ -573,7 +573,7 @@
   let overridesData = {};
   let allGroups = [];
   let selectedGroupName = null;
-  const RASPIS_HOTEL_LETTERS = ['A','B','C','D','E','G','H','I','J','L','M','N','S','T','U'];
+  let RASPIS_HOTEL_LETTERS = ['A','B','C','D','E','G','H','I','J','L','M','N','S','T','U'];
 
   function defaultAppSelectHtml(value, onchange, includeInherit = false, inherited = 'raspis') {
     const current = value || '';
@@ -586,7 +586,12 @@
     return `<select onchange="${onchange}" style="padding:6px 8px;border:1px solid var(--border);border-radius:6px;background:var(--input-bg);color:var(--text);font-size:12px;">${opts.join('')}</select>`;
   }
 
-  fetch('/api/me').then(r => r.json()).then(u => { myId = u.id; loadUsers(); loadGroups(); });
+  fetch('/api/me').then(r => r.json()).then(async u => {
+    myId = u.id;
+    await loadRaspisHotelLetters();
+    loadUsers();
+    loadGroups();
+  });
 
   // ── TABS ──────────────────────────────────────────────────────────────────────
   const TAB_KEYS = ['users', 'groups', 'logs'];
@@ -632,6 +637,32 @@
   function currentMonthIndex() {
     const now = new Date();
     return monthIndex(now.getMonth() + 1, now.getFullYear());
+  }
+
+  function hotelMonthIndex(value) {
+    const m = monthValue(value);
+    return m ? monthIndex(m.month, m.year) : null;
+  }
+
+  function isHotelAssignable(h) {
+    if (!h || h.active === false) return false;
+    const letter = String(h.letter || '').trim().toUpperCase();
+    if (!letter || letter === 'P' || letter === 'Q') return false;
+    const inactive = hotelMonthIndex(h.inactiveFrom);
+    return inactive === null || inactive > currentMonthIndex();
+  }
+
+  async function loadRaspisHotelLetters() {
+    try {
+      const data = await fetch('/api/settings', { credentials: 'include' }).then(r => r.ok ? r.json() : null);
+      const hotels = Array.isArray(data?.hotels) ? data.hotels : [];
+      const letters = hotels
+        .filter(isHotelAssignable)
+        .map(h => String(h.letter || '').trim().toUpperCase())
+        .filter(Boolean)
+        .sort((a, b) => a.localeCompare(b, 'cs', { sensitivity: 'base' }));
+      if (letters.length) RASPIS_HOTEL_LETTERS = letters;
+    } catch(e) {}
   }
 
   function getRaspisStaffOverride(user) {

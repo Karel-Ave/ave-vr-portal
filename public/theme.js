@@ -169,18 +169,10 @@
     }
   });
 
-  ['touchstart', 'touchend', 'pointerdown', 'pointerup', 'click'].forEach(function (evt) {
-    document.addEventListener(evt, function (e) {
-      var target = e.target && e.target.closest ? e.target.closest('#btn-theme') : null;
-      if (!target) return;
-      toggleFromEvent(e);
-    }, { capture: true, passive: false });
-  });
-
   if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', setup);
   else setup();
 
-  window.toggleAveTheme = toggleThemeNow;
+  window.toggleAveTheme = toggleFromEvent;
 
   function setInvertedFavicon() {
     var img = new Image();

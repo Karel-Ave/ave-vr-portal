@@ -837,7 +837,7 @@ app.get('/api/widget-today', requireLogin, async (req, res) => {
     const db = getPool();
     const { rows } = await db.query('SELECT data FROM rozpisy WHERE key = $1', [key]);
 
-    const HOTELS      = ['A','B','C','D','E','G','H','I','J','L','M','N','S','T','U','P','Q'];
+    let HOTELS        = ['A','B','C','D','E','G','H','I','J','L','M','N','S','T','U','P','Q'];
     const VALID_TYPES = new Set(['Denní','Noční','Obojí','Vedoucí']);
 
     const hotelMap = {};
@@ -848,6 +848,36 @@ app.get('/api/widget-today', requireLogin, async (req, res) => {
       const data     = typeof raw === 'string' ? JSON.parse(raw) : raw;
       const staff    = data.staff    || [];
       const schedule = data.schedule || {};
+      const monthIdx = (value) => {
+        if (!value) return null;
+        if (typeof value === 'string') {
+          const m = value.match(/^(\d{4})-(\d{1,2})/);
+          return m ? (parseInt(m[1], 10) * 12 + parseInt(m[2], 10)) : null;
+        }
+        const y = parseInt(value.year, 10);
+        const mo = parseInt(value.month, 10);
+        return Number.isFinite(y) && Number.isFinite(mo) ? (y * 12 + mo) : null;
+      };
+      const currentIdx = todayYear * 12 + todayMonth;
+      const dataHotels = Array.isArray(data.hotels) ? data.hotels
+        .filter(h => {
+          if (!h || h.active === false) return false;
+          const letter = String(h.letter || '').trim().toUpperCase();
+          if (!letter) return false;
+          const from = monthIdx(h.activeFrom);
+          const inactive = monthIdx(h.inactiveFrom);
+          if (from !== null && currentIdx < from) return false;
+          if (inactive !== null && currentIdx >= inactive) return false;
+          return true;
+        })
+        .map(h => String(h.letter || '').trim().toUpperCase())
+        .filter(Boolean)
+        .sort((a, b) => a.localeCompare(b, 'cs', { sensitivity: 'base' })) : [];
+      if (dataHotels.length) {
+        HOTELS = dataHotels;
+        Object.keys(hotelMap).forEach(k => { delete hotelMap[k]; });
+        HOTELS.forEach(h => { hotelMap[h] = { day: null, night: null }; });
+      }
       const ci_day   = (todayDay - 1) * 2;
       const ci_night = (todayDay - 1) * 2 + 1;
 
@@ -3937,9 +3967,30 @@ function parseRequirementStaffIndex(value) {
 function getRequirementHotelLetters(data) {
   const letters = new Set();
   const hotels = Array.isArray(data && data.hotels) ? data.hotels : [];
+  const month = parseInt(data && data.month, 10);
+  const year = parseInt(data && data.year, 10);
+  const currentIdx = Number.isFinite(month) && Number.isFinite(year) ? (year * 12 + month) : null;
+  const monthIdx = (value) => {
+    if (!value) return null;
+    if (typeof value === 'string') {
+      const m = value.match(/^(\d{4})-(\d{1,2})/);
+      if (!m) return null;
+      return (parseInt(m[1], 10) * 12) + parseInt(m[2], 10);
+    }
+    const y = parseInt(value.year, 10);
+    const mo = parseInt(value.month, 10);
+    return Number.isFinite(y) && Number.isFinite(mo) ? (y * 12 + mo) : null;
+  };
   hotels.forEach(h => {
     const letter = String(h && h.letter || '').trim().toUpperCase();
-    if (letter && h.active !== false) letters.add(letter);
+    if (!letter || h.active === false) return;
+    if (currentIdx !== null) {
+      const from = monthIdx(h.activeFrom);
+      const inactive = monthIdx(h.inactiveFrom);
+      if (from !== null && currentIdx < from) return;
+      if (inactive !== null && currentIdx >= inactive) return;
+    }
+    letters.add(letter);
   });
   return letters;
 }

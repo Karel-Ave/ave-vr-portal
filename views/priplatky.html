@@ -729,11 +729,50 @@ document.getElementById('btn-next').addEventListener('click', () => {
 // ═══ Inicializace ════════════════════════════════════════════════════════════
 async function init() {
   await loadPriplatkyPermissions();
+  await loadHotelOptions();
   updateMonthLabel();
   await loadRecepniDropdown();
   await loadDuvodyDropdowns();
   loadPrehled();
   initFormConds();
+}
+
+function hotelMonthIndex(value) {
+  if (!value) return null;
+  if (typeof value === 'string') {
+    const m = value.match(/^(\d{4})-(\d{1,2})/);
+    return m ? (parseInt(m[1], 10) * 12 + parseInt(m[2], 10)) : null;
+  }
+  const y = parseInt(value.year, 10);
+  const mo = parseInt(value.month, 10);
+  return Number.isFinite(y) && Number.isFinite(mo) ? (y * 12 + mo) : null;
+}
+
+async function loadHotelOptions() {
+  const sel = document.querySelector('select[name="hotel"]');
+  if (!sel) return;
+  const current = sel.value;
+  const fallback = ['A','B','C','D','E','G','H','I','L','M','N','T','U'];
+  let letters = fallback;
+  try {
+    const settings = await fetch('/api/settings', { credentials: 'include' }).then(r => r.ok ? r.json() : null);
+    const now = new Date();
+    const nowIdx = now.getFullYear() * 12 + now.getMonth() + 1;
+    const fromSettings = (Array.isArray(settings?.hotels) ? settings.hotels : [])
+      .filter(h => {
+        if (!h || h.active === false) return false;
+        const letter = String(h.letter || '').trim().toUpperCase();
+        if (!letter || letter === 'P' || letter === 'Q') return false;
+        const inactive = hotelMonthIndex(h.inactiveFrom);
+        return inactive === null || inactive > nowIdx;
+      })
+      .map(h => String(h.letter || '').trim().toUpperCase())
+      .filter(Boolean)
+      .sort((a, b) => a.localeCompare(b, 'cs', { sensitivity: 'base' }));
+    if (fromSettings.length) letters = fromSettings;
+  } catch(e) {}
+  sel.innerHTML = `<option value="">-- (volitelne) --</option>` + letters.map(h => `<option value="${esc(h)}">${esc(h)}</option>`).join('');
+  if (current) sel.value = current;
 }
 
 async function loadPriplatkyPermissions() {
@@ -1183,6 +1222,9 @@ function editZaznam(id) {
   updateFormConds();
 
   acSetValue(z.login, recepniName(z.login));
+  if (z.hotel && !Array.from(form.elements.hotel.options).some(o => o.value === z.hotel)) {
+    form.elements.hotel.insertAdjacentHTML('beforeend', `<option value="${esc(z.hotel)}">${esc(z.hotel)}</option>`);
+  }
   form.elements.hotel.value = z.hotel || '';
 
   if (z.datum) {
