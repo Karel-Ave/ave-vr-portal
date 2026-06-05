@@ -6076,7 +6076,14 @@ function applyData(data) {
     if (data.customHotels) state.customHotels = data.customHotels;
     ensureHotels();
   }
-  state.mobileKeypadConfig = normalizeMobileKeypadConfig(data.mobileKeypadConfig);
+  // Mobile keypad is a global hotel/settings preference. Older saved schedules
+  // and requirements do not contain it, so do not let loading month data reset
+  // an already configured keypad back to defaults.
+  if (data.mobileKeypadConfig !== undefined) {
+    state.mobileKeypadConfig = normalizeMobileKeypadConfig(data.mobileKeypadConfig);
+  } else {
+    state.mobileKeypadConfig = normalizeMobileKeypadConfig(state.mobileKeypadConfig);
+  }
   document.documentElement.style.setProperty('--mobile-keypad-btn-h', `${state.mobileKeypadConfig.buttonHeight}px`);
 
   // ── monthlyData ──
@@ -6140,6 +6147,39 @@ function applyData(data) {
     selMY.value = savedKey;
   }
   updateImportUnmatchedButton();
+}
+
+async function loadGlobalRtSettings() {
+  try {
+    const r = await fetch('/api/settings', { credentials: 'include' });
+    if (!r.ok) return;
+    const data = await r.json();
+    if (data.mobileKeypadConfig !== undefined) {
+      state.mobileKeypadConfig = normalizeMobileKeypadConfig(data.mobileKeypadConfig);
+      document.documentElement.style.setProperty('--mobile-keypad-btn-h', `${state.mobileKeypadConfig.buttonHeight}px`);
+    }
+  } catch(e) {
+    console.warn('loadGlobalRtSettings:', e);
+  }
+}
+
+async function saveGlobalRtSettings() {
+  try {
+    const payload = {
+      hotels: JSON.parse(JSON.stringify(state.hotels || [])),
+      hotelOverrides: JSON.parse(JSON.stringify(state.hotelOverrides || {})),
+      customHotels: JSON.parse(JSON.stringify(state.customHotels || [])),
+      mobileKeypadConfig: normalizeMobileKeypadConfig(state.mobileKeypadConfig)
+    };
+    await fetch('/api/settings', {
+      method: 'POST',
+      credentials: 'include',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(payload)
+    });
+  } catch(e) {
+    console.warn('saveGlobalRtSettings:', e);
+  }
 }
 
 /* ══════════════════════════════════════════════════════════════════════════════
@@ -7275,12 +7315,22 @@ function updateRequirementsFundsInfo(entry) {
 async function loadRequirementsList(preferredKey = currentReqKey, shouldLoad = true) {
   const sel = document.getElementById('req-sel');
   if (!sel) return;
-  sel.innerHTML = '';
+  const previousOptions = sel.innerHTML;
+  const previousValue = sel.value;
   try {
     const r = await fetch('/api/rt/requirements', { credentials: 'include' });
+    if (!r.ok) throw new Error(r.status);
     const d = await r.json();
+    if (d && d.ok === false) throw new Error(d.msg || 'load failed');
     reqItemsCache = Array.isArray(d.items) ? d.items : [];
     if (!reqItemsCache.length) {
+      if (currentReqEntry) {
+        sel.innerHTML = previousOptions;
+        sel.value = previousValue || currentReqKey || '';
+        updateRequirementsStatus(currentReqEntry);
+        showRequestsEmpty(false);
+        return;
+      }
       sel.innerHTML = '<option value="">Zadne pozadavky</option>';
       currentReqKey = null;
       currentReqEntry = null;
@@ -7288,6 +7338,7 @@ async function loadRequirementsList(preferredKey = currentReqKey, shouldLoad = t
       showRequestsEmpty(true);
       return;
     }
+    sel.innerHTML = '';
     reqItemsCache.forEach(it => {
       const opt = document.createElement('option');
       opt.value = it.key;
@@ -7305,8 +7356,15 @@ async function loadRequirementsList(preferredKey = currentReqKey, shouldLoad = t
       updateRequirementsStatus(reqItemsCache.find(it => it.key === key) || null);
     }
   } catch(e) {
-    sel.innerHTML = '<option value="">Chyba nacteni</option>';
-    showRequestsEmpty(true);
+    if (currentReqEntry) {
+      sel.innerHTML = previousOptions;
+      sel.value = previousValue || currentReqKey || '';
+      updateRequirementsStatus(currentReqEntry);
+      showRequestsEmpty(false);
+    } else {
+      sel.innerHTML = '<option value="">Chyba nacteni</option>';
+      showRequestsEmpty(true);
+    }
   }
 }
 
@@ -7678,7 +7736,7 @@ function toggleRequirementsEditWindow() {
       return;
     }
     let confirmedLocalDuplicates = false;
-    const duplicates = manager ? [] : getRequirementsDuplicateSummary();
+    const duplicates = getRequirementsDuplicateSummary();
     if (duplicates.length) {
       const shown = duplicates.slice(0, 12).join('\n');
       const more = duplicates.length > 12 ? `\n... a další (${duplicates.length - 12})` : '';
@@ -10354,7 +10412,7 @@ function showHotelManager() {
   document.getElementById('overlay-hotels').classList.add('show');
 }
 
-function saveHotelManager() {
+async function saveHotelManager() {
   const list = document.getElementById('hotel-list');
   const newHotels = [];
   list.querySelectorAll('.hotel-item').forEach(item => {
@@ -10392,6 +10450,12 @@ function saveHotelManager() {
   // Persist hotel changes immediately — without this the changes are only in memory
   // and are lost on page reload if the user never clicks "Uložit nastavení".
   scheduleAutoSave();
+  try {
+    await saveGlobalRtSettings();
+    await saveDraft(true);
+  } catch(e) {
+    console.warn('saveHotelManager immediate save failed:', e);
+  }
 }
 
 /* ══════════════════════════════════════════════════════════════════════════════
@@ -10986,6 +11050,7 @@ document.addEventListener('DOMContentLoaded', async () => {
 
   // Initialize hotel list from defaults
   ensureHotels();
+  await loadGlobalRtSettings();
 
   // Set initial month/year select
   populateMonthYearSelect();
