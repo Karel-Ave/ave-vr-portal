@@ -118,20 +118,17 @@
 
   function setup() {
     var btn = document.getElementById('btn-theme');
-    if (btn) {
+    if (btn && !btn.dataset.themeBound) {
+      btn.dataset.themeBound = '1';
       btn.textContent = isDark() ? '☀️' : '🌙';
       btn.style.touchAction = 'manipulation';
       btn.style.webkitTapHighlightColor = 'transparent';
       function toggleThemeButton(e) {
-        toggleFromEvent(e);
+        return toggleFromEvent(e);
       }
-      btn.addEventListener('touchstart', toggleThemeButton, { passive: false });
-      btn.addEventListener('pointerdown', toggleThemeButton, { passive: false });
-      btn.addEventListener('touchend', function(e) {
-        toggleThemeButton(e);
-      }, { passive: false });
+      btn.addEventListener('touchend', toggleThemeButton, { passive: false });
       btn.addEventListener('pointerup', toggleThemeButton, { passive: false });
-      btn.addEventListener('click', toggleThemeButton);
+      btn.addEventListener('click', toggleThemeButton, { passive: false });
     }
 
     fetch('/api/me', { credentials: 'include' }).then(function (r) {
@@ -173,6 +170,14 @@
   else setup();
 
   window.toggleAveTheme = toggleFromEvent;
+
+  ['touchend', 'click'].forEach(function(type) {
+    document.addEventListener(type, function(e) {
+      var target = e.target && e.target.closest ? e.target : (e.target && e.target.parentElement);
+      var btn = target && target.closest ? target.closest('#btn-theme') : null;
+      if (btn) toggleFromEvent(e);
+    }, { capture: true, passive: false });
+  });
 
   function setInvertedFavicon() {
     var img = new Image();

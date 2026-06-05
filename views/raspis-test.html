@@ -458,9 +458,18 @@ table.staff-tbl {
   background:var(--input-bg,var(--bg)); color:var(--text); font-size:12px; font-family:inherit; }
 .hotel-month-inp { width:112px; padding:4px 5px; border:1px solid var(--border); border-radius:5px;
   background:var(--input-bg,var(--bg)); color:var(--text); font-size:12px; font-family:inherit; }
+.hotel-month-pair { width:132px; display:flex; align-items:center; gap:4px; flex-shrink:0; }
+.hotel-month-sel,
+.hotel-year-sel { padding:4px 4px; border:1px solid var(--border); border-radius:5px;
+  background:var(--input-bg,var(--bg)); color:var(--text); font-size:12px; font-family:inherit; min-width:0; }
+.hotel-month-sel { width:66px; }
+.hotel-year-sel { width:62px; }
 .hotel-chk-lbl { font-size:11px; display:flex; align-items:center; gap:3px; white-space:nowrap;
   cursor:pointer; color:var(--text-muted); }
 .hotel-chk-lbl input[type=checkbox] { cursor:pointer; accent-color:var(--accent); }
+.hotel-hide-btn { background:var(--surface-2); border:1px solid var(--border); color:var(--text);
+  border-radius:5px; cursor:pointer; font-size:11px; padding:4px 7px; flex-shrink:0; }
+.hotel-hide-btn:hover { background:color-mix(in srgb, var(--accent) 16%, var(--surface-2)); }
 .hotel-del-btn { background:none; border:none; color:var(--text-muted); cursor:pointer;
   font-size:14px; padding:0 3px; flex-shrink:0; }
 .hotel-del-btn:hover { color:#e74c3c; }
@@ -1009,11 +1018,11 @@ tbody tr.row-hidden { display: none !important; }
   display: none !important;
 }
 #stb-row-hotels { position: relative; }
-.stb-row-tools { position: relative; }
+.stb-row-tools { position: relative; min-height: 55px; }
 #stb-center-stack {
   position: absolute;
   left: 50%;
-  top: 4px;
+  top: 2px;
   transform: translateX(-50%);
   display: flex;
   flex-direction: column;
@@ -1029,9 +1038,9 @@ tbody tr.row-hidden { display: none !important; }
   min-height: 0;
 }
 #stb-center-edit-slot .tb-btn {
-  min-height: 24px;
-  height: 24px;
-  padding: 2px 12px;
+  min-height: 22px;
+  height: 22px;
+  padding: 2px 10px;
   font-size: 11px;
   line-height: 1;
 }
@@ -1612,6 +1621,9 @@ tbody tr.row-filtered { display: none; }
   .stb-row {
     align-items: flex-start;
     gap: 6px;
+    min-height: 0;
+  }
+  .stb-row-tools {
     min-height: 0;
   }
   #stb-hotels-left,
@@ -2740,9 +2752,9 @@ tbody tr.row-filtered { display: none; }
         <span style="width:80px;font-weight:700">Jen denní</span>
         <span style="width:66px;font-weight:700">Aktivní</span>
         <span style="width:66px;font-weight:700">V panelu</span>
-        <span style="width:112px;font-weight:700">Od</span>
-        <span style="width:112px;font-weight:700">Skryt od</span>
-        <span style="width:24px"></span>
+        <span style="width:132px;font-weight:700">Od</span>
+        <span style="width:132px;font-weight:700">Skryt od</span>
+        <span style="width:72px"></span>
       </div>
       <div id="hotel-list"></div>
       <div class="hotel-add-section">
@@ -2757,7 +2769,7 @@ tbody tr.row-filtered { display: none; }
             <option value="11">11h</option>
             <option value="12" selected>12h</option>
           </select>
-          <input type="month" id="hotel-new-active-from" class="hotel-month-inp" title="Zobrazit od mesice">
+          <span id="hotel-new-active-from-slot"></span>
           <label class="hotel-chk-lbl"><input type="checkbox" id="hotel-new-dayonly"> Jen denní</label>
           <label class="hotel-chk-lbl"><input type="checkbox" id="hotel-new-panel" checked> V panelu</label>
         </div>
@@ -3591,6 +3603,55 @@ function hotelMonthInputValue(value) {
 
 function parseHotelMonthInput(value) {
   return normalizeHotelMonth(String(value || '').trim());
+}
+
+const HOTEL_MONTH_NAMES = [
+  'Leden', 'Únor', 'Březen', 'Duben', 'Květen', 'Červen',
+  'Červenec', 'Srpen', 'Září', 'Říjen', 'Listopad', 'Prosinec'
+];
+
+function hotelYearOptions(selectedYear) {
+  const now = getPragueToday();
+  const base = Number(state.year) || now.year;
+  const years = new Set();
+  for (let y = base - 2; y <= base + 8; y++) years.add(y);
+  if (selectedYear) years.add(Number(selectedYear));
+  return Array.from(years).filter(Number.isFinite).sort((a, b) => a - b);
+}
+
+function hotelMonthSelectHtml(prefix, value, title) {
+  const m = normalizeHotelMonth(value);
+  const monthOptions = ['<option value="">--</option>'].concat(HOTEL_MONTH_NAMES.map((name, idx) => {
+    const month = idx + 1;
+    return `<option value="${month}"${m?.month === month ? ' selected' : ''}>${name}</option>`;
+  })).join('');
+  const yearOptions = ['<option value="">----</option>'].concat(hotelYearOptions(m?.year).map(year => {
+    return `<option value="${year}"${m?.year === year ? ' selected' : ''}>${year}</option>`;
+  })).join('');
+  return `<span class="hotel-month-pair" title="${title || ''}">
+    <select class="hotel-month-sel" data-hotel-month="${prefix}">${monthOptions}</select>
+    <select class="hotel-year-sel" data-hotel-year="${prefix}">${yearOptions}</select>
+  </span>`;
+}
+
+function parseHotelMonthSelect(root, prefix) {
+  const month = Number(root.querySelector(`[data-hotel-month="${prefix}"]`)?.value || 0);
+  const year = Number(root.querySelector(`[data-hotel-year="${prefix}"]`)?.value || 0);
+  if (!month || !year) return null;
+  return normalizeHotelMonth({ month, year });
+}
+
+function setHotelMonthSelect(root, prefix, value) {
+  const m = normalizeHotelMonth(value);
+  const monthEl = root.querySelector(`[data-hotel-month="${prefix}"]`);
+  const yearEl = root.querySelector(`[data-hotel-year="${prefix}"]`);
+  if (monthEl) monthEl.value = m ? String(m.month) : '';
+  if (yearEl) {
+    if (m && !Array.from(yearEl.options).some(o => o.value === String(m.year))) {
+      yearEl.add(new Option(String(m.year), String(m.year)));
+    }
+    yearEl.value = m ? String(m.year) : '';
+  }
 }
 
 function normalizeHotelConfig(h) {
@@ -8336,13 +8397,12 @@ function normalizeScheduleControlLabels() {
 }
 
 function getUsedHotelLetters() {
-  // All active hotels for the displayed month + any letters already present in schedule.
+  // All configured active hotels for the displayed month. Old orphan letters in
+  // schedule data are intentionally ignored so deleted test hotels do not return
+  // to the filter panel.
   ensureHotels();
   const letters = new Set();
   getHotelsForMonth(state.month, state.year).forEach(h => { letters.add(h.letter); });
-  Object.values(state.schedule).forEach(v => {
-    if (v && v.length === 1 && /[A-Z]/i.test(v) && !SKIP_VALS.has(v)) letters.add(v.toUpperCase());
-  });
   return Array.from(letters).sort();
 }
 
@@ -8489,9 +8549,9 @@ function buildHotelFilterButtons() {
   container.innerHTML = '';
   getUsedHotelLetters().forEach(letter => {
     const hd = getHotelByLetter(letter);
-    if (hd && !isHotelActiveForMonth(hd, state.month, state.year)) return;
+    if (!hd || !isHotelActiveForMonth(hd, state.month, state.year)) return;
     const show = getHotelsForMonth(state.month, state.year, { panel: true }).some(h => h.letter === letter);
-    if (!show && hd) return;
+    if (!show) return;
     const btn = document.createElement('button');
     btn.className = 'stb-btn' + (filterHotels.has(letter) ? ' active' : '');
     btn.textContent = letter;
@@ -10613,15 +10673,21 @@ function showHotelManager() {
       <label class="hotel-chk-lbl"><input type="checkbox" class="hm-dayonly" ${dayOnlyChk}> Jen denní</label>
       <label class="hotel-chk-lbl" style="width:66px"><input type="checkbox" class="hm-active" ${activeChk}> Aktivní</label>
       <label class="hotel-chk-lbl" style="width:66px"><input type="checkbox" class="hm-panel" ${panelChk}> V panelu</label>
-      <input type="month" class="hotel-month-inp hm-active-from" value="${hotelMonthInputValue(h.activeFrom)}" title="Zobrazit od mesice">
-      <input type="month" class="hotel-month-inp hm-inactive-from" value="${hotelMonthInputValue(h.inactiveFrom)}" title="Skryt od mesice">
-      <button class="hotel-del-btn" title="Skryt od aktualniho mesice">✕</button>
+      ${hotelMonthSelectHtml('hm-active-from', h.activeFrom, 'Zobrazit od mesice')}
+      ${hotelMonthSelectHtml('hm-inactive-from', h.inactiveFrom, 'Skryt od mesice')}
+      <button class="hotel-hide-btn" title="Skryt od aktualniho mesice">Skrýt</button>
+      <button class="hotel-del-btn" title="Smazat uplne">✕</button>
     `;
-    item.querySelector('.hotel-del-btn').addEventListener('click', () => {
+    item.querySelector('.hotel-hide-btn').addEventListener('click', () => {
       if (!confirm(`Skryt hotel ${h.letter} od ${String(state.month).padStart(2, '0')}/${state.year}?`)) return;
-      item.querySelector('.hm-inactive-from').value = hotelMonthInputValue({ month: state.month, year: state.year });
+      setHotelMonthSelect(item, 'hm-inactive-from', { month: state.month, year: state.year });
       item.classList.add('hotel-inactive-from-now');
       toast(`Hotel ${h.letter} bude skryt od tohoto měsíce. Změnu potvrď tlačítkem Uložit.`);
+    });
+    item.querySelector('.hotel-del-btn').addEventListener('click', () => {
+      if (!confirm(`Smazat hotel ${h.letter} úplně z nastavení? Tuto volbu používej jen u testovacích hotelů.`)) return;
+      item.remove();
+      toast(`Hotel ${h.letter} bude po uložení smazán z konfigurace.`);
     });
     list.appendChild(item);
   });
@@ -10630,7 +10696,8 @@ function showHotelManager() {
   document.getElementById('hotel-new-letter').value = '';
   document.getElementById('hotel-new-name').value = '';
   document.getElementById('hotel-new-hours').value = '12';
-  document.getElementById('hotel-new-active-from').value = hotelMonthInputValue({ month: state.month, year: state.year });
+  const activeSlot = document.getElementById('hotel-new-active-from-slot');
+  if (activeSlot) activeSlot.innerHTML = hotelMonthSelectHtml('hotel-new-active-from', { month: state.month, year: state.year }, 'Zobrazit od mesice');
   document.getElementById('hotel-new-dayonly').checked = false;
   const keypadCfg = getMobileKeypadConfig();
   const recTA = document.getElementById('mobile-keypad-receptionist');
@@ -10656,8 +10723,8 @@ async function saveHotelManager() {
       dayOnly:     item.querySelector('.hm-dayonly').checked,
       active:      item.querySelector('.hm-active').checked,
       showInPanel: item.querySelector('.hm-panel').checked,
-      activeFrom:  parseHotelMonthInput(item.querySelector('.hm-active-from')?.value || ''),
-      inactiveFrom: parseHotelMonthInput(item.querySelector('.hm-inactive-from')?.value || ''),
+      activeFrom:  parseHotelMonthSelect(item, 'hm-active-from'),
+      inactiveFrom: parseHotelMonthSelect(item, 'hm-inactive-from'),
     });
   });
   state.hotels = newHotels.map(normalizeHotelConfig).sort((a, b) => a.letter.localeCompare(b.letter, 'cs'));
@@ -11655,7 +11722,7 @@ document.addEventListener('DOMContentLoaded', async () => {
     const hours  = Number(document.getElementById('hotel-new-hours').value) || 12;
     const dayOnly  = document.getElementById('hotel-new-dayonly').checked;
     const inPanel  = document.getElementById('hotel-new-panel').checked;
-    const activeFrom = document.getElementById('hotel-new-active-from').value || hotelMonthInputValue({ month: state.month, year: state.year });
+    const activeFrom = parseHotelMonthSelect(document, 'hotel-new-active-from') || { month: state.month, year: state.year };
     if (!letter || !/^[A-Z]$/.test(letter)) { toast('Zadejte jedno písmeno A–Z', true); return; }
     const list = document.getElementById('hotel-list');
     const alreadyExists = Array.from(list.querySelectorAll('.hotel-letter-badge')).some(b => b.textContent.trim() === letter);
@@ -11672,18 +11739,25 @@ document.addEventListener('DOMContentLoaded', async () => {
       <label class="hotel-chk-lbl"><input type="checkbox" class="hm-dayonly" ${dayOnly?'checked':''}> Jen denní</label>
       <label class="hotel-chk-lbl" style="width:66px"><input type="checkbox" class="hm-active" checked> Aktivní</label>
       <label class="hotel-chk-lbl" style="width:66px"><input type="checkbox" class="hm-panel" ${inPanel?'checked':''}> V panelu</label>
-      <input type="month" class="hotel-month-inp hm-active-from" value="${activeFrom}" title="Zobrazit od mesice">
-      <input type="month" class="hotel-month-inp hm-inactive-from" value="" title="Skryt od mesice">
+      ${hotelMonthSelectHtml('hm-active-from', activeFrom, 'Zobrazit od mesice')}
+      ${hotelMonthSelectHtml('hm-inactive-from', null, 'Skryt od mesice')}
+      <button class="hotel-hide-btn" title="Skryt od aktualniho mesice">Skrýt</button>
       <button class="hotel-del-btn" title="Odebrat neulozeny hotel">✕</button>
     `;
     item.dataset.newletter = letter; // flag so saveHotelManager knows it's new
+    item.querySelector('.hotel-hide-btn').addEventListener('click', () => {
+      setHotelMonthSelect(item, 'hm-inactive-from', { month: state.month, year: state.year });
+      item.classList.add('hotel-inactive-from-now');
+      toast(`Hotel ${letter} bude skryt od tohoto měsíce. Změnu potvrď tlačítkem Uložit.`);
+    });
     item.querySelector('.hotel-del-btn').addEventListener('click', () => item.remove());
     list.appendChild(item);
     // Clear add form
     document.getElementById('hotel-new-letter').value = '';
     document.getElementById('hotel-new-name').value = '';
     document.getElementById('hotel-new-hours').value = '12';
-    document.getElementById('hotel-new-active-from').value = hotelMonthInputValue({ month: state.month, year: state.year });
+    const activeSlot = document.getElementById('hotel-new-active-from-slot');
+    if (activeSlot) activeSlot.innerHTML = hotelMonthSelectHtml('hotel-new-active-from', { month: state.month, year: state.year }, 'Zobrazit od mesice');
     document.getElementById('hotel-new-dayonly').checked = false;
   });
 
