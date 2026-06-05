@@ -1018,28 +1018,33 @@ tbody tr.row-hidden { display: none !important; }
   display: none !important;
 }
 #stb-row-hotels { position: relative; }
-.stb-row-tools { position: relative; min-height: 55px; }
-#stb-center-stack {
+.stb-row-tools { position: relative; min-height: 30px; }
+#stb-center-edit-slot,
+#stb-center-nav {
   position: absolute;
   left: 50%;
-  top: 2px;
   transform: translateX(-50%);
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  gap: 3px;
   z-index: 3;
   pointer-events: auto;
 }
 #stb-center-edit-slot {
+  top: 50%;
+  transform: translate(-50%, -50%);
   display: flex;
   align-items: center;
   justify-content: center;
-  min-height: 0;
+}
+#stb-center-nav {
+  top: 50%;
+  transform: translate(-50%, -50%);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 7px;
 }
 #stb-center-edit-slot .tb-btn {
-  min-height: 22px;
-  height: 22px;
+  min-height: 24px;
+  height: 24px;
   padding: 2px 10px;
   font-size: 11px;
   line-height: 1;
@@ -1058,13 +1063,8 @@ tbody tr.row-hidden { display: none !important; }
   background: color-mix(in srgb, var(--surface-2) 82%, var(--accent));
   border: 1px solid color-mix(in srgb, var(--accent) 35%, var(--border));
 }
-#stb-center-edit-slot:empty { display: none; }
-#stb-center-nav {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  gap: 7px;
-}
+#stb-center-edit-slot:empty,
+#stb-center-nav:empty { display: none; }
 #subtoolbar.tab-tvorba #stb-hide-sums,
 #subtoolbar.tab-tvorba #stb-hours-only,
 #subtoolbar.tab-tvorba #stb-export2 {
@@ -1635,7 +1635,8 @@ tbody tr.row-filtered { display: none; }
   #stb-hotel-btns {
     flex-wrap: wrap;
   }
-  #stb-center-stack {
+  #stb-center-edit-slot,
+  #stb-center-nav {
     position: static;
     transform: none;
     order: 2;
@@ -1797,10 +1798,16 @@ tbody tr.row-filtered { display: none; }
   }
   #sel-month-year,
   #pub-sel,
-  #pub-sel-public {
+  #pub-sel-public,
+  #req-sel {
     width: auto;
     min-width: 174px;
     max-width: min(82vw, 250px);
+    background: var(--surface) !important;
+    color: var(--text) !important;
+    -webkit-text-fill-color: var(--text) !important;
+    border-color: var(--border) !important;
+    opacity: 1 !important;
   }
   #autosave-ind,
   #lock-info {
@@ -1865,6 +1872,22 @@ tbody tr.row-filtered { display: none; }
   #btn-req-archive::after {
     font-size: 12px;
     font-weight: 800;
+  }
+  #btn-view-edit,
+  #btn-req-edit {
+    background: var(--accent) !important;
+    border-color: var(--accent) !important;
+    color: var(--hotel-btn-active-color, var(--accent-fg,#fff)) !important;
+  }
+  #btn-view-edit::after,
+  #btn-req-edit::after {
+    color: var(--hotel-btn-active-color, var(--accent-fg,#fff)) !important;
+  }
+  [data-theme="dark"] #btn-view-edit,
+  [data-theme="dark"] #btn-req-edit,
+  [data-theme="dark"] #btn-view-edit::after,
+  [data-theme="dark"] #btn-req-edit::after {
+    color: var(--hotel-btn-active-color, #1A1A18) !important;
   }
   #btn-delete-schedule,
   #btn-schedule-archive,
@@ -1998,7 +2021,8 @@ tbody tr.row-filtered { display: none; }
     padding-right: 2px;
     overflow: hidden;
   }
-  #stb-center-stack {
+  #stb-center-edit-slot,
+  #stb-center-nav {
     display: none !important;
   }
   .stb-row-tools > #stb-hours-only,
@@ -2234,7 +2258,7 @@ tbody tr.row-filtered { display: none; }
   <div class="tb-actions hidden" id="tb-act-pozadavky">
     <button class="tb-btn" id="btn-req-create">Vytvořit požadavky</button>
     <span id="req-title" class="tb-status">Žádné požadavky</span>
-    <button class="tb-btn" id="btn-req-edit" data-mobile-label="Edituj">Editovat</button>
+    <button class="tb-btn" id="btn-req-edit" data-mobile-label="Edituj požadavky">Editovat</button>
     <button class="tb-btn" id="btn-req-cancel" data-mobile-label="Zrušit" style="display:none">Zrušit</button>
     <button class="tb-btn" id="btn-req-toggle-edit" data-mobile-label="Povolit Editaci">Povolit editaci</button>
     <button class="tb-btn" id="btn-req-send-tvorba">Odeslat do Tvorba</button>
@@ -3621,11 +3645,11 @@ function hotelYearOptions(selectedYear) {
 
 function hotelMonthSelectHtml(prefix, value, title) {
   const m = normalizeHotelMonth(value);
-  const monthOptions = ['<option value="">--</option>'].concat(HOTEL_MONTH_NAMES.map((name, idx) => {
+  const monthOptions = ['<option value="">Měsíc</option>'].concat(HOTEL_MONTH_NAMES.map((name, idx) => {
     const month = idx + 1;
     return `<option value="${month}"${m?.month === month ? ' selected' : ''}>${name}</option>`;
   })).join('');
-  const yearOptions = ['<option value="">----</option>'].concat(hotelYearOptions(m?.year).map(year => {
+  const yearOptions = ['<option value="">Rok</option>'].concat(hotelYearOptions(m?.year).map(year => {
     return `<option value="${year}"${m?.year === year ? ' selected' : ''}>${year}</option>`;
   })).join('');
   return `<span class="hotel-month-pair" title="${title || ''}">
@@ -6871,18 +6895,23 @@ async function syncRaspisStaff() {
 function populateMonthYearSelect() {
   const sel = document.getElementById('sel-month-year');
   if (!sel) return;
-  const now  = new Date();
-  const realM = now.getMonth() + 1;
-  const realY = now.getFullYear();
+  const today = getPragueToday();
+  const currentIndex = today.year * 12 + (today.month - 1);
+  const selectedMonth = Number(state.month) || today.month;
+  const selectedYear = Number(state.year) || today.year;
+  const selectedIndex = selectedYear * 12 + (selectedMonth - 1);
+  const indexes = new Set([selectedIndex]);
+  for (let i = -2; i <= 36; i++) indexes.add(currentIndex + i);
   sel.innerHTML = '';
-  for (let i = 0; i < 12; i++) {
-    let m = realM + i, y = realY;
-    if (m > 12) { m -= 12; y++; }
+  Array.from(indexes).sort((a, b) => a - b).forEach(idx => {
+    const y = Math.floor(idx / 12);
+    const m = (idx % 12) + 1;
     const opt = document.createElement('option');
     opt.value = `${y}-${m}`;
     opt.textContent = `${MONTH_NAMES[m - 1]} ${y}`;
+    if (m === selectedMonth && y === selectedYear) opt.selected = true;
     sel.appendChild(opt);
-  }
+  });
 }
 
 /** Uloží data aktuálního měsíce do monthlyData, auto-save na server,
@@ -7496,6 +7525,7 @@ function updateRequirementsStatus(entry) {
     editBtn.dataset.mobileLabel = reqEditMode ? 'Uložit' : (manager ? 'Editovat' : 'Edituj');
     editBtn.style.display = (manager || entry.status === 'open') ? '' : 'none';
     editBtn.classList.toggle('primary', reqEditMode);
+    if (!reqEditMode && !manager) editBtn.dataset.mobileLabel = editBtn.textContent;
   }
   if (cancelBtn) {
     cancelBtn.style.display = reqEditMode ? '' : 'none';
@@ -8338,22 +8368,28 @@ function updateSubtoolbar() {
 const toolbarElementHomes = {};
 
 function ensureScheduleCenterSlot() {
+  const hotelsRow = document.getElementById('stb-row-hotels');
   const toolsRow = document.querySelector('.stb-row-tools');
-  if (!toolsRow) return null;
-  let stack = document.getElementById('stb-center-stack');
-  if (!stack) {
-    stack = document.createElement('div');
-    stack.id = 'stb-center-stack';
-    stack.innerHTML = '<div id="stb-center-edit-slot"></div><div id="stb-center-nav"></div>';
-    const spacer = toolsRow.querySelector('.stb-spacer');
-    toolsRow.insertBefore(stack, spacer || null);
+  if (!hotelsRow || !toolsRow) return null;
+  let slot = document.getElementById('stb-center-edit-slot');
+  if (!slot) {
+    slot = document.createElement('div');
+    slot.id = 'stb-center-edit-slot';
+    const spacer = hotelsRow.querySelector('.stb-spacer');
+    hotelsRow.insertBefore(slot, spacer || null);
   }
-  const nav = document.getElementById('stb-center-nav');
+  let nav = document.getElementById('stb-center-nav');
+  if (!nav) {
+    nav = document.createElement('div');
+    nav.id = 'stb-center-nav';
+    const spacer = toolsRow.querySelector('.stb-spacer');
+    toolsRow.insertBefore(nav, spacer || null);
+  }
   ['stb-undo', 'stb-redo'].forEach(id => {
     const btn = document.getElementById(id);
     if (btn && nav && btn.parentElement !== nav) nav.appendChild(btn);
   });
-  return document.getElementById('stb-center-edit-slot');
+  return slot;
 }
 
 function rememberToolbarElementHome(id) {

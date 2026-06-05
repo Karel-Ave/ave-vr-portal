@@ -171,7 +171,7 @@
 
   window.toggleAveTheme = toggleFromEvent;
 
-  ['touchend', 'click'].forEach(function(type) {
+  ['pointerdown', 'touchend', 'click'].forEach(function(type) {
     document.addEventListener(type, function(e) {
       var target = e.target && e.target.closest ? e.target : (e.target && e.target.parentElement);
       var btn = target && target.closest ? target.closest('#btn-theme') : null;
