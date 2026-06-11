@@ -3483,6 +3483,7 @@ app.get('/api/rt/drafts/:id', requireLogin, async (req, res) => {
     let parsed;
     try { parsed = JSON.parse(draft.data); } catch(e) { parsed = draft.data; }
     parsed = await augmentRtDataWithActiveReceptionists(parsed, db);
+    parsed = await augmentRtDataWithSpecialStaff(parsed, req.session.user.id, db);
     res.json({ ok: true, data: parsed, month: draft.month, year: draft.year });
   } catch (err) { console.error(err); res.status(500).json({ ok: false }); }
 });
@@ -3608,6 +3609,7 @@ app.get('/api/rt/schedules/:key', requireLogin, async (req, res) => {
     let parsed;
     try { parsed = typeof entry.data === 'string' ? JSON.parse(entry.data) : entry.data; } catch(e) { parsed = entry.data; }
     entry.data = await augmentRtDataWithActiveReceptionists(parsed, db);
+    entry.data = await augmentRtDataWithSpecialStaff(entry.data, req.session.user.id, db);
     res.json({ ok: true, entry });
   } catch (err) { console.error(err); res.status(500).json({ ok: false }); }
 });
@@ -3620,6 +3622,7 @@ app.post('/api/rt/schedules/publish', requireLogin, requirePermDefault('raspis',
   try {
     const db = getPool();
     data = await augmentRtDataWithActiveReceptionists(data, db);
+    data = await augmentRtDataWithSpecialStaff(data, req.session.user.id, db);
     await db.query(
       `INSERT INTO rt_schedules (key, month, year, label, data, published_at, published_by)
        VALUES ($1,$2,$3,$4,$5,NOW(),$6)
@@ -3688,6 +3691,7 @@ app.post('/api/rt/schedules/save-edits', requireLogin, requirePerm('raspis', 'ed
   try {
     const db = getPool();
     data = await augmentRtDataWithActiveReceptionists(data, db);
+    data = await augmentRtDataWithSpecialStaff(data, req.session.user.id, db);
     await db.query('UPDATE rt_schedules SET data = $1 WHERE key = $2', [JSON.stringify(data), key]);
     res.json({ ok: true });
   } catch (err) { console.error(err); res.json({ ok: false }); }
@@ -3785,6 +3789,36 @@ async function loadRtPortalReceptionists(db) {
   return out;
 }
 
+async function loadRtSpecialStaffForUser(db, userId) {
+  const { rows } = await db.query(
+    'SELECT data FROM rt_drafts WHERE user_id = $1 AND month = 0 AND year = 0',
+    [userId]
+  );
+  if (!rows.length) return [];
+  let parsed;
+  try { parsed = typeof rows[0].data === 'string' ? JSON.parse(rows[0].data) : rows[0].data; } catch(e) { parsed = null; }
+  const staff = Array.isArray(parsed?.staff) ? parsed.staff : [];
+  return staff.map(s => ({
+    name: s.name || '',
+    login: s.login || '',
+    type: s.type || '',
+    contract: s.contract || '',
+    maxHrs: s.maxHrs || '',
+    regular: s.regular || '',
+    dates: s.dates || '',
+    noteM: s.noteM || '',
+    noteP: s.noteP || '',
+    hotelSkills: Array.isArray(s.hotelSkills) ? s.hotelSkills : (Array.isArray(s.hotels) ? s.hotels : []),
+    noStandby: !!s.noStandby,
+    reqXLimit: rtReqLimit(s.reqXLimit, 7),
+    reqYLimit: rtReqLimit(s.reqYLimit, 0),
+    monthlyOverrides: s.monthlyOverrides || undefined,
+    activeFrom: rtStaffMonthValue(s.activeFrom) || s.activeFrom || null,
+    activeUntil: rtStaffMonthValue(s.activeUntil) || s.activeUntil || null,
+    inactive: !!s.inactive
+  })).filter(s => s.name);
+}
+
 function rtRemapStaffIndexedMap(obj, oldToNew, cellKeys = true) {
   const out = {};
   Object.entries(obj || {}).forEach(([key, val]) => {
@@ -3865,6 +3899,37 @@ async function augmentRtDataWithActiveReceptionists(data, db = getPool()) {
     changed = true;
   }
   if (!changed) return data;
+  if (!added) return data;
+
+  const indexed = data.staff.map((s, oldIdx) => ({ s, oldIdx }));
+  indexed.sort((a, b) => String(a.s.name || '').localeCompare(String(b.s.name || ''), 'cs', { sensitivity: 'base' }));
+  const oldToNew = {};
+  indexed.forEach((item, newIdx) => { oldToNew[item.oldIdx] = newIdx; });
+  data.staff = indexed.map(item => item.s);
+  data.staffOrder = data.staff.map(s => s.userId || null);
+  rtRemapDataStaffIndexes(data, oldToNew);
+  return data;
+}
+
+async function augmentRtDataWithSpecialStaff(data, userId, db = getPool()) {
+  if (!data || typeof data !== 'object' || !userId) return data;
+  const month = parseInt(data.month, 10);
+  const year = parseInt(data.year, 10);
+  if (!month || !year || !Array.isArray(data.staff) || !data.staff.length) return data;
+
+  const special = (await loadRtSpecialStaffForUser(db, userId))
+    .filter(s => rtIsStaffActiveForMonth(s, month, year));
+  if (!special.length) return data;
+
+  let added = false;
+  const byName = new Set(data.staff.map(s => rtNormalizeStaffName(s && s.name)).filter(Boolean));
+  for (const s of special) {
+    const nameKey = rtNormalizeStaffName(s.name);
+    if (!nameKey || byName.has(nameKey)) continue;
+    data.staff.push(JSON.parse(JSON.stringify(s)));
+    byName.add(nameKey);
+    added = true;
+  }
   if (!added) return data;
 
   const indexed = data.staff.map((s, oldIdx) => ({ s, oldIdx }));
@@ -4220,6 +4285,7 @@ app.get('/api/rt/requirements/:key', requireLogin, async (req, res) => {
     let parsed = {};
     try { parsed = typeof entry.data === 'string' ? JSON.parse(entry.data) : entry.data; } catch(e) { parsed = {}; }
     parsed = await augmentRtDataWithActiveReceptionists(parsed, db);
+    parsed = await augmentRtDataWithSpecialStaff(parsed, req.session.user.id, db);
     res.json({ ok: true, entry: { ...entry, data: parsed } });
   } catch (err) {
     console.error('GET /api/rt/requirements/:key:', err);
@@ -4251,7 +4317,8 @@ app.post('/api/rt/requirements/create', requireLogin, requirePermDefault('raspis
     }
     const raw = source.rows[0].data;
     const sourceData = typeof raw === 'string' ? JSON.parse(raw) : (raw || {});
-    const data = await augmentRtDataWithActiveReceptionists(buildInitialRequirementsData(sourceData, month, year, reqSettings), db);
+    let data = await augmentRtDataWithActiveReceptionists(buildInitialRequirementsData(sourceData, month, year, reqSettings), db);
+    data = await augmentRtDataWithSpecialStaff(data, req.session.user.id, db);
     const label = reqLabel(month, year);
     await db.query(
       `INSERT INTO rt_requirements (key, month, year, label, data, status, allow_duplicates, xy_locks, created_by, updated_by)
@@ -4382,6 +4449,7 @@ app.post('/api/rt/requirements/send-to-tvorba', requireLogin, requirePermDefault
     data.month = data.month || month;
     data.year = data.year || year;
     data = await augmentRtDataWithActiveReceptionists(data, db);
+    data = await augmentRtDataWithSpecialStaff(data, req.session.user.id, db);
     const mKey = `${year}-${month}`;
     const draftData = JSON.parse(JSON.stringify(data || {}));
     draftData.month = month;
@@ -4456,6 +4524,7 @@ app.post('/api/rt/requirements/save', requireLogin, async (req, res) => {
     const raw = existing.rows[0].data;
     let currentData = typeof raw === 'string' ? JSON.parse(raw) : (raw || {});
     currentData = await augmentRtDataWithActiveReceptionists(currentData, client);
+    currentData = await augmentRtDataWithSpecialStaff(currentData, req.session.user.id, client);
     let saveData = data;
     let logScope = 'full-data';
     let staffIndex = null;

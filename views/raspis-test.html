@@ -1828,6 +1828,7 @@ tbody tr.row-filtered { display: none; }
   #btn-req-edit,
   #btn-req-cancel,
   #btn-req-toggle-edit,
+  #btn-req-paste-excel,
   #btn-req-send-tvorba,
   #btn-req-delete,
   #btn-req-archive {
@@ -1851,6 +1852,7 @@ tbody tr.row-filtered { display: none; }
   #btn-req-cancel::after { content: attr(data-mobile-label); }
   #btn-req-create::after { content: "Nové"; }
   #btn-req-toggle-edit::after { content: attr(data-mobile-label); }
+  #btn-req-paste-excel::after { content: "XLS"; }
   #btn-req-send-tvorba::after { content: "Do Tvorby"; }
   #btn-paste-excel::after,
   #btn-import-unmatched::after,
@@ -1867,6 +1869,7 @@ tbody tr.row-filtered { display: none; }
   #btn-req-edit::after,
   #btn-req-cancel::after,
   #btn-req-toggle-edit::after,
+  #btn-req-paste-excel::after,
   #btn-req-send-tvorba::after,
   #btn-req-delete::after,
   #btn-req-archive::after {
@@ -2261,6 +2264,7 @@ tbody tr.row-filtered { display: none; }
     <button class="tb-btn" id="btn-req-edit" data-mobile-label="Edituj požadavky">Editovat</button>
     <button class="tb-btn" id="btn-req-cancel" data-mobile-label="Zrušit" style="display:none">Zrušit</button>
     <button class="tb-btn" id="btn-req-toggle-edit" data-mobile-label="Povolit Editaci">Povolit editaci</button>
+    <button class="tb-btn" id="btn-req-paste-excel">Vložit XLS</button>
     <button class="tb-btn" id="btn-req-send-tvorba">Odeslat do Tvorba</button>
     <select id="req-sel" class="tb-btn" style="display:none"></select>
     <span id="req-status" class="tb-status"></span>
@@ -4314,6 +4318,7 @@ function applyRaspisPermissions() {
   setPermVisibleById('btn-req-edit', 'req_edit', canManageRequirements());
   setPermVisibleById('btn-req-cancel', 'req_edit', canManageRequirements());
   setPermVisibleById('btn-req-toggle-edit', 'req_toggle_reception', canManageRequirements());
+  setPermVisibleById('btn-req-paste-excel', 'paste_excel', canManageRequirements());
   setPermVisibleById('btn-req-send-tvorba', 'req_send_tvorba', canManageRequirements());
   setPermVisibleById('btn-req-delete', 'req_delete', false);
   setPermVisibleById('btn-req-archive', 'req_archive', canManageRequirements());
@@ -5773,6 +5778,24 @@ function ensureActiveReceptionistsInCurrentSchedule() {
     state.staff.push(row);
     if (idKey) byId.add(idKey);
     if (nameKey) byName.add(nameKey);
+    changed = true;
+  });
+
+  if (changed) sortStaffAlpha();
+  return changed;
+}
+
+function ensureActiveSpecialStaffInCurrentSchedule() {
+  if (!state.staff || !Array.isArray(state.allSpecialStaff) || !state.allSpecialStaff.length) return false;
+  let changed = false;
+  const byName = new Set((state.staff || []).map(s => normalizeStaffName(s.name)).filter(Boolean));
+
+  (state.allSpecialStaff || []).forEach(s => {
+    if (!s || !isStaffActiveInCurrentMonth(s)) return;
+    const nameKey = normalizeStaffName(s.name || '');
+    if (!nameKey || byName.has(nameKey)) return;
+    state.staff.push(makeScheduleStaffFromSettings(s));
+    byName.add(nameKey);
     changed = true;
   });
 
@@ -7489,6 +7512,7 @@ function updateRequirementsStatus(entry) {
   const editBtn = document.getElementById('btn-req-edit');
   const cancelBtn = document.getElementById('btn-req-cancel');
   const toggleBtn = document.getElementById('btn-req-toggle-edit');
+  const pasteBtn = document.getElementById('btn-req-paste-excel');
   const sendBtn = document.getElementById('btn-req-send-tvorba');
   const act = document.getElementById('tb-act-pozadavky');
   const deleteBtn = document.getElementById('btn-req-delete');
@@ -7497,6 +7521,7 @@ function updateRequirementsStatus(entry) {
   if (act) act.classList.toggle('req-has-entry', manager);
   if (createBtn) createBtn.style.display = manager ? '' : 'none';
   if (toggleBtn) toggleBtn.style.display = (manager && entry) ? '' : 'none';
+  if (pasteBtn) pasteBtn.style.display = (manager && entry) ? '' : 'none';
   if (sendBtn) sendBtn.style.display = (manager && entry) ? '' : 'none';
   if (deleteBtn) deleteBtn.style.display = (manager && entry) ? '' : 'none';
   if (archiveBtn) archiveBtn.style.display = manager ? '' : 'none';
@@ -7506,6 +7531,7 @@ function updateRequirementsStatus(entry) {
     if (editBtn) editBtn.style.display = 'none';
     if (cancelBtn) cancelBtn.style.display = 'none';
     if (toggleBtn) toggleBtn.style.display = 'none';
+    if (pasteBtn) pasteBtn.style.display = 'none';
     if (sendBtn) sendBtn.style.display = 'none';
     updateRequirementsFundsInfo(null);
     return;
@@ -9263,6 +9289,7 @@ function pasteScheduleTextIntoTvorba(text, startSi = null, startCi = 0) {
     state.unmatchedXls = [...mergedUnmatched.values()].filter(u => !settingsByName.has(normalizeStaffName(u.name)));
     updateImportUnmatchedButton();
   }
+  ensureActiveSpecialStaffInCurrentSchedule();
   renderScheduleTable('tvorba-tbl', true);
   renderScheduleTable('rozpis-tbl', false);
   updateDuplicateClasses();
@@ -9403,6 +9430,157 @@ function parseClipboardTable(text) {
     .split('\n')
     .map(line => line.split('\t').map(v => String(v || '').trim()))
     .filter(row => row.some(v => v !== ''));
+}
+
+async function pasteRequirementsFromExcel() {
+  if (!currentReqKey) {
+    toast('Nejdřív vytvořte nebo otevřete požadavky.', true);
+    return;
+  }
+  if (!canManageRequirements()) {
+    toast('Vkládat požadavky z Excelu může jen správce.', true);
+    return;
+  }
+  if (!navigator.clipboard || !navigator.clipboard.readText) {
+    toast('Prohlížeč nepovolil čtení schránky', true);
+    return;
+  }
+
+  try {
+    const text = await navigator.clipboard.readText();
+    const rows = parseClipboardTable(text);
+    if (!rows.length) { toast('Schránka je prázdná', true); return; }
+
+    const calCols = getCalCols(state.month, state.year);
+    const settingsByName = new Map();
+    (state.allSpecialStaff || []).forEach(s => {
+      const key = normalizeStaffName(s.name);
+      if (key) settingsByName.set(key, s);
+    });
+    (state.allPortalUsers || []).forEach(s => {
+      const key = normalizeStaffName(s.name);
+      if (key) settingsByName.set(key, s);
+    });
+
+    const staffByName = new Map();
+    (state.staff || []).forEach((s, si) => {
+      const key = normalizeStaffName(s.name);
+      if (key) staffByName.set(key, si);
+    });
+
+    const maxCols = Math.max(...rows.map(r => r.length));
+    const firstColLooksLikeNames = rows.some(r => {
+      const first = normalizeStaffName(r[0]);
+      return first === 'jméno' || first === 'jmeno' || staffByName.has(first) || settingsByName.has(first) || String(r[0] || '').trim().length > 2;
+    });
+    const hasNameColumn = maxCols > calCols.length || firstColLooksLikeNames;
+    if (!hasNameColumn) {
+      toast('Do Požadavků zkopíruj z Excelu i první sloupec se jmény.', true);
+      return;
+    }
+
+    const changes = [];
+    const newlyUnmatched = new Map();
+    const invalidValues = [];
+
+    rows.forEach(row => {
+      const name = String(row[0] || '').trim();
+      const nameKey = normalizeStaffName(name);
+      if (!name || nameKey === 'jméno' || nameKey === 'jmeno') return;
+
+      let si = staffByName.get(nameKey);
+      if (si === undefined) {
+        const matched = settingsByName.get(nameKey);
+        const staffEntry = matched
+          ? { ...makeScheduleStaffFromSettings(matched), name: name || matched.name || '', unmatchedXls: false }
+          : {
+              name,
+              type: '',
+              login: '',
+              contract: '',
+              maxHrs: '',
+              noteM: '',
+              noteP: '',
+              x: '',
+              xa: '',
+              dates: '',
+              regular: '',
+              hotel: '',
+              monthlyOverrides: {},
+              unmatchedXls: true
+            };
+        state.staff.push(staffEntry);
+        si = state.staff.length - 1;
+        staffByName.set(nameKey, si);
+        if (!matched) newlyUnmatched.set(nameKey, { name, schedule: {} });
+      }
+
+      row.slice(1, 1 + calCols.length).forEach((rawVal, ci) => {
+        if (ci >= calCols.length) return;
+        const val = String(rawVal || '').trim();
+        const normalized = normalizeScheduleCellValue(val);
+        if (normalized === null) {
+          invalidValues.push(`${name}: ${val}`);
+          return;
+        }
+        changes.push({ si, ci, val: normalized });
+        const unmatched = newlyUnmatched.get(nameKey);
+        if (unmatched && normalized) unmatched.schedule[ci] = normalized;
+      });
+    });
+
+    if (invalidValues.length) {
+      alert(`Některé hodnoty nejsou povolené:\n\n${invalidValues.slice(0, 12).join('\n')}${invalidValues.length > 12 ? `\n... a další (${invalidValues.length - 12})` : ''}`);
+      return;
+    }
+    if (!changes.length) {
+      toast('Nenašel jsem žádné směny k vložení do Požadavků.', true);
+      return;
+    }
+
+    const affectedRows = new Set(changes.map(ch => ch.si)).size;
+    const affectedCols = new Set(changes.map(ch => ch.ci)).size;
+    if (!confirm(`Vložit data z Excelu do Požadavků?\n\nŘádky: ${affectedRows}\nSloupce směn: ${affectedCols}\nPrázdné buňky z Excelu smažou hodnotu v požadavcích.`)) return;
+
+    const stamp = new Date().toISOString();
+    const userName = _user?.name || _user?.username || '';
+    state.reqMeta = state.reqMeta || {};
+    changes.forEach(({ si, ci, val }) => {
+      const key = `${si}_${ci}`;
+      if (val) {
+        state.schedule[key] = val;
+        state.reqMeta[key] = {
+          value: val,
+          userId: _user?.id || null,
+          username: _user?.username || '',
+          userName,
+          timestamp: stamp
+        };
+      } else {
+        delete state.schedule[key];
+        delete state.reqMeta[key];
+      }
+    });
+    if (newlyUnmatched.size) {
+      const mergedUnmatched = new Map((state.unmatchedXls || []).map(u => [normalizeStaffName(u.name), u]));
+      newlyUnmatched.forEach((u, key) => mergedUnmatched.set(key, u));
+      state.unmatchedXls = [...mergedUnmatched.values()].filter(u => !settingsByName.has(normalizeStaffName(u.name)));
+    }
+    sortStaffAlpha();
+    reqEditMode = false;
+    reqEditSnapshot = null;
+    renderScheduleTable('pozadavky-tbl', false);
+    updateDuplicateClasses();
+    updateCoverageRows();
+    updateRequirementClasses();
+    buildHotelFilterButtons();
+    applyRowFilters();
+    const saved = await saveCurrentRequirementData({ silent: false, confirmDuplicates: true });
+    if (saved) toast(`Požadavky vloženy z Excelu (${affectedRows} řádků)`);
+  } catch(e) {
+    console.warn('pasteRequirementsFromExcel:', e);
+    toast('Vložení požadavků z Excelu selhalo', true);
+  }
 }
 
 function normalizeStaffName(name) {
@@ -9618,6 +9796,7 @@ async function pasteScheduleFromExcel() {
       state.unmatchedXls = [...mergedUnmatched.values()].filter(u => !settingsByName.has(normalizeStaffName(u.name)));
       updateImportUnmatchedButton();
     }
+    ensureActiveSpecialStaffInCurrentSchedule();
     renderScheduleTable('tvorba-tbl', true);
     renderScheduleTable('rozpis-tbl', false);
     updateDuplicateClasses();
@@ -11152,6 +11331,7 @@ function handleXlsImport(e) {
       state.staff = newStaff;
       state.schedule = newSchedule;
       state.unmatchedXls = finalUnmatched;
+      ensureActiveSpecialStaffInCurrentSchedule();
       activeScheduleSource = 'draft';
       updateImportUnmatchedButton();
       renderStaffTable();
@@ -11697,6 +11877,7 @@ document.addEventListener('DOMContentLoaded', async () => {
   document.getElementById('btn-req-edit')?.addEventListener('click', toggleRequirementsEditWindow);
   document.getElementById('btn-req-cancel')?.addEventListener('click', cancelRequirementsEdit);
   document.getElementById('btn-req-toggle-edit')?.addEventListener('click', toggleRequirementsReceptionistEdit);
+  document.getElementById('btn-req-paste-excel')?.addEventListener('click', pasteRequirementsFromExcel);
   document.getElementById('btn-req-send-tvorba')?.addEventListener('click', sendRequirementsToTvorba);
   document.getElementById('btn-req-delete')?.addEventListener('click', archiveCurrentRequirement);
   document.getElementById('btn-req-archive')?.addEventListener('click', showRequirementsArchive);
