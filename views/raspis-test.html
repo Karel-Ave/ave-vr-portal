@@ -151,6 +151,11 @@ body.with-subtoolbar:has(#schedule-legend.show) { padding-bottom: 30px; }
   color: #fff;
   border-color: transparent;
 }
+#tb-act-tvorba #btn-draft-save {
+  background: var(--thead-bg);
+  color: #fff;
+  border-color: transparent;
+}
 [data-theme="dark"] #tb-act-tvorba .tb-btn,
 [data-theme="dark"] #tb-act-tvorba #sel-month-year {
   background: rgba(255,255,255,.04);
@@ -164,6 +169,11 @@ body.with-subtoolbar:has(#schedule-legend.show) { padding-bottom: 30px; }
   border-color: var(--accent);
 }
 [data-theme="dark"] #tb-act-tvorba .tb-btn.primary {
+  background: var(--accent,#C4A96A);
+  color: #1A1A18;
+  border-color: transparent;
+}
+[data-theme="dark"] #tb-act-tvorba #btn-draft-save {
   background: var(--accent,#C4A96A);
   color: #1A1A18;
   border-color: transparent;
@@ -370,6 +380,7 @@ table.staff-tbl {
 .staff-tbl .col-maxhrs { width: 70px; }
 .staff-tbl .col-regular { width: 36px; min-width: 36px; max-width: 36px; text-align: center; }
 .staff-tbl .col-dates { width: 36px; min-width: 36px; max-width: 36px; text-align: center; }
+#staff-tbl:not(.settings-monthly-mode) .col-monthly-only { display: none; }
 .staff-tbl .col-note { min-width: 110px; }
 .staff-tbl .col-note textarea {
   width: 100%; min-height: unset; height: 18px; border: none; background: transparent;
@@ -377,6 +388,18 @@ table.staff-tbl {
   resize: none; overflow: hidden; line-height: 1.4; display: block;
 }
 .staff-tbl .col-note textarea:focus { outline: 1px solid var(--accent); border-radius: 3px; resize: vertical; }
+.staff-tbl .monthly-only-disabled {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 22px;
+  width: 100%;
+  color: var(--text-muted);
+  font-size: 11px;
+  line-height: 1.2;
+  text-align: center;
+  font-style: italic;
+}
 .staff-tbl .col-save { width: 90px; text-align: center; }
 .staff-section-sep td { padding: 0; }
 
@@ -2196,6 +2219,9 @@ tbody tr.row-filtered { display: none; }
 .perm-hidden {
   display: none !important;
 }
+#btn-draft-save {
+  display: inline-flex !important;
+}
 </style>
 </head>
 <body>
@@ -2223,7 +2249,8 @@ tbody tr.row-filtered { display: none; }
     <select id="rt-draft-sel" class="tb-btn" style="display:none;padding:4px 6px;font-size:12px;"></select>
     <button class="tb-btn" id="btn-draft-save" style="display:none">Uložit</button>
     <button class="tb-btn" id="btn-draft-new" style="display:none">Nový</button>
-    <select id="sel-month-year" class="tb-btn" style="padding:4px 6px;font-size:12px;"></select>
+    <button class="tb-btn" id="btn-change-month" type="button">Změnit měsíc</button>
+    <select id="sel-month-year" class="tb-btn" style="display:none;padding:4px 6px;font-size:12px;"></select>
     <button class="tb-btn" id="btn-fonds" title="Fondy a svátky">F+S</button>
     <button class="tb-btn" id="btn-template-dl" style="display:none">Šablona</button>
     <button class="tb-btn" id="btn-import-xls" style="display:none">⬆ Nahrát rozpis</button>
@@ -2326,8 +2353,8 @@ tbody tr.row-filtered { display: none; }
             <th class="col-contract">Smlouva</th>
             <th class="col-maxhrs">Max.hod</th>
             <th class="col-regular" title="Stálé volno">x</th>
-            <th class="col-dates" title="Nemůže aktuálně">xA</th>
-            <th class="col-note">Pozn. aktuální</th>
+            <th class="col-dates col-monthly-only" title="Nemůže aktuálně">xA</th>
+            <th class="col-note col-monthly-only">Pozn. aktuální</th>
             <th class="col-note">Pozn. trvalá</th>
             <th class="col-save">Akce</th>
           </tr>
@@ -2444,6 +2471,42 @@ tbody tr.row-filtered { display: none; }
     <div class="modal-footer">
       <button class="tb-btn" id="req-create-cancel">Zrušit</button>
       <button class="tb-btn primary" id="req-create-submit">Vytvořit</button>
+    </div>
+  </div>
+</div>
+
+<div class="overlay" id="overlay-req-send">
+  <div class="modal" style="width:min(520px,100%)">
+    <div class="modal-header">
+      <h3>Odeslat do Tvorby</h3>
+      <button class="modal-close" id="req-send-close">×</button>
+    </div>
+    <div class="modal-body">
+      <p style="margin:0 0 12px;color:var(--text-muted);font-size:13px;">
+        Vyberte, co se má po odeslání automaticky rozepsat do konceptu Tvorby. Vyplňují se jen prázdné buňky.
+      </p>
+      <div class="req-create-grid">
+        <label class="field field-wide" style="display:flex;align-items:center;gap:10px;">
+          <input type="checkbox" id="req-send-auto-f" checked>
+          <span>zzz Essence – F do denních směn</span>
+        </label>
+        <label class="field field-wide" style="display:flex;align-items:center;gap:10px;">
+          <input type="checkbox" id="req-send-auto-w" checked>
+          <span>zzz Waldstein – W do denních i nočních směn</span>
+        </label>
+        <label class="field field-wide" style="display:flex;align-items:center;gap:10px;">
+          <input type="checkbox" id="req-send-auto-q" checked>
+          <span>Vedoucí – Q po týdnech podle návaznosti</span>
+        </label>
+        <label class="field field-wide" style="display:flex;align-items:center;gap:10px;">
+          <input type="checkbox" id="req-send-auto-d" checked>
+          <span>Akcent – D podle dlouhého/krátkého týdne</span>
+        </label>
+      </div>
+    </div>
+    <div class="modal-footer">
+      <button class="tb-btn" id="req-send-cancel">Zrušit</button>
+      <button class="tb-btn primary" id="req-send-submit">Odeslat</button>
     </div>
   </div>
 </div>
@@ -3207,9 +3270,15 @@ function showSchedTip(si, x, y) {
   else prefEl.style.display = 'none';
 
   const noteParts = [];
+  const rawTipDates = s.dates;
+  const rawTipNoteM = s.noteM;
+  s.dates = getEffectiveForSchedule(s, 'dates');
+  s.noteM = getEffectiveForSchedule(s, 'noteM');
   if (s.dates) noteParts.push(`Nemůže: ${s.dates}`);
   if (s.noteM) noteParts.push(s.noteM);
   if (s.noteP) noteParts.push(s.noteP);
+  s.dates = rawTipDates;
+  s.noteM = rawTipNoteM;
   const noteEl = document.getElementById('snt-notes');
   if (noteParts.length) { noteEl.textContent = noteParts.join('\n'); noteEl.style.display = ''; }
   else noteEl.style.display = 'none';
@@ -4519,6 +4588,14 @@ function isDateUnavailable(col, dates) {
   return parseUnavailableDates(dates).has(+col.day);
 }
 
+function staffTypeAllowsColumn(s, col) {
+  const type = String(s?.type || '').toLowerCase();
+  if (type.includes('den')) return col?.dn === 'd';
+  if (type.includes('no')) return col?.dn === 'n';
+  if (type.includes('oboj')) return true;
+  return false;
+}
+
 function regularToString(checks, sv, wk) {
   const DOW_NAMES_R = {1:'po',2:'út',3:'st',4:'čt',5:'pá',6:'so',0:'ne'};
   const parts = [];
@@ -4543,7 +4620,7 @@ function applyRegularAndReqClasses(td, si, ci, col, val) {
   const regular = getEffectiveForSchedule(s, 'regular');
   const dates = getEffectiveForSchedule(s, 'dates');
   const regOff = s && isRegularOff(col, state.month, state.year, regular, holidaysList);
-  const dateOff = s && isDateUnavailable(col, dates);
+  const dateOff = s && staffTypeAllowsColumn(s, col) && isDateUnavailable(col, dates);
   const unavailable = !!(regOff || dateOff);
   // Requirements
   const req = state.requirements && state.requirements[`${si}_${ci}`];
@@ -5316,6 +5393,8 @@ function renderCells(tableId, editable) {
 
 let focusedCell = null;
 let _navHandler  = null;   // stored so we can remove it before re-adding
+let _cellRefreshTimer = null;
+let _cellRefreshFrame = null;
 
 function getActiveScheduleTableId() {
   const activeTab = document.querySelector('.tb-tab.active')?.dataset.tab;
@@ -5386,68 +5465,76 @@ function focusCell(si, ci, tableId = null) {
   }
 }
 
+function canNavigateToCell(tbl, si, ci, calCols) {
+  const col = calCols[ci];
+  if (!tbl || !col) return false;
+  if (colShiftMode === 'day' && col.dn !== 'd') return false;
+  if (colShiftMode === 'night' && col.dn !== 'n') return false;
+  if (!canEditCellInTable(si, tbl.id)) return false;
+  return !!tbl.querySelector(`.sched-cell[data-si="${si}"][data-ci="${ci}"] input`);
+}
+
+function nextCellPosition(tbl, startSi, startCi, dir, calCols) {
+  const numCols = calCols.length;
+  const numRows = state.staff.length;
+  let si = startSi;
+  let ci = startCi;
+  for (let guard = 0; guard < numRows * numCols; guard++) {
+    ci += dir;
+    if (ci >= numCols) { ci = 0; si++; }
+    if (ci < 0) { ci = numCols - 1; si--; }
+    if (si < 0 || si >= numRows) return { si: startSi, ci: startCi };
+    if (canNavigateToCell(tbl, si, ci, calCols)) return { si, ci };
+  }
+  return { si: startSi, ci: startCi };
+}
+
+function nextRowPosition(tbl, startSi, startCi, dir, calCols) {
+  const numRows = state.staff.length;
+  for (let si = startSi + dir; si >= 0 && si < numRows; si += dir) {
+    if (canNavigateToCell(tbl, si, startCi, calCols)) return { si, ci: startCi };
+  }
+  return { si: startSi, ci: startCi };
+}
+
+function navigateFocusedCellByKey(key, tableId = null) {
+  if (!focusedCell) return false;
+  const tblId = tableId || focusedCell.tableId || getActiveScheduleTableId();
+  const tbl = document.getElementById(tblId);
+  if (!tbl || focusedCell.tableId !== tblId) return false;
+  const calCols = getCalCols(state.month, state.year);
+  const { si, ci } = focusedCell;
+  let next = null;
+  if (key === 'ArrowRight' || key === 'TabForward') next = nextCellPosition(tbl, si, ci, 1, calCols);
+  else if (key === 'ArrowLeft' || key === 'TabBack') next = nextCellPosition(tbl, si, ci, -1, calCols);
+  else if (key === 'ArrowDown' || key === 'Enter') next = nextRowPosition(tbl, si, ci, 1, calCols);
+  else if (key === 'ArrowUp') next = nextRowPosition(tbl, si, ci, -1, calCols);
+  if (!next) return false;
+  focusCell(next.si, next.ci, tblId);
+  return true;
+}
+
 function setupKeyboardNav(tbl) {
   // Remove any previously-registered handler on this table to prevent
   // duplicate listeners (which cause double-key and double-movement bugs).
-  if (_navHandler) {
-    tbl.removeEventListener('keydown', _navHandler, true);
-    _navHandler = null;
+  if (tbl._aveNavHandler) {
+    tbl.removeEventListener('keydown', tbl._aveNavHandler, true);
+    tbl._aveNavHandler = null;
   }
 
-  const calCols = getCalCols(state.month, state.year);
-  const numCols = calCols.length;
-  const numRows = state.staff.length;
-  const isVisibleCi = ci => {
-    const col = calCols[ci];
-    if (!col) return false;
-    if (colShiftMode === 'day') return col.dn === 'd';
-    if (colShiftMode === 'night') return col.dn === 'n';
-    return true;
-  };
-  const canLandOnCell = (si, ci) => {
-    if (!isVisibleCi(ci) || !canEditCellInTable(si, tbl.id)) return false;
-    return !!tbl.querySelector(`.sched-cell[data-si="${si}"][data-ci="${ci}"] input`);
-  };
-  const moveCell = (startSi, startCi, dir) => {
-    let si = startSi;
-    let ci = startCi;
-    for (let guard = 0; guard < numRows * numCols; guard++) {
-      ci += dir;
-      if (ci >= numCols) { ci = 0; si++; }
-      if (ci < 0) { ci = numCols - 1; si--; }
-      if (si < 0 || si >= numRows) return { si: startSi, ci: startCi };
-      if (canLandOnCell(si, ci)) return { si, ci };
-    }
-    return { si: startSi, ci: startCi };
-  };
-  const moveRow = (startSi, startCi, dir) => {
-    for (let si = startSi + dir; si >= 0 && si < numRows; si += dir) {
-      if (canLandOnCell(si, startCi)) return { si, ci: startCi };
-    }
-    return { si: startSi, ci: startCi };
-  };
-
-  _navHandler = e => {
+  const navHandler = e => {
     if (!focusedCell) return;
     const {si, ci} = focusedCell;
     let handled = false;
 
     if (e.key === 'ArrowRight' || (e.key === 'Tab' && !e.shiftKey)) {
-      handled = true;
-      const next = moveCell(si, ci, 1);
-      focusCell(next.si, next.ci, tbl.id);
+      handled = navigateFocusedCellByKey(e.key === 'Tab' ? 'TabForward' : e.key, tbl.id);
     } else if (e.key === 'ArrowLeft' || (e.key === 'Tab' && e.shiftKey)) {
-      handled = true;
-      const prev = moveCell(si, ci, -1);
-      focusCell(prev.si, prev.ci, tbl.id);
+      handled = navigateFocusedCellByKey(e.key === 'Tab' ? 'TabBack' : e.key, tbl.id);
     } else if (e.key === 'ArrowDown' || e.key === 'Enter') {
-      handled = true;
-      const next = moveRow(si, ci, 1);
-      focusCell(next.si, next.ci, tbl.id);
+      handled = navigateFocusedCellByKey(e.key, tbl.id);
     } else if (e.key === 'ArrowUp') {
-      handled = true;
-      const prev = moveRow(si, ci, -1);
-      focusCell(prev.si, prev.ci, tbl.id);
+      handled = navigateFocusedCellByKey(e.key, tbl.id);
     } else if (e.key === 'Delete' || e.key === 'Backspace') {
       handled = true;
       if (!deleteSelectedCells()) setCellValue(si, ci, '');
@@ -5476,7 +5563,9 @@ function setupKeyboardNav(tbl) {
     }
   };
 
-  tbl.addEventListener('keydown', _navHandler, true);
+  tbl._aveNavHandler = navHandler;
+  _navHandler = navHandler;
+  tbl.addEventListener('keydown', navHandler, true);
 }
 
 function captureScheduleScroll() {
@@ -5620,6 +5709,38 @@ function validateRequirementLimitsBeforeSave() {
   return '';
 }
 
+function runDeferredCellRefresh() {
+  _cellRefreshTimer = null;
+  _cellRefreshFrame = null;
+  updateDuplicateClasses();
+  updateCoverageRows();
+  updateRequirementClasses();
+  updatePManyCells();
+  updateShiftContextBorders();
+  updateCellSelection();
+  applyRowFilters();
+}
+
+function scheduleDeferredCellRefresh(delay = 70) {
+  if (_cellRefreshFrame) cancelAnimationFrame(_cellRefreshFrame);
+  clearTimeout(_cellRefreshTimer);
+  _cellRefreshTimer = setTimeout(() => {
+    _cellRefreshFrame = requestAnimationFrame(runDeferredCellRefresh);
+  }, delay);
+}
+
+function refreshCellVisuals(si, ci) {
+  const calCols = getCalCols(state.month, state.year);
+  const col = calCols[ci];
+  scheduleTableIds().forEach(tblId => {
+    const tbl = document.getElementById(tblId);
+    if (!tbl) return;
+    const td = tbl.querySelector(`.sched-cell[data-si="${si}"][data-ci="${ci}"]`);
+    if (!td || td.classList.contains('cov-cell')) return;
+    applyRegularAndReqClasses(td, si, ci, col, state.schedule[`${si}_${ci}`] || '');
+  });
+}
+
 function setCellValue(si, ci, val) {
   const activeTableId = getActiveScheduleTableId();
   if (!canEditCellInTable(si, activeTableId)) return false;
@@ -5667,15 +5788,9 @@ function setCellValue(si, ci, val) {
     }
   });
   updateSumRow(si);
-  updateDuplicateClasses();
-  updateCoverageRows();
-  updateRequirementClasses();
-  updatePManyCells();
-  updateShiftContextBorders();
-  updateCellSelection();
-  applyRowFilters();
+  refreshCellVisuals(si, ci);
+  scheduleDeferredCellRefresh();
   restoreScheduleScroll(scrollSnapshot);
-  requestAnimationFrame(() => restoreScheduleScroll(scrollSnapshot));
   if (activeTableId !== 'pozadavky-tbl') scheduleAutoSave();
   return true;
 }
@@ -5696,7 +5811,9 @@ function shouldRouteKeyToFocusedCell(e) {
   )) return false;
   const isTyping = e.key.length === 1 && !e.ctrlKey && !e.metaKey && !e.altKey;
   const isDelete = e.key === 'Delete' || e.key === 'Backspace';
-  return isTyping || isDelete;
+  const isNavigation = e.key === 'ArrowRight' || e.key === 'ArrowLeft' ||
+    e.key === 'ArrowDown' || e.key === 'ArrowUp' || e.key === 'Enter';
+  return isTyping || isDelete || isNavigation;
 }
 
 function routeKeyToFocusedCell(e) {
@@ -5704,7 +5821,14 @@ function routeKeyToFocusedCell(e) {
   const scrollSnapshot = captureScheduleScroll();
   e.preventDefault();
   e.stopPropagation();
-  if (e.key === 'Delete' || e.key === 'Backspace') {
+  if (e.key === 'ArrowRight' || e.key === 'ArrowLeft' ||
+      e.key === 'ArrowDown' || e.key === 'ArrowUp' || e.key === 'Enter') {
+    navigateFocusedCellByKey(e.key, tableId);
+    requestAnimationFrame(() => {
+      restoreScheduleScroll(scrollSnapshot);
+    });
+    return;
+  } else if (e.key === 'Delete' || e.key === 'Backspace') {
     if (!deleteSelectedCells()) setCellValue(si, ci, '');
   } else {
     setCellValue(si, ci, smartCase(e.key));
@@ -5919,6 +6043,7 @@ function renderStaffTable() {
   const tbodySpecial = document.getElementById('staff-tbody-special');
   tbody.innerHTML = '';
   tbodySpecial.innerHTML = '';
+  document.getElementById('staff-tbl')?.classList.toggle('settings-monthly-mode', nastaveniMode === 'monthly');
 
   // ── Recepční table — data z state.allPortalUsers (všichni portáloví pracovníci z API) ──
   // Pokud allPortalUsers ještě není naplněno (syncRaspisStaff ještě neproběhl),
@@ -6031,41 +6156,45 @@ function renderStaffTable() {
     regTd.appendChild(regBtn);
     tr.appendChild(regTd);
 
-    // Dates (nemůže aktuálně) — indicator button
-    const datesTd = document.createElement('td');
-    datesTd.className = 'col-dates';
-    const { val: datesVal, overridden: datesOvr } = getEffective(s, 'dates');
-    if (datesOvr) datesTd.classList.add('override-cell');
-    const datesBtn = document.createElement('button');
-    datesBtn.className = 'btn-ind-pick' + (datesVal ? ' btn-ind-active' : '');
-    datesBtn.title = 'Nemůže aktuálně';
-    datesBtn.textContent = datesVal ? '●' : '○';
-    datesBtn.addEventListener('click', e => {
-      e.stopPropagation();
-      const _uid = s.userId;
-      const _si = state.staff.findIndex(x => x.userId === _uid);
-      openDatesPicker(_si, datesBtn, s);
-    });
-    datesTd.appendChild(datesBtn);
-    tr.appendChild(datesTd);
+    if (nastaveniMode === 'monthly') {
+      // Dates (nemůže aktuálně) — indicator button
+      const datesTd = document.createElement('td');
+      datesTd.className = 'col-dates col-monthly-only';
+      const { val: datesVal, overridden: datesOvr } = getEffective(s, 'dates');
+      if (datesOvr) datesTd.classList.add('override-cell');
+      const datesBtn = document.createElement('button');
+      datesBtn.className = 'btn-ind-pick' + (datesVal ? ' btn-ind-active' : '');
+      datesBtn.title = 'Nemůže aktuálně';
+      datesBtn.textContent = datesVal ? '●' : '○';
+      datesBtn.addEventListener('click', e => {
+        e.stopPropagation();
+        const _uid = s.userId;
+        const _si = state.staff.findIndex(x => x.userId === _uid);
+        openDatesPicker(_si, datesBtn, s);
+      });
+      datesTd.appendChild(datesBtn);
+      tr.appendChild(datesTd);
 
-    // Note actual (noteM)
-    const noteMTd = document.createElement('td');
-    noteMTd.className = 'col-note';
-    const { val: noteMVal, overridden: noteMOvr } = getEffective(s, 'noteM');
-    if (noteMOvr) noteMTd.classList.add('override-cell');
-    const noteMArea = document.createElement('textarea');
-    noteMArea.rows = 1; noteMArea.value = noteMVal || '';
-    noteMArea.placeholder = '';
-    if (!noteMOvr && nastaveniMode === 'monthly') noteMArea.style.color = 'var(--text-muted)';
-    noteMArea.addEventListener('input', () => {
-      setFieldValue(s, 'noteM', noteMArea.value);
-      noteMArea.style.height = 'auto';
-      noteMArea.style.height = noteMArea.scrollHeight + 'px';
-      if (nastaveniMode === 'monthly') { const ov = getEffective(s, 'noteM'); noteMTd.classList.toggle('override-cell', ov.overridden); noteMArea.style.color = ov.overridden ? '' : 'var(--text-muted)'; }
-    });
-    noteMTd.appendChild(noteMArea);
-    tr.appendChild(noteMTd);
+      // Note actual (noteM)
+      const noteMTd = document.createElement('td');
+      noteMTd.className = 'col-note col-monthly-only';
+      const { val: noteMVal, overridden: noteMOvr } = getEffective(s, 'noteM');
+      if (noteMOvr) noteMTd.classList.add('override-cell');
+      const noteMArea = document.createElement('textarea');
+      noteMArea.rows = 1; noteMArea.value = noteMVal || '';
+      noteMArea.placeholder = '';
+      if (!noteMOvr) noteMArea.style.color = 'var(--text-muted)';
+      noteMArea.addEventListener('input', () => {
+        setFieldValue(s, 'noteM', noteMArea.value);
+        noteMArea.style.height = 'auto';
+        noteMArea.style.height = noteMArea.scrollHeight + 'px';
+        const ov = getEffective(s, 'noteM');
+        noteMTd.classList.toggle('override-cell', ov.overridden);
+        noteMArea.style.color = ov.overridden ? '' : 'var(--text-muted)';
+      });
+      noteMTd.appendChild(noteMArea);
+      tr.appendChild(noteMTd);
+    }
 
     // Note permanent (noteP)
     const notePTd = document.createElement('td');
@@ -6464,6 +6593,25 @@ let autoSaveTimer = null;
 let autoSaveIndClearTimer = null;
 let draftListCache = []; // cache seznamu draftů (pro init a findAndLoadMonthDraft)
 let activeScheduleSource = 'draft';
+let tvorbaDraftSnapshot = null;
+
+function captureTvorbaDraftSnapshot() {
+  try {
+    tvorbaDraftSnapshot = JSON.parse(JSON.stringify(buildSaveData()));
+  } catch(e) {
+    console.warn('captureTvorbaDraftSnapshot:', e);
+  }
+}
+
+function restoreTvorbaDraftSnapshot() {
+  if (!tvorbaDraftSnapshot) return false;
+  applyData(JSON.parse(JSON.stringify(tvorbaDraftSnapshot)));
+  activeScheduleSource = 'draft';
+  renderScheduleTable('tvorba-tbl', true);
+  buildHotelFilterButtons();
+  refreshCoverageSticky();
+  return true;
+}
 
 function setAutosaveInd(msg) {
   const el = document.getElementById('autosave-ind');
@@ -6481,6 +6629,10 @@ function scheduleAutoSave() {
   if (document.body.dataset.activeTab === 'tvorba') activeScheduleSource = 'draft';
   dirtyFlag = true;
   clearTimeout(autoSaveTimer);
+  if (document.body.dataset.activeTab === 'tvorba') {
+    setAutosaveInd('Neuloženo');
+    return;
+  }
   setAutosaveInd('Čekám…');
   autoSaveTimer = setTimeout(() => saveDraft(true), 4000);
 }
@@ -6941,6 +7093,10 @@ function populateMonthYearSelect() {
  *  pak najde nebo vytvoří draft pro nový měsíc a překreslí. */
 async function switchMonth(newMonth, newYear) {
   const newKey = `${newYear}-${newMonth}`;
+  if (dirtyFlag && activeScheduleSource === 'draft') {
+    const shouldSave = confirm('Tvorba obsahuje neuložené změny. Uložit je před přepnutím měsíce?');
+    if (shouldSave) await saveDraft(true);
+  }
 
   // 1. Uložit aktuální měsíc do monthlyData
   const currentKey = `${state.year}-${state.month}`;
@@ -6954,8 +7110,6 @@ async function switchMonth(newMonth, newYear) {
   };
 
   // 2. Auto-save aktuálního draftu na server (tiše)
-  await saveDraft(true);
-
   // 3. Přepnout state na nový měsíc
   state.month = newMonth;
   state.year  = newYear;
@@ -6972,7 +7126,8 @@ async function switchMonth(newMonth, newYear) {
     state.fondHpp = ''; state.fondZpp = ''; state.holidays = '';
   currentDraftId = null; // vytvoří se nový draft při příštím uložení
   activeScheduleSource = 'draft';
-  scheduleAutoSave();
+  dirtyFlag = false;
+  setAutosaveInd('');
     toast(`Nový draft: ${MONTH_NAMES[newMonth - 1]} ${newYear}`);
   }
 
@@ -7248,6 +7403,11 @@ async function publishSchedule() {
       body: JSON.stringify({month: state.month, year: state.year, data})
     });
     if (!r.ok) throw new Error(r.status);
+    const response = await r.json().catch(() => ({}));
+    const key = response.key || `RT:${String(state.month).padStart(2, '0')}/${state.year}`;
+    publishedScheduleCache.set(key, JSON.parse(JSON.stringify(data)));
+    currentPubKey = key;
+    activeScheduleSource = 'published';
     toast('Rozpis publikován');
     loadScheduleList();
     saveDraft(true);
@@ -7262,6 +7422,7 @@ async function publishSchedule() {
 
 let currentPubKey = null;
 let rozpisHasLoadedTable = false;
+const publishedScheduleCache = new Map();
 
 function currentPublishedScheduleKey() {
   const today = getPragueToday();
@@ -7354,6 +7515,26 @@ async function loadSchedule(key) {
   if (!key) return;
   const spinner = document.getElementById('rozpis-spinner');
   const publicSpinner = document.getElementById('public-spinner');
+  const cached = publishedScheduleCache.get(key);
+  if (cached) {
+    applyData(JSON.parse(JSON.stringify(cached)));
+    activeScheduleSource = 'published';
+    renderScheduleTable('rozpis-tbl', false);
+    renderScheduleTable('public-rozpis-tbl', false);
+    autoScrollActivePublishedDay(true);
+    scheduleDeferredCellRefresh(0);
+    buildHotelFilterButtons();
+    rozpisHasLoadedTable = true;
+    showRozpisEmpty(false);
+    showPublicEmpty(false);
+    currentPubKey = key;
+    const sel = document.getElementById('pub-sel');
+    const publicSel = document.getElementById('pub-sel-public');
+    if (sel) sel.value = key;
+    if (publicSel) publicSel.value = key;
+    applyPublicDefaultHotel();
+    return;
+  }
   spinner.style.display = '';
   if (publicSpinner) publicSpinner.style.display = '';
   document.getElementById('rozpis-tbl').style.display = 'none';
@@ -7373,6 +7554,7 @@ async function loadSchedule(key) {
       scheduleData = response.data || response;
     }
     if (!scheduleData) throw new Error('Prázdná data');
+    publishedScheduleCache.set(key, JSON.parse(JSON.stringify(scheduleData)));
     applyData(scheduleData);
     activeScheduleSource = 'published';
     spinner.style.display = 'none';
@@ -7762,7 +7944,9 @@ async function setRequirementsStatus(status) {
   }
 }
 
-async function sendRequirementsToTvorba() {
+let pendingReqSendLabel = '';
+
+async function openRequirementsSendModal() {
   if (!currentReqKey) return toast('Nejdřív vytvořte požadavky', true);
   if (currentReqEntry?.status === 'open') {
     toast('Nejdřív ukončete editaci recepčním', true);
@@ -7773,18 +7957,37 @@ async function sendRequirementsToTvorba() {
     if (saved === false) return;
     reqEditMode = false;
   }
-  const label = currentReqEntry?.label || currentReqKey;
+  pendingReqSendLabel = currentReqEntry?.label || currentReqKey;
+  document.getElementById('overlay-req-send')?.classList.add('show');
+}
+
+function closeRequirementsSendModal() {
+  document.getElementById('overlay-req-send')?.classList.remove('show');
+}
+
+async function sendRequirementsToTvorba() {
+  if (!currentReqKey) return toast('Nejdřív vytvořte požadavky', true);
+  const label = pendingReqSendLabel || currentReqEntry?.label || currentReqKey;
   if (!confirm(`Odeslat požadavky ${label} do Tvorby? Aktuální koncept Tvorby pro tento měsíc se tím přepíše a požadavky se přesunou do archivu.`)) return;
+  const autoFill = {
+    essence: !!document.getElementById('req-send-auto-f')?.checked,
+    waldstein: !!document.getElementById('req-send-auto-w')?.checked,
+    q: !!document.getElementById('req-send-auto-q')?.checked,
+    akcent: !!document.getElementById('req-send-auto-d')?.checked
+  };
   try {
     const r = await fetch('/api/rt/requirements/send-to-tvorba', {
       method: 'POST',
       credentials: 'include',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ key: currentReqKey })
+      body: JSON.stringify({ key: currentReqKey, autoFill })
     });
     const d = await r.json();
     if (!d.ok) return toast(d.msg || 'Požadavky se nepodařilo odeslat do Tvorby', true);
-    toast('Požadavky odeslány do Tvorby');
+    closeRequirementsSendModal();
+    const af = d.autoFill || {};
+    const afText = Object.entries(af).filter(([,v]) => Number(v) > 0).map(([k,v]) => `${k}: ${v}`).join(', ');
+    toast(afText ? `Požadavky odeslány do Tvorby (${afText})` : 'Požadavky odeslány do Tvorby');
     currentReqKey = null;
     currentReqEntry = null;
     requirementsLoadedKey = null;
@@ -10626,7 +10829,17 @@ function getMonthKey() {
     : `${state.year}-${state.month}`;
 }
 
+function isMonthlyOnlySettingField(field) {
+  return field === 'dates' || field === 'noteM';
+}
+
 function getEffective(s, field) {
+  if (isMonthlyOnlySettingField(field)) {
+    const key = nastaveniMode === 'monthly' ? getMonthKey() : `${state.year}-${state.month}`;
+    const ov = s.monthlyOverrides?.[key];
+    if (ov && ov[field] !== undefined) return { val: ov[field], overridden: true };
+    return { val: '', overridden: false };
+  }
   if (nastaveniMode === 'monthly') {
     const ov = s.monthlyOverrides?.[getMonthKey()];
     if (ov && ov[field] !== undefined) return { val: ov[field], overridden: true };
@@ -10639,6 +10852,7 @@ function getEffectiveForSchedule(s, field) {
   const key = `${state.year}-${state.month}`;
   const ov = s.monthlyOverrides?.[key];
   if (ov && ov[field] !== undefined) return ov[field];
+  if (isMonthlyOnlySettingField(field)) return '';
   return s[field] || '';
 }
 
@@ -10818,7 +11032,7 @@ function setOverridesAsDefault() {
   });
   if (!hasAny) { toast(`Žádné přepisy pro ${mName}`, false); return; }
   if (!confirm(`Přepisy pro ${mName} se zkopírují do výchozích hodnot a přepisy se smažou.\n\nPokračovat?`)) return;
-  const FIELDS = ['maxHrs','noteM','noteP','x','xa','dates','regular','hotel'];
+  const FIELDS = ['maxHrs','noteP','x','xa','regular','hotel'];
   workers.forEach(s => {
     const ov = s.monthlyOverrides?.[key];
     if (!ov) return;
@@ -11093,13 +11307,15 @@ async function saveViewEdits(options = {}) {
   const auto = !!options.auto;
   if (!auto && !confirm('Uložit změny do publikovaného rozpisu?')) return;
   try {
+    const savedData = buildSaveData();
     const r = await fetch('/api/rt/schedules/save-edits', {
       method: 'POST', credentials: 'include',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ key: currentPubKey, data: buildSaveData() })
+      body: JSON.stringify({ key: currentPubKey, data: savedData })
     });
     const d = await r.json();
     if (d.ok) {
+      publishedScheduleCache.set(currentPubKey, JSON.parse(JSON.stringify(savedData)));
       viewEditMode = false; viewEditSnapshot = null;
       stopViewEditIdleWatch();
       renderScheduleTable('rozpis-tbl', false);
@@ -11412,6 +11628,10 @@ function switchTab(name) {
   closeMobileKeypad();
   if (name === 'tvorba' && isMobileLike()) name = mobileTabFallback();
   if (isMobileLike()) mobileControlsOpen = false;
+  const previousTab = document.body.dataset.activeTab;
+  if (previousTab === 'tvorba' && activeScheduleSource === 'draft') {
+    captureTvorbaDraftSnapshot();
+  }
   // Persist active tab so F5 stays on same tab
   try { sessionStorage.setItem('rt-active-tab', name); } catch(e) {}
   document.body.dataset.activeTab = name;
@@ -11447,7 +11667,7 @@ function switchTab(name) {
 
   if (name === 'tvorba') {
     if (activeScheduleSource !== 'draft') {
-      restoreTvorbaDraftAfterRequirements();
+      if (!restoreTvorbaDraftSnapshot()) restoreTvorbaDraftAfterRequirements();
       return;
     }
     const tbl = document.getElementById('tvorba-tbl');
@@ -11471,7 +11691,12 @@ function switchTab(name) {
     pollLock();
     scheduleLockPoll();
     if (activeScheduleSource !== 'published') {
-      loadScheduleList();
+      const realKey = currentPublishedScheduleKey();
+      const cachedKey = publishedScheduleCache.has(realKey)
+        ? realKey
+        : (currentPubKey && publishedScheduleCache.has(currentPubKey) ? currentPubKey : null);
+      if (cachedKey) loadSchedule(cachedKey);
+      else loadScheduleList();
       return;
     }
     {
@@ -11482,17 +11707,18 @@ function switchTab(name) {
       }
     }
     if (!window._initRendering) {
-      // Re-render the Rozpis VR table so name-cell inline TYPE_COLORS backgrounds
-      // always reflect the latest color profile (they can't be updated via CSS
-      // variables alone because they're set as inline style.background on render).
-      renderScheduleTable('rozpis-tbl', false);
       refreshCoverageSticky();
       autoScrollActivePublishedDay(true);
     }
   } else if (name === 'public') {
     if (sumsMode !== 'all') setSumsMode('all');
     if (activeScheduleSource !== 'published') {
-      loadScheduleList();
+      const realKey = currentPublishedScheduleKey();
+      const cachedKey = publishedScheduleCache.has(realKey)
+        ? realKey
+        : (currentPubKey && publishedScheduleCache.has(currentPubKey) ? currentPubKey : null);
+      if (cachedKey) loadSchedule(cachedKey);
+      else loadScheduleList();
       return;
     }
     {
@@ -11504,7 +11730,6 @@ function switchTab(name) {
     }
     applyPublicDefaultHotel();
     if (!window._initRendering) {
-      renderScheduleTable('public-rozpis-tbl', false);
       refreshCoverageSticky();
       applyPublicDefaultHotel();
       autoScrollActivePublishedDay(true);
@@ -11514,10 +11739,10 @@ function switchTab(name) {
     if (!window._initRendering) {
       if (!currentReqKey || requirementsLoadedKey !== currentReqKey) {
         loadRequirementsList(currentReqKey, true);
-      } else {
+      } else if (!document.getElementById('pozadavky-tbl')?.innerHTML) {
         renderScheduleTable('pozadavky-tbl', reqEditMode);
-        applyRowFilters();
       }
+      applyRowFilters();
       refreshCoverageSticky();
     }
   } else if (name === 'nastaveni') {
@@ -11583,14 +11808,10 @@ document.addEventListener('DOMContentLoaded', async () => {
   // Render staff table (empty)
   renderStaffTable();
 
-  // Load draft list a načti draft aktuálního reálného měsíce (ne nejnovějšího)
+  // Load draft list a načti nejnovější koncept (typicky poslední měsíc odeslaný z Požadavků do Tvorby)
   await loadDraftList();
   {
-    const now = new Date();
-    const realM = now.getMonth() + 1, realY = now.getFullYear();
-    // Preferuj draft pro aktuální měsíc; fallback na první v seznamu
-    const preferred = draftListCache.find(d => d.month === realM && d.year === realY)
-                   || draftListCache[0];
+    const preferred = draftListCache[0];
     if (preferred) {
       const id = preferred.id || preferred._id;
       document.getElementById('rt-draft-sel').value = id;
@@ -11854,6 +12075,12 @@ document.addEventListener('DOMContentLoaded', async () => {
   document.getElementById('btn-template-dl').addEventListener('click', downloadTemplate);
   document.getElementById('btn-import-xls').addEventListener('click', importXls);
   document.getElementById('btn-paste-excel').addEventListener('click', pasteScheduleFromExcel);
+  document.getElementById('btn-change-month')?.addEventListener('click', () => {
+    const sel = document.getElementById('sel-month-year');
+    if (!sel) return;
+    sel.style.display = sel.style.display === 'none' ? '' : 'none';
+    if (sel.style.display !== 'none') sel.focus();
+  });
   document.getElementById('xls-file-input').addEventListener('change', handleXlsImport);
   document.getElementById('btn-import-unmatched').addEventListener('click', showImportUnmatchedOverlay);
 
@@ -11878,7 +12105,13 @@ document.addEventListener('DOMContentLoaded', async () => {
   document.getElementById('btn-req-cancel')?.addEventListener('click', cancelRequirementsEdit);
   document.getElementById('btn-req-toggle-edit')?.addEventListener('click', toggleRequirementsReceptionistEdit);
   document.getElementById('btn-req-paste-excel')?.addEventListener('click', pasteRequirementsFromExcel);
-  document.getElementById('btn-req-send-tvorba')?.addEventListener('click', sendRequirementsToTvorba);
+  document.getElementById('btn-req-send-tvorba')?.addEventListener('click', openRequirementsSendModal);
+  document.getElementById('req-send-submit')?.addEventListener('click', sendRequirementsToTvorba);
+  document.getElementById('req-send-close')?.addEventListener('click', closeRequirementsSendModal);
+  document.getElementById('req-send-cancel')?.addEventListener('click', closeRequirementsSendModal);
+  document.getElementById('overlay-req-send')?.addEventListener('click', e => {
+    if (e.target === document.getElementById('overlay-req-send') && !shouldKeepPopupOpenForSelection()) closeRequirementsSendModal();
+  });
   document.getElementById('btn-req-delete')?.addEventListener('click', archiveCurrentRequirement);
   document.getElementById('btn-req-archive')?.addEventListener('click', showRequirementsArchive);
   document.getElementById('req-archive-close')?.addEventListener('click', closeRequirementsArchive);
@@ -12048,6 +12281,25 @@ document.addEventListener('DOMContentLoaded', async () => {
     e.stopPropagation();
     pasteScheduleTextIntoTvorba(text, startSi, startCi);
   }, true);
+
+  window.addEventListener('beforeunload', e => {
+    if (dirtyFlag && activeScheduleSource === 'draft') {
+      e.preventDefault();
+      e.returnValue = '';
+    }
+  });
+
+  window.aveHasUnsavedTvorbaDraft = () => !!(dirtyFlag && activeScheduleSource === 'draft');
+  window.aveSaveTvorbaDraft = async () => {
+    if (!window.aveHasUnsavedTvorbaDraft()) return true;
+    await saveDraft(true);
+    return !dirtyFlag;
+  };
+  window.aveDiscardTvorbaChanges = () => {
+    clearTimeout(autoSaveTimer);
+    dirtyFlag = false;
+    setAutosaveInd('');
+  };
 
   // ── Regular picker ──
   document.getElementById('rp-apply').addEventListener('click', applyRegularPicker);

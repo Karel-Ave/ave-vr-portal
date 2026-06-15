@@ -1469,6 +1469,47 @@
     menu.setAttribute('aria-hidden', 'true');
   }
 
+  async function handlePortalLogoutClick(e) {
+    const href = e.currentTarget?.getAttribute('href') || '/logout';
+    const frame = document.getElementById('app-frame');
+    let appWin = null;
+    try { appWin = frame?.contentWindow || null; } catch(err) { appWin = null; }
+    let hasUnsaved = false;
+    try {
+      hasUnsaved = !!(appWin && typeof appWin.aveHasUnsavedTvorbaDraft === 'function' && appWin.aveHasUnsavedTvorbaDraft());
+    } catch(err) {
+      hasUnsaved = false;
+    }
+    if (!hasUnsaved) return;
+
+    e.preventDefault();
+    const shouldSave = confirm('Tvorba obsahuje neuložené změny. Uložit je před odhlášením?');
+    if (shouldSave) {
+      let saved = false;
+      try {
+        saved = !!(appWin && typeof appWin.aveSaveTvorbaDraft === 'function' && await appWin.aveSaveTvorbaDraft());
+      } catch(err) {
+        saved = false;
+      }
+      if (!saved) {
+        alert('Změny se nepodařilo uložit. Zůstáváte přihlášeni.');
+        return;
+      }
+      window.location.href = href;
+      return;
+    }
+
+    if (!confirm('Odhlásit bez uložení změn v Tvorbě?')) return;
+    try {
+      if (appWin && typeof appWin.aveDiscardTvorbaChanges === 'function') appWin.aveDiscardTvorbaChanges();
+    } catch(err) {}
+    window.location.href = href;
+  }
+
+  document.querySelectorAll('a[href="/logout"]').forEach(link => {
+    link.addEventListener('click', handlePortalLogoutClick);
+  });
+
   // Zavřít menu kliknutím mimo
   document.addEventListener('click', function(e) {
     const menu = document.getElementById('mobile-menu');

@@ -3463,7 +3463,7 @@ app.get('/api/rt/drafts', requireLogin, async (req, res) => {
     const db = getPool();
     // month = 0 je rezervováno pro special-staff (přežívající záznamy) — nezobrazovat v seznamu konceptů
     const { rows } = await db.query(
-      'SELECT id, month, year, saved_at FROM rt_drafts WHERE user_id = $1 AND month > 0 ORDER BY year DESC, month DESC',
+      'SELECT id, month, year, saved_at FROM rt_drafts WHERE user_id = $1 AND month > 0 ORDER BY saved_at DESC, id DESC',
       [req.session.user.id]
     );
     res.json(rows.map(r => ({
@@ -4000,6 +4000,193 @@ function getReqCalCols(month, year) {
   return cols;
 }
 
+const RT_AUTO_Q_ORDER = ['z Dvořák Karel', 'z Pětivlas Matěj', 'z Schubert Adam'];
+const RT_AUTO_D_DAY = ['Hoppeová Klára', 'Pavelka Filip'];
+const RT_AUTO_D_NIGHT = ['Burda Tomáš', 'Nechvátal Jaroslav'];
+const RT_AUTO_BLOCK_LONG = new Set([1, 2, 5, 6, 0]);
+const RT_AUTO_SKIP_VALUES = new Set(['X', 'Y', 'Z', 'Ž']);
+
+function rtCellIndexForDayShift(day, dn) {
+  return ((Math.max(1, parseInt(day, 10)) - 1) * 2) + (dn === 'n' ? 1 : 0);
+}
+
+function rtDateForMonthDay(month, year, day) {
+  return new Date(year, month - 1, day, 12, 0, 0, 0);
+}
+
+function rtStartOfWeekMonday(date) {
+  const d = new Date(date.getFullYear(), date.getMonth(), date.getDate(), 12, 0, 0, 0);
+  const dow = d.getDay();
+  const diff = (dow + 6) % 7;
+  d.setDate(d.getDate() - diff);
+  return d;
+}
+
+function rtWeekDiff(fromDate, toDate) {
+  const a = rtStartOfWeekMonday(fromDate).getTime();
+  const b = rtStartOfWeekMonday(toDate).getTime();
+  return Math.round((b - a) / (7 * 24 * 60 * 60 * 1000));
+}
+
+function rtFindStaffIndexByName(staff, name) {
+  const wanted = rtNormalizeStaffName(name);
+  return (Array.isArray(staff) ? staff : []).findIndex(s => rtNormalizeStaffName(s && s.name) === wanted);
+}
+
+function rtScheduleValue(data, si, ci) {
+  return String((data && data.schedule && data.schedule[`${si}_${ci}`]) || '').trim();
+}
+
+function rtCanAutoFillCell(data, si, ci) {
+  const val = rtScheduleValue(data, si, ci);
+  if (!val) return true;
+  return false;
+}
+
+function rtFillIfEmpty(data, si, ci, value) {
+  if (si < 0 || ci < 0) return false;
+  data.schedule = data.schedule && typeof data.schedule === 'object' ? data.schedule : {};
+  if (!rtCanAutoFillCell(data, si, ci)) return false;
+  data.schedule[`${si}_${ci}`] = value;
+  return true;
+}
+
+function rtFindLastValueInPreviousSchedule(prevData, candidateNames, value, dnFilter = null) {
+  if (!prevData || !Array.isArray(prevData.staff)) return null;
+  const month = parseInt(prevData.month, 10);
+  const year = parseInt(prevData.year, 10);
+  if (!month || !year) return null;
+  const days = new Date(year, month, 0).getDate();
+  const candidates = candidateNames
+    .map((name, orderIndex) => ({ name, orderIndex, si: rtFindStaffIndexByName(prevData.staff, name) }))
+    .filter(item => item.si >= 0);
+  for (let day = days; day >= 1; day--) {
+    const dns = dnFilter ? [dnFilter] : ['n', 'd'];
+    for (const dn of dns) {
+      const ci = rtCellIndexForDayShift(day, dn);
+      for (const item of candidates) {
+        if (rtScheduleValue(prevData, item.si, ci).toUpperCase() === value) {
+          return {
+            ...item,
+            day,
+            dn,
+            date: rtDateForMonthDay(month, year, day),
+            dow: rtDateForMonthDay(month, year, day).getDay()
+          };
+        }
+      }
+    }
+  }
+  return null;
+}
+
+function rtAutoFillFixedRows(data, options) {
+  const staff = Array.isArray(data.staff) ? data.staff : [];
+  const month = parseInt(data.month, 10);
+  const year = parseInt(data.year, 10);
+  if (!month || !year) return { essence: 0, waldstein: 0 };
+  const days = new Date(year, month, 0).getDate();
+  const result = { essence: 0, waldstein: 0 };
+  if (options.essence) {
+    const si = rtFindStaffIndexByName(staff, 'zzz Essence');
+    for (let day = 1; si >= 0 && day <= days; day++) {
+      if (rtFillIfEmpty(data, si, rtCellIndexForDayShift(day, 'd'), 'F')) result.essence += 1;
+    }
+  }
+  if (options.waldstein) {
+    const si = rtFindStaffIndexByName(staff, 'zzz Waldstein');
+    for (let day = 1; si >= 0 && day <= days; day++) {
+      if (rtFillIfEmpty(data, si, rtCellIndexForDayShift(day, 'd'), 'W')) result.waldstein += 1;
+      if (rtFillIfEmpty(data, si, rtCellIndexForDayShift(day, 'n'), 'W')) result.waldstein += 1;
+    }
+  }
+  return result;
+}
+
+function rtAutoFillQ(data, prevData, enabled) {
+  if (!enabled) return 0;
+  const staff = Array.isArray(data.staff) ? data.staff : [];
+  const month = parseInt(data.month, 10);
+  const year = parseInt(data.year, 10);
+  if (!month || !year) return 0;
+  const last = rtFindLastValueInPreviousSchedule(prevData, RT_AUTO_Q_ORDER, 'Q');
+  let baseDate = last && last.date;
+  let baseIndex = last ? last.orderIndex : 0;
+  if (!baseDate) {
+    baseDate = rtDateForMonthDay(month, year, 1);
+    baseIndex = 0;
+  }
+  const indexes = RT_AUTO_Q_ORDER.map(name => rtFindStaffIndexByName(staff, name));
+  const days = new Date(year, month, 0).getDate();
+  let count = 0;
+  for (let day = 1; day <= days; day++) {
+    const date = rtDateForMonthDay(month, year, day);
+    const weekOffset = rtWeekDiff(baseDate, date);
+    const personIdx = ((baseIndex + weekOffset) % RT_AUTO_Q_ORDER.length + RT_AUTO_Q_ORDER.length) % RT_AUTO_Q_ORDER.length;
+    const si = indexes[personIdx];
+    if (si < 0) continue;
+    if (rtFillIfEmpty(data, si, rtCellIndexForDayShift(day, 'd'), 'Q')) count += 1;
+    if (rtFillIfEmpty(data, si, rtCellIndexForDayShift(day, 'n'), 'Q')) count += 1;
+  }
+  return count;
+}
+
+function rtInferAkcentBase(prevData, names, dn) {
+  const last = rtFindLastValueInPreviousSchedule(prevData, names, 'D', dn);
+  if (!last) return { date: null, longOrderIndex: 0 };
+  const wasLongDay = RT_AUTO_BLOCK_LONG.has(last.dow);
+  const longOrderIndex = wasLongDay ? last.orderIndex : (last.orderIndex === 0 ? 1 : 0);
+  return { date: last.date, longOrderIndex };
+}
+
+function rtAutoFillAkcentPair(data, prevData, names, dn) {
+  const staff = Array.isArray(data.staff) ? data.staff : [];
+  const month = parseInt(data.month, 10);
+  const year = parseInt(data.year, 10);
+  if (!month || !year) return 0;
+  const base = rtInferAkcentBase(prevData, names, dn);
+  const baseDate = base.date || rtDateForMonthDay(month, year, 1);
+  const indexes = names.map(name => rtFindStaffIndexByName(staff, name));
+  const days = new Date(year, month, 0).getDate();
+  let count = 0;
+  for (let day = 1; day <= days; day++) {
+    const date = rtDateForMonthDay(month, year, day);
+    const weekOffset = rtWeekDiff(baseDate, date);
+    const longIndex = ((base.longOrderIndex + weekOffset) % 2 + 2) % 2;
+    const dow = date.getDay();
+    const targetOrder = RT_AUTO_BLOCK_LONG.has(dow) ? longIndex : (longIndex === 0 ? 1 : 0);
+    const si = indexes[targetOrder];
+    const ci = rtCellIndexForDayShift(day, dn);
+    if (si < 0) continue;
+    const current = rtScheduleValue(data, si, ci).toUpperCase();
+    if (RT_AUTO_SKIP_VALUES.has(current) || current) continue;
+    if (rtFillIfEmpty(data, si, ci, 'D')) count += 1;
+  }
+  return count;
+}
+
+function rtAutoFillAkcent(data, prevData, enabled) {
+  if (!enabled) return 0;
+  return rtAutoFillAkcentPair(data, prevData, RT_AUTO_D_DAY, 'd')
+    + rtAutoFillAkcentPair(data, prevData, RT_AUTO_D_NIGHT, 'n');
+}
+
+function rtAutoFillMonthlySchedule(data, prevData, rawOptions = {}) {
+  const options = {
+    essence: rawOptions.essence !== false,
+    waldstein: rawOptions.waldstein !== false,
+    q: rawOptions.q !== false,
+    akcent: rawOptions.akcent !== false
+  };
+  const fixed = rtAutoFillFixedRows(data, options);
+  return {
+    essence: fixed.essence,
+    waldstein: fixed.waldstein,
+    q: rtAutoFillQ(data, prevData, options.q),
+    akcent: rtAutoFillAkcent(data, prevData, options.akcent)
+  };
+}
+
 function normalizeReqXyLocks(raw) {
   const locks = raw && typeof raw === 'object' ? raw : {};
   const cells = Array.isArray(locks.cells) ? locks.cells : [];
@@ -4446,10 +4633,23 @@ app.post('/api/rt/requirements/send-to-tvorba', requireLogin, requirePermDefault
     try { data = typeof entry.data === 'string' ? JSON.parse(entry.data) : (entry.data || {}); } catch(e) { data = {}; }
     const month = parseInt(entry.month, 10);
     const year = parseInt(entry.year, 10);
+    const prev = previousMonth(month, year);
+    const prevKey = rtMonthKey(prev.month, prev.year);
+    let prevData = null;
+    try {
+      const prevRows = await db.query('SELECT data FROM rt_schedules WHERE key = $1', [prevKey]);
+      if (prevRows.rows.length) {
+        const rawPrev = prevRows.rows[0].data;
+        prevData = typeof rawPrev === 'string' ? JSON.parse(rawPrev) : (rawPrev || null);
+      }
+    } catch(e) {
+      prevData = null;
+    }
     data.month = data.month || month;
     data.year = data.year || year;
     data = await augmentRtDataWithActiveReceptionists(data, db);
     data = await augmentRtDataWithSpecialStaff(data, req.session.user.id, db);
+    const autoFillSummary = rtAutoFillMonthlySchedule(data, prevData, req.body.autoFill || {});
     const mKey = `${year}-${month}`;
     const draftData = JSON.parse(JSON.stringify(data || {}));
     draftData.month = month;
@@ -4493,9 +4693,9 @@ app.post('/api/rt/requirements/send-to-tvorba', requireLogin, requirePermDefault
     await db.query(
       `INSERT INTO rt_requirements_log (req_key, user_id, user_name, action, details)
        VALUES ($1,$2,$3,'send_to_tvorba',$4)`,
-      [key, req.session.user.id, req.session.user.name, JSON.stringify({ draftId: rows[0].id, month, year })]
+      [key, req.session.user.id, req.session.user.name, JSON.stringify({ draftId: rows[0].id, month, year, autoFill: autoFillSummary })]
     );
-    res.json({ ok: true, draftId: rows[0].id, month, year });
+    res.json({ ok: true, draftId: rows[0].id, month, year, autoFill: autoFillSummary });
   } catch (err) {
     console.error('POST /api/rt/requirements/send-to-tvorba:', err);
     res.json({ ok: false, msg: 'Chyba serveru.' });
