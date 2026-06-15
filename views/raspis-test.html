@@ -135,6 +135,7 @@ body.with-subtoolbar:has(#schedule-legend.show) { padding-bottom: 30px; }
 #tb-act-tvorba {
   max-width: none;
 }
+#btn-fonds { display: none !important; }
 #tb-act-tvorba .tb-btn,
 #tb-act-tvorba #sel-month-year {
   background: var(--surface);
@@ -155,6 +156,14 @@ body.with-subtoolbar:has(#schedule-legend.show) { padding-bottom: 30px; }
   background: var(--thead-bg);
   color: #fff;
   border-color: transparent;
+}
+.tvorba-month-label {
+  min-width: 112px;
+  padding: 5px 2px;
+  color: var(--accent-h);
+  font-size: 13px;
+  font-weight: 800;
+  white-space: nowrap;
 }
 [data-theme="dark"] #tb-act-tvorba .tb-btn,
 [data-theme="dark"] #tb-act-tvorba #sel-month-year {
@@ -177,6 +186,9 @@ body.with-subtoolbar:has(#schedule-legend.show) { padding-bottom: 30px; }
   background: var(--accent,#C4A96A);
   color: #1A1A18;
   border-color: transparent;
+}
+[data-theme="dark"] .tvorba-month-label {
+  color: var(--accent);
 }
 
 #tb-right-actions {
@@ -276,6 +288,27 @@ body[data-active-tab="pozadavky"] #tb-right-actions { display: none; }
   gap: 10px;
 }
 .req-create-grid .field-wide { grid-column: 1 / -1; }
+.req-send-options {
+  display: grid;
+  gap: 8px;
+  margin-top: 10px;
+}
+.req-send-option {
+  display: flex;
+  align-items: center;
+  gap: 9px;
+  min-height: 28px;
+  font-size: 12px;
+  line-height: 1.25;
+  color: var(--text);
+}
+.req-send-option input {
+  width: 15px;
+  height: 15px;
+  flex: 0 0 auto;
+  accent-color: var(--accent);
+}
+.req-send-option span { display: block; }
 .req-create-grid textarea {
   min-height: 68px;
   resize: vertical;
@@ -892,10 +925,21 @@ table.sched-tbl {
 .cov-2          { background: var(--col-cov2-bg,#ffe082)  !important; color: var(--col-cov2-tx,#7a5000) !important; font-weight: 700; }
 .cov-3plus      { background: var(--col-cov3-bg,#ff8a65)  !important; color: var(--col-cov3-tx,#5d1a00) !important; font-weight: 700; }
 .cov-dayonly-night { background: var(--col-covdn-bg,#e8e8e8) !important; color: var(--col-covdn-tx,#999) !important; }
-/* Row hover highlight (schedule cells + sum cells up to Σhod, not name or note) */
+/* Row/column hover highlight */
+.staff-tbody tr:hover td.col-name-td {
+  filter: none;
+  box-shadow: inset 4px 0 0 var(--accent), inset 0 0 0 9999px color-mix(in srgb, var(--accent) 24%, transparent);
+}
 .staff-tbody tr:hover td.sched-cell { filter: brightness(0.88); }
 .staff-tbody tr:hover td.sched-cell.focused { filter: none; }
 .staff-tbody tr:hover td.sum-cell { filter: brightness(0.88); }
+.sched-tbl th.col-hover,
+.sched-tbl td.col-hover {
+  box-shadow: inset 0 0 0 9999px color-mix(in srgb, var(--accent) 28%, transparent);
+}
+.sched-tbl td.sched-cell.col-hover.focused {
+  box-shadow: inset 0 0 0 2px var(--focus-border), inset 0 0 0 9999px color-mix(in srgb, var(--accent) 22%, transparent);
+}
 /* Hidden row */
 tbody tr.row-hidden { display: none !important; }
 
@@ -1056,6 +1100,7 @@ tbody tr.row-hidden { display: none !important; }
   display: flex;
   align-items: center;
   justify-content: center;
+  gap: 7px;
 }
 #stb-center-nav {
   top: 50%;
@@ -2250,6 +2295,7 @@ tbody tr.row-filtered { display: none; }
     <button class="tb-btn" id="btn-draft-save" style="display:none">Uložit</button>
     <button class="tb-btn" id="btn-draft-new" style="display:none">Nový</button>
     <button class="tb-btn" id="btn-change-month" type="button">Změnit měsíc</button>
+    <span class="tvorba-month-label" id="tvorba-month-label"></span>
     <select id="sel-month-year" class="tb-btn" style="display:none;padding:4px 6px;font-size:12px;"></select>
     <button class="tb-btn" id="btn-fonds" title="Fondy a svátky">F+S</button>
     <button class="tb-btn" id="btn-template-dl" style="display:none">Šablona</button>
@@ -2485,20 +2531,20 @@ tbody tr.row-filtered { display: none; }
       <p style="margin:0 0 12px;color:var(--text-muted);font-size:13px;">
         Vyberte, co se má po odeslání automaticky rozepsat do konceptu Tvorby. Vyplňují se jen prázdné buňky.
       </p>
-      <div class="req-create-grid">
-        <label class="field field-wide" style="display:flex;align-items:center;gap:10px;">
+      <div class="req-send-options">
+        <label class="req-send-option">
           <input type="checkbox" id="req-send-auto-f" checked>
           <span>zzz Essence – F do denních směn</span>
         </label>
-        <label class="field field-wide" style="display:flex;align-items:center;gap:10px;">
+        <label class="req-send-option">
           <input type="checkbox" id="req-send-auto-w" checked>
           <span>zzz Waldstein – W do denních i nočních směn</span>
         </label>
-        <label class="field field-wide" style="display:flex;align-items:center;gap:10px;">
+        <label class="req-send-option">
           <input type="checkbox" id="req-send-auto-q" checked>
           <span>Vedoucí – Q po týdnech podle návaznosti</span>
         </label>
-        <label class="field field-wide" style="display:flex;align-items:center;gap:10px;">
+        <label class="req-send-option">
           <input type="checkbox" id="req-send-auto-d" checked>
           <span>Akcent – D podle dlouhého/krátkého týdne</span>
         </label>
@@ -5288,6 +5334,8 @@ function renderScheduleTable(tableId, editable) {
   updateShiftContextBorders();
   updateCellSelection();
   fineTuneScheduleFit(tbl);
+  updateDnCoverageColors();
+  setupScheduleColumnHover(tbl);
   bindMobileAxisScroll();
   maybeAutoScrollCurrentDay(tableId);
 
@@ -5306,6 +5354,26 @@ function renderScheduleTable(tableId, editable) {
    Upper bound = maxHrs if set, otherwise fond + 12.
    hrsColorOverride[si] = true → always '' (user forced black).
 ────────────────────────────────────────────────────────────────────── */
+function setupScheduleColumnHover(tbl) {
+  if (!tbl || tbl._aveColumnHoverBound) return;
+  tbl._aveColumnHoverBound = true;
+  let activeCi = null;
+  const clear = () => {
+    tbl.querySelectorAll('.col-hover').forEach(el => el.classList.remove('col-hover'));
+    activeCi = null;
+  };
+  tbl.addEventListener('mouseleave', clear);
+  tbl.addEventListener('mouseover', e => {
+    const cell = e.target.closest('[data-ci]');
+    if (!cell || !tbl.contains(cell)) { clear(); return; }
+    const ci = cell.dataset.ci;
+    if (ci === activeCi) return;
+    clear();
+    activeCi = ci;
+    tbl.querySelectorAll(`[data-ci="${ci}"]`).forEach(el => el.classList.add('col-hover'));
+  });
+}
+
 function getHrsClass(si, hrs) {
   if (state.hrsColorOverride && state.hrsColorOverride[si]) return '';
   const s = state.staff[si];
@@ -6473,6 +6541,7 @@ function applyData(data) {
   const savedYear  = data.year  || state.year;
   state.month = savedMonth;
   state.year  = savedYear;
+  updateModeMonthLabel();
   const savedKey = `${savedYear}-${savedMonth}`;
 
   // Zpětná kompatibilita: starý draft bez monthlyData
@@ -7370,13 +7439,23 @@ async function showTrash() {
       li.innerHTML = `
         <span class="trash-name">${label}</span>
         <span class="trash-date">${dateStr}</span>
-        <button class="btn btn-sm btn-secondary" data-id="${id}">Obnovit</button>
+        <button class="btn btn-sm btn-secondary" data-action="restore" data-id="${id}">Obnovit</button>
+        <button class="btn btn-sm btn-secondary" data-action="delete" data-id="${id}">Trvale smazat</button>
       `;
-      li.querySelector('button').addEventListener('click', async () => {
+      li.querySelector('[data-action="restore"]').addEventListener('click', async () => {
         await fetch(`/api/rt/drafts/restore/${id}`, {method:'POST', credentials:'include'});
         overlay.classList.remove('show');
         loadDraftList();
         toast('Koncept obnoven');
+      });
+      li.querySelector('[data-action="delete"]').addEventListener('click', async () => {
+        if (!confirm('Trvale smazat tento koncept ze serveru? Tato akce je nevratná.')) return;
+        const res = await fetch(`/api/rt/drafts/trash/${id}`, {method:'DELETE', credentials:'include'});
+        const data = await res.json().catch(() => ({}));
+        if (!res.ok || !data.ok) return toast(data.msg || 'Smazání se nepodařilo', true);
+        li.remove();
+        if (!list.children.length) empty.style.display = '';
+        toast('Koncept trvale smazán');
       });
       list.appendChild(li);
     });
@@ -7400,7 +7479,7 @@ async function publishSchedule() {
     const r = await fetch('/api/rt/schedules/publish', {
       method: 'POST', credentials: 'include',
       headers: {'Content-Type':'application/json'},
-      body: JSON.stringify({month: state.month, year: state.year, data})
+      body: JSON.stringify({month: state.month, year: state.year, data, draftId: currentDraftId})
     });
     if (!r.ok) throw new Error(r.status);
     const response = await r.json().catch(() => ({}));
@@ -7409,8 +7488,11 @@ async function publishSchedule() {
     currentPubKey = key;
     activeScheduleSource = 'published';
     toast('Rozpis publikován');
+    currentDraftId = null;
+    dirtyFlag = false;
+    clearTimeout(autoSaveTimer);
     loadScheduleList();
-    saveDraft(true);
+    loadDraftList();
   } catch(e) {
     toast('Chyba publikování', true);
   }
@@ -8220,7 +8302,7 @@ function toggleRequirementsEditWindow() {
       return;
     }
     let confirmedLocalDuplicates = false;
-    const duplicates = getRequirementsDuplicateSummary();
+    const duplicates = canManageRequirements() ? [] : getRequirementsDuplicateSummary();
     if (duplicates.length) {
       const shown = duplicates.slice(0, 12).join('\n');
       const more = duplicates.length > 12 ? `\n... a další (${duplicates.length - 12})` : '';
@@ -8638,7 +8720,7 @@ function moveToolbarElementHome(id) {
 }
 
 function relocateScheduleEditButtons() {
-  ['btn-view-edit', 'btn-req-edit', 'lock-info'].forEach(rememberToolbarElementHome);
+  ['btn-view-edit', 'btn-view-cancel', 'btn-req-edit', 'lock-info'].forEach(rememberToolbarElementHome);
   ensureScheduleCenterSlot();
   const slot = document.getElementById('stb-center-edit-slot');
   const active = document.body.dataset.activeTab;
@@ -8646,10 +8728,12 @@ function relocateScheduleEditButtons() {
   const targetId = desktop && active === 'rozpis' ? 'btn-view-edit'
     : desktop && active === 'pozadavky' ? 'btn-req-edit'
     : null;
-  ['btn-view-edit', 'btn-req-edit', 'lock-info'].forEach(id => {
+  ['btn-view-edit', 'btn-view-cancel', 'btn-req-edit', 'lock-info'].forEach(id => {
     const btn = document.getElementById(id);
     if (!btn) return;
-    if ((id === targetId || (id === 'lock-info' && desktop && active === 'rozpis')) && slot) slot.appendChild(btn);
+    if ((id === targetId
+      || (id === 'btn-view-cancel' && desktop && active === 'rozpis' && viewEditMode && lockOwned)
+      || (id === 'lock-info' && desktop && active === 'rozpis')) && slot) slot.appendChild(btn);
     else moveToolbarElementHome(id);
   });
 }
@@ -8937,6 +9021,9 @@ function updateDnCoverageColors() {
     hotelsToCheck = Array.from(filterHotels);
   } else {
     hotelsToCheck = getHotelsForMonth(state.month, state.year).filter(h => h.hours > 0).map(h => h.letter);
+    const hasStandby = getHotelsForMonth(state.month, state.year).some(h => h.letter === 'P')
+      || (state.staff || []).some(s => normalizeStaffName(s?.name).includes('pohotovost') || normalizeStaffName(s?.type).includes('pohotovost'));
+    if (hasStandby && !hotelsToCheck.includes('P')) hotelsToCheck.push('P');
   }
   scheduleTableIds().forEach(tblId => {
     const tbl = document.getElementById(tblId);
@@ -8954,8 +9041,10 @@ function updateDnCoverageColors() {
       for (const letter of hotelsToCheck) {
         const hd = getHotelByLetter(letter);
         if (hd && hd.dayOnly && col.dn === 'n') continue;
-        const hasCover = state.staff.some((_, si) => state.schedule[`${si}_${ci}`] === letter);
-        if (!hasCover) { uncovered = true; break; }
+        const coverCount = state.staff.reduce((sum, _, si) => {
+          return sum + (String(state.schedule[`${si}_${ci}`] || '').trim().toUpperCase() === letter ? 1 : 0);
+        }, 0);
+        if (coverCount !== 1) { uncovered = true; break; }
       }
       th.classList.toggle('dn-uncovered', uncovered);
     });
@@ -10996,6 +11085,12 @@ function updateModeMonthLabel() {
   const mSel = document.getElementById('override-month-sel');
   const ySel = document.getElementById('override-year-inp');
   if (mSel && nastaveniMode !== 'monthly') { /* nechej jak je */ }
+  const tvorbaMonthLabel = document.getElementById('tvorba-month-label');
+  if (tvorbaMonthLabel) {
+    const m = Number(state.month) || 1;
+    const y = Number(state.year) || new Date().getFullYear();
+    tvorbaMonthLabel.textContent = `${MONTH_NAMES[m - 1] || ''} ${y}`.trim();
+  }
 }
 
 function clearMonthOverrides() {

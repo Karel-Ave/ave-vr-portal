@@ -3538,10 +3538,23 @@ app.post('/api/rt/drafts/restore/:id', requireLogin, requirePermDefault('raspis'
     const r = rows[0];
     await db.query(
       `INSERT INTO rt_drafts (user_id, month, year, data, saved_at)
-       VALUES ($1,$2,$3,$4,NOW()) ON CONFLICT (user_id, month, year) DO UPDATE SET data=$3, saved_at=NOW()`,
+       VALUES ($1,$2,$3,$4,NOW()) ON CONFLICT (user_id, month, year) DO UPDATE SET data=$4, saved_at=NOW()`,
       [r.user_id, r.month, r.year, r.data]
     );
     await db.query('DELETE FROM rt_drafts_trash WHERE id = $1', [id]);
+    res.json({ ok: true });
+  } catch (err) { console.error(err); res.json({ ok: false }); }
+});
+
+app.delete('/api/rt/drafts/trash/:id', requireLogin, requirePermDefault('raspis', 'trash', false), async (req, res) => {
+  const id = parseInt(req.params.id, 10);
+  try {
+    const db = getPool();
+    const isAdmin = req.session.user.role === 'admin';
+    const result = isAdmin
+      ? await db.query('DELETE FROM rt_drafts_trash WHERE id = $1', [id])
+      : await db.query('DELETE FROM rt_drafts_trash WHERE id = $1 AND user_id = $2', [id, req.session.user.id]);
+    if (!result.rowCount) return res.json({ ok: false, msg: 'Nenalezeno.' });
     res.json({ ok: true });
   } catch (err) { console.error(err); res.json({ ok: false }); }
 });
@@ -3615,7 +3628,7 @@ app.get('/api/rt/schedules/:key', requireLogin, async (req, res) => {
 });
 
 app.post('/api/rt/schedules/publish', requireLogin, requirePermDefault('raspis', 'publish', false), async (req, res) => {
-  let { month, year, data } = req.body;
+  let { month, year, data, draftId } = req.body;
   if (!month || !year || !data) return res.json({ ok: false, msg: 'Chybí data.' });
   const key   = `RT:${String(month).padStart(2,'0')}/${year}`;
   const label = `${['','Leden','Únor','Březen','Duben','Květen','Červen','Červenec','Srpen','Září','Říjen','Listopad','Prosinec'][month]} ${year}`;
@@ -3629,6 +3642,21 @@ app.post('/api/rt/schedules/publish', requireLogin, requirePermDefault('raspis',
        ON CONFLICT (key) DO UPDATE SET data=$5, published_at=NOW(), published_by=$6`,
       [key, month, year, label, JSON.stringify(data), req.session.user.name]
     );
+    const parsedDraftId = parseInt(draftId, 10);
+    if (parsedDraftId) {
+      const draftRows = await db.query(
+        'SELECT * FROM rt_drafts WHERE id = $1 AND user_id = $2 AND month = $3 AND year = $4',
+        [parsedDraftId, req.session.user.id, month, year]
+      );
+      if (draftRows.rows.length) {
+        const draft = draftRows.rows[0];
+        await db.query(
+          'INSERT INTO rt_drafts_trash (user_id, original_id, month, year, data) VALUES ($1,$2,$3,$4,$5)',
+          [draft.user_id, draft.id, draft.month, draft.year, draft.data]
+        );
+        await db.query('DELETE FROM rt_drafts WHERE id = $1', [parsedDraftId]);
+      }
+    }
     res.json({ ok: true, key });
   } catch (err) { console.error(err); res.json({ ok: false, msg: 'Chyba serveru.' }); }
 });
@@ -4033,6 +4061,29 @@ function rtFindStaffIndexByName(staff, name) {
   return (Array.isArray(staff) ? staff : []).findIndex(s => rtNormalizeStaffName(s && s.name) === wanted);
 }
 
+function rtFindStaffIndexByAnyName(staff, names) {
+  const list = Array.isArray(staff) ? staff : [];
+  for (const name of names) {
+    const idx = rtFindStaffIndexByName(list, name);
+    if (idx >= 0) return idx;
+  }
+  const wanted = names.map(rtNormalizeStaffName).filter(Boolean);
+  return list.findIndex(s => {
+    const key = rtNormalizeStaffName(s && s.name);
+    return key && wanted.some(w => key === w || key.includes(w) || w.includes(key));
+  });
+}
+
+function rtFindSpecialRowIndex(staff, typeOrName) {
+  const wanted = rtNormalizeStaffName(typeOrName);
+  const list = Array.isArray(staff) ? staff : [];
+  return list.findIndex(s => {
+    const name = rtNormalizeStaffName(s && s.name);
+    const type = rtNormalizeStaffName(s && s.type);
+    return (name && name.includes(wanted)) || (type && type.includes(wanted));
+  });
+}
+
 function rtScheduleValue(data, si, ci) {
   return String((data && data.schedule && data.schedule[`${si}_${ci}`]) || '').trim();
 }
@@ -4058,7 +4109,7 @@ function rtFindLastValueInPreviousSchedule(prevData, candidateNames, value, dnFi
   if (!month || !year) return null;
   const days = new Date(year, month, 0).getDate();
   const candidates = candidateNames
-    .map((name, orderIndex) => ({ name, orderIndex, si: rtFindStaffIndexByName(prevData.staff, name) }))
+    .map((name, orderIndex) => ({ name, orderIndex, si: rtFindStaffIndexByAnyName(prevData.staff, [name]) }))
     .filter(item => item.si >= 0);
   for (let day = days; day >= 1; day--) {
     const dns = dnFilter ? [dnFilter] : ['n', 'd'];
@@ -4088,13 +4139,13 @@ function rtAutoFillFixedRows(data, options) {
   const days = new Date(year, month, 0).getDate();
   const result = { essence: 0, waldstein: 0 };
   if (options.essence) {
-    const si = rtFindStaffIndexByName(staff, 'zzz Essence');
+    const si = rtFindSpecialRowIndex(staff, 'Essence');
     for (let day = 1; si >= 0 && day <= days; day++) {
       if (rtFillIfEmpty(data, si, rtCellIndexForDayShift(day, 'd'), 'F')) result.essence += 1;
     }
   }
   if (options.waldstein) {
-    const si = rtFindStaffIndexByName(staff, 'zzz Waldstein');
+    const si = rtFindSpecialRowIndex(staff, 'Waldstein');
     for (let day = 1; si >= 0 && day <= days; day++) {
       if (rtFillIfEmpty(data, si, rtCellIndexForDayShift(day, 'd'), 'W')) result.waldstein += 1;
       if (rtFillIfEmpty(data, si, rtCellIndexForDayShift(day, 'n'), 'W')) result.waldstein += 1;
@@ -4116,7 +4167,7 @@ function rtAutoFillQ(data, prevData, enabled) {
     baseDate = rtDateForMonthDay(month, year, 1);
     baseIndex = 0;
   }
-  const indexes = RT_AUTO_Q_ORDER.map(name => rtFindStaffIndexByName(staff, name));
+  const indexes = RT_AUTO_Q_ORDER.map(name => rtFindStaffIndexByAnyName(staff, [name]));
   const days = new Date(year, month, 0).getDate();
   let count = 0;
   for (let day = 1; day <= days; day++) {
@@ -4146,7 +4197,7 @@ function rtAutoFillAkcentPair(data, prevData, names, dn) {
   if (!month || !year) return 0;
   const base = rtInferAkcentBase(prevData, names, dn);
   const baseDate = base.date || rtDateForMonthDay(month, year, 1);
-  const indexes = names.map(name => rtFindStaffIndexByName(staff, name));
+  const indexes = names.map(name => rtFindStaffIndexByAnyName(staff, [name]));
   const days = new Date(year, month, 0).getDate();
   let count = 0;
   for (let day = 1; day <= days; day++) {
