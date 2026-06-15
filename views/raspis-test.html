@@ -2402,7 +2402,7 @@ tbody tr.row-filtered { display: none; }
             <th class="col-dates col-monthly-only" title="Nemůže aktuálně">xA</th>
             <th class="col-note col-monthly-only">Pozn. aktuální</th>
             <th class="col-note">Pozn. trvalá</th>
-            <th class="col-save">Akce</th>
+            <th class="col-save">Tvorba</th>
           </tr>
         </thead>
         <tbody id="staff-tbody"></tbody>
@@ -2598,8 +2598,8 @@ tbody tr.row-filtered { display: none; }
       <button class="stb-btn" id="stb-mark-sel">Označ vybrané</button>
       <button class="stb-btn" id="stb-show-selected" style="display:none">Zobraz vybrané</button>
       <div class="stb-sep"></div>
-      <button class="stb-btn" id="stb-cols-day" title="Zobrazí jen denní sloupce d">Jen d</button>
-      <button class="stb-btn" id="stb-cols-night" title="Zobrazí jen noční sloupce n">Jen n</button>
+      <button class="stb-btn" id="stb-cols-day" title="Zobrazí jen denní sloupce d">Dny</button>
+      <button class="stb-btn" id="stb-cols-night" title="Zobrazí jen noční sloupce n">Noci</button>
       <button class="stb-btn" id="btn-show-hidden" style="display:none">👁 Skrytí</button>
       <button class="stb-btn" id="stb-copy-mode" style="display:none" title="Přepne do režimu výběru buněk — táhni myší pro výběr, Ctrl+C zkopíruje, Ctrl+V vloží">📋 Kopírovat</button>
     </div>
@@ -6087,7 +6087,7 @@ function addSettingsStaffToSchedule(s, quiet = false) {
 function appendAddToScheduleButton(td, s) {
   if (staffExistsInCurrentSchedule(s)) {
     const span = document.createElement('span');
-    span.textContent = 'v Tvorbě';
+    span.textContent = 'V rozpisu';
     span.style.cssText = 'font-size:11px;color:var(--text-muted);';
     td.appendChild(span);
     return;

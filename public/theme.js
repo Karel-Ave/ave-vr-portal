@@ -28,6 +28,7 @@
   ];
   var SKIN_IDS = SKINS.map(function (s) { return s.id; });
   var lastThemeToggle = 0;
+  var lastThemeEventAt = 0;
   var lastLocalThemeChange = 0;
 
   function normalizeSkin(skin) {
@@ -89,17 +90,21 @@
   }
 
   function toggleThemeNow() {
-    if (Date.now() - lastThemeToggle < 800) return false;
+    if (Date.now() - lastThemeToggle < 250) return false;
     lastThemeToggle = Date.now();
     setThemeMode(!isDark(), true);
     return false;
   }
 
   function toggleFromEvent(e) {
+    var now = Date.now();
     if (e) {
       e.preventDefault();
       e.stopPropagation();
+      if (e.stopImmediatePropagation) e.stopImmediatePropagation();
+      if (now - lastThemeEventAt < 650) return false;
     }
+    lastThemeEventAt = now;
     return toggleThemeNow();
   }
 
@@ -126,8 +131,8 @@
       function toggleThemeButton(e) {
         return toggleFromEvent(e);
       }
-      btn.addEventListener('touchend', toggleThemeButton, { passive: false });
-      btn.addEventListener('pointerup', toggleThemeButton, { passive: false });
+      btn.addEventListener('pointerdown', toggleThemeButton, { passive: false });
+      btn.addEventListener('touchstart', toggleThemeButton, { passive: false });
       btn.addEventListener('click', toggleThemeButton, { passive: false });
     }
 
@@ -170,14 +175,6 @@
   else setup();
 
   window.toggleAveTheme = toggleFromEvent;
-
-  ['pointerdown', 'touchend', 'click'].forEach(function(type) {
-    document.addEventListener(type, function(e) {
-      var target = e.target && e.target.closest ? e.target : (e.target && e.target.parentElement);
-      var btn = target && target.closest ? target.closest('#btn-theme') : null;
-      if (btn) toggleFromEvent(e);
-    }, { capture: true, passive: false });
-  });
 
   function setInvertedFavicon() {
     var img = new Image();
