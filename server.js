@@ -17,6 +17,10 @@ function sessionMaxAgeFromMinutes(minutes) {
   return safe * 60 * 1000;
 }
 
+function isHotelWidgetRole(role) {
+  return role === 'hotely' || role === 'widget';
+}
+
 // ── Middleware ────────────────────────────────────────────────────────────────
 
 app.use(express.json({ limit: '20mb' }));
@@ -54,10 +58,10 @@ const requireLoginWidget = (req, res, next) =>
 const requireAdmin = (req, res, next) =>
   req.session.user?.role === 'admin' ? next() : res.redirect('/portal');
 
-// Portál: widget-only uživatelé sem nesmí
+// Portál: hotelové widget účty sem nesmí
 const requirePortalAccess = (req, res, next) => {
   if (!req.session.user) return res.redirect('/');
-  if (req.session.user.role === 'widget') return res.redirect('/widget');
+  if (isHotelWidgetRole(req.session.user.role)) return res.redirect('/widget');
   return next();
 };
 
@@ -216,7 +220,7 @@ function requirePerm(appKey, btnKey) {
 
 app.get('/', (req, res) => {
   if (!req.session.user) return res.sendFile(path.join(__dirname, 'views', 'login.html'));
-  if (req.session.user.role === 'widget') return res.redirect('/widget');
+  if (isHotelWidgetRole(req.session.user.role)) return res.redirect('/widget');
   return res.redirect('/portal');
 });
 
@@ -297,9 +301,9 @@ app.post('/login', async (req, res) => {
     };
     req.session.cookie.maxAge = sessionMaxAgeFromMinutes(req.session.user.auto_logout_minutes);
     logEvent(user.id, user.username, 'login', { role: user.role });
-    // Widget-only uživatelé vždy na widget; ostatní dle ?next nebo na portál
+    // Hotelové widget účty vždy na widget; ostatní dle ?next nebo na portál
     const next = req.body.next || '';
-    const target = (user.role === 'widget' || next === '/widget') ? '/widget' : '/portal';
+    const target = (isHotelWidgetRole(user.role) || next === '/widget') ? '/widget' : '/portal';
     req.session.save(err => {
       if (err) {
         console.error('Chyba ulozeni session:', err);
@@ -626,7 +630,7 @@ app.get('/api/my-permissions', requireLogin, async (req, res) => {
       result[appKey] = { enabled, visible, buttons };
     }
     result.__defaultApp = userOv.__defaultApp || groupPerms.__defaultApp ||
-      (['admin', 'vedoucí', 'recepční'].includes(user.role) ? 'raspis' : null);
+      (['admin', 'vedoucí', 'recepční', 'pb6'].includes(user.role) ? 'raspis' : null);
     res.json(result);
   } catch(err) { console.error(err); res.json({}); }
 });

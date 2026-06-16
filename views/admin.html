@@ -52,7 +52,8 @@
   .role-badge { display: inline-block; padding: 2px 10px; border-radius: 20px; font-size: 11px; font-weight: 600; }
   .role-admin      { background: #fff8cc; color: #7a6200; border: 1px solid #d4b800; }
   .role-vedouci    { background: #e8f0ff; color: #2a5caa; border: 1px solid #a0b8e0; }
-  .role-widget     { background: #ede8ff; color: #5b3fa8; border: 1px solid #b39de0; }
+  .role-hotely     { background: #ede8ff; color: #5b3fa8; border: 1px solid #b39de0; }
+  .role-pb6        { background: #eef3ff; color: #2f4f9f; border: 1px solid #b8c8ef; }
   .role-receptionist { background: #e8f8ef; color: #1e6e44; border: 1px solid #8ecfad; }
   .role-other      { background: #f0f0f0; color: #555; border: 1px solid #ccc; }
   /* Podlisty */
@@ -268,6 +269,7 @@
       <button class="sublist-btn active" onclick="selectSublist('VR')">VR</button>
       <button class="sublist-btn" onclick="selectSublist('PB6')">PB6</button>
       <button class="sublist-btn" onclick="selectSublist('Recepční')">Recepční</button>
+      <button class="sublist-btn" onclick="selectSublist('Hotely')">Hotely</button>
       <button class="sublist-btn" onclick="selectSublist('Speciální')">Speciální</button>
       <button class="sublist-btn" onclick="selectSublist('Neaktivní')">Neaktivní</button>
     </div>
@@ -454,6 +456,7 @@
         <option value="VR">VR</option>
         <option value="PB6">PB6</option>
         <option value="Recepční">Recepční</option>
+        <option value="Hotely">Hotely</option>
         <option value="Speciální">Speciální</option>
       </select>
     </div>
@@ -696,7 +699,8 @@
   function roleClass(role) {
     if (role === 'admin')    return 'role-admin';
     if (role === 'vedoucí')  return 'role-vedouci';
-    if (role === 'widget')   return 'role-widget';
+    if (role === 'hotely' || role === 'widget') return 'role-hotely';
+    if (role === 'pb6')      return 'role-pb6';
     if (role === 'recepční') return 'role-receptionist';
     return 'role-other';
   }
@@ -753,8 +757,12 @@
 
   function populateRoleSelect(sel, selected) {
     sel.innerHTML = '';
-    const groups = allGroups.length ? allGroups : [{ name: 'admin', displayName: 'Admin' }, { name: 'vedoucí', displayName: 'VR' }, { name: 'recepční', displayName: 'Recepční' }];
-    groups.forEach(g => {
+    const groups = allGroups.length ? allGroups : [{ name: 'admin', displayName: 'Admin' }, { name: 'vedoucí', displayName: 'VR' }, { name: 'recepční', displayName: 'Recepční' }, { name: 'pb6', displayName: 'PB6' }, { name: 'hotely', displayName: 'Hotely' }];
+    groups
+      .filter(g => g.name !== 'widget')
+      .slice()
+      .sort(compareGroups)
+      .forEach(g => {
       const o = document.createElement('option');
       o.value = g.name; o.textContent = g.displayName;
       if (g.name === selected) o.selected = true;
@@ -1039,9 +1047,20 @@
 
   // ── SKUPINY ────────────────────────────────────────────────────────────────────
   async function loadGroups() {
-    try { allGroups = await fetch('/api/admin/groups').then(r => r.json()); } catch(e) { allGroups = []; }
+    try {
+      allGroups = await fetch('/api/admin/groups').then(r => r.json());
+      allGroups = allGroups.filter(g => g.name !== 'widget').sort(compareGroups);
+    } catch(e) { allGroups = []; }
     renderGroupsList();
     if (allUsers.length) renderUsersTable(); // přefiltruj uživatele s novými skupinami
+  }
+
+  function compareGroups(a, b) {
+    const order = ['admin', 'vedoucí', 'recepční', 'pb6', 'hotely'];
+    const ia = order.indexOf(a.name);
+    const ib = order.indexOf(b.name);
+    if (ia !== -1 || ib !== -1) return (ia === -1 ? 999 : ia) - (ib === -1 ? 999 : ib);
+    return String(a.displayName || a.name).localeCompare(String(b.displayName || b.name), 'cs', { sensitivity: 'base' });
   }
 
   function renderGroupsList() {
@@ -1171,10 +1190,10 @@
   }
 
   function openAddGroupModal() {
-    ['new-group-key','new-group-name'].forEach(id => document.getElementById(id).value = '');
+    document.getElementById('new-group-name').value = '';
     clearMsg('addgroup-msg');
     document.getElementById('addgroup-overlay').classList.add('show');
-    setTimeout(() => document.getElementById('new-group-key').focus(), 50);
+    setTimeout(() => document.getElementById('new-group-name').focus(), 50);
   }
   function closeAddGroupModal() { document.getElementById('addgroup-overlay').classList.remove('show'); }
 

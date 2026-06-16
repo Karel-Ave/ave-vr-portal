@@ -261,7 +261,7 @@ async function init() {
     blacklist: { enabled: true, visible: true, buttons: { view: true, add: true, remove: true, edit: true, export_pdf: true, export_email: true, edit_intro: false, history: true, history_delete: false } },
     admin: { enabled: false, visible: false, buttons: { users_add: false, users_edit: false, users_delete: false, user_permissions: false, groups_manage: false, logs_view: false, logs_delete: false } }
   });
-  const widgetPerms = JSON.stringify({});
+  const hotelPerms = JSON.stringify({});
   const recepPerms  = JSON.stringify({
     raspis: { enabled: true, visible: true, buttons: {
       tab_nastaveni: false, tab_tvorba: false, tab_rozpis_vr: false, tab_rozpis: true, tab_pozadavky: true,
@@ -275,7 +275,9 @@ async function init() {
     blacklist: { enabled: true, visible: true, buttons: { view: true, add: false, remove: false, edit: false, export_pdf: false, export_email: false, edit_intro: false, history: false, history_delete: false } },
     admin: { enabled: false, visible: false, buttons: { users_add: false, users_edit: false, users_delete: false, user_permissions: false, groups_manage: false, logs_view: false, logs_delete: false } }
   });
-  await db.query(`INSERT INTO permission_groups (name, display_name, perms, sublist) VALUES ('admin','Admin',$1,'VR'),('vedoucí','VR',$2,'VR'),('widget','Widget',$3,'Speciální'),('recepční','Recepční',$4,'Recepční') ON CONFLICT (name) DO NOTHING`, [adminPerms, vedPerms, widgetPerms, recepPerms]);
+  await db.query(`INSERT INTO permission_groups (name, display_name, perms, sublist) VALUES ('admin','Admin',$1,'VR'),('vedoucí','VR',$2,'VR'),('recepční','Recepční',$3,'Recepční'),('pb6','PB6',$3,'PB6'),('hotely','Hotely',$4,'Hotely') ON CONFLICT (name) DO NOTHING`, [adminPerms, vedPerms, recepPerms, hotelPerms]);
+  await db.query(`UPDATE users SET role='hotely' WHERE role='widget'`);
+  await db.query(`DELETE FROM permission_groups WHERE name='widget' AND NOT EXISTS (SELECT 1 FROM users WHERE role='widget')`);
   async function mergeGroupPermDefaults(groupName, defaults) {
     const { rows } = await db.query('SELECT perms FROM permission_groups WHERE name = $1', [groupName]);
     if (!rows.length) return;
@@ -309,9 +311,11 @@ async function init() {
   await mergeGroupPermDefaults('admin', JSON.parse(adminPerms));
   await mergeGroupPermDefaults('vedoucí', JSON.parse(vedPerms));
   await mergeGroupPermDefaults('recepční', JSON.parse(recepPerms));
+  await mergeGroupPermDefaults('pb6', JSON.parse(recepPerms));
   // Nastav sublists pro existující skupiny (pokud ještě mají DEFAULT hodnotu nebo NULL)
   await db.query(`UPDATE permission_groups SET sublist='VR'        WHERE name IN ('admin','vedoucí') AND (sublist IS NULL OR sublist='VR')`);
-  await db.query(`UPDATE permission_groups SET sublist='Speciální' WHERE name='widget'   AND (sublist IS NULL OR sublist='VR')`);
+  await db.query(`UPDATE permission_groups SET sublist='PB6'       WHERE name='pb6'      AND (sublist IS NULL OR sublist='VR')`);
+  await db.query(`UPDATE permission_groups SET display_name='Hotely', sublist='Hotely' WHERE name='hotely'`);
   await db.query(`UPDATE permission_groups SET sublist='Recepční'  WHERE name='recepční' AND (sublist IS NULL OR sublist='VR')`);
 
   // ── Zprávy pro uživatele ──────────────────────────────────────────────────
