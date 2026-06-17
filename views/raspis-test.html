@@ -7694,7 +7694,9 @@ function showRequestsEmpty(yes, message = '') {
   const tbl = document.getElementById('pozadavky-tbl');
   if (empty) {
     if (message) empty.textContent = message;
-    else if (yes) empty.textContent = 'Žádné požadavky pro vybraný měsíc';
+    else if (yes) empty.textContent = canManageRequirements()
+      ? 'Žádné požadavky'
+      : REQ_RECEPTION_CLOSED_MSG;
     empty.style.display = yes ? '' : 'none';
   }
   if (tbl) tbl.style.display = yes ? 'none' : '';
