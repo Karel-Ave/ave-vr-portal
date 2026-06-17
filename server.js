@@ -567,7 +567,8 @@ app.get('/api/my-permissions', requireLogin, async (req, res) => {
         archive: isAdm,
         log: isAdm,
         req_create: isManager,
-        req_edit: isManager,
+        req_edit: true,
+        req_edit_all: isManager,
         req_toggle_reception: isManager,
         req_send_tvorba: isManager,
         req_delete: isAdm,
@@ -4297,7 +4298,8 @@ async function canManageRequirementsServer(req) {
   if (!user) return false;
   const role = String(user.role || '').toLowerCase();
   if (user.role === 'admin' || role.includes('ved') || role === 'pb6') return true;
-  return (await hasButtonPerm(user, 'raspis', 'req_create', false))
+  return (await hasButtonPerm(user, 'raspis', 'req_edit_all', false))
+    || (await hasButtonPerm(user, 'raspis', 'req_create', false))
     || (await hasButtonPerm(user, 'raspis', 'req_toggle_reception', false))
     || (await hasButtonPerm(user, 'raspis', 'req_send_tvorba', false));
 }

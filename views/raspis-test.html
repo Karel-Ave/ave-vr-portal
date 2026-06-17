@@ -1177,6 +1177,22 @@ tbody tr.row-hidden { display: none !important; }
 }
 .stb-btn.active { background: var(--accent,#C4A96A); color: #1A1A18; border-color: transparent; }
 .stb-btn.active:hover { opacity: .88; }
+#stb-undo,
+#stb-redo {
+  background: var(--accent,#C4A96A);
+  border-color: var(--accent,#C4A96A);
+  color: var(--accent-fg,#fff);
+}
+[data-theme="dark"] #stb-undo,
+[data-theme="dark"] #stb-redo {
+  color: var(--hotel-btn-active-color,#1A1A18);
+}
+#stb-undo:hover,
+#stb-redo:hover {
+  background: var(--accent-h,var(--accent,#C4A96A));
+  border-color: var(--accent-h,var(--accent,#C4A96A));
+  color: var(--accent-fg,#fff);
+}
 .stb-hotel-lbl { font-size: 10px; color: var(--text-muted); margin-right: 2px; }
 .stb-label { font-size: 10px; color: var(--btn-top-color,#9A9890); white-space: nowrap; }
 .stb-input {
@@ -1923,7 +1939,7 @@ tbody tr.row-filtered { display: none; }
   }
   .tb-tab[data-tab="nastaveni"]::after { content: "Nast."; }
   .tb-tab[data-tab="tvorba"] { display: none !important; }
-  .tb-tab[data-tab="rozpis"]::after { content: "VR"; }
+  .tb-tab[data-tab="rozpis"]::after { content: "Rozpis"; }
   .tb-tab[data-tab="public"]::after { content: "Rozpis"; }
   .tb-tab[data-tab="pozadavky"]::after { content: "Požadavky"; }
 
@@ -2258,14 +2274,18 @@ tbody tr.row-filtered { display: none; }
   #stb-undo,
   #stb-redo {
     font-size: 0;
+    background: var(--accent) !important;
+    border-color: var(--accent) !important;
+    color: var(--accent-fg,#fff) !important;
   }
   #stb-undo::after,
   #stb-redo::after {
     font-size: 12px;
     font-weight: 800;
+    color: var(--accent-fg,#fff) !important;
   }
-  #stb-undo::after { content: "Zpět"; }
-  #stb-redo::after { content: "Vpřed"; }
+  #stb-undo::after { content: "⇐ Zpět"; }
+  #stb-redo::after { content: "Vpřed ⇒"; }
 }
 
 /* ── Toast ── */
@@ -2375,7 +2395,7 @@ tbody tr.row-filtered { display: none; }
   <div id="tb-tabs">
     <button class="tb-tab" data-tab="nastaveni" type="button">Nastavení</button>
     <button class="tb-tab" data-tab="tvorba" type="button">Tvorba</button>
-    <button class="tb-tab" data-tab="rozpis" type="button">Rozpis VR</button>
+    <button class="tb-tab" data-tab="rozpis" type="button">Rozpis</button>
     <button class="tb-tab" data-tab="public" type="button">Rozpis</button>
     <button class="tb-tab" data-tab="pozadavky" type="button">Požadavky</button>
   </div>
@@ -2706,7 +2726,7 @@ tbody tr.row-filtered { display: none; }
     </div>
     <!-- Od středu: Zpět / Vpřed -->
     <button class="stb-btn" id="stb-undo">⇐ Zpět</button>
-    <button class="stb-btn" id="stb-redo">⇒ Vpřed</button>
+    <button class="stb-btn" id="stb-redo">Vpřed ⇒</button>
     <div class="stb-spacer"></div>
     <button class="stb-btn" id="stb-hours-only">Pouze hodiny</button>
     <button class="stb-btn" id="stb-export2">Export .xlsx</button>
@@ -4469,6 +4489,7 @@ function canManageRequirements() {
   return isAdmin()
     || role.includes('ved')
     || role === 'pb6'
+    || rtCan('req_edit_all', false)
     || rtCan('req_create', false)
     || rtCan('req_toggle_reception', false)
     || rtCan('req_send_tvorba', false);
@@ -4533,8 +4554,8 @@ function applyRaspisPermissions() {
   setPermVisibleById('btn-schedule-log', 'log', false);
 
   setPermVisibleById('btn-req-create', 'req_create', canManageRequirements());
-  setPermVisibleById('btn-req-edit', 'req_edit', canManageRequirements());
-  setPermVisibleById('btn-req-cancel', 'req_edit', canManageRequirements());
+  setPermHidden(document.getElementById('btn-req-edit'), !(canManageRequirements() || rtCan('req_edit', true)));
+  setPermHidden(document.getElementById('btn-req-cancel'), !(canManageRequirements() || rtCan('req_edit', true)));
   setPermVisibleById('btn-req-toggle-edit', 'req_toggle_reception', canManageRequirements());
   setPermVisibleById('btn-req-paste-excel', 'paste_excel', canManageRequirements());
   setPermVisibleById('btn-req-send-tvorba', 'req_send_tvorba', canManageRequirements());
@@ -7928,7 +7949,7 @@ function updateRequirementsStatus(entry) {
   }
   if (editBtn) {
     editBtn.textContent = reqEditMode ? 'Uložit' : (manager ? 'Editovat' : 'Edituj požadavky');
-    editBtn.dataset.mobileLabel = reqEditMode ? 'Uložit' : (manager ? 'Editovat' : 'Edituj');
+    editBtn.dataset.mobileLabel = reqEditMode ? 'Uložit' : (manager ? 'Editovat' : 'Edituj požadavky');
     editBtn.style.display = (manager || entry.status === 'open') ? '' : 'none';
     editBtn.classList.toggle('primary', reqEditMode);
     if (!reqEditMode && !manager) editBtn.dataset.mobileLabel = editBtn.textContent;
@@ -8766,6 +8787,21 @@ function setMobileControlsOpen(open) {
   }
 }
 
+function settleMobileScheduleHeader() {
+  if (!isMobileLike() || !mobileControlsOpen) return;
+  const settle = () => {
+    updateChromeHeights();
+    fitScheduleToViewport();
+    refreshCoverageSticky();
+    keepActiveScheduleHeaderVisible();
+  };
+  requestAnimationFrame(() => {
+    settle();
+    requestAnimationFrame(settle);
+  });
+  setTimeout(settle, 90);
+}
+
 function updateMobileToolGrid() {
   const left = document.getElementById('stb-tools-left');
   if (!left) return;
@@ -9078,6 +9114,7 @@ async function filterByHotel(letter) {
   updateMarkedOnlyButton();
   applyRowFilters();
   saveStbState();
+  settleMobileScheduleHeader();
 }
 
 function filterByShift(mode) {
@@ -9090,6 +9127,7 @@ function filterByShift(mode) {
   });
   applyRowFilters();
   saveStbState();
+  settleMobileScheduleHeader();
 }
 
 function updateAvailableSlotHeaders() {
@@ -9139,6 +9177,7 @@ function setColumnShiftMode(mode) {
   if (tbl) fineTuneScheduleFit(tbl);
   refreshCoverageSticky();
   saveStbState();
+  settleMobileScheduleHeader();
 }
 
 // d/n headers: always-red when any active hotel (ALL of them, no exclusion) has uncovered shift
@@ -12133,6 +12172,7 @@ document.addEventListener('DOMContentLoaded', async () => {
     applyRowFilters();
     saveStbState();
     historySave();
+    settleMobileScheduleHeader();
   });
   document.getElementById('stb-hide-hotels').addEventListener('click', toggleHotelRows);
   document.getElementById('stb-copy-mode').addEventListener('click', toggleCopyMode);
@@ -12145,6 +12185,7 @@ document.addEventListener('DOMContentLoaded', async () => {
     updateMarkedOnlyButton();
     applyRowFilters();
     saveStbState();
+    settleMobileScheduleHeader();
   });
   document.getElementById('stb-cols-day').addEventListener('click', () => setColumnShiftMode('day'));
   document.getElementById('stb-cols-night').addEventListener('click', () => setColumnShiftMode('night'));
