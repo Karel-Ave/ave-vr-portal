@@ -1348,12 +1348,12 @@ body[data-active-tab="pozadavky"] #schedule-legend .legend-item.schedule-dynamic
   #schedule-legend.show { display: none !important; }
 }
 @media print {
-  @page { size: A4 landscape; margin: 7mm; }
+  @page { size: A4 portrait; margin: 7mm; }
   html, body {
     background: #fff !important;
     color: #000 !important;
-    width: 283mm !important;
-    height: 196mm !important;
+    width: 196mm !important;
+    height: 283mm !important;
     overflow: hidden !important;
     padding: 0 !important;
     margin: 0 !important;
@@ -1363,7 +1363,7 @@ body[data-active-tab="pozadavky"] #schedule-legend .legend-item.schedule-dynamic
     display: block !important;
     position: absolute !important;
     inset: 0 auto auto 0 !important;
-    width: var(--print-root-w, 283mm) !important;
+    width: var(--print-root-w, 196mm) !important;
     height: auto !important;
     overflow: visible !important;
     background: #fff !important;
@@ -1389,7 +1389,7 @@ body[data-active-tab="pozadavky"] #schedule-legend .legend-item.schedule-dynamic
   }
   body.print-schedule #print-root .print-title {
     display: block !important;
-    width: var(--print-root-w, 283mm) !important;
+    width: var(--print-root-w, 196mm) !important;
     margin: 0 0 4px 0 !important;
     color: #000 !important;
     font: 700 12px Arial, sans-serif !important;
@@ -1422,9 +1422,9 @@ body[data-active-tab="pozadavky"] #schedule-legend .legend-item.schedule-dynamic
     border-collapse: separate !important;
     white-space: nowrap !important;
     table-layout: fixed !important;
-    width: var(--print-root-w, 283mm) !important;
-    min-width: var(--print-root-w, 283mm) !important;
-    max-width: var(--print-root-w, 283mm) !important;
+    width: var(--print-root-w, 196mm) !important;
+    min-width: var(--print-root-w, 196mm) !important;
+    max-width: var(--print-root-w, 196mm) !important;
     font-size: var(--print-font, 5.2px) !important;
     background: #fff !important;
     -webkit-print-color-adjust: exact;
@@ -1479,7 +1479,7 @@ body[data-active-tab="pozadavky"] #schedule-legend .legend-item.schedule-dynamic
   body.print-schedule #print-root .sched-tbl .th-day {
     min-width: calc(var(--print-col-w, 10px) * 2) !important;
     font-size: var(--print-font, 6.5px) !important;
-    height: var(--print-head-h, 30px) !important;
+    height: var(--print-day-head-h, 17px) !important;
     line-height: 1.05 !important;
   }
   body.print-schedule #print-root .sched-tbl .th-dn .th-dn-day,
@@ -1489,8 +1489,19 @@ body[data-active-tab="pozadavky"] #schedule-legend .legend-item.schedule-dynamic
     color: #000 !important;
   }
   body.print-schedule #print-root .sched-tbl .th-dn {
-    height: var(--print-head-h, 30px) !important;
+    height: var(--print-dn-head-h, 11px) !important;
     line-height: 1.05 !important;
+  }
+  body.print-schedule #print-root .sched-tbl .print-day-row .col-name-th,
+  body.print-schedule #print-root .sched-tbl .print-day-row .th-sum {
+    height: var(--print-head-h, 28px) !important;
+    line-height: var(--print-head-h, 28px) !important;
+  }
+  body.print-schedule #print-root .sched-tbl .print-day-row .th-day {
+    height: var(--print-day-head-h, 17px) !important;
+  }
+  body.print-schedule #print-root .sched-tbl .print-dn-row .th-dn {
+    height: var(--print-dn-head-h, 11px) !important;
   }
   body.print-schedule #print-root .sched-tbl .th-dn-day {
     display: block !important;
@@ -4719,6 +4730,64 @@ function applyRaspisPermissions() {
    TOAST
 ══════════════════════════════════════════════════════════════════════════════ */
 
+function rebuildPrintScheduleHeader(table) {
+  const oldHead = table.querySelector('thead');
+  if (!oldHead) return;
+  const topRow = document.createElement('tr');
+  topRow.className = 'print-day-row';
+  const dnRow = document.createElement('tr');
+  dnRow.className = 'print-dn-row';
+
+  const srcName = oldHead.querySelector('.col-name-th');
+  if (srcName) {
+    const nameTh = srcName.cloneNode(true);
+    nameTh.rowSpan = 2;
+    nameTh.textContent = srcName.textContent || 'Jméno';
+    topRow.appendChild(nameTh);
+  }
+
+  const dnHeaders = Array.from(oldHead.querySelectorAll('th.th-dn'));
+  dnHeaders.forEach(th => {
+    if (th.dataset.dn === 'd') {
+      const dayTh = document.createElement('th');
+      dayTh.className = 'th-day';
+      dayTh.colSpan = 2;
+      if (th.classList.contains('is-today')) dayTh.classList.add('is-today');
+      const dayDiv = document.createElement('div');
+      dayDiv.className = 'th-dn-day';
+      const num = document.createElement('span');
+      num.className = 'th-day-num';
+      num.textContent = th.querySelector('.th-day-num')?.textContent || th.dataset.day || '';
+      const dow = document.createElement('span');
+      dow.className = 'th-day-dow';
+      dow.textContent = th.querySelector('.th-day-dow')?.textContent || '';
+      dayDiv.append(num, dow);
+      dayTh.appendChild(dayDiv);
+      topRow.appendChild(dayTh);
+    }
+    const dnTh = document.createElement('th');
+    dnTh.className = 'th-dn';
+    dnTh.dataset.dn = th.dataset.dn || '';
+    dnTh.dataset.ci = th.dataset.ci || '';
+    dnTh.dataset.day = th.dataset.day || '';
+    dnTh.dataset.nextYear = th.dataset.nextYear || '';
+    const letter = document.createElement('span');
+    letter.className = 'th-dn-letter';
+    letter.textContent = th.dataset.dn || th.textContent.trim() || '';
+    dnTh.appendChild(letter);
+    dnRow.appendChild(dnTh);
+  });
+
+  oldHead.querySelectorAll('th.th-sum').forEach(src => {
+    const th = src.cloneNode(true);
+    th.rowSpan = 2;
+    th.textContent = src.textContent || '';
+    topRow.appendChild(th);
+  });
+
+  oldHead.replaceChildren(topRow, dnRow);
+}
+
 function printScheduleTab(tab) {
   document.getElementById('print-root')?.remove();
   const cls = tab === 'pozadavky' ? 'print-req' : 'print-public';
@@ -4757,6 +4826,7 @@ function printScheduleTab(tab) {
     el.style.opacity = '1';
     el.style.visibility = 'visible';
   });
+  rebuildPrintScheduleHeader(clone);
   wrap.appendChild(clone);
   root.append(title, wrap);
   document.body.appendChild(root);
@@ -4771,47 +4841,51 @@ function printScheduleTab(tab) {
   }).length;
   const dayCols = clone.querySelectorAll('thead th.th-dn').length;
   const sumCols = clone.querySelectorAll('thead th.th-sum').length;
-  const page = { w: 1068, h: 740 }; // A4 landscape printable area at 7mm margins, CSS px approximation
-  let nameW = filterHotels.size ? 92 : 98;
-  let colW = filterHotels.size ? 10 : 9;
-  let sumW = filterHotels.size ? 13 : 12;
+  const page = { w: 740, h: 1068 }; // A4 portrait printable area at 7mm margins, CSS px approximation
+  let nameW = filterHotels.size ? 86 : 88;
+  let sumW = filterHotels.size ? 10 : 10;
+  let colW = (page.w - nameW - sumCols * sumW - 4) / Math.max(1, dayCols);
   let totalW = nameW + dayCols * colW + sumCols * sumW + 4;
   if (totalW > page.w) {
     const spareForDays = page.w - nameW - sumCols * sumW - 4;
-    colW = Math.max(7, Math.floor(spareForDays / Math.max(1, dayCols)));
+    colW = Math.max(6.2, spareForDays / Math.max(1, dayCols));
     totalW = nameW + dayCols * colW + sumCols * sumW + 4;
   }
   if (totalW > page.w) {
     const fit = page.w / totalW;
-    nameW = Math.max(76, Math.floor(nameW * fit));
-    sumW = Math.max(10, Math.floor(sumW * fit));
-    colW = Math.max(6, Math.floor(colW * fit));
+    nameW = Math.max(76, +(nameW * fit).toFixed(2));
+    sumW = Math.max(9, +(sumW * fit).toFixed(2));
+    colW = Math.max(6, +(colW * fit).toFixed(2));
     totalW = nameW + dayCols * colW + sumCols * sumW + 4;
   }
   const widthScale = page.w / Math.max(1, totalW);
   if (widthScale > 1.01) {
-    nameW = Math.floor(nameW * widthScale);
-    colW = Math.floor(colW * widthScale);
-    sumW = Math.floor(sumW * widthScale);
+    nameW = +(nameW * widthScale).toFixed(2);
+    colW = +(colW * widthScale).toFixed(2);
+    sumW = +(sumW * widthScale).toFixed(2);
     totalW = nameW + dayCols * colW + sumCols * sumW + 4;
   }
   const titleH = 18;
-  const headerH = 30;
+  const headerH = 28;
+  const dayHeadH = 17;
+  const dnHeadH = 11;
   const rows = Math.max(1, visibleRows);
-  const rowH = Math.max(6, Math.min(filterHotels.size ? 18 : 9, Math.floor((page.h - titleH - headerH - 4) / (rows + 15))));
-  const font = Math.max(4.8, Math.min(filterHotels.size ? 8.2 : 6.6, +(rowH * .58).toFixed(2)));
-  document.documentElement.style.setProperty('--print-root-w', Math.ceil(totalW) + 'px');
+  const rowH = Math.max(8, Math.min(filterHotels.size ? 17 : 12, Math.floor((page.h - titleH - headerH - 4) / (rows + 5))));
+  const font = Math.max(5, Math.min(filterHotels.size ? 8.4 : 7, +(rowH * .56).toFixed(2)));
+  document.documentElement.style.setProperty('--print-root-w', Math.ceil(page.w) + 'px');
   document.documentElement.style.setProperty('--print-name-w', nameW + 'px');
   document.documentElement.style.setProperty('--print-col-w', colW + 'px');
   document.documentElement.style.setProperty('--print-sum-w', sumW + 'px');
   document.documentElement.style.setProperty('--print-row-h', rowH + 'px');
   document.documentElement.style.setProperty('--print-head-h', headerH + 'px');
+  document.documentElement.style.setProperty('--print-day-head-h', dayHeadH + 'px');
+  document.documentElement.style.setProperty('--print-dn-head-h', dnHeadH + 'px');
   document.documentElement.style.setProperty('--print-font', font + 'px');
 
   document.body.classList.add('print-schedule', cls);
   const cleanup = () => {
     document.body.classList.remove('print-schedule', 'print-public', 'print-req');
-    ['--print-root-w','--print-name-w','--print-col-w','--print-sum-w','--print-row-h','--print-head-h','--print-font'].forEach(p => {
+    ['--print-root-w','--print-name-w','--print-col-w','--print-sum-w','--print-row-h','--print-head-h','--print-day-head-h','--print-dn-head-h','--print-font'].forEach(p => {
       document.documentElement.style.removeProperty(p);
     });
     document.getElementById('print-root')?.remove();
