@@ -1365,7 +1365,7 @@ body[data-active-tab="pozadavky"] #schedule-legend .legend-item.schedule-dynamic
     inset: 0 auto auto 0 !important;
     width: var(--print-root-w, 196mm) !important;
     height: auto !important;
-    overflow: visible !important;
+    overflow: hidden !important;
     background: #fff !important;
     scrollbar-width: none !important;
   }
@@ -1402,7 +1402,7 @@ body[data-active-tab="pozadavky"] #schedule-legend .legend-item.schedule-dynamic
     width: max-content !important;
     max-width: none !important;
     height: auto !important;
-    overflow: visible !important;
+    overflow: hidden !important;
     padding: 0 !important;
     background: #fff !important;
     scrollbar-width: none !important;
@@ -1481,6 +1481,8 @@ body[data-active-tab="pozadavky"] #schedule-legend .legend-item.schedule-dynamic
     font-size: var(--print-font, 6.5px) !important;
     height: var(--print-day-head-h, 17px) !important;
     line-height: 1.05 !important;
+    color: #000 !important;
+    overflow: hidden !important;
   }
   body.print-schedule #print-root .sched-tbl .th-dn .th-dn-day,
   body.print-schedule #print-root .sched-tbl .th-dn .th-day-num,
@@ -1505,18 +1507,34 @@ body[data-active-tab="pozadavky"] #schedule-legend .legend-item.schedule-dynamic
   }
   body.print-schedule #print-root .sched-tbl .th-dn-day {
     display: block !important;
+    position: static !important;
+    top: auto !important;
+    left: auto !important;
+    width: auto !important;
     line-height: 1.05 !important;
+    color: #000 !important;
+    opacity: 1 !important;
+    visibility: visible !important;
+    background: transparent !important;
   }
   body.print-schedule #print-root .sched-tbl .th-dn[data-dn="n"] .th-dn-day {
     display: none !important;
   }
   body.print-schedule #print-root .sched-tbl .th-day-num {
+    display: block !important;
     font-size: calc(var(--print-font, 5.2px) + 1.5px) !important;
     line-height: 1.05 !important;
+    color: #000 !important;
+    opacity: 1 !important;
+    visibility: visible !important;
   }
   body.print-schedule #print-root .sched-tbl .th-day-dow {
+    display: block !important;
     font-size: var(--print-font, 5.2px) !important;
     line-height: 1.05 !important;
+    color: #000 !important;
+    opacity: 1 !important;
+    visibility: visible !important;
   }
   body.print-schedule #print-root .sched-tbl .th-dn-letter {
     font-size: calc(var(--print-font, 5.2px) + .3px) !important;
@@ -4730,6 +4748,43 @@ function applyRaspisPermissions() {
    TOAST
 ══════════════════════════════════════════════════════════════════════════════ */
 
+function trimPrintScheduleSummaryColumns(table) {
+  const sumHeaders = Array.from(table.querySelectorAll('thead th.th-sum'));
+  if (!sumHeaders.length) return;
+  let keepIdx = sumHeaders.findIndex(th => {
+    const text = (th.textContent || '').trim();
+    return th.dataset.sumIdx === '0' || (text === 'Σ' && !th.classList.contains('th-sum-hrs'));
+  });
+  if (keepIdx < 0) keepIdx = 0;
+  sumHeaders.forEach((th, idx) => {
+    if (idx !== keepIdx) th.remove();
+  });
+  table.querySelectorAll('tbody tr').forEach(tr => {
+    const cells = Array.from(tr.querySelectorAll('td.sum-cell'));
+    cells.forEach((td, idx) => {
+      if (idx !== keepIdx) td.remove();
+    });
+  });
+}
+
+function getPrintHeaderDayLabel(th) {
+  const day = Number(th.dataset.day || 0);
+  const isNextYear = th.dataset.nextYear === '1';
+  if (!day) {
+    return {
+      num: th.querySelector('.th-day-num')?.textContent || '',
+      dow: th.querySelector('.th-day-dow')?.textContent || ''
+    };
+  }
+  const month = isNextYear ? 1 : (state.month || 1);
+  const year = isNextYear ? (state.year || new Date().getFullYear()) + 1 : (state.year || new Date().getFullYear());
+  const dow = new Date(year, month - 1, day).getDay();
+  return {
+    num: isNextYear ? '1.1.' : String(day),
+    dow: DAY_NAMES[dow] || th.querySelector('.th-day-dow')?.textContent || ''
+  };
+}
+
 function rebuildPrintScheduleHeader(table) {
   const oldHead = table.querySelector('thead');
   if (!oldHead) return;
@@ -4757,10 +4812,16 @@ function rebuildPrintScheduleHeader(table) {
       dayDiv.className = 'th-dn-day';
       const num = document.createElement('span');
       num.className = 'th-day-num';
-      num.textContent = th.querySelector('.th-day-num')?.textContent || th.dataset.day || '';
+      const dayLabel = getPrintHeaderDayLabel(th);
+      num.textContent = dayLabel.num;
       const dow = document.createElement('span');
       dow.className = 'th-day-dow';
-      dow.textContent = th.querySelector('.th-day-dow')?.textContent || '';
+      dow.textContent = dayLabel.dow;
+      [dayTh, dayDiv, num, dow].forEach(el => {
+        el.style.color = '#000';
+        el.style.opacity = '1';
+        el.style.visibility = 'visible';
+      });
       dayDiv.append(num, dow);
       dayTh.appendChild(dayDiv);
       topRow.appendChild(dayTh);
@@ -4774,6 +4835,9 @@ function rebuildPrintScheduleHeader(table) {
     const letter = document.createElement('span');
     letter.className = 'th-dn-letter';
     letter.textContent = th.dataset.dn || th.textContent.trim() || '';
+    letter.style.color = '#000';
+    letter.style.opacity = '1';
+    letter.style.visibility = 'visible';
     dnTh.appendChild(letter);
     dnRow.appendChild(dnTh);
   });
@@ -4826,6 +4890,7 @@ function printScheduleTab(tab) {
     el.style.opacity = '1';
     el.style.visibility = 'visible';
   });
+  trimPrintScheduleSummaryColumns(clone);
   rebuildPrintScheduleHeader(clone);
   wrap.appendChild(clone);
   root.append(title, wrap);
