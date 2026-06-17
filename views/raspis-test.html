@@ -1348,12 +1348,12 @@ body[data-active-tab="pozadavky"] #schedule-legend .legend-item.schedule-dynamic
   #schedule-legend.show { display: none !important; }
 }
 @media print {
-  @page { size: A4 landscape; margin: 7mm; }
+  @page { size: A4 portrait; margin: 7mm; }
   html, body {
     background: #fff !important;
     color: #000 !important;
-    width: 283mm !important;
-    height: 196mm !important;
+    width: 196mm !important;
+    height: 283mm !important;
     overflow: visible !important;
     padding: 0 !important;
     margin: 0 !important;
@@ -1369,7 +1369,13 @@ body[data-active-tab="pozadavky"] #schedule-legend .legend-item.schedule-dynamic
     background: #fff !important;
   }
   body.print-schedule #print-root .print-title {
-    display: none !important;
+    display: block !important;
+    width: var(--print-root-w, 196mm) !important;
+    margin: 0 0 4px 0 !important;
+    color: #000 !important;
+    font: 700 12px Arial, sans-serif !important;
+    line-height: 1.1 !important;
+    text-align: center !important;
   }
   body.print-schedule #print-root .schedule-wrap {
     display: block !important;
@@ -1434,7 +1440,7 @@ body[data-active-tab="pozadavky"] #schedule-legend .legend-item.schedule-dynamic
   body.print-schedule #print-root .sched-tbl .th-day {
     min-width: calc(var(--print-col-w, 10px) * 2) !important;
     font-size: var(--print-font, 6.5px) !important;
-    height: var(--print-head-h, 20px) !important;
+    height: var(--print-head-h, 30px) !important;
     line-height: 1.05 !important;
   }
   body.print-schedule #print-root .sched-tbl .th-dn .th-dn-day,
@@ -1442,6 +1448,26 @@ body[data-active-tab="pozadavky"] #schedule-legend .legend-item.schedule-dynamic
   body.print-schedule #print-root .sched-tbl .th-dn .th-day-dow,
   body.print-schedule #print-root .sched-tbl .th-dn .th-dn-letter {
     color: #000 !important;
+  }
+  body.print-schedule #print-root .sched-tbl .th-dn {
+    height: var(--print-head-h, 30px) !important;
+    line-height: 1.05 !important;
+  }
+  body.print-schedule #print-root .sched-tbl .th-dn-day {
+    line-height: 1.05 !important;
+  }
+  body.print-schedule #print-root .sched-tbl .th-day-num {
+    font-size: calc(var(--print-font, 5.2px) + 1.5px) !important;
+    line-height: 1.05 !important;
+  }
+  body.print-schedule #print-root .sched-tbl .th-day-dow {
+    font-size: var(--print-font, 5.2px) !important;
+    line-height: 1.05 !important;
+  }
+  body.print-schedule #print-root .sched-tbl .th-dn-letter {
+    font-size: calc(var(--print-font, 5.2px) + .3px) !important;
+    line-height: 1 !important;
+    padding: 0 !important;
   }
   body.print-schedule #print-root .sched-tbl .th-dn,
   body.print-schedule #print-root .sched-tbl td.sched-cell {
@@ -4659,12 +4685,9 @@ function printScheduleTab(tab) {
   const root = document.createElement('div');
   root.id = 'print-root';
   const monthTitle = `${MONTH_NAMES[(state.month || 1) - 1] || ''} ${state.year || ''}`.trim();
-  const hotelTitle = filterHotels.size
-    ? Array.from(filterHotels).sort().join(', ')
-    : 'všechny hotely';
   const title = document.createElement('div');
   title.className = 'print-title';
-  title.textContent = `${tab === 'pozadavky' ? 'Požadavky' : 'Rozpis'} - ${monthTitle} - ${hotelTitle}`;
+  title.textContent = `${tab === 'pozadavky' ? 'Po\u017eadavky na sm\u011bny' : 'Rozpis sm\u011bn'} - ${monthTitle}`;
 
   const wrap = document.createElement('div');
   wrap.className = 'schedule-wrap';
@@ -4690,27 +4713,28 @@ function printScheduleTab(tab) {
   }).length;
   const dayCols = clone.querySelectorAll('thead th.th-dn').length;
   const sumCols = clone.querySelectorAll('thead th.th-sum').length;
-  const page = { w: 1068, h: 740 }; // A4 landscape printable area at 7mm margins, CSS px approximation
-  let nameW = filterHotels.size ? 112 : 120;
-  let colW = filterHotels.size ? 13 : 12;
-  let sumW = filterHotels.size ? 18 : 17;
+  const page = { w: 740, h: 1068 }; // A4 portrait printable area at 7mm margins, CSS px approximation
+  let nameW = filterHotels.size ? 92 : 98;
+  let colW = filterHotels.size ? 10 : 9;
+  let sumW = filterHotels.size ? 13 : 12;
   let totalW = nameW + dayCols * colW + sumCols * sumW + 4;
   if (totalW > page.w) {
     const spareForDays = page.w - nameW - sumCols * sumW - 4;
-    colW = Math.max(9, Math.floor(spareForDays / Math.max(1, dayCols)));
+    colW = Math.max(7, Math.floor(spareForDays / Math.max(1, dayCols)));
     totalW = nameW + dayCols * colW + sumCols * sumW + 4;
   }
   if (totalW > page.w) {
     const fit = page.w / totalW;
-    nameW = Math.max(92, Math.floor(nameW * fit));
-    sumW = Math.max(13, Math.floor(sumW * fit));
-    colW = Math.max(8, Math.floor(colW * fit));
+    nameW = Math.max(76, Math.floor(nameW * fit));
+    sumW = Math.max(10, Math.floor(sumW * fit));
+    colW = Math.max(6, Math.floor(colW * fit));
     totalW = nameW + dayCols * colW + sumCols * sumW + 4;
   }
-  const headerH = 24;
+  const titleH = 18;
+  const headerH = 32;
   const rows = Math.max(1, visibleRows);
-  const rowH = Math.max(6, Math.min(filterHotels.size ? 13 : 10, Math.floor((page.h - headerH - 4) / rows)));
-  const font = Math.max(4.2, Math.min(filterHotels.size ? 7 : 5.8, +(rowH * .68).toFixed(2)));
+  const rowH = Math.max(7, Math.min(filterHotels.size ? 16 : 13, Math.floor((page.h - titleH - headerH - 4) / rows)));
+  const font = Math.max(4.8, Math.min(filterHotels.size ? 7.6 : 6.6, +(rowH * .56).toFixed(2)));
   document.documentElement.style.setProperty('--print-root-w', Math.ceil(totalW) + 'px');
   document.documentElement.style.setProperty('--print-name-w', nameW + 'px');
   document.documentElement.style.setProperty('--print-col-w', colW + 'px');
