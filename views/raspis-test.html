@@ -1436,6 +1436,17 @@ body[data-active-tab="pozadavky"] #schedule-legend .legend-item.schedule-dynamic
     top: auto !important;
     z-index: auto !important;
     background: #f8f8f5 !important;
+    color: #000 !important;
+  }
+  body.print-schedule #print-root .sched-tbl thead th,
+  body.print-schedule #print-root .sched-tbl thead th *,
+  body.print-schedule #print-root .sched-tbl .th-dn-day,
+  body.print-schedule #print-root .sched-tbl .th-day-num,
+  body.print-schedule #print-root .sched-tbl .th-day-dow,
+  body.print-schedule #print-root .sched-tbl .th-dn-letter {
+    color: #000 !important;
+    opacity: 1 !important;
+    visibility: visible !important;
   }
   body.print-schedule #print-root .sched-tbl tbody.cov-tbody,
   body.print-schedule #print-root .sched-tbl tr.coverage-row,
@@ -1473,7 +1484,11 @@ body[data-active-tab="pozadavky"] #schedule-legend .legend-item.schedule-dynamic
     line-height: 1.05 !important;
   }
   body.print-schedule #print-root .sched-tbl .th-dn-day {
+    display: block !important;
     line-height: 1.05 !important;
+  }
+  body.print-schedule #print-root .sched-tbl .th-dn[data-dn="n"] .th-dn-day {
+    display: none !important;
   }
   body.print-schedule #print-root .sched-tbl .th-day-num {
     font-size: calc(var(--print-font, 5.2px) + 1.5px) !important;
@@ -4751,7 +4766,7 @@ function printScheduleTab(tab) {
     colW = Math.max(6, Math.floor(colW * fit));
     totalW = nameW + dayCols * colW + sumCols * sumW + 4;
   }
-  const widthScale = Math.min(printScale, page.w / Math.max(1, totalW));
+  const widthScale = page.w / Math.max(1, totalW);
   if (widthScale > 1.01) {
     nameW = Math.floor(nameW * widthScale);
     colW = Math.floor(colW * widthScale);
