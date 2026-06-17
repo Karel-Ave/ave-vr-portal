@@ -1363,10 +1363,23 @@ body[data-active-tab="pozadavky"] #schedule-legend .legend-item.schedule-dynamic
     display: block !important;
     position: absolute !important;
     inset: 0 auto auto 0 !important;
-    width: var(--print-root-w, 283mm) !important;
+    width: var(--print-root-w, 196mm) !important;
     height: auto !important;
     overflow: visible !important;
     background: #fff !important;
+    scrollbar-width: none !important;
+  }
+  body.print-schedule #print-root,
+  body.print-schedule #print-root * {
+    color: #000 !important;
+    text-shadow: none !important;
+    box-shadow: none !important;
+  }
+  body.print-schedule #print-root::-webkit-scrollbar,
+  body.print-schedule #print-root *::-webkit-scrollbar {
+    width: 0 !important;
+    height: 0 !important;
+    display: none !important;
   }
   body.print-schedule #print-root .print-title {
     display: block !important;
@@ -1386,6 +1399,12 @@ body[data-active-tab="pozadavky"] #schedule-legend .legend-item.schedule-dynamic
     overflow: visible !important;
     padding: 0 !important;
     background: #fff !important;
+    scrollbar-width: none !important;
+  }
+  body.print-schedule #print-root .schedule-wrap::before,
+  body.print-schedule #print-root .schedule-wrap::after {
+    display: none !important;
+    content: none !important;
   }
   body.print-schedule #print-root table.sched-tbl {
     --sched-row-h: var(--print-row-h, 8px);
@@ -1488,6 +1507,7 @@ body[data-active-tab="pozadavky"] #schedule-legend .legend-item.schedule-dynamic
     font-size: var(--print-font, 6.5px) !important;
     font-weight: 500 !important;
     line-height: var(--print-row-h, 8px) !important;
+    color: #000 !important;
   }
   body.print-schedule #print-root .sched-tbl td.sched-cell {
     background: #fff !important;
@@ -4714,6 +4734,7 @@ function printScheduleTab(tab) {
   const dayCols = clone.querySelectorAll('thead th.th-dn').length;
   const sumCols = clone.querySelectorAll('thead th.th-sum').length;
   const page = { w: 740, h: 1068 }; // A4 portrait printable area at 7mm margins, CSS px approximation
+  const printScale = 1.25;
   let nameW = filterHotels.size ? 92 : 98;
   let colW = filterHotels.size ? 10 : 9;
   let sumW = filterHotels.size ? 13 : 12;
@@ -4730,11 +4751,24 @@ function printScheduleTab(tab) {
     colW = Math.max(6, Math.floor(colW * fit));
     totalW = nameW + dayCols * colW + sumCols * sumW + 4;
   }
-  const titleH = 18;
-  const headerH = 32;
+  const widthScale = Math.min(printScale, page.w / Math.max(1, totalW));
+  if (widthScale > 1.01) {
+    nameW = Math.floor(nameW * widthScale);
+    colW = Math.floor(colW * widthScale);
+    sumW = Math.floor(sumW * widthScale);
+    totalW = nameW + dayCols * colW + sumCols * sumW + 4;
+  }
+  let titleH = 18;
+  let headerH = 32;
   const rows = Math.max(1, visibleRows);
-  const rowH = Math.max(7, Math.min(filterHotels.size ? 16 : 13, Math.floor((page.h - titleH - headerH - 4) / rows)));
-  const font = Math.max(4.8, Math.min(filterHotels.size ? 7.6 : 6.6, +(rowH * .56).toFixed(2)));
+  let rowH = Math.max(7, Math.min(filterHotels.size ? 16 : 13, Math.floor((page.h - titleH - headerH - 4) / rows)));
+  const heightScale = Math.min(printScale, (page.h - titleH - headerH - 4) / Math.max(1, rows * rowH));
+  if (heightScale > 1.01) {
+    titleH = Math.floor(titleH * heightScale);
+    headerH = Math.floor(headerH * heightScale);
+    rowH = Math.floor(rowH * heightScale);
+  }
+  const font = Math.max(5.2, Math.min(filterHotels.size ? 9 : 8, +(rowH * .56).toFixed(2)));
   document.documentElement.style.setProperty('--print-root-w', Math.ceil(totalW) + 'px');
   document.documentElement.style.setProperty('--print-name-w', nameW + 'px');
   document.documentElement.style.setProperty('--print-col-w', colW + 'px');
