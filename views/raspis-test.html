@@ -9119,6 +9119,18 @@ let overrideModeMonth = 1;
 let overrideModeYear  = 2026;
 let mobileControlsOpen = false;
 
+function measureSubtoolbarHeight() {
+  const stb = document.getElementById('subtoolbar');
+  if (!stb || !stb.classList.contains('show')) {
+    document.documentElement.style.setProperty('--stb-h', '0px');
+    return 0;
+  }
+  const rect = stb.getBoundingClientRect();
+  const h = Math.ceil(rect.height || stb.offsetHeight || 0);
+  document.documentElement.style.setProperty('--stb-h', h + 'px');
+  return h;
+}
+
 function keepActiveScheduleHeaderVisible() {
   const wrap = document.querySelector('.tab-panel.active .schedule-wrap');
   window.scrollTo(0, 0);
@@ -9135,16 +9147,16 @@ function setMobileControlsOpen(open) {
   mobileControlsOpen = !!open;
   const stb = document.getElementById('subtoolbar');
   stb?.classList.toggle('mobile-controls-open', mobileControlsOpen);
-  if (stb?.classList.contains('show')) {
-    document.documentElement.style.setProperty('--stb-h', Math.ceil(stb.getBoundingClientRect().height || stb.offsetHeight || 0) + 'px');
-  }
+  measureSubtoolbarHeight();
   requestAnimationFrame(() => {
     updateMobileToolGrid();
     updateSubtoolbar();
+    measureSubtoolbarHeight();
     updateChromeHeights();
     fitScheduleToViewport();
     if (mobileControlsOpen) keepActiveScheduleHeaderVisible();
     requestAnimationFrame(() => {
+      measureSubtoolbarHeight();
       updateChromeHeights();
       fitScheduleToViewport();
       if (mobileControlsOpen) keepActiveScheduleHeaderVisible();
@@ -9159,6 +9171,8 @@ function setMobileControlsOpen(open) {
 function settleMobileScheduleHeader() {
   if (!isMobileLike() || !mobileControlsOpen) return;
   const settle = () => {
+    updateMobileToolGrid();
+    measureSubtoolbarHeight();
     updateChromeHeights();
     fitScheduleToViewport();
     refreshCoverageSticky();
@@ -9169,6 +9183,7 @@ function settleMobileScheduleHeader() {
     requestAnimationFrame(settle);
   });
   setTimeout(settle, 90);
+  setTimeout(settle, 220);
 }
 
 function updateMobileToolGrid() {
@@ -9198,8 +9213,7 @@ function updateSubtoolbar() {
   stb.classList.toggle('tab-pozadavky', active === 'pozadavky');
   // Skupina měsíc+F+S jen v Tvorba
   if (showStb) {
-    const h = stb.offsetHeight;
-    document.documentElement.style.setProperty('--stb-h', h + 'px');
+    measureSubtoolbarHeight();
     document.body.classList.add('with-subtoolbar');
   } else {
     document.documentElement.style.setProperty('--stb-h', '0px');
@@ -9729,7 +9743,7 @@ function applyRowFilters() {
       }
       if (!hide && availableSlotFilter && !isReqTbl) {
         const slotVal = String(state.schedule[`${si}_${availableSlotFilter.ci}`] || '').trim().toUpperCase();
-        hide = !!(slotVal && slotVal !== 'P');
+        hide = !isReceptionStaffType(s) || !!(slotVal && slotVal !== 'P');
       }
       if ((isPublicTbl || isReqTbl) && isCurrentUserStaff(s)) hide = false;
       tr.classList.toggle('row-filtered', hide);
