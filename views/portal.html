@@ -1404,9 +1404,7 @@
     _modalPointerDownInside = !!e.target.closest('.modal');
   }, true);
 
-  document.getElementById('settings-overlay').addEventListener('click', e => {
-    if (e.target === document.getElementById('settings-overlay') && !modalSelectionDragActive()) closeUserSettings();
-  });
+  // Nastavení se zavírá jen tlačítkem Hotovo, ne klikem mimo modal.
 
   // ── Password change ───────────────────────────────────────────────────────
   function closePwModal() {
@@ -1434,9 +1432,7 @@
     if (data.ok) setTimeout(closePwModal, 1500);
   }
 
-  document.getElementById('pw-overlay').addEventListener('click', e => {
-    if (e.target === document.getElementById('pw-overlay') && !modalSelectionDragActive()) closePwModal();
-  });
+  // Změna hesla se zavírá jen tlačítkem Zrušit/Uložit, ne klikem mimo modal.
 
   // Otevřít modál změny hesla (přes hamburger menu i desktop tlačítko)
   function openPwModal() {

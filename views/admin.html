@@ -1470,16 +1470,7 @@
     _modalPointerDownInside = !!e.target.closest('.modal');
   }, true);
 
-  ['user-overlay','pw-overlay','overrides-overlay','addgroup-overlay'].forEach(id => {
-    document.getElementById(id).addEventListener('click', e => {
-      if (e.target.id !== id) return;
-      if (modalSelectionDragActive()) return;
-      if (id === 'user-overlay') closeUserModal();
-      else if (id === 'pw-overlay') closePwModal();
-      else if (id === 'overrides-overlay') closeOverridesModal();
-      else closeAddGroupModal();
-    });
-  });
+  // Modaly se zavírají jen explicitními tlačítky; klik mimo okno nesmí zahodit změny.
   document.getElementById('user-overlay').addEventListener('keydown', e => { if (e.key === 'Enter') saveUser(); });
   document.getElementById('addgroup-overlay').addEventListener('keydown', e => { if (e.key === 'Enter') saveNewGroup(); });
 </script>

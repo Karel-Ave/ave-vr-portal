@@ -740,7 +740,7 @@ table.sched-tbl {
 .sched-tbl td.sched-cell input {
   width: 100%; height: 100%; border: none; background: transparent;
   text-align: center; font-size: 10px; font-family: inherit;
-  color: inherit; padding: 0; cursor: pointer; font-weight: 700;
+  color: inherit; padding: 0; cursor: pointer; font-weight: 400;
   caret-color: transparent; outline: none;
 }
 .sched-tbl td.sched-cell.focused {
@@ -748,7 +748,7 @@ table.sched-tbl {
 }
 .sched-tbl td.sched-cell .cell-val {
   display: block; text-align: center; font-size: 10px; line-height: 22px;
-  user-select: none; font-weight: 700;
+  user-select: none; font-weight: 400;
 }
 :root:not([data-theme="dark"]) .sched-tbl td.sched-cell,
 :root:not([data-theme="dark"]) .sched-tbl td.sched-cell input,
@@ -1382,8 +1382,8 @@ tbody tr.row-filtered { display: none; }
 
 /* Cell state coloring */
 /* .cell-empty removed (CHANGE 7a) */
-.sched-cell.cell-p-many { color: #e74c3c !important; font-weight: 700; }
-.sched-cell.cell-p-many input { color: #e74c3c !important; font-weight: 700; }
+.sched-cell.cell-p-many { color: #e74c3c !important; font-weight: 400; }
+.sched-cell.cell-p-many input { color: #e74c3c !important; font-weight: 400; }
 .sched-cell.cell-regular-off {
   background: var(--col-unavail-bg,var(--col-reg-off-bg,#f9dce3)) !important;
   color: var(--col-reg-off-tx,#7c2f3d) !important;
@@ -1420,6 +1420,11 @@ tbody tr.row-filtered { display: none; }
 [data-theme="dark"] #tab-pozadavky .sched-cell.cell-req-missing {
   background: var(--col-req-miss-bg,#eadcff) !important;
   color: #111 !important;
+}
+.sched-tbl td.sched-cell,
+.sched-tbl td.sched-cell input,
+.sched-tbl td.sched-cell .cell-val {
+  font-weight: 400 !important;
 }
 .public-own-row .col-name-td {
   background: var(--accent) !important;
@@ -10853,7 +10858,7 @@ function initColorEditorListeners() {
     });
   });
   document.getElementById('overlay-colors').addEventListener('click', e => {
-    if (e.target === e.currentTarget && !shouldKeepPopupOpenForSelection()) e.currentTarget.classList.remove('show');
+    // Zavírání klikem na pozadí je vypnuté; použijte Zavřít/Uložit.
   });
 
   // Open button
@@ -12103,7 +12108,7 @@ document.addEventListener('DOMContentLoaded', async () => {
   });
   document.getElementById('add-staff-confirm').addEventListener('click', confirmAddStaff);
   document.getElementById('overlay-add-staff').addEventListener('click', e => {
-    if (e.target === e.currentTarget && !shouldKeepPopupOpenForSelection()) e.currentTarget.classList.remove('show');
+    // Zavírání klikem na pozadí je vypnuté; použijte explicitní tlačítka.
   });
   document.getElementById('ns-name').addEventListener('keydown', e => {
     if (e.key === 'Enter') confirmAddStaff();
@@ -12117,7 +12122,7 @@ document.addEventListener('DOMContentLoaded', async () => {
   });
   document.getElementById('add-web-user-confirm').addEventListener('click', confirmAddWebUser);
   document.getElementById('overlay-add-web-user').addEventListener('click', e => {
-    if (e.target === e.currentTarget && !shouldKeepPopupOpenForSelection()) e.currentTarget.classList.remove('show');
+    // Zavírání klikem na pozadí je vypnuté; použijte explicitní tlačítka.
   });
   document.getElementById('wu-in-raspis').addEventListener('change', e => {
     document.getElementById('wu-raspis-fields').style.display = e.target.checked ? '' : 'none';
@@ -12128,7 +12133,7 @@ document.addEventListener('DOMContentLoaded', async () => {
     document.getElementById(id).addEventListener('click', closeImportUnmatchedOverlay);
   });
   document.getElementById('overlay-import-unmatched').addEventListener('click', e => {
-    if (e.target === e.currentTarget && !shouldKeepPopupOpenForSelection()) closeImportUnmatchedOverlay();
+    // Zavírání klikem na pozadí je vypnuté; použijte explicitní tlačítka.
   });
 
   // ── Edit staff modal ──
@@ -12139,7 +12144,7 @@ document.addEventListener('DOMContentLoaded', async () => {
     });
   });
   document.getElementById('overlay-edit-staff').addEventListener('click', e => {
-    if (e.target === e.currentTarget && !shouldKeepPopupOpenForSelection()) e.currentTarget.classList.remove('show');
+    // Zavírání klikem na pozadí je vypnuté; použijte explicitní tlačítka.
   });
 
   // ── Nastavení actions ──
@@ -12159,9 +12164,9 @@ document.addEventListener('DOMContentLoaded', async () => {
   document.getElementById('btn-fonds').addEventListener('click', openFondsModal);
   document.getElementById('btn-fonds-close').addEventListener('click', closeFondsModal);
   document.getElementById('btn-fonds-save').addEventListener('click', saveFondsModal);
-  // Zavřít klikem na pozadí overlaye
+  // Klik na pozadí overlay nezavírá; zavírá se jen explicitními tlačítky.
   document.getElementById('fonds-overlay').addEventListener('click', e => {
-    if (e.target === document.getElementById('fonds-overlay') && !shouldKeepPopupOpenForSelection()) closeFondsModal();
+    // Zavírání klikem na pozadí je vypnuté; použijte explicitní tlačítka.
   });
   // Enter v F+S inputech = uložit
   ['inp-fond-hpp','inp-fond-zpp','inp-holidays'].forEach(id => {
@@ -12214,7 +12219,7 @@ document.addEventListener('DOMContentLoaded', async () => {
   document.getElementById('req-create-close')?.addEventListener('click', closeRequirementsCreateModal);
   document.getElementById('req-create-cancel')?.addEventListener('click', closeRequirementsCreateModal);
   document.getElementById('overlay-req-create')?.addEventListener('click', e => {
-    if (e.target === document.getElementById('overlay-req-create') && !shouldKeepPopupOpenForSelection()) closeRequirementsCreateModal();
+    // Zavírání klikem na pozadí je vypnuté; použijte explicitní tlačítka.
   });
   document.getElementById('btn-req-edit')?.addEventListener('click', toggleRequirementsEditWindow);
   document.getElementById('btn-req-cancel')?.addEventListener('click', cancelRequirementsEdit);
@@ -12225,14 +12230,14 @@ document.addEventListener('DOMContentLoaded', async () => {
   document.getElementById('req-send-close')?.addEventListener('click', closeRequirementsSendModal);
   document.getElementById('req-send-cancel')?.addEventListener('click', closeRequirementsSendModal);
   document.getElementById('overlay-req-send')?.addEventListener('click', e => {
-    if (e.target === document.getElementById('overlay-req-send') && !shouldKeepPopupOpenForSelection()) closeRequirementsSendModal();
+    // Zavírání klikem na pozadí je vypnuté; použijte explicitní tlačítka.
   });
   document.getElementById('btn-req-delete')?.addEventListener('click', archiveCurrentRequirement);
   document.getElementById('btn-req-archive')?.addEventListener('click', showRequirementsArchive);
   document.getElementById('req-archive-close')?.addEventListener('click', closeRequirementsArchive);
   document.getElementById('req-archive-close2')?.addEventListener('click', closeRequirementsArchive);
   document.getElementById('overlay-req-archive')?.addEventListener('click', e => {
-    if (e.target === document.getElementById('overlay-req-archive') && !shouldKeepPopupOpenForSelection()) closeRequirementsArchive();
+    // Zavírání klikem na pozadí je vypnuté; použijte explicitní tlačítka.
   });
   document.getElementById('btn-delete-schedule').addEventListener('click', deleteSchedule);
   document.getElementById('btn-schedule-archive').addEventListener('click', showScheduleArchive);
@@ -12248,7 +12253,7 @@ document.addEventListener('DOMContentLoaded', async () => {
     document.getElementById('overlay-trash').classList.remove('show');
   });
   document.getElementById('overlay-trash').addEventListener('click', e => {
-    if (e.target === e.currentTarget && !shouldKeepPopupOpenForSelection()) e.currentTarget.classList.remove('show');
+    // Zavírání klikem na pozadí je vypnuté; použijte explicitní tlačítka.
   });
 
   // ── Archive modal (schedules) ──
@@ -12258,7 +12263,7 @@ document.addEventListener('DOMContentLoaded', async () => {
     });
   });
   document.getElementById('overlay-sched-archive').addEventListener('click', e => {
-    if (e.target === e.currentTarget && !shouldKeepPopupOpenForSelection()) e.currentTarget.classList.remove('show');
+    // Zavírání klikem na pozadí je vypnuté; použijte explicitní tlačítka.
   });
 
   // ── Log modal ──
@@ -12268,7 +12273,7 @@ document.addEventListener('DOMContentLoaded', async () => {
     });
   });
   document.getElementById('overlay-log').addEventListener('click', e => {
-    if (e.target === e.currentTarget && !shouldKeepPopupOpenForSelection()) e.currentTarget.classList.remove('show');
+    // Zavírání klikem na pozadí je vypnuté; použijte explicitní tlačítka.
   });
 
   // ── Hotel manager modal ──
@@ -12278,7 +12283,7 @@ document.addEventListener('DOMContentLoaded', async () => {
     });
   });
   document.getElementById('overlay-hotels').addEventListener('click', e => {
-    if (e.target === e.currentTarget && !shouldKeepPopupOpenForSelection()) e.currentTarget.classList.remove('show');
+    // Zavírání klikem na pozadí je vypnuté; použijte explicitní tlačítka.
   });
   document.getElementById('btn-hotels-save').addEventListener('click', saveHotelManager);
   document.getElementById('btn-hotel-add').addEventListener('click', () => {

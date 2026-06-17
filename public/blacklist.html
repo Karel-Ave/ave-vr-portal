@@ -1814,12 +1814,7 @@ document.addEventListener('pointerdown', e => {
   _modalPointerDownInside = !!e.target.closest('.modal');
 }, true);
 
-// Close overlays on backdrop click
-['overlay-add','overlay-remove','overlay-intro','overlay-email-select','overlay-email','overlay-edit'].forEach(id => {
-  document.getElementById(id).addEventListener('click', function(e) {
-    if (e.target === this && !modalSelectionDragActive()) hideOverlay(id);
-  });
-});
+// Modaly se zavírají jen explicitními tlačítky, ne klikem na pozadí.
 
 // ── Custom date picker ────────────────────────────────────────────────────────
 

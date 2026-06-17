@@ -1521,15 +1521,8 @@ document.getElementById('btn-form-cancel').addEventListener('click', () => {
 document.querySelectorAll('[data-close]').forEach(btn => {
   btn.addEventListener('click', () => closeOverlay(btn.dataset.close));
 });
-// Zavři overlay kliknutím na pozadí — ale NE při drag (mousedown začal uvnitř modalu)
-let _ovMousedownTarget = null;
-document.querySelectorAll('.overlay').forEach(ov => {
-  ov.addEventListener('mousedown', e => { _ovMousedownTarget = e.target; });
-  ov.addEventListener('click', e => {
-    if (e.target === ov && _ovMousedownTarget === ov) closeOverlay(ov.id);
-    _ovMousedownTarget = null;
-  });
-});
+// Modaly se zavírají jen explicitními tlačítky (X / Zrušit / Uložit),
+// aby označení textu nebo náhodný klik mimo okno nezahodil rozepsané změny.
 
 // Toggle "Zaúčtovat do jiného měsíce"
 document.getElementById('btn-toggle-platby').addEventListener('click', () => {
