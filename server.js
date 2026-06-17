@@ -4264,7 +4264,11 @@ const REQ_RECEPTION_CLOSED_MSG = 'Období pro editaci požadavků ještě nezač
 async function canManageRequirementsServer(req) {
   const user = req.session.user;
   if (!user) return false;
-  return hasButtonPerm(user, 'raspis', 'req_edit', false);
+  const role = String(user.role || '').toLowerCase();
+  if (user.role === 'admin' || role.includes('ved') || role === 'pb6') return true;
+  return (await hasButtonPerm(user, 'raspis', 'req_create', false))
+    || (await hasButtonPerm(user, 'raspis', 'req_toggle_reception', false))
+    || (await hasButtonPerm(user, 'raspis', 'req_send_tvorba', false));
 }
 
 function parseRequirementStaffIndex(value) {
