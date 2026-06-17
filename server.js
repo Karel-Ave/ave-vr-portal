@@ -4259,6 +4259,8 @@ function isReqXyLocked(data, ci) {
   return !!(col && locks.cells.includes(`${col.day}-${col.dn}`));
 }
 
+const REQ_RECEPTION_CLOSED_MSG = 'Období pro editaci požadavků ještě nezačalo, nebo již skončilo.';
+
 async function canManageRequirementsServer(req) {
   const user = req.session.user;
   if (!user) return false;
@@ -4488,10 +4490,12 @@ function summarizeRequirementDuplicates(data, staffIndex = null) {
 app.get('/api/rt/requirements', requireLogin, async (req, res) => {
   try {
     const db = getPool();
+    const manager = await canManageRequirementsServer(req);
     const { rows } = await db.query(
       `SELECT key, month, year, label, status, allow_duplicates, updated_at, opened_at, closed_at, archived_at
        FROM rt_requirements
        WHERE archived_at IS NULL
+         ${manager ? '' : "AND status = 'open'"}
        ORDER BY year DESC, month DESC`
     );
     res.json({ ok: true, items: rows });
@@ -4524,6 +4528,22 @@ app.get('/api/rt/requirements/:key', requireLogin, async (req, res) => {
     const { rows } = await db.query('SELECT * FROM rt_requirements WHERE key = $1', [key]);
     if (!rows.length) return res.status(404).json({ ok: false, msg: 'Nenalezeno.' });
     const entry = rows[0];
+    const manager = await canManageRequirementsServer(req);
+    if (!manager && (entry.archived_at || entry.status !== 'open')) {
+      return res.json({
+        ok: true,
+        hidden: true,
+        msg: REQ_RECEPTION_CLOSED_MSG,
+        entry: {
+          key: entry.key,
+          month: entry.month,
+          year: entry.year,
+          label: entry.label,
+          status: entry.status,
+          archived_at: entry.archived_at
+        }
+      });
+    }
     let parsed = {};
     try { parsed = typeof entry.data === 'string' ? JSON.parse(entry.data) : entry.data; } catch(e) { parsed = {}; }
     parsed = await augmentRtDataWithActiveReceptionists(parsed, db);

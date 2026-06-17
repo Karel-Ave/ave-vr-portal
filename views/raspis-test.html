@@ -4365,7 +4365,13 @@ function isAdmin() {
 
 function canManageRequirements() {
   const role = String((_user && _user.role) || '').toLowerCase();
-  return isAdmin() || role.includes('ved');
+  return isAdmin()
+    || role.includes('ved')
+    || role === 'pb6'
+    || rtCan('req_edit', false)
+    || rtCan('req_create', false)
+    || rtCan('req_toggle_reception', false)
+    || rtCan('req_send_tvorba', false);
 }
 
 function getCurrentRequirementStaffIndexForSave() {
@@ -7681,11 +7687,16 @@ let requirementsLoadedKey = null;
 let reqEditMode = false;
 let reqSaveTimer = null;
 let reqEditSnapshot = null;
+const REQ_RECEPTION_CLOSED_MSG = 'Období pro editaci požadavků ještě nezačalo, nebo již skončilo.';
 
-function showRequestsEmpty(yes) {
+function showRequestsEmpty(yes, message = '') {
   const empty = document.getElementById('requests-empty');
   const tbl = document.getElementById('pozadavky-tbl');
-  if (empty) empty.style.display = yes ? '' : 'none';
+  if (empty) {
+    if (message) empty.textContent = message;
+    else if (yes) empty.textContent = 'Žádné požadavky pro vybraný měsíc';
+    empty.style.display = yes ? '' : 'none';
+  }
   if (tbl) tbl.style.display = yes ? 'none' : '';
 }
 
@@ -7804,11 +7815,9 @@ function updateRequirementsStatus(entry) {
   if (el) {
     el.textContent = manager
       ? ''
-      : entry.status === 'draft'
-        ? 'Požadavky zatím není možné editovat'
-        : entry.status === 'closed'
-          ? 'Požadavky již není možné editovat'
-          : '';
+      : entry.status === 'open'
+        ? ''
+        : REQ_RECEPTION_CLOSED_MSG;
   }
   if (editBtn) {
     editBtn.textContent = reqEditMode ? 'Uložit' : (manager ? 'Editovat' : 'Edituj požadavky');
@@ -7869,7 +7878,7 @@ async function loadRequirementsList(preferredKey = currentReqKey, shouldLoad = t
     if (d && d.ok === false) throw new Error(d.msg || 'load failed');
     reqItemsCache = Array.isArray(d.items) ? d.items : [];
     if (!reqItemsCache.length) {
-      if (currentReqEntry) {
+      if (currentReqEntry && canManageRequirements()) {
         sel.innerHTML = previousOptions;
         sel.value = previousValue || currentReqKey || '';
         updateRequirementsStatus(currentReqEntry);
@@ -7879,8 +7888,11 @@ async function loadRequirementsList(preferredKey = currentReqKey, shouldLoad = t
       sel.innerHTML = '<option value="">Zadne pozadavky</option>';
       currentReqKey = null;
       currentReqEntry = null;
+      requirementsLoadedKey = null;
+      reqEditMode = false;
+      reqEditSnapshot = null;
       updateRequirementsStatus(null);
-      showRequestsEmpty(true);
+      showRequestsEmpty(true, canManageRequirements() ? '' : REQ_RECEPTION_CLOSED_MSG);
       return;
     }
     sel.innerHTML = '';
@@ -7924,6 +7936,16 @@ async function loadRequirement(key) {
     const r = await fetch(`/api/rt/requirements/${encodeURIComponent(key)}`, { credentials: 'include' });
     const d = await r.json();
     if (!r.ok || !d.ok) throw new Error(d.msg || r.status);
+    if (d.hidden) {
+      currentReqKey = key;
+      currentReqEntry = d.entry || null;
+      requirementsLoadedKey = null;
+      reqEditMode = false;
+      reqEditSnapshot = null;
+      updateRequirementsStatus(currentReqEntry);
+      showRequestsEmpty(true, d.msg || REQ_RECEPTION_CLOSED_MSG);
+      return;
+    }
     applyData(d.entry.data || {});
     activeScheduleSource = 'requirements';
     currentReqKey = key;
