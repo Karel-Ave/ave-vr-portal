@@ -1352,23 +1352,21 @@ body[data-active-tab="pozadavky"] #schedule-legend .legend-item.schedule-dynamic
   html, body {
     background: #fff !important;
     color: #000 !important;
-    width: auto !important;
-    height: auto !important;
+    width: 283mm !important;
+    height: 196mm !important;
     overflow: visible !important;
+    padding: 0 !important;
+    margin: 0 !important;
   }
-  body.print-schedule * { visibility: hidden !important; }
-  body.print-schedule #print-root,
-  body.print-schedule #print-root * { visibility: visible !important; }
+  body.print-schedule > :not(#print-root) { display: none !important; }
   body.print-schedule #print-root {
     display: block !important;
-    position: fixed !important;
+    position: absolute !important;
     inset: 0 auto auto 0 !important;
-    width: calc(100vw - 14mm) !important;
-    height: calc(100vh - 14mm) !important;
-    overflow: hidden !important;
+    width: var(--print-root-w, 283mm) !important;
+    height: auto !important;
+    overflow: visible !important;
     background: #fff !important;
-    transform-origin: top left;
-    transform: scale(var(--print-scale, 1));
   }
   body.print-schedule #print-root .print-title {
     display: block !important;
@@ -1388,22 +1386,23 @@ body[data-active-tab="pozadavky"] #schedule-legend .legend-item.schedule-dynamic
     background: #fff !important;
   }
   body.print-schedule #print-root table.sched-tbl {
-    --sched-row-h: 12px;
-    --sched-col-w: 10px;
-    --sched-name-w: 78px;
-    --sched-sum-w: 16px;
-    --sched-hrs-w: 20px;
-    --sched-pm-w: 18px;
+    --sched-row-h: var(--print-row-h, 12px);
+    --sched-col-w: var(--print-col-w, 10px);
+    --sched-name-w: var(--print-name-w, 82px);
+    --sched-sum-w: var(--print-sum-w, 16px);
+    --sched-hrs-w: var(--print-hrs-w, 20px);
+    --sched-pm-w: var(--print-pm-w, 18px);
     border-collapse: separate !important;
     white-space: nowrap !important;
     table-layout: fixed !important;
-    font-size: 6px !important;
+    font-size: var(--print-font, 6.5px) !important;
+    background: #fff !important;
     -webkit-print-color-adjust: exact;
     print-color-adjust: exact;
   }
   body.print-schedule #print-root .sched-tbl th,
   body.print-schedule #print-root .sched-tbl td {
-    height: 12px !important;
+    height: var(--print-row-h, 12px) !important;
     padding: 0 !important;
     border-color: #777 !important;
     color: #000 !important;
@@ -1420,35 +1419,81 @@ body[data-active-tab="pozadavky"] #schedule-legend .legend-item.schedule-dynamic
   body.print-schedule #print-root .sched-tbl .col-name-td {
     position: static !important;
     left: auto !important;
-    min-width: 78px !important;
-    max-width: 78px !important;
-    width: 78px !important;
-    font-size: 6px !important;
+    min-width: var(--print-name-w, 82px) !important;
+    max-width: var(--print-name-w, 82px) !important;
+    width: var(--print-name-w, 82px) !important;
+    font-size: var(--print-font, 6.5px) !important;
     background: #eeeeeb !important;
     color: #000 !important;
     font-weight: 600 !important;
   }
   body.print-schedule #print-root .sched-tbl .th-day {
-    min-width: 20px !important;
-    font-size: 6px !important;
+    min-width: calc(var(--print-col-w, 10px) * 2) !important;
+    font-size: var(--print-font, 6.5px) !important;
+  }
+  body.print-schedule #print-root .sched-tbl .th-dn .th-dn-day,
+  body.print-schedule #print-root .sched-tbl .th-dn .th-day-num,
+  body.print-schedule #print-root .sched-tbl .th-dn .th-day-dow,
+  body.print-schedule #print-root .sched-tbl .th-dn .th-dn-letter {
+    color: #000 !important;
   }
   body.print-schedule #print-root .sched-tbl .th-dn,
   body.print-schedule #print-root .sched-tbl td.sched-cell {
-    width: 10px !important;
-    min-width: 10px !important;
-    max-width: 10px !important;
-    font-size: 6px !important;
+    width: var(--print-col-w, 10px) !important;
+    min-width: var(--print-col-w, 10px) !important;
+    max-width: var(--print-col-w, 10px) !important;
+    font-size: var(--print-font, 6.5px) !important;
   }
   body.print-schedule #print-root .sched-tbl .sum-cell,
   body.print-schedule #print-root .sched-tbl .th-sum {
-    width: 16px !important;
-    min-width: 16px !important;
-    max-width: 16px !important;
-    font-size: 6px !important;
+    width: var(--print-sum-w, 16px) !important;
+    min-width: var(--print-sum-w, 16px) !important;
+    max-width: var(--print-sum-w, 16px) !important;
+    font-size: var(--print-font, 6.5px) !important;
+    background: #f6f6f3 !important;
   }
   body.print-schedule #print-root .sched-tbl .cell-val {
-    font-size: 6px !important;
+    font-size: var(--print-font, 6.5px) !important;
     font-weight: 500 !important;
+  }
+  body.print-schedule #print-root .sched-tbl td.sched-cell {
+    background: #fff !important;
+  }
+  body.print-schedule #print-root .sched-tbl td.sched-cell[data-dn="n"] {
+    background: #e5e5e2 !important;
+  }
+  body.print-schedule #print-root .sched-tbl td.sched-cell.vsedni-noc,
+  body.print-schedule #print-root .sched-tbl td.sched-cell.night,
+  body.print-schedule #print-root .sched-tbl td.sched-cell.col-night,
+  body.print-schedule #print-root .sched-tbl td.sched-cell.cell-wn {
+    background: #e5e5e2 !important;
+  }
+  body.print-schedule #print-root .sched-tbl td.sched-cell.weekend,
+  body.print-schedule #print-root .sched-tbl td.sched-cell.is-weekend,
+  body.print-schedule #print-root .sched-tbl td.sched-cell.vikend,
+  body.print-schedule #print-root .sched-tbl td.sched-cell.cell-kd {
+    background: #d8e2d4 !important;
+  }
+  body.print-schedule #print-root .sched-tbl td.sched-cell.cell-kn {
+    background: #c9d6c5 !important;
+  }
+  body.print-schedule #print-root .sched-tbl td.sched-cell.holiday,
+  body.print-schedule #print-root .sched-tbl td.sched-cell.is-holiday,
+  body.print-schedule #print-root .sched-tbl td.sched-cell.svatek {
+    background: #f2dddd !important;
+  }
+  body.print-schedule #print-root .sched-tbl td.sched-cell.req-changed,
+  body.print-schedule #print-root .sched-tbl td.sched-cell.unavailable,
+  body.print-schedule #print-root .sched-tbl td.sched-cell.cell-duplicate,
+  body.print-schedule #print-root .sched-tbl td.sched-cell.cell-p-many {
+    color: #000 !important;
+  }
+  body.print-schedule #print-root .sched-tbl .hover-row,
+  body.print-schedule #print-root .sched-tbl .col-hover,
+  body.print-schedule #print-root .sched-tbl .cell-selected,
+  body.print-schedule #print-root .sched-tbl .focused {
+    outline: none !important;
+    box-shadow: none !important;
   }
   body.print-schedule #print-root .sched-tbl .row-filtered,
   body.print-schedule #print-root .sched-tbl .hidden-row {
@@ -4628,17 +4673,32 @@ function printScheduleTab(tab) {
   root.append(title, wrap);
   document.body.appendChild(root);
 
-  const pageW = 1045;
-  const pageH = 730;
-  const neededW = Math.max(1, clone.scrollWidth || clone.offsetWidth || srcTbl.scrollWidth || 1);
-  const neededH = Math.max(1, root.scrollHeight || clone.offsetHeight || 1);
-  const scale = Math.min(1, pageW / neededW, pageH / neededH);
-  document.documentElement.style.setProperty('--print-scale', Math.max(.42, Math.min(1, scale)).toFixed(3));
+  const visibleRows = Array.from(clone.querySelectorAll('tbody tr')).filter(tr => {
+    return !tr.classList.contains('row-filtered')
+      && !tr.classList.contains('hidden-row')
+      && getComputedStyle(tr).display !== 'none';
+  }).length;
+  const dayCols = clone.querySelectorAll('thead th.th-dn').length;
+  const sumCols = clone.querySelectorAll('thead th.th-sum').length;
+  const base = { name: 82, col: 10, sum: 16, row: 12, font: 6.5, title: 14, header: 24 };
+  const baseW = base.name + dayCols * base.col + sumCols * base.sum + 8;
+  const baseH = base.title + base.header + Math.max(1, visibleRows) * base.row + 8;
+  const pageW = 1068; // A4 landscape printable area at 7mm margins, CSS px approximation
+  const pageH = 740;
+  const scale = Math.max(.46, Math.min(1, pageW / baseW, pageH / baseH));
+  document.documentElement.style.setProperty('--print-root-w', Math.ceil(baseW * scale + 4) + 'px');
+  document.documentElement.style.setProperty('--print-name-w', Math.max(50, Math.floor(base.name * scale)) + 'px');
+  document.documentElement.style.setProperty('--print-col-w', Math.max(5, Math.floor(base.col * scale)) + 'px');
+  document.documentElement.style.setProperty('--print-sum-w', Math.max(8, Math.floor(base.sum * scale)) + 'px');
+  document.documentElement.style.setProperty('--print-row-h', Math.max(6, Math.floor(base.row * scale)) + 'px');
+  document.documentElement.style.setProperty('--print-font', Math.max(3.8, +(base.font * scale).toFixed(2)) + 'px');
 
   document.body.classList.add('print-schedule', cls);
   const cleanup = () => {
     document.body.classList.remove('print-schedule', 'print-public', 'print-req');
-    document.documentElement.style.removeProperty('--print-scale');
+    ['--print-root-w','--print-name-w','--print-col-w','--print-sum-w','--print-row-h','--print-font'].forEach(p => {
+      document.documentElement.style.removeProperty(p);
+    });
     document.getElementById('print-root')?.remove();
   };
   window.addEventListener('afterprint', cleanup, { once: true });
