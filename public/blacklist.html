@@ -197,12 +197,19 @@ body {
 }
 #bl-table {
   width: 100%;
+  table-layout: fixed;
   border-collapse: collapse;
   background: var(--surface);
   font-size: 12.5px;
-  min-width: 800px;
+  min-width: 760px;
   transition: background .25s;
 }
+#bl-table .bl-col-name { width: 150px; }
+#bl-table .bl-col-hotel { width: 72px; }
+#bl-table .bl-col-birth { width: 92px; }
+#bl-table .bl-col-damage { width: 90px; }
+#bl-table .bl-col-stay { width: 104px; }
+#bl-table .bl-col-edit { width: 68px; }
 #bl-table thead tr th {
   background: var(--thead-bg);
   color: var(--thead-text);
@@ -221,6 +228,7 @@ body {
 .sort-arrow { display: inline-block; width: 10px; font-size: 9px; opacity: .4; }
 th.sort-active .sort-arrow { opacity: 1; }
 td.col-edit { width: 68px; text-align: center; padding: 4px; display: flex; gap: 4px; justify-content: center; align-items: center; }
+#bl-table td { overflow-wrap: anywhere; }
 .btn-edit-row {
   background: none;
   border: 1px solid var(--border);
@@ -282,8 +290,9 @@ td.col-edit { width: 68px; text-align: center; padding: 4px; display: flex; gap:
   color: var(--text);
 }
 #bl-table td.col-reason {
-  max-width: 360px;
-  word-break: break-word;
+  max-width: none;
+  word-break: normal;
+  overflow-wrap: anywhere;
 }
 #empty-state {
   text-align: center;
@@ -904,6 +913,15 @@ body.no-hist-delete #btn-hist-del-sel { display: none !important; }
   <div id="list-view">
     <div id="bl-table-wrap">
       <table id="bl-table">
+        <colgroup>
+          <col class="bl-col-name">
+          <col class="bl-col-hotel">
+          <col class="bl-col-birth">
+          <col class="bl-col-damage">
+          <col class="bl-col-stay">
+          <col class="bl-col-reason">
+          <col class="bl-col-edit">
+        </colgroup>
         <thead>
           <tr>
             <th class="sortable" data-sort="name">Jméno <span class="sort-arrow" id="sa-name">▲</span></th>

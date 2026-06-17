@@ -1331,6 +1331,103 @@ body[data-active-tab="pozadavky"] #schedule-legend .legend-item.schedule-dynamic
 @media (max-width: 700px), (pointer: coarse) and (max-height: 520px) {
   #schedule-legend.show { display: none !important; }
 }
+@media print {
+  @page { size: A4 landscape; margin: 7mm; }
+  html, body {
+    background: #fff !important;
+    color: #000 !important;
+    width: auto !important;
+    height: auto !important;
+    overflow: visible !important;
+  }
+  body.print-schedule * { visibility: hidden !important; }
+  body.print-public #tab-public,
+  body.print-public #tab-public *,
+  body.print-req #tab-pozadavky,
+  body.print-req #tab-pozadavky * { visibility: visible !important; }
+  body.print-schedule #app-topbar,
+  body.print-schedule #subtoolbar,
+  body.print-schedule #schedule-legend,
+  body.print-schedule .spinner-wrap,
+  body.print-schedule .empty-state,
+  body.print-schedule .mobile-keypad,
+  body.print-schedule .rt-fonds-info { display: none !important; }
+  body.print-schedule #tab-public,
+  body.print-schedule #tab-pozadavky {
+    display: block !important;
+    position: absolute !important;
+    inset: 0 auto auto 0 !important;
+    width: 100% !important;
+    padding: 0 !important;
+    margin: 0 !important;
+    background: #fff !important;
+  }
+  body.print-schedule .schedule-wrap {
+    display: block !important;
+    position: static !important;
+    width: 100% !important;
+    max-width: none !important;
+    height: auto !important;
+    overflow: visible !important;
+    background: #fff !important;
+  }
+  body.print-schedule table.sched-tbl {
+    --sched-row-h: 13px;
+    --sched-col-w: 11px;
+    --sched-name-w: 82px;
+    --sched-sum-w: 18px;
+    --sched-hrs-w: 22px;
+    --sched-pm-w: 20px;
+    border-collapse: separate !important;
+    white-space: nowrap !important;
+    font-size: 7px !important;
+    -webkit-print-color-adjust: exact;
+    print-color-adjust: exact;
+  }
+  body.print-schedule .sched-tbl th,
+  body.print-schedule .sched-tbl td {
+    height: 13px !important;
+    padding: 0 !important;
+    border-color: #777 !important;
+    color: #000 !important;
+    -webkit-print-color-adjust: exact;
+    print-color-adjust: exact;
+  }
+  body.print-schedule .sched-tbl thead th {
+    position: static !important;
+    top: auto !important;
+  }
+  body.print-schedule .sched-tbl .col-name-th,
+  body.print-schedule .sched-tbl .col-name-td {
+    position: static !important;
+    min-width: 82px !important;
+    max-width: 82px !important;
+    width: 82px !important;
+    font-size: 7px !important;
+  }
+  body.print-schedule .sched-tbl .th-day {
+    min-width: 22px !important;
+    font-size: 7px !important;
+  }
+  body.print-schedule .sched-tbl .th-dn,
+  body.print-schedule .sched-tbl td.sched-cell {
+    width: 11px !important;
+    min-width: 11px !important;
+    max-width: 11px !important;
+    font-size: 7px !important;
+  }
+  body.print-schedule .sched-tbl .sum-cell,
+  body.print-schedule .sched-tbl .th-sum {
+    width: 18px !important;
+    min-width: 18px !important;
+    max-width: 18px !important;
+    font-size: 7px !important;
+  }
+  body.print-schedule .sched-tbl .cell-val {
+    font-size: 7px !important;
+    font-weight: 500 !important;
+  }
+}
 /* selected cells highlight */
 .sched-cell.cell-selected,
 .col-name-td.cell-selected {
@@ -2327,6 +2424,7 @@ tbody tr.row-filtered { display: none; }
 
   <div class="tb-actions hidden" id="tb-act-public">
     <select id="pub-sel-public" class="tb-btn" style="padding:4px 6px;font-size:12px;"></select>
+    <button class="tb-btn" id="btn-public-print">Tisk</button>
     <div class="rt-fonds-info" style="display:none">
       <span class="fonds-label">Fond HPP:</span><strong class="rt-fond-hpp-info">-</strong>
       <span class="fonds-label">Fond ZPP:</span><strong class="rt-fond-zpp-info">-</strong>
@@ -2341,6 +2439,7 @@ tbody tr.row-filtered { display: none; }
     <button class="tb-btn" id="btn-req-toggle-edit" data-mobile-label="Povolit Editaci">Povolit editaci</button>
     <button class="tb-btn" id="btn-req-paste-excel">Vložit XLS</button>
     <button class="tb-btn" id="btn-req-send-tvorba">Odeslat do Tvorba</button>
+    <button class="tb-btn" id="btn-req-print">Tisk</button>
     <select id="req-sel" class="tb-btn" style="display:none"></select>
     <span id="req-status" class="tb-status"></span>
     <div id="req-fonds-info" class="rt-fonds-info" style="display:none">
@@ -4421,9 +4520,7 @@ function applyRaspisPermissions() {
     if (key) setPermHidden(btn, !rtCan(key, btn.dataset.tab === 'public' || btn.dataset.tab === 'pozadavky'));
   });
 
-  setPermVisibleById('btn-fonds', 'fonds', canManageRequirements());
-  setPermVisibleById('btn-template-dl', 'import', false);
-  setPermVisibleById('btn-import-xls', 'import', false);
+  ['btn-fonds','btn-template-dl','btn-import-xls','btn-color-editor','stb-export2'].forEach(id => setPermHidden(document.getElementById(id), true));
   setPermVisibleById('btn-paste-excel', 'paste_excel', canManageRequirements());
   setPermVisibleById('btn-import-unmatched', 'unmatched', canManageRequirements());
   setPermVisibleById('btn-draft-delete', 'delete', false);
@@ -4434,7 +4531,6 @@ function applyRaspisPermissions() {
   setPermVisibleById('btn-delete-schedule', 'delete', false);
   setPermVisibleById('btn-schedule-archive', 'archive', false);
   setPermVisibleById('btn-schedule-log', 'log', false);
-  setPermVisibleById('btn-color-editor', 'colors', false);
 
   setPermVisibleById('btn-req-create', 'req_create', canManageRequirements());
   setPermVisibleById('btn-req-edit', 'req_edit', canManageRequirements());
@@ -4456,7 +4552,6 @@ function applyRaspisPermissions() {
   setPermVisibleById('stb-show-selected', 'mark', canManageRequirements());
   setPermVisibleById('stb-undo', 'undo_redo', canManageRequirements());
   setPermVisibleById('stb-redo', 'undo_redo', canManageRequirements());
-  setPermVisibleById('stb-export2', 'export', canManageRequirements());
 
   const active = document.body.dataset.activeTab;
   if (active && !document.querySelector(`.tb-tab[data-tab="${active}"]:not(.perm-hidden)`)) {
@@ -4469,6 +4564,15 @@ function applyRaspisPermissions() {
 /* ══════════════════════════════════════════════════════════════════════════════
    TOAST
 ══════════════════════════════════════════════════════════════════════════════ */
+
+function printScheduleTab(tab) {
+  const cls = tab === 'pozadavky' ? 'print-req' : 'print-public';
+  document.body.classList.add('print-schedule', cls);
+  const cleanup = () => document.body.classList.remove('print-schedule', 'print-public', 'print-req');
+  window.addEventListener('afterprint', cleanup, { once: true });
+  setTimeout(cleanup, 1500);
+  window.print();
+}
 
 let _toastTimer = null;
 function toast(msg, isErr, dur) {
@@ -12234,6 +12338,7 @@ document.addEventListener('DOMContentLoaded', async () => {
   });
   document.getElementById('btn-req-delete')?.addEventListener('click', archiveCurrentRequirement);
   document.getElementById('btn-req-archive')?.addEventListener('click', showRequirementsArchive);
+  document.getElementById('btn-req-print')?.addEventListener('click', () => printScheduleTab('pozadavky'));
   document.getElementById('req-archive-close')?.addEventListener('click', closeRequirementsArchive);
   document.getElementById('req-archive-close2')?.addEventListener('click', closeRequirementsArchive);
   document.getElementById('overlay-req-archive')?.addEventListener('click', e => {
@@ -12244,6 +12349,7 @@ document.addEventListener('DOMContentLoaded', async () => {
   document.getElementById('btn-schedule-log').addEventListener('click', showScheduleLog);
   document.getElementById('btn-view-edit').addEventListener('click', toggleViewEdit);
   document.getElementById('btn-view-cancel')?.addEventListener('click', cancelViewEdit);
+  document.getElementById('btn-public-print')?.addEventListener('click', () => printScheduleTab('public'));
 
   // ── Trash modal (drafts) ──
   document.getElementById('trash-close').addEventListener('click', () => {

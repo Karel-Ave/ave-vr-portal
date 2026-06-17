@@ -327,10 +327,7 @@ table.dtbl { width: 100%; border-collapse: collapse; table-layout: fixed; font-s
         <span class="month-label" id="month-label">—</span>
         <button class="nav-btn" id="btn-next">▶</button>
         <div class="controls-sep"></div>
-        <label class="btn btn-secondary btn-sm" for="inp-template-file" title="Doplnit data do šablony Pokuty_odmeny.xls">Šablona</label>
-        <input type="file" id="inp-template-file" accept=".xls,.xlsx" style="display:none">
         <a class="btn btn-secondary btn-sm" id="link-export" href="#" title="Stáhnout Excel s přehledem">Export</a>
-        <span id="fill-status"></span>
       </div>
       <!-- Big Přidat button -->
       <button class="btn-add-big" id="btn-add">Přidat záznam</button>
@@ -352,30 +349,11 @@ table.dtbl { width: 100%; border-collapse: collapse; table-layout: fixed; font-s
 
   <!-- Sub-tab lišta -->
   <div class="subtab-bar">
-    <button class="subtab-btn active" data-subtab="recepni">Recepční</button>
-    <button class="subtab-btn" data-subtab="texty">Přednastavené texty</button>
-  </div>
-
-  <!-- Sub-panel: Recepční -->
-  <div class="subtab-panel active" id="subtab-recepni">
-
-    <div class="settings-section">
-      <h3>Recepční — seznam loginů</h3>
-      <!-- Add row ABOVE list -->
-      <div class="add-row">
-        <input type="text" id="inp-rl-login" placeholder="Login"
-          style="width:100px;padding:7px 10px;border:1px solid var(--border);border-radius:7px;background:var(--bg);color:var(--text);font-family:inherit;font-size:13px">
-        <input type="text" id="inp-rl-name" placeholder="Příjmení Jméno"
-          style="flex:1;min-width:140px;padding:7px 10px;border:1px solid var(--border);border-radius:7px;background:var(--bg);color:var(--text);font-family:inherit;font-size:13px">
-        <button class="btn btn-primary" id="btn-add-rl">Přidat</button>
-      </div>
-      <div id="rl-err" style="color:#e74c3c;font-size:12px;margin-bottom:8px"></div>
-      <div id="recepni-list"><p class="empty">Načítám…</p></div>
-    </div>
+    <button class="subtab-btn active" data-subtab="texty">Přednastavené texty</button>
   </div>
 
   <!-- Sub-panel: Přednastavené texty -->
-  <div class="subtab-panel" id="subtab-texty">
+  <div class="subtab-panel active" id="subtab-texty">
 
     <!-- Přednastavené důvody – Braní směn -->
     <div class="settings-section">
@@ -447,11 +425,6 @@ table.dtbl { width: 100%; border-collapse: collapse; table-layout: fixed; font-s
                    onfocus="acFilter(this.value)"
                    onblur="setTimeout(acClose, 200)">
             <div id="ac-list" class="ac-list hidden"></div>
-            <button type="button" class="ac-manual-btn" title="Zadat ručně" onclick="acToggleManual()">✏️</button>
-          </div>
-          <div id="ac-manual-wrap" class="hidden ac-manual-input">
-            <input type="text" id="inp-ac-manual" placeholder="Login (ruční zadání)"
-                   oninput="document.getElementById('inp-login-hidden').value=this.value.trim()">
           </div>
           <input type="hidden" name="login" id="inp-login-hidden">
         </div>
@@ -673,9 +646,6 @@ function applyPriplatkyPermissions() {
   });
   setPriplatkyVisible('btn-add', priplatkyCan('add', true));
   setPriplatkyVisible('link-export', priplatkyCan('export', true));
-  const templateLabel = document.querySelector('label[for="inp-template-file"]');
-  if (templateLabel) templateLabel.style.display = priplatkyCan('template', false) ? '' : 'none';
-  setPriplatkyVisible('btn-add-rl', priplatkyCan('manageReceptionists', false));
   setPriplatkyVisible('btn-add-duvod-brani', priplatkyCan('manageTexts', false));
   setPriplatkyVisible('btn-add-duvod-obecne', priplatkyCan('manageTexts', false));
   if (!showSettings) {
@@ -692,7 +662,7 @@ document.querySelectorAll('.tab-btn').forEach(btn => btn.addEventListener('click
   document.querySelectorAll('.tab-panel').forEach(p => p.classList.remove('active'));
   btn.classList.add('active');
   document.getElementById('tab-' + btn.dataset.tab).classList.add('active');
-  if (btn.dataset.tab === 'nastaveni') { loadDuvodyBraniList(); loadDuvodyObecneList(); loadRecepniList(); }
+  if (btn.dataset.tab === 'nastaveni') { loadDuvodyBraniList(); loadDuvodyObecneList(); }
 }));
 
 // Sub-záložky v Nastavení
@@ -804,8 +774,6 @@ function recepniName(login) {
 }
 
 // ═══ Autocomplete ════════════════════════════════════════════════════════════
-let acManualMode = false;
-
 function acFilter(val) {
   const listEl = document.getElementById('ac-list');
   const v = val.trim().toLowerCase();
@@ -834,32 +802,13 @@ function acSelect(login, name) {
   document.getElementById('ac-list').classList.add('hidden');
 }
 function acClose() { document.getElementById('ac-list').classList.add('hidden'); }
-function acToggleManual() {
-  acManualMode = !acManualMode;
-  document.getElementById('ac-manual-wrap').classList.toggle('hidden', !acManualMode);
-  document.getElementById('inp-ac').disabled = acManualMode;
-  if (acManualMode) {
-    document.getElementById('inp-ac').value = '';
-    document.getElementById('inp-login-hidden').value = '';
-    document.getElementById('inp-ac-manual').focus();
-  } else {
-    document.getElementById('inp-ac-manual').value = '';
-    document.getElementById('inp-login-hidden').value = '';
-    document.getElementById('inp-ac').disabled = false;
-  }
-}
 function acReset() {
-  acManualMode = false;
   document.getElementById('inp-ac').value           = '';
   document.getElementById('inp-ac').disabled        = false;
   document.getElementById('inp-login-hidden').value = '';
-  document.getElementById('inp-ac-manual').value    = '';
-  document.getElementById('ac-manual-wrap').classList.add('hidden');
   document.getElementById('ac-list').classList.add('hidden');
 }
 function acSetValue(login, name) {
-  acManualMode = false;
-  document.getElementById('ac-manual-wrap').classList.add('hidden');
   document.getElementById('inp-ac').disabled = false;
   document.getElementById('inp-ac').value    = name ? `${login} – ${name}` : login;
   document.getElementById('inp-login-hidden').value = login;
@@ -1298,7 +1247,7 @@ async function deleteZaznam(id) {
 }
 
 // ═══ Doplnit do šablony (auto na výběr souboru) ═══════════════════════════════
-document.getElementById('inp-template-file').addEventListener('change', function() {
+document.getElementById('inp-template-file')?.addEventListener('change', function() {
   const file = this.files[0];
   if (!file) return;
   const status = document.getElementById('fill-status');
@@ -1481,7 +1430,7 @@ async function saveEditRl(login, inp) {
   loadRecepniList();
   loadRecepniDropdown();
 }
-document.getElementById('btn-add-rl').addEventListener('click', async () => {
+document.getElementById('btn-add-rl')?.addEventListener('click', async () => {
   const login     = document.getElementById('inp-rl-login').value.trim();
   const full_name = document.getElementById('inp-rl-name').value.trim();
   const errEl     = document.getElementById('rl-err');

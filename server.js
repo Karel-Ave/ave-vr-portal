@@ -558,10 +558,7 @@ app.get('/api/my-permissions', requireLogin, async (req, res) => {
         show_qualified: isManager,
         mark: isManager,
         undo_redo: isManager,
-        colors: isAdm,
-        fonds: isManager,
         paste_excel: isManager,
-        import: isAdm,
         unmatched: isManager,
         publish: isManager,
         delete: isAdm,
@@ -569,7 +566,6 @@ app.get('/api/my-permissions', requireLogin, async (req, res) => {
         edit: isManager,
         archive: isAdm,
         log: isAdm,
-        export: isManager,
         req_create: isManager,
         req_edit: isManager,
         req_toggle_reception: isManager,
@@ -587,9 +583,7 @@ app.get('/api/my-permissions', requireLogin, async (req, res) => {
         edit: true,
         delete: isAdm,
         export: true,
-        template: isAdm,
         settings: isAdm,
-        manageReceptionists: isAdm,
         manageTexts: isAdm
       } },
       blacklist: { enabled: true, visible: true, buttons: {
@@ -2017,15 +2011,52 @@ app.get('/api/priplatky/recepni', requireLogin, async (req, res) => {
   const db = getPool();
   const all = await canViewAllPriplatky(req.session.user);
   const ids = userIdentityValues(req.session.user);
-  const { rows } = all
-    ? await db.query(`SELECT login, full_name, active FROM receptionist_logins ORDER BY full_name`)
-    : await db.query(
-        `SELECT login, full_name, active
-         FROM receptionist_logins
-         WHERE LOWER(login) = ANY($1::text[]) OR LOWER(COALESCE(full_name,'')) = ANY($1::text[])
-         ORDER BY full_name`,
-        [ids]
-      );
+  const byLogin = new Map();
+
+  const { rows: legacyRows } = await db.query(`SELECT login, full_name, active FROM receptionist_logins`);
+  for (const r of legacyRows) {
+    const login = String(r.login || '').trim();
+    if (!login) continue;
+    byLogin.set(login.toLowerCase(), {
+      login,
+      full_name: r.full_name || login,
+      active: r.active !== false
+    });
+  }
+
+  const { rows: userRows } = await db.query(
+    `SELECT name, username, perm_overrides
+     FROM users
+     WHERE perm_overrides IS NOT NULL`
+  );
+  for (const u of userRows) {
+    let overrides = null;
+    try {
+      overrides = typeof u.perm_overrides === 'string'
+        ? JSON.parse(u.perm_overrides)
+        : u.perm_overrides;
+    } catch (e) {
+      continue;
+    }
+    const rs = overrides?.raspis_staff;
+    if (!rs || !rs.active) continue;
+    const login = String(rs.login || u.username || '').trim().toUpperCase();
+    if (!login) continue;
+    byLogin.set(login.toLowerCase(), {
+      login,
+      full_name: rs.displayName || u.name || login,
+      active: true
+    });
+  }
+
+  let rows = Array.from(byLogin.values()).filter(r => r.active !== false);
+  if (!all) {
+    rows = rows.filter(r =>
+      ids.includes(String(r.login || '').toLowerCase()) ||
+      ids.includes(String(r.full_name || '').toLowerCase())
+    );
+  }
+  rows.sort((a, b) => String(a.full_name || a.login).localeCompare(String(b.full_name || b.login), 'cs', { sensitivity: 'base' }));
   res.json(rows);
 });
 
