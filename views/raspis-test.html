@@ -1179,19 +1179,19 @@ tbody tr.row-hidden { display: none !important; }
 .stb-btn.active:hover { opacity: .88; }
 #stb-undo,
 #stb-redo {
-  background: var(--accent,#C4A96A);
+  background: transparent;
   border-color: var(--accent,#C4A96A);
-  color: var(--accent-fg,#fff);
+  color: var(--accent,#C4A96A);
 }
 [data-theme="dark"] #stb-undo,
 [data-theme="dark"] #stb-redo {
-  color: var(--hotel-btn-active-color,#1A1A18);
+  color: var(--accent,#C4A96A);
 }
 #stb-undo:hover,
 #stb-redo:hover {
-  background: var(--accent-h,var(--accent,#C4A96A));
+  background: color-mix(in srgb, var(--accent) 12%, transparent);
   border-color: var(--accent-h,var(--accent,#C4A96A));
-  color: var(--accent-fg,#fff);
+  color: var(--accent-h,var(--accent,#C4A96A));
 }
 .stb-hotel-lbl { font-size: 10px; color: var(--text-muted); margin-right: 2px; }
 .stb-label { font-size: 10px; color: var(--btn-top-color,#9A9890); white-space: nowrap; }
@@ -1357,91 +1357,102 @@ body[data-active-tab="pozadavky"] #schedule-legend .legend-item.schedule-dynamic
     overflow: visible !important;
   }
   body.print-schedule * { visibility: hidden !important; }
-  body.print-public #tab-public,
-  body.print-public #tab-public *,
-  body.print-req #tab-pozadavky,
-  body.print-req #tab-pozadavky * { visibility: visible !important; }
-  body.print-schedule #app-topbar,
-  body.print-schedule #subtoolbar,
-  body.print-schedule #schedule-legend,
-  body.print-schedule .spinner-wrap,
-  body.print-schedule .empty-state,
-  body.print-schedule .mobile-keypad,
-  body.print-schedule .rt-fonds-info { display: none !important; }
-  body.print-schedule #tab-public,
-  body.print-schedule #tab-pozadavky {
+  body.print-schedule #print-root,
+  body.print-schedule #print-root * { visibility: visible !important; }
+  body.print-schedule #print-root {
     display: block !important;
-    position: absolute !important;
+    position: fixed !important;
     inset: 0 auto auto 0 !important;
-    width: 100% !important;
-    padding: 0 !important;
-    margin: 0 !important;
+    width: calc(100vw - 14mm) !important;
+    height: calc(100vh - 14mm) !important;
+    overflow: hidden !important;
     background: #fff !important;
+    transform-origin: top left;
+    transform: scale(var(--print-scale, 1));
   }
-  body.print-schedule .schedule-wrap {
+  body.print-schedule #print-root .print-title {
+    display: block !important;
+    margin: 0 0 3px 0 !important;
+    color: #000 !important;
+    font: 700 10px Arial, sans-serif !important;
+    line-height: 1.1 !important;
+  }
+  body.print-schedule #print-root .schedule-wrap {
     display: block !important;
     position: static !important;
-    width: 100% !important;
+    width: max-content !important;
     max-width: none !important;
     height: auto !important;
     overflow: visible !important;
+    padding: 0 !important;
     background: #fff !important;
   }
-  body.print-schedule table.sched-tbl {
-    --sched-row-h: 13px;
-    --sched-col-w: 11px;
-    --sched-name-w: 82px;
-    --sched-sum-w: 18px;
-    --sched-hrs-w: 22px;
-    --sched-pm-w: 20px;
+  body.print-schedule #print-root table.sched-tbl {
+    --sched-row-h: 12px;
+    --sched-col-w: 10px;
+    --sched-name-w: 78px;
+    --sched-sum-w: 16px;
+    --sched-hrs-w: 20px;
+    --sched-pm-w: 18px;
     border-collapse: separate !important;
     white-space: nowrap !important;
-    font-size: 7px !important;
+    table-layout: fixed !important;
+    font-size: 6px !important;
     -webkit-print-color-adjust: exact;
     print-color-adjust: exact;
   }
-  body.print-schedule .sched-tbl th,
-  body.print-schedule .sched-tbl td {
-    height: 13px !important;
+  body.print-schedule #print-root .sched-tbl th,
+  body.print-schedule #print-root .sched-tbl td {
+    height: 12px !important;
     padding: 0 !important;
     border-color: #777 !important;
     color: #000 !important;
     -webkit-print-color-adjust: exact;
     print-color-adjust: exact;
   }
-  body.print-schedule .sched-tbl thead th {
+  body.print-schedule #print-root .sched-tbl thead th {
     position: static !important;
     top: auto !important;
+    z-index: auto !important;
+    background: #f8f8f5 !important;
   }
-  body.print-schedule .sched-tbl .col-name-th,
-  body.print-schedule .sched-tbl .col-name-td {
+  body.print-schedule #print-root .sched-tbl .col-name-th,
+  body.print-schedule #print-root .sched-tbl .col-name-td {
     position: static !important;
-    min-width: 82px !important;
-    max-width: 82px !important;
-    width: 82px !important;
-    font-size: 7px !important;
+    left: auto !important;
+    min-width: 78px !important;
+    max-width: 78px !important;
+    width: 78px !important;
+    font-size: 6px !important;
+    background: #eeeeeb !important;
+    color: #000 !important;
+    font-weight: 600 !important;
   }
-  body.print-schedule .sched-tbl .th-day {
-    min-width: 22px !important;
-    font-size: 7px !important;
+  body.print-schedule #print-root .sched-tbl .th-day {
+    min-width: 20px !important;
+    font-size: 6px !important;
   }
-  body.print-schedule .sched-tbl .th-dn,
-  body.print-schedule .sched-tbl td.sched-cell {
-    width: 11px !important;
-    min-width: 11px !important;
-    max-width: 11px !important;
-    font-size: 7px !important;
+  body.print-schedule #print-root .sched-tbl .th-dn,
+  body.print-schedule #print-root .sched-tbl td.sched-cell {
+    width: 10px !important;
+    min-width: 10px !important;
+    max-width: 10px !important;
+    font-size: 6px !important;
   }
-  body.print-schedule .sched-tbl .sum-cell,
-  body.print-schedule .sched-tbl .th-sum {
-    width: 18px !important;
-    min-width: 18px !important;
-    max-width: 18px !important;
-    font-size: 7px !important;
+  body.print-schedule #print-root .sched-tbl .sum-cell,
+  body.print-schedule #print-root .sched-tbl .th-sum {
+    width: 16px !important;
+    min-width: 16px !important;
+    max-width: 16px !important;
+    font-size: 6px !important;
   }
-  body.print-schedule .sched-tbl .cell-val {
-    font-size: 7px !important;
+  body.print-schedule #print-root .sched-tbl .cell-val {
+    font-size: 6px !important;
     font-weight: 500 !important;
+  }
+  body.print-schedule #print-root .sched-tbl .row-filtered,
+  body.print-schedule #print-root .sched-tbl .hidden-row {
+    display: none !important;
   }
 }
 /* selected cells highlight */
@@ -2274,15 +2285,15 @@ tbody tr.row-filtered { display: none; }
   #stb-undo,
   #stb-redo {
     font-size: 0;
-    background: var(--accent) !important;
+    background: transparent !important;
     border-color: var(--accent) !important;
-    color: var(--accent-fg,#fff) !important;
+    color: var(--accent) !important;
   }
   #stb-undo::after,
   #stb-redo::after {
     font-size: 12px;
     font-weight: 800;
-    color: var(--accent-fg,#fff) !important;
+    color: var(--accent) !important;
   }
   #stb-undo::after { content: "⇐ Zpět"; }
   #stb-redo::after { content: "Vpřed ⇒"; }
@@ -4587,11 +4598,51 @@ function applyRaspisPermissions() {
 ══════════════════════════════════════════════════════════════════════════════ */
 
 function printScheduleTab(tab) {
+  document.getElementById('print-root')?.remove();
   const cls = tab === 'pozadavky' ? 'print-req' : 'print-public';
+  const tblId = tab === 'pozadavky' ? 'pozadavky-tbl' : 'public-rozpis-tbl';
+  const srcTbl = document.getElementById(tblId);
+  if (!srcTbl) return;
+
+  const root = document.createElement('div');
+  root.id = 'print-root';
+  const monthTitle = `${MONTH_NAMES[(state.month || 1) - 1] || ''} ${state.year || ''}`.trim();
+  const hotelTitle = filterHotels.size
+    ? Array.from(filterHotels).sort().join(', ')
+    : 'všechny hotely';
+  const title = document.createElement('div');
+  title.className = 'print-title';
+  title.textContent = `${tab === 'pozadavky' ? 'Požadavky' : 'Rozpis'} - ${monthTitle} - ${hotelTitle}`;
+
+  const wrap = document.createElement('div');
+  wrap.className = 'schedule-wrap';
+  const clone = srcTbl.cloneNode(true);
+  clone.id = `${tblId}-print`;
+  clone.querySelectorAll('input').forEach(inp => {
+    const span = document.createElement('span');
+    span.className = 'cell-val';
+    span.textContent = inp.value || '';
+    inp.replaceWith(span);
+  });
+  wrap.appendChild(clone);
+  root.append(title, wrap);
+  document.body.appendChild(root);
+
+  const pageW = 1045;
+  const pageH = 730;
+  const neededW = Math.max(1, clone.scrollWidth || clone.offsetWidth || srcTbl.scrollWidth || 1);
+  const neededH = Math.max(1, root.scrollHeight || clone.offsetHeight || 1);
+  const scale = Math.min(1, pageW / neededW, pageH / neededH);
+  document.documentElement.style.setProperty('--print-scale', Math.max(.42, Math.min(1, scale)).toFixed(3));
+
   document.body.classList.add('print-schedule', cls);
-  const cleanup = () => document.body.classList.remove('print-schedule', 'print-public', 'print-req');
+  const cleanup = () => {
+    document.body.classList.remove('print-schedule', 'print-public', 'print-req');
+    document.documentElement.style.removeProperty('--print-scale');
+    document.getElementById('print-root')?.remove();
+  };
   window.addEventListener('afterprint', cleanup, { once: true });
-  setTimeout(cleanup, 1500);
+  setTimeout(cleanup, 30000);
   window.print();
 }
 
@@ -8760,6 +8811,10 @@ function keepActiveScheduleHeaderVisible() {
   if (!wrap) return;
   wrap.scrollTop = 0;
   wrap.scrollTo({ top: 0, left: wrap.scrollLeft, behavior: 'auto' });
+  requestAnimationFrame(() => {
+    wrap.scrollTop = 0;
+    wrap.scrollTo({ top: 0, left: wrap.scrollLeft, behavior: 'auto' });
+  });
 }
 
 function setMobileControlsOpen(open) {
@@ -9409,6 +9464,9 @@ function applyRowFilters() {
       allRows.forEach(tr => staffTbody.appendChild(tr));
     }
   });
+  if (isMobileLike() && mobileControlsOpen) {
+    requestAnimationFrame(() => settleMobileScheduleHeader());
+  }
 }
 
 function toggleHotelRows() {
