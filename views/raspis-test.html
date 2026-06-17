@@ -4743,6 +4743,20 @@ function printScheduleTab(tab) {
     span.textContent = inp.value || '';
     inp.replaceWith(span);
   });
+  clone.querySelectorAll('thead th, thead th *').forEach(el => {
+    el.style.color = '#000';
+    el.style.opacity = '1';
+    el.style.visibility = 'visible';
+  });
+  clone.querySelectorAll('.th-dn-day').forEach(el => {
+    el.style.display = el.closest('.th-dn')?.dataset.dn === 'n' ? 'none' : 'block';
+    el.style.lineHeight = '1.05';
+  });
+  clone.querySelectorAll('.th-day-num, .th-day-dow, .th-dn-letter').forEach(el => {
+    el.style.color = '#000';
+    el.style.opacity = '1';
+    el.style.visibility = 'visible';
+  });
   wrap.appendChild(clone);
   root.append(title, wrap);
   document.body.appendChild(root);
@@ -4784,8 +4798,8 @@ function printScheduleTab(tab) {
   const titleH = 18;
   const headerH = 30;
   const rows = Math.max(1, visibleRows);
-  const rowH = Math.max(7, Math.min(filterHotels.size ? 24 : 16, Math.floor((page.h - titleH - headerH - 4) / rows)));
-  const font = Math.max(5.4, Math.min(filterHotels.size ? 10 : 8.2, +(rowH * .56).toFixed(2)));
+  const rowH = Math.max(6, Math.min(filterHotels.size ? 18 : 9, Math.floor((page.h - titleH - headerH - 4) / (rows + 15))));
+  const font = Math.max(4.8, Math.min(filterHotels.size ? 8.2 : 6.6, +(rowH * .58).toFixed(2)));
   document.documentElement.style.setProperty('--print-root-w', Math.ceil(totalW) + 'px');
   document.documentElement.style.setProperty('--print-name-w', nameW + 'px');
   document.documentElement.style.setProperty('--print-col-w', colW + 'px');
