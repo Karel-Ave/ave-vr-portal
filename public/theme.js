@@ -7,7 +7,6 @@
   var DEFAULT_LIGHT_SKIN = 'indigo';
   var DEFAULT_DARK_SKIN = 'green';
   var SKINS = [
-    { id: 'default', label: 'Vychozi' },
     { id: 'graphite', label: 'Grafit' },
     { id: 'slate', label: 'Slate' },
     { id: 'blue', label: 'Modra' },
@@ -27,12 +26,14 @@
     { id: 'pink', label: 'Pink' },
     { id: 'plum', label: 'Plum' },
     { id: 'coffee', label: 'Coffee' },
-    { id: 'navy', label: 'Navy' }
+    { id: 'navy', label: 'Navy' },
+    { id: 'default', label: 'Klasicky' }
   ];
   var SKIN_IDS = SKINS.map(function (s) { return s.id; });
   var lastThemeToggle = 0;
   var lastThemeEventAt = 0;
   var lastLocalThemeChange = 0;
+  var bootStartedAt = Date.now();
 
   function normalizeSkin(skin, fallback) {
     fallback = fallback || DEFAULT_LIGHT_SKIN;
@@ -49,6 +50,19 @@
     var key = dark ? DARK_SKIN_KEY : LIGHT_SKIN_KEY;
     var fallback = dark ? DEFAULT_DARK_SKIN : DEFAULT_LIGHT_SKIN;
     return normalizeSkin(localStorage.getItem(key), fallback);
+  }
+
+  function defaultSkinForMode(dark) {
+    return dark ? DEFAULT_DARK_SKIN : DEFAULT_LIGHT_SKIN;
+  }
+
+  function getSkinChoices(dark) {
+    var defaultId = defaultSkinForMode(!!dark);
+    var choices = [{ id: defaultId, label: 'Vychozi' }];
+    SKINS.forEach(function (skin) {
+      if (skin.id !== defaultId) choices.push(skin);
+    });
+    return choices;
   }
 
   function getSkin() {
@@ -146,6 +160,8 @@
     isDark: isDark,
     getSkin: getSkin,
     getSkinForMode: getSkinForMode,
+    defaultSkinForMode: defaultSkinForMode,
+    getSkinChoices: getSkinChoices,
     setMode: setThemeMode,
     setSkin: setSkin,
     toggle: toggleThemeNow,
@@ -176,7 +192,7 @@
       var darkSkin = normalizeSkin(user.theme_skin_dark || (serverDark && user.theme_skin) || DEFAULT_DARK_SKIN, DEFAULT_DARK_SKIN);
       var userKey = String(user.id || user.username || '');
 
-      if (Date.now() - lastLocalThemeChange < 1500) return;
+      if (lastLocalThemeChange >= bootStartedAt) return;
       localStorage.setItem(USER_KEY, userKey);
       localStorage.setItem(THEME_KEY, serverDark ? 'dark' : 'light');
       localStorage.setItem(LIGHT_SKIN_KEY, lightSkin);
@@ -196,10 +212,13 @@
 
   window.addEventListener('message', function (e) {
     if (e.data && e.data.type === 'ave-theme') {
+      lastLocalThemeChange = Date.now();
       if (typeof e.data.dark === 'boolean') localStorage.setItem(THEME_KEY, e.data.dark ? 'dark' : 'light');
       if (e.data.skin) {
         var dark = localStorage.getItem(THEME_KEY) === 'dark';
-        localStorage.setItem(dark ? DARK_SKIN_KEY : LIGHT_SKIN_KEY, normalizeSkin(e.data.skin));
+        var normalizedSkin = normalizeSkin(e.data.skin, defaultSkinForMode(dark));
+        localStorage.setItem(dark ? DARK_SKIN_KEY : LIGHT_SKIN_KEY, normalizedSkin);
+        localStorage.setItem(SKIN_KEY, normalizedSkin);
       }
       var modeDark = localStorage.getItem(THEME_KEY) === 'dark';
       applyTheme(modeDark, getSkinForMode(modeDark));

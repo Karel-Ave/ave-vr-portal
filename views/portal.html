@@ -1176,9 +1176,9 @@
   function renderSkinGrid() {
     const grid = document.getElementById('skin-grid');
     if (!grid) return;
-    const skins = window.AVE_THEME_SKINS || [];
-    const active = window.AVE_THEME?.getSkin?.() || 'default';
     const dark = document.documentElement.getAttribute('data-theme') === 'dark';
+    const skins = window.AVE_THEME?.getSkinChoices?.(dark) || window.AVE_THEME_SKINS || [];
+    const active = window.AVE_THEME?.getSkin?.() || 'default';
     const previewSet = dark ? SKIN_PREVIEWS_DARK : SKIN_PREVIEWS;
     grid.innerHTML = skins.map(s => {
       const c = previewSet[s.id] || previewSet.default;

@@ -4626,6 +4626,7 @@ function calcSums(si, calCols, st) {
 
 let _user = null;
 let publicDefaultHotel = 'ALL';
+let publicHotelFilterTouched = false;
 async function fetchUser() {
   try {
     const r = await fetch('/api/me', {credentials:'include'});
@@ -9458,9 +9459,10 @@ function buildHotelFilterButtons() {
   });
 }
 
-function applyPublicDefaultHotel() {
+function applyPublicDefaultHotel(force = false) {
   const activeTab = document.querySelector('.tb-tab.active')?.dataset.tab;
   if (activeTab !== 'public') return;
+  if (!force && publicHotelFilterTouched) return;
   const wanted = String(publicDefaultHotel || 'ALL').toUpperCase();
   showMarkedOnly = false;
   showQualifiedWorkers = false;
@@ -9480,6 +9482,9 @@ function applyPublicDefaultHotel() {
 }
 
 async function filterByHotel(letter) {
+  if (document.querySelector('.tb-tab.active')?.dataset.tab === 'public') {
+    publicHotelFilterTouched = true;
+  }
   await syncRaspisStaff();
   showMarkedOnly = false;
   const wasEmpty = filterHotels.size === 0;
@@ -12414,7 +12419,8 @@ function switchTab(name) {
 window.addEventListener('message', e => {
   if (e.data && e.data.type === 'ave-public-default-hotel') {
     publicDefaultHotel = String(e.data.hotel || 'ALL').toUpperCase();
-    applyPublicDefaultHotel();
+    publicHotelFilterTouched = false;
+    applyPublicDefaultHotel(true);
     return;
   }
   if (!e.data || e.data.type !== 'ave-theme') return;
@@ -12546,6 +12552,9 @@ document.addEventListener('DOMContentLoaded', async () => {
   document.getElementById('stb-mobile-toggle')?.addEventListener('click', () => setMobileControlsOpen(true));
   document.getElementById('stb-collapse-controls')?.addEventListener('click', () => setMobileControlsOpen(false));
   document.getElementById('stb-vse').addEventListener('click', () => {
+    if (document.querySelector('.tb-tab.active')?.dataset.tab === 'public') {
+      publicHotelFilterTouched = true;
+    }
     filterHotels.clear();
     document.querySelectorAll('.staff-tbody tr.row-marked').forEach(tr => tr.classList.remove('row-marked'));
     markedWorkers.clear();
