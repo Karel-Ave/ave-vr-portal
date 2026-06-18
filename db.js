@@ -259,7 +259,7 @@ async function init() {
   // Seed výchozích skupin
   const adminPerms  = JSON.stringify({
     raspis: { enabled: true, visible: true, buttons: {
-      tab_nastaveni: true, tab_tvorba: true, tab_rozpis_vr: true, tab_rozpis: true, tab_pozadavky: true,
+      tab_nastaveni: true, tab_tvorba: true, tab_rozpis_vr: true, tab_rozpis: true, tab_denni: true, tab_pozadavky: true,
       filters: true, show_qualified: true, mark: true, undo_redo: true, colors: true,
       fonds: true, paste_excel: true, import: true, unmatched: true, publish: true,
       delete: true, trash: true, edit: true, archive: true, log: true, export: true,
@@ -272,7 +272,7 @@ async function init() {
   });
   const vedPerms    = JSON.stringify({
     raspis: { enabled: true, visible: true, buttons: {
-      tab_nastaveni: true, tab_tvorba: true, tab_rozpis_vr: true, tab_rozpis: true, tab_pozadavky: true,
+      tab_nastaveni: true, tab_tvorba: true, tab_rozpis_vr: true, tab_rozpis: true, tab_denni: true, tab_pozadavky: true,
       filters: true, show_qualified: true, mark: true, undo_redo: true, colors: false,
       fonds: true, paste_excel: true, import: false, unmatched: true, publish: true,
       delete: false, trash: false, edit: true, archive: false, log: false, export: true,
@@ -283,10 +283,22 @@ async function init() {
     blacklist: { enabled: true, visible: true, buttons: { view: true, add: true, remove: true, edit: true, export_pdf: true, export_email: true, edit_intro: false, history: true, history_delete: false } },
     admin: { enabled: false, visible: false, buttons: { users_add: false, users_edit: false, users_delete: false, user_permissions: false, groups_manage: false, logs_view: false, logs_delete: false } }
   });
-  const hotelPerms = JSON.stringify({});
+  const hotelPerms = JSON.stringify({
+    raspis: { enabled: true, visible: true, buttons: {
+      tab_nastaveni: false, tab_tvorba: false, tab_rozpis_vr: false, tab_rozpis: false, tab_denni: true, tab_pozadavky: false,
+      filters: false, show_qualified: false, mark: false, undo_redo: false, colors: false,
+      fonds: false, paste_excel: false, import: false, unmatched: false, publish: false,
+      delete: false, trash: false, edit: false, archive: false, log: false, export: false,
+      req_create: false, req_edit: false, req_toggle_reception: false, req_send_tvorba: false, req_delete: false, req_archive: false,
+      hotel_manager: false, settings_monthly: false, settings_add_staff: false, settings_clear_overrides: false
+    } },
+    priplatky: { enabled: false, visible: false, buttons: { viewAll: false, add: false, edit: false, delete: false, export: false, template: false, settings: false, manageReceptionists: false, manageTexts: false } },
+    blacklist: { enabled: false, visible: false, buttons: { view: false, add: false, remove: false, edit: false, export_pdf: false, export_email: false, edit_intro: false, history: false, history_delete: false } },
+    admin: { enabled: false, visible: false, buttons: { users_add: false, users_edit: false, users_delete: false, user_permissions: false, groups_manage: false, logs_view: false, logs_delete: false } }
+  });
   const recepPerms  = JSON.stringify({
     raspis: { enabled: true, visible: true, buttons: {
-      tab_nastaveni: false, tab_tvorba: false, tab_rozpis_vr: false, tab_rozpis: true, tab_pozadavky: true,
+      tab_nastaveni: false, tab_tvorba: false, tab_rozpis_vr: false, tab_rozpis: true, tab_denni: true, tab_pozadavky: true,
       filters: true, show_qualified: false, mark: false, undo_redo: false, colors: false,
       fonds: false, paste_excel: false, import: false, unmatched: false, publish: false,
       delete: false, trash: false, edit: false, archive: false, log: false, export: false,
@@ -299,7 +311,7 @@ async function init() {
   });
   const pb6Perms = JSON.stringify({
     raspis: { enabled: true, visible: true, buttons: {
-      tab_nastaveni: false, tab_tvorba: false, tab_rozpis_vr: false, tab_rozpis: false, tab_pozadavky: true,
+      tab_nastaveni: false, tab_tvorba: false, tab_rozpis_vr: false, tab_rozpis: false, tab_denni: true, tab_pozadavky: true,
       filters: true, show_qualified: false, mark: false, undo_redo: false, colors: false,
       fonds: false, paste_excel: false, import: false, unmatched: false, publish: false,
       delete: false, trash: false, edit: false, archive: false, log: false, export: false,
@@ -346,6 +358,7 @@ async function init() {
   await mergeGroupPermDefaults('admin', JSON.parse(adminPerms));
   await mergeGroupPermDefaults('vedoucí', JSON.parse(vedPerms));
   await mergeGroupPermDefaults('recepční', JSON.parse(recepPerms));
+  await mergeGroupPermDefaults('hotely', JSON.parse(hotelPerms));
   await db.query(`UPDATE permission_groups SET display_name='PB6', perms=$1, sublist='PB6' WHERE name='pb6'`, [pb6Perms]);
   // Nastav sublists pro existující skupiny (pokud ještě mají DEFAULT hodnotu nebo NULL)
   await db.query(`UPDATE permission_groups SET sublist='VR'        WHERE name IN ('admin','vedoucí') AND (sublist IS NULL OR sublist='VR')`);

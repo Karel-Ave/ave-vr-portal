@@ -949,6 +949,7 @@
     tvorba: 'Tvorba',
     rozpis: 'Rozpis VR',
     public: 'Rozpis',
+    denni: 'Denní rozpis',
     pozadavky: 'Požadavky'
   };
 
@@ -957,6 +958,7 @@
     tvorba: 'tab_tvorba',
     rozpis: 'tab_rozpis_vr',
     public: 'tab_rozpis',
+    denni: 'tab_denni',
     pozadavky: 'tab_pozadavky'
   };
 
@@ -972,7 +974,7 @@
     const views = normalizedDefaultViews();
     const picked = views[device]?.raspisTab;
     if (picked && canOpenRaspisTab(picked, device)) return picked;
-    return ['public', 'rozpis', 'pozadavky', 'nastaveni', 'tvorba'].find(t => canOpenRaspisTab(t, device)) || 'public';
+    return ['public', 'denni', 'rozpis', 'pozadavky', 'nastaveni', 'tvorba'].find(t => canOpenRaspisTab(t, device)) || 'public';
   }
 
   function decorateAppUrl(url) {
@@ -1259,7 +1261,7 @@
       ).join('');
     });
 
-    const tabOrder = ['nastaveni', 'tvorba', 'rozpis', 'public', 'pozadavky'];
+    const tabOrder = ['nastaveni', 'tvorba', 'rozpis', 'public', 'denni', 'pozadavky'];
     const tabTargets = [
       ['desktop', 'default-rt-desktop'],
       ['mobile', 'default-rt-mobile']

@@ -127,6 +127,7 @@ body.with-subtoolbar:has(#schedule-legend.show) { padding-bottom: 30px; }
 #tb-act-tvorba,
 #tb-act-rozpis,
 #tb-act-public,
+#tb-act-denni,
 #tb-act-pozadavky {
   flex: 1 1 auto;
   min-width: 0;
@@ -208,6 +209,7 @@ body[data-active-tab="rozpis"] #btn-delete-schedule,
 body[data-active-tab="rozpis"] #btn-schedule-archive,
 body[data-active-tab="rozpis"] #btn-schedule-log { display: inline-flex; }
 body[data-active-tab="public"] #tb-right-actions { display: none; }
+body[data-active-tab="denni"] #tb-right-actions { display: none; }
 body[data-active-tab="pozadavky"] #tb-right-actions { display: none; }
 #tb-act-pozadavky { margin-left: 0; flex: 1 1 auto; min-width: 0; }
 #tb-act-pozadavky .tb-btn {
@@ -2129,6 +2131,7 @@ tbody tr.row-filtered { display: none; }
   #tb-act-tvorba,
   #tb-act-rozpis,
   #tb-act-public,
+  #tb-act-denni,
   #tb-act-pozadavky {
     flex: 0 0 auto;
   }
@@ -2548,6 +2551,121 @@ tbody tr.row-filtered { display: none; }
 #btn-draft-save {
   display: inline-flex !important;
 }
+
+/* Daily schedule */
+#tab-denni {
+  overflow: auto;
+  background: var(--bg);
+}
+.daily-schedule-wrap {
+  min-height: 100%;
+  padding: 14px;
+  background: var(--bg);
+}
+.daily-schedule-card {
+  width: min(980px, 100%);
+  margin: 0 auto;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  overflow: hidden;
+  background: var(--surface);
+  box-shadow: var(--shadow-soft);
+}
+.daily-schedule-table {
+  width: 100%;
+  border-collapse: collapse;
+  table-layout: fixed;
+  font-size: 18px;
+}
+.daily-schedule-table col.daily-code-col { width: 48px; }
+.daily-schedule-table th {
+  height: 36px;
+  border-bottom: 2px solid var(--border);
+  background: var(--thead-bg);
+  color: var(--thead-text);
+  font-size: 16px;
+  letter-spacing: .08em;
+  text-transform: uppercase;
+}
+.daily-schedule-table td {
+  height: 38px;
+  border-bottom: 1px solid var(--border);
+  border-right: 1px solid var(--border);
+  padding: 0 12px;
+  color: var(--text);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.daily-schedule-table tr:last-child td { border-bottom: 0; }
+.daily-schedule-table td.daily-code {
+  padding: 0;
+  text-align: center;
+  font-weight: 800;
+  color: var(--accent-h);
+  background: color-mix(in srgb, var(--topbar-bg) 86%, var(--surface));
+}
+.daily-schedule-table td.daily-night {
+  background: color-mix(in srgb, var(--accent) 8%, var(--surface));
+}
+.daily-schedule-table .daily-row-p td.daily-code,
+.daily-schedule-table .daily-row-p td.daily-day,
+.daily-schedule-table .daily-row-p td.daily-night {
+  background: color-mix(in srgb, #7b233d 82%, var(--surface));
+  color: #fff;
+}
+.daily-schedule-table .daily-row-q td.daily-code,
+.daily-schedule-table .daily-row-q td.daily-day,
+.daily-schedule-table .daily-row-q td.daily-night {
+  background: color-mix(in srgb, var(--accent) 42%, var(--surface));
+}
+.daily-missing {
+  color: #d0392f;
+  font-weight: 900;
+}
+.daily-note {
+  color: var(--text-muted);
+  font-style: italic;
+}
+.daily-empty {
+  padding: 42px 16px;
+  color: var(--text-muted);
+  text-align: center;
+}
+#daily-date-label {
+  min-width: 210px;
+  color: var(--accent-h);
+  font-weight: 900;
+  text-align: center;
+  white-space: nowrap;
+}
+#daily-updated {
+  margin-left: auto;
+  color: var(--text-muted);
+  font-size: 12px;
+  white-space: nowrap;
+}
+@media (max-width: 700px) {
+  .daily-schedule-wrap { padding: 0; }
+  .daily-schedule-card {
+    width: 100%;
+    border-left: 0;
+    border-right: 0;
+    border-radius: 0;
+  }
+  .daily-schedule-table { font-size: 15px; }
+  .daily-schedule-table col.daily-code-col { width: 36px; }
+  .daily-schedule-table th {
+    height: 30px;
+    font-size: 13px;
+  }
+  .daily-schedule-table td {
+    height: 31px;
+    padding: 0 7px;
+  }
+  #daily-date-label { min-width: 0; font-size: 14px; }
+  #daily-updated { display: none; }
+}
 </style>
 </head>
 <body>
@@ -2559,6 +2677,7 @@ tbody tr.row-filtered { display: none; }
     <button class="tb-tab" data-tab="tvorba" type="button">Tvorba</button>
     <button class="tb-tab" data-tab="rozpis" type="button">Rozpis</button>
     <button class="tb-tab" data-tab="public" type="button">Rozpis</button>
+    <button class="tb-tab" data-tab="denni" type="button">Denní rozpis</button>
     <button class="tb-tab" data-tab="pozadavky" type="button">Požadavky</button>
   </div>
 
@@ -2611,6 +2730,14 @@ tbody tr.row-filtered { display: none; }
       <span class="fonds-label">Fond HPP:</span><strong class="rt-fond-hpp-info">-</strong>
       <span class="fonds-label">Fond ZPP:</span><strong class="rt-fond-zpp-info">-</strong>
     </div>
+  </div>
+
+  <div class="tb-actions hidden" id="tb-act-denni">
+    <button class="tb-btn" id="btn-daily-today" type="button">Dnes</button>
+    <button class="tb-btn" id="btn-daily-prev" type="button">← Zpět</button>
+    <span id="daily-date-label">Denní rozpis</span>
+    <button class="tb-btn" id="btn-daily-next" type="button">Vpřed →</button>
+    <span id="daily-updated"></span>
   </div>
 
   <div class="tb-actions hidden" id="tb-act-pozadavky">
@@ -2918,6 +3045,13 @@ tbody tr.row-filtered { display: none; }
     <div class="spinner-wrap" id="public-spinner"><div class="spinner"></div></div>
     <table class="sched-tbl" id="public-rozpis-tbl" style="display:none"></table>
     <div class="empty-state" id="public-empty" style="display:none">Ĺ˝ĂˇdnĂ˝ publikovanĂ˝ rozpis</div>
+  </div>
+</div>
+
+<div class="tab-panel" id="tab-denni">
+  <div class="daily-schedule-wrap" id="daily-wrap">
+    <div class="spinner-wrap" id="daily-spinner" style="display:none"><div class="spinner"></div></div>
+    <div id="daily-content" class="daily-empty">Denní rozpis se načte po otevření listu.</div>
   </div>
 </div>
 
@@ -4671,6 +4805,7 @@ const RT_TAB_PERMS = {
   tvorba: 'tab_tvorba',
   rozpis: 'tab_rozpis_vr',
   public: 'tab_rozpis',
+  denni: 'tab_denni',
   pozadavky: 'tab_pozadavky'
 };
 
@@ -4701,7 +4836,7 @@ function setPermVisibleById(id, btnKey, fallback = true) {
 function applyRaspisPermissions() {
   document.querySelectorAll('.tb-tab[data-tab]').forEach(btn => {
     const key = RT_TAB_PERMS[btn.dataset.tab];
-    if (key) setPermHidden(btn, !rtCan(key, btn.dataset.tab === 'public' || btn.dataset.tab === 'pozadavky'));
+    if (key) setPermHidden(btn, !rtCan(key, btn.dataset.tab === 'public' || btn.dataset.tab === 'denni' || btn.dataset.tab === 'pozadavky'));
   });
 
   ['btn-fonds','btn-template-dl','btn-import-xls','btn-color-editor','stb-export2'].forEach(id => setPermHidden(document.getElementById(id), true));
@@ -12278,8 +12413,117 @@ function addStaff() {
    TAB SWITCHING
 ══════════════════════════════════════════════════════════════════════════════ */
 
+const DAILY_MONTHS = ['ledna','února','března','dubna','května','června','července','srpna','září','října','listopadu','prosince'];
+const DAILY_DAYS = ['Neděle','Pondělí','Úterý','Středa','Čtvrtek','Pátek','Sobota'];
+const DAILY_NO_NIGHT = new Set(['L', 'N', 'U']);
+const DAILY_DAY_ONLY = new Set(['J', 'S']);
+let dailyViewDate = new Date();
+let dailyRefreshTimer = null;
+
+function rtHtml(value) {
+  const div = document.createElement('div');
+  div.textContent = value == null ? '' : String(value);
+  return div.innerHTML;
+}
+
+function dailyDateLabel(date) {
+  return `${DAILY_DAYS[date.getDay()]} ${date.getDate()}. ${DAILY_MONTHS[date.getMonth()]} ${date.getFullYear()}`;
+}
+
+function dailyCellHtml(letter, value, isNight, info) {
+  const dayOnly = !!info?.dayOnly;
+  if (isNight && (DAILY_DAY_ONLY.has(letter) || (dayOnly && (letter === 'J' || letter === 'S')))) {
+    return '<span class="daily-note">Pouze ve dne</span>';
+  }
+  if (isNight && (DAILY_NO_NIGHT.has(letter) || dayOnly)) {
+    return '<span class="daily-note">Hotel bez noční recepce</span>';
+  }
+  if (value) return rtHtml(value);
+  return '<span class="daily-missing">-</span>';
+}
+
+function updateDailyLabels() {
+  const label = document.getElementById('daily-date-label');
+  if (label) label.textContent = dailyDateLabel(dailyViewDate);
+}
+
+function renderDailySchedule(data) {
+  const content = document.getElementById('daily-content');
+  const updated = document.getElementById('daily-updated');
+  if (!content) return;
+  const map = data?.hotels || {};
+  const order = Array.isArray(data?.hotels_order) && data.hotels_order.length ? data.hotels_order : Object.keys(map);
+  if (!order.length) {
+    content.className = 'daily-empty';
+    content.textContent = 'Pro vybraný den není dostupný publikovaný rozpis.';
+    if (updated) updated.textContent = '';
+    return;
+  }
+  const rows = order.map(letter => {
+    const item = map[letter] || {};
+    const cls = letter === 'P' ? ' daily-row-p' : letter === 'Q' ? ' daily-row-q' : '';
+    return `<tr class="${cls.trim()}">
+      <td class="daily-code">${rtHtml(letter)}</td>
+      <td class="daily-day">${dailyCellHtml(letter, item.day, false, item)}</td>
+      <td class="daily-code">${rtHtml(letter)}</td>
+      <td class="daily-night">${dailyCellHtml(letter, item.night, true, item)}</td>
+    </tr>`;
+  }).join('');
+  content.className = 'daily-schedule-card';
+  content.innerHTML = `<table class="daily-schedule-table">
+    <colgroup><col class="daily-code-col"><col><col class="daily-code-col"><col></colgroup>
+    <thead><tr><th></th><th>Denní</th><th></th><th>Noční</th></tr></thead>
+    <tbody>${rows}</tbody>
+  </table>`;
+  if (updated) {
+    const now = new Date();
+    updated.textContent = `Aktualizováno ${String(now.getHours()).padStart(2, '0')}:${String(now.getMinutes()).padStart(2, '0')}`;
+  }
+}
+
+async function loadDailySchedule() {
+  updateDailyLabels();
+  const spinner = document.getElementById('daily-spinner');
+  if (spinner) spinner.style.display = '';
+  try {
+    const url = `/api/widget-today?day=${dailyViewDate.getDate()}&month=${dailyViewDate.getMonth() + 1}&year=${dailyViewDate.getFullYear()}`;
+    const res = await fetch(url, { credentials: 'include' });
+    const data = await res.json();
+    if (!data.ok) throw new Error(data.msg || 'Daily schedule error');
+    renderDailySchedule(data);
+  } catch (err) {
+    console.error(err);
+    const content = document.getElementById('daily-content');
+    if (content) {
+      content.className = 'daily-empty';
+      content.textContent = 'Denní rozpis se nepodařilo načíst.';
+    }
+  } finally {
+    if (spinner) spinner.style.display = 'none';
+  }
+}
+
+function moveDailySchedule(delta) {
+  dailyViewDate = new Date(dailyViewDate.getFullYear(), dailyViewDate.getMonth(), dailyViewDate.getDate() + delta);
+  loadDailySchedule();
+}
+
+function goDailyToday() {
+  dailyViewDate = new Date();
+  loadDailySchedule();
+}
+
+function startDailyRefresh() {
+  if (!dailyRefreshTimer) dailyRefreshTimer = setInterval(loadDailySchedule, 60000);
+}
+
+function stopDailyRefresh() {
+  if (dailyRefreshTimer) clearInterval(dailyRefreshTimer);
+  dailyRefreshTimer = null;
+}
+
 function mobileTabFallback() {
-  return ['rozpis', 'public', 'pozadavky', 'nastaveni'].find(tab => {
+  return ['rozpis', 'public', 'denni', 'pozadavky', 'nastaveni'].find(tab => {
     const btn = document.querySelector(`.tb-tab[data-tab="${tab}"]`);
     return btn && !btn.classList.contains('perm-hidden');
   }) || 'rozpis';
@@ -12307,6 +12551,8 @@ function switchTab(name) {
   if (act) act.classList.remove('hidden');
   updateRequirementsFundsInfo();
   document.getElementById('schedule-legend')?.classList.toggle('show', name === 'tvorba' || name === 'rozpis' || name === 'public' || name === 'pozadavky');
+  if (name === 'denni') startDailyRefresh();
+  else stopDailyRefresh();
   updateChromeHeights();
 
   // Show/hide subtoolbar
@@ -12406,6 +12652,8 @@ function switchTab(name) {
       applyRowFilters();
       refreshCoverageSticky();
     }
+  } else if (name === 'denni') {
+    if (!window._initRendering) loadDailySchedule();
   } else if (name === 'nastaveni') {
     if (window._initRendering) renderStaffTable();
     else syncRaspisStaff();
@@ -12442,7 +12690,7 @@ document.addEventListener('DOMContentLoaded', async () => {
   window._initRendering = true;
   {
     const urlTab = new URLSearchParams(location.search).get('tab');
-    const allowedTabs = new Set(['nastaveni', 'tvorba', 'rozpis', 'public', 'pozadavky']);
+    const allowedTabs = new Set(['nastaveni', 'tvorba', 'rozpis', 'public', 'denni', 'pozadavky']);
     let initialTab = allowedTabs.has(urlTab) ? urlTab : (sessionStorage.getItem('rt-active-tab') || 'rozpis');
     if (initialTab === 'tvorba' && isMobileLike()) initialTab = mobileTabFallback();
     switchTab(initialTab);
@@ -12489,6 +12737,7 @@ document.addEventListener('DOMContentLoaded', async () => {
 
   // Clear init flag — normal tab switching re-renders are now allowed
   window._initRendering = false;
+  if (document.body.dataset.activeTab === 'denni') loadDailySchedule();
 
   // Init hotel button to match showHotels = false default BEFORE restoreStbState,
   // so toggleHotelRows() inside restoreStbState can correctly flip it if sessionStorage differs.
@@ -12498,6 +12747,9 @@ document.addEventListener('DOMContentLoaded', async () => {
   normalizeScheduleControlLabels();
   ensureScheduleCenterSlot();
   relocateScheduleEditButtons();
+  document.getElementById('btn-daily-today')?.addEventListener('click', goDailyToday);
+  document.getElementById('btn-daily-prev')?.addEventListener('click', () => moveDailySchedule(-1));
+  document.getElementById('btn-daily-next')?.addEventListener('click', () => moveDailySchedule(1));
 
   // Re-measure subtoolbar height: hotel buttons are now rendered and the row may have wrapped.
   // updateSubtoolbar() at switchTab() time (above) ran before hotel buttons existed, so

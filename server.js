@@ -41,10 +41,6 @@ function sessionUserFromDbUser(user) {
   };
 }
 
-function isHotelWidgetRole(role) {
-  return role === 'hotely' || role === 'widget';
-}
-
 // ── Middleware ────────────────────────────────────────────────────────────────
 
 app.use(express.json({ limit: '20mb' }));
@@ -80,17 +76,11 @@ app.use(session({
 const requireLogin = (req, res, next) =>
   req.session.user ? next() : res.redirect('/');
 
-// Widget: nepřihlášený → login s ?next=/widget (aby se vrátil zpět)
-const requireLoginWidget = (req, res, next) =>
-  req.session.user ? next() : res.redirect('/?next=/widget');
-
 const requireAdmin = (req, res, next) =>
   req.session.user?.role === 'admin' ? next() : res.redirect('/portal');
 
-// Portál: hotelové widget účty sem nesmí
 const requirePortalAccess = (req, res, next) => {
   if (!req.session.user) return res.redirect('/');
-  if (isHotelWidgetRole(req.session.user.role)) return res.redirect('/widget');
   return next();
 };
 
@@ -249,7 +239,6 @@ function requirePerm(appKey, btnKey) {
 
 app.get('/', (req, res) => {
   if (!req.session.user) return res.sendFile(path.join(__dirname, 'views', 'login.html'));
-  if (isHotelWidgetRole(req.session.user.role)) return res.redirect('/widget');
   return res.redirect('/portal');
 });
 
@@ -281,10 +270,8 @@ app.get('/raspis-test', requireLogin, (req, res) =>
   res.sendFile(path.join(__dirname, 'views', 'raspis-test.html'))
 );
 
-// Desktop widget — dnešní rozpis
-app.get('/widget', requireLoginWidget, (req, res) =>
-  res.sendFile(path.join(__dirname, 'views', 'widget.html'))
-);
+// Stará adresa widgetu zůstává funkční jako přesměrování do portálu.
+app.get('/widget', requireLogin, (req, res) => res.redirect('/portal'));
 
 // ── API: Auth ─────────────────────────────────────────────────────────────────
 
@@ -331,9 +318,8 @@ app.post('/login', async (req, res) => {
     req.session.user = sessionUserFromDbUser(user);
     req.session.cookie.maxAge = SESSION_MAX_AGE;
     logEvent(user.id, user.username, 'login', { role: user.role });
-    // Hotelové widget účty vždy na widget; ostatní dle ?next nebo na portál
     const next = req.body.next || '';
-    const target = (isHotelWidgetRole(user.role) || next === '/widget') ? '/widget' : '/portal';
+    const target = (next && next.startsWith('/') && next !== '/widget') ? next : '/portal';
     req.session.save(err => {
       if (err) {
         console.error('Chyba ulozeni session:', err);
@@ -583,6 +569,7 @@ app.get('/api/my-permissions', requireLogin, async (req, res) => {
         tab_tvorba: isManager,
         tab_rozpis_vr: isManager,
         tab_rozpis: true,
+        tab_denni: true,
         tab_pozadavky: true,
         filters: true,
         show_qualified: isManager,
@@ -1334,7 +1321,7 @@ app.post('/api/user-prefs/default-public-hotel', requireLogin, async (req, res) 
 
 app.post('/api/user-prefs/default-views', requireLogin, async (req, res) => {
   const allowedApps = new Set(['raspis', 'priplatky', 'blacklist', 'admin']);
-  const allowedTabs = new Set(['nastaveni', 'tvorba', 'rozpis', 'public', 'pozadavky']);
+  const allowedTabs = new Set(['nastaveni', 'tvorba', 'rozpis', 'public', 'denni', 'pozadavky']);
   const raw = req.body && req.body.default_views && typeof req.body.default_views === 'object'
     ? req.body.default_views
     : {};
