@@ -7,14 +7,38 @@ const { getPool, init } = require('./db');
 
 const app  = express();
 const PORT = process.env.PORT || 8080;
-const DEFAULT_AUTO_LOGOUT_MINUTES = 30;
-const AUTO_LOGOUT_OPTIONS = new Set([0, 10, 30, 60, 720]);
+const SESSION_MAX_AGE = 10 * 365 * 24 * 60 * 60 * 1000;
+const DEFAULT_LIGHT_SKIN = 'indigo';
+const DEFAULT_DARK_SKIN = 'green';
+const THEME_SKINS = new Set(['default','mono','graphite','slate','blue','teal','green','olive','amber','rose','violet','indigo','cyan','mint','lime','yellow','orange','red','pink','plum','coffee','navy']);
 
-function sessionMaxAgeFromMinutes(minutes) {
-  const mins = Number(minutes);
-  if (mins === 0) return 10 * 365 * 24 * 60 * 60 * 1000;
-  const safe = AUTO_LOGOUT_OPTIONS.has(mins) ? mins : DEFAULT_AUTO_LOGOUT_MINUTES;
-  return safe * 60 * 1000;
+function normalizeThemeSkin(skin, fallback = 'default') {
+  const raw = String(skin || fallback || 'default').toLowerCase();
+  if (!THEME_SKINS.has(raw)) return fallback || 'default';
+  return raw === 'mono' ? 'default' : raw;
+}
+
+function selectedModeSkin(theme, lightSkin, darkSkin) {
+  return theme === 'dark'
+    ? normalizeThemeSkin(darkSkin, DEFAULT_DARK_SKIN)
+    : normalizeThemeSkin(lightSkin, DEFAULT_LIGHT_SKIN);
+}
+
+function sessionUserFromDbUser(user) {
+  const theme = user.theme === 'dark' ? 'dark' : 'light';
+  const legacySkin = normalizeThemeSkin(user.theme_skin, theme === 'dark' ? DEFAULT_DARK_SKIN : DEFAULT_LIGHT_SKIN);
+  const lightSkin = normalizeThemeSkin(user.theme_skin_light, DEFAULT_LIGHT_SKIN);
+  const darkSkin = normalizeThemeSkin(user.theme_skin_dark, DEFAULT_DARK_SKIN);
+  return {
+    id: user.id,
+    name: user.name,
+    username: user.username,
+    role: user.role,
+    theme,
+    theme_skin: selectedModeSkin(theme, lightSkin || legacySkin, darkSkin || legacySkin),
+    theme_skin_light: lightSkin || DEFAULT_LIGHT_SKIN,
+    theme_skin_dark: darkSkin || DEFAULT_DARK_SKIN
+  };
 }
 
 function isHotelWidgetRole(role) {
@@ -25,6 +49,7 @@ function isHotelWidgetRole(role) {
 
 app.use(express.json({ limit: '20mb' }));
 app.use(express.urlencoded({ extended: true }));
+app.set('trust proxy', 1);
 
 // Statické soubory
 app.use('/static', express.static(path.join(__dirname, 'public')));
@@ -43,7 +68,11 @@ app.use(session({
   resave: false,
   saveUninitialized: false,
   rolling: true,
-  cookie: { maxAge: 12 * 60 * 60 * 1000 }          // 12 hodin od přihlášení
+  cookie: {
+    maxAge: SESSION_MAX_AGE,
+    sameSite: 'lax',
+    secure: process.env.NODE_ENV === 'production'
+  }
 }));
 
 // ── Auth helpery ──────────────────────────────────────────────────────────────
@@ -264,15 +293,27 @@ app.get('/api/me', requireLogin, (req, res) => res.json(req.session.user));
 // Save theme preference for the current user
 app.patch('/api/me/theme', requireLogin, async (req, res) => {
   const theme = req.body.theme === 'dark' ? 'dark' : 'light';
-  const skinRaw = String(req.body.skin || req.session.user.theme_skin || 'default').toLowerCase();
-  const allowedSkins = new Set(['default','mono','graphite','slate','blue','teal','green','olive','amber','rose','violet','indigo','cyan','mint','lime','yellow','orange','red','pink','plum','coffee','navy']);
-  const skin = allowedSkins.has(skinRaw) ? (skinRaw === 'mono' ? 'default' : skinRaw) : 'default';
+  const currentLight = req.session.user.theme_skin_light || DEFAULT_LIGHT_SKIN;
+  const currentDark = req.session.user.theme_skin_dark || DEFAULT_DARK_SKIN;
+  let lightSkin = normalizeThemeSkin(req.body.theme_skin_light || req.body.lightSkin || currentLight, DEFAULT_LIGHT_SKIN);
+  let darkSkin = normalizeThemeSkin(req.body.theme_skin_dark || req.body.darkSkin || currentDark, DEFAULT_DARK_SKIN);
+  if (req.body.skin) {
+    const skin = normalizeThemeSkin(req.body.skin, theme === 'dark' ? DEFAULT_DARK_SKIN : DEFAULT_LIGHT_SKIN);
+    if (theme === 'dark') darkSkin = skin;
+    else lightSkin = skin;
+  }
+  const selectedSkin = selectedModeSkin(theme, lightSkin, darkSkin);
   try {
     const db = getPool();
-    await db.query('UPDATE users SET theme = $1, theme_skin = $2 WHERE id = $3', [theme, skin, req.session.user.id]);
+    await db.query(
+      'UPDATE users SET theme = $1, theme_skin = $2, theme_skin_light = $3, theme_skin_dark = $4 WHERE id = $5',
+      [theme, selectedSkin, lightSkin, darkSkin, req.session.user.id]
+    );
     req.session.user.theme = theme;
-    req.session.user.theme_skin = skin;
-    res.json({ ok: true });
+    req.session.user.theme_skin = selectedSkin;
+    req.session.user.theme_skin_light = lightSkin;
+    req.session.user.theme_skin_dark = darkSkin;
+    res.json({ ok: true, theme, theme_skin: selectedSkin, theme_skin_light: lightSkin, theme_skin_dark: darkSkin });
   } catch (err) {
     res.json({ ok: false });
   }
@@ -287,19 +328,8 @@ app.post('/login', async (req, res) => {
     if (!user || !bcrypt.compareSync(password, user.password_hash)) {
       return res.redirect('/?error=1');
     }
-    const prefRows = await db.query('SELECT auto_logout_minutes FROM user_preferences WHERE user_id = $1', [user.id]);
-    const autoLogoutMinutes = Number(prefRows.rows[0]?.auto_logout_minutes ?? DEFAULT_AUTO_LOGOUT_MINUTES);
-    const themeSkin = (user.theme_skin && user.theme_skin !== 'mono') ? user.theme_skin : 'default';
-    req.session.user = {
-      id: user.id,
-      name: user.name,
-      username: user.username,
-      role: user.role,
-      theme: user.theme || 'light',
-      theme_skin: themeSkin,
-      auto_logout_minutes: AUTO_LOGOUT_OPTIONS.has(autoLogoutMinutes) ? autoLogoutMinutes : DEFAULT_AUTO_LOGOUT_MINUTES
-    };
-    req.session.cookie.maxAge = sessionMaxAgeFromMinutes(req.session.user.auto_logout_minutes);
+    req.session.user = sessionUserFromDbUser(user);
+    req.session.cookie.maxAge = SESSION_MAX_AGE;
     logEvent(user.id, user.username, 'login', { role: user.role });
     // Hotelové widget účty vždy na widget; ostatní dle ?next nebo na portál
     const next = req.body.next || '';
@@ -825,7 +855,112 @@ app.get('/api/widget-events', requireLogin, (req, res) => {
 });
 
 // Data rozpisu pro widget — volitelně ?day=X&month=Y&year=Z pro navigaci
+function widgetMonthIndex(value) {
+  if (!value) return null;
+  if (typeof value === 'string') {
+    const m = value.match(/^(\d{4})-(\d{1,2})/);
+    return m ? (parseInt(m[1], 10) * 12 + parseInt(m[2], 10)) : null;
+  }
+  const y = parseInt(value.year, 10);
+  const mo = parseInt(value.month, 10);
+  return Number.isFinite(y) && Number.isFinite(mo) ? (y * 12 + mo) : null;
+}
+
+function cleanWidgetName(name) {
+  return String(name || '').trim().replace(/^z+\s+/i, '').trim();
+}
+
+function widgetHotelOrder(data, month, year) {
+  const currentIdx = (+year * 12) + +month;
+  const fallback = ['A','B','C','D','E','G','H','I','J','L','M','N','S','T','U'];
+  const specials = ['P', 'Q'];
+  const rows = Array.isArray(data?.hotels) ? data.hotels : [];
+  const active = rows
+    .filter(h => {
+      if (!h || h.active === false || h.showInPanel === false) return false;
+      const letter = String(h.letter || '').trim().toUpperCase();
+      if (!letter) return false;
+      const from = widgetMonthIndex(h.activeFrom);
+      const inactive = widgetMonthIndex(h.inactiveFrom);
+      if (from !== null && currentIdx < from) return false;
+      if (inactive !== null && currentIdx >= inactive) return false;
+      return true;
+    })
+    .map(h => ({
+      letter: String(h.letter || '').trim().toUpperCase(),
+      name: String(h.name || '').trim(),
+      dayOnly: !!h.dayOnly
+    }))
+    .filter((h, idx, arr) => h.letter && arr.findIndex(x => x.letter === h.letter) === idx);
+
+  const normal = active
+    .filter(h => !specials.includes(h.letter))
+    .sort((a, b) => a.letter.localeCompare(b.letter, 'cs', { sensitivity: 'base' }));
+  const order = normal.length ? normal : fallback.map(letter => ({
+    letter,
+    name: '',
+    dayOnly: ['J','L','N','S','U'].includes(letter)
+  }));
+  const specialRows = specials.map(letter =>
+    active.find(h => h.letter === letter) || {
+      letter,
+      name: letter === 'P' ? 'Pohotovost' : 'Vedoucí',
+      dayOnly: false
+    }
+  );
+  return [...order, ...specialRows];
+}
+
 app.get('/api/widget-today', requireLogin, async (req, res) => {
+  try {
+    const now = new Date();
+    const day = parseInt(req.query.day, 10) || now.getDate();
+    const month = parseInt(req.query.month, 10) || now.getMonth() + 1;
+    const year = parseInt(req.query.year, 10) || now.getFullYear();
+    const key = `RT:${String(month).padStart(2, '0')}/${year}`;
+
+    const db = getPool();
+    const { rows } = await db.query('SELECT data FROM rt_schedules WHERE key = $1', [key]);
+    const rawData = rows.length ? rows[0].data : {};
+    const data = typeof rawData === 'string' ? JSON.parse(rawData || '{}') : (rawData || {});
+    const staff = Array.isArray(data.staff) ? data.staff : [];
+    const schedule = data.schedule || {};
+    const hotels = widgetHotelOrder(data, month, year);
+    const hotelMap = {};
+    hotels.forEach(h => {
+      hotelMap[h.letter] = {
+        letter: h.letter,
+        name: h.name || '',
+        dayOnly: !!h.dayOnly,
+        day: null,
+        night: null
+      };
+    });
+
+    const dayCol = (day - 1) * 2;
+    const nightCol = dayCol + 1;
+    staff.forEach((s, si) => {
+      const name = cleanWidgetName(s.name);
+      if (!name) return;
+      const dayVal = String(schedule[`${si}_${dayCol}`] || '').trim().toUpperCase();
+      const nightVal = String(schedule[`${si}_${nightCol}`] || '').trim().toUpperCase();
+      if (hotelMap[dayVal] && !hotelMap[dayVal].day) hotelMap[dayVal].day = name;
+      if (hotelMap[nightVal] && !hotelMap[nightVal].night) hotelMap[nightVal].night = name;
+    });
+
+    res.json({
+      ok: true,
+      day, month, year,
+      hotels: hotelMap,
+      hotels_order: hotels.map(h => h.letter)
+    });
+  } catch (err) {
+    console.error('Widget today error:', err);
+    res.json({ ok: false, msg: 'Chyba serveru.' });
+  }
+});
+
+app.get('/api/widget-today-old', requireLogin, async (req, res) => {
   try {
     const now        = new Date();
     const todayDay   = parseInt(req.query.day)   || now.getDate();
@@ -1115,7 +1250,7 @@ app.get('/api/user-prefs', requireLogin, async (req, res) => {
   try {
     const db = getPool();
     const { rows } = await db.query(
-      'SELECT default_raspis_key, default_public_hotel, auto_logout_minutes, default_views FROM user_preferences WHERE user_id = $1',
+      'SELECT default_raspis_key, default_public_hotel, default_views FROM user_preferences WHERE user_id = $1',
       [req.session.user.id]
     );
     let defaultViews = {};
@@ -1123,11 +1258,10 @@ app.get('/api/user-prefs', requireLogin, async (req, res) => {
     res.json({
       default_raspis_key: rows[0]?.default_raspis_key || null,
       default_public_hotel: rows[0]?.default_public_hotel || 'ALL',
-      auto_logout_minutes: Number(rows[0]?.auto_logout_minutes ?? req.session.user?.auto_logout_minutes ?? DEFAULT_AUTO_LOGOUT_MINUTES),
       default_views: defaultViews
     });
   } catch (err) {
-    res.json({ default_raspis_key: null, default_public_hotel: 'ALL', auto_logout_minutes: DEFAULT_AUTO_LOGOUT_MINUTES, default_views: {} });
+    res.json({ default_raspis_key: null, default_public_hotel: 'ALL', default_views: {} });
   }
 });
 
@@ -1229,22 +1363,8 @@ app.post('/api/user-prefs/default-views', requireLogin, async (req, res) => {
 });
 
 app.post('/api/user-prefs/auto-logout', requireLogin, async (req, res) => {
-  const minutes = Number(req.body.minutes);
-  if (!AUTO_LOGOUT_OPTIONS.has(minutes)) return res.json({ ok: false, msg: 'NeplatnĂˇ hodnota.' });
-  try {
-    const db = getPool();
-    await db.query(
-      `INSERT INTO user_preferences (user_id, auto_logout_minutes, updated_at)
-       VALUES ($1, $2, NOW())
-       ON CONFLICT (user_id) DO UPDATE SET auto_logout_minutes = $2, updated_at = NOW()`,
-      [req.session.user.id, minutes]
-    );
-    req.session.user.auto_logout_minutes = minutes;
-    req.session.cookie.maxAge = sessionMaxAgeFromMinutes(minutes);
-    req.session.save(() => res.json({ ok: true, auto_logout_minutes: minutes }));
-  } catch (err) {
-    res.json({ ok: false, msg: 'Chyba serveru.' });
-  }
+  req.session.cookie.maxAge = SESSION_MAX_AGE;
+  req.session.save(() => res.json({ ok: true, disabled: true }));
 });
 
 // ── Zprávy (Messages) ────────────────────────────────────────────────────────
@@ -3693,6 +3813,7 @@ app.post('/api/rt/schedules/publish', requireLogin, requirePermDefault('raspis',
         await db.query('DELETE FROM rt_drafts WHERE id = $1', [parsedDraftId]);
       }
     }
+    broadcastWidgetUpdate();
     res.json({ ok: true, key });
   } catch (err) { console.error(err); res.json({ ok: false, msg: 'Chyba serveru.' }); }
 });
@@ -3757,6 +3878,7 @@ app.post('/api/rt/schedules/save-edits', requireLogin, requirePerm('raspis', 'ed
     data = await augmentRtDataWithActiveReceptionists(data, db);
     data = await augmentRtDataWithSpecialStaff(data, req.session.user.id, db);
     await db.query('UPDATE rt_schedules SET data = $1 WHERE key = $2', [JSON.stringify(data), key]);
+    broadcastWidgetUpdate();
     res.json({ ok: true });
   } catch (err) { console.error(err); res.json({ ok: false }); }
 });

@@ -2,396 +2,400 @@
 <html lang="cs">
 <head>
   <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
   <meta name="mobile-web-app-capable" content="yes">
   <meta name="apple-mobile-web-app-capable" content="yes">
-  <title>Mini Rozpis</title>
+  <meta name="apple-mobile-web-app-title" content="Denní rozpis">
+  <title>Denní rozpis</title>
   <link rel="manifest" href="/static/widget-manifest.json">
-  <meta name="theme-color" content="#0E1014">
+  <link rel="stylesheet" href="/static/theme.css">
+  <script src="/static/theme.js" defer></script>
   <style>
-    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
-    ::-webkit-scrollbar { display: none; }
-
-    /* ── Dark theme (default) ── */
-    :root, [data-theme="dark"] {
-      --bg:          #141618;
-      --topbar:      #0E1014;
-      --surface:     #1E2228;
-      --surface-alt: #1A2030;
-      --border:      #2E333A;
-      --border-mid:  #3C4450;
-      --text:        #E8E6DC;
-      --text-muted:  #8A8A82;
-      --accent:      #C4A96A;
-      --accent-fg:   #141618;
-      --chdr-bg:     #252B32;
-      --hotel-fg:    #C4A96A;
-      --warn-fg:     #D9744A;
-      --info-fg:     #525A68;
-      --p-day:       #3D1E28;
-      --p-ngt:       #2E1820;
-      --p-code:      #3D1E28;
-      --q-day:       #3A2410;
-      --q-ngt:       #2E1C0C;
-      --q-code:      #3A2410;
-      --online:      #4ade80;
-      --offline:     #f87171;
-      --foot-fg:     #4A5060;
-      --nav-fg:      #555850;
-    }
-
-    /* ── Light theme ── */
-    [data-theme="light"] {
-      --bg:          #f4f6f8;
-      --topbar:      #ffffff;
-      --surface:     #ffffff;
-      --surface-alt: #eef2f7;
-      --border:      #dde2ea;
-      --border-mid:  #b0bac8;
-      --text:        #1a2030;
-      --text-muted:  #6b7280;
-      --accent:      #1e3a5f;
-      --accent-fg:   #ffffff;
-      --chdr-bg:     #e8edf4;
-      --hotel-fg:    #1e3a5f;
-      --warn-fg:     #b83222;
-      --info-fg:     #b0bac8;
-      --p-day:       #fde8ec;
-      --p-ngt:       #fef4f6;
-      --p-code:      #fde8ec;
-      --q-day:       #fff3e0;
-      --q-ngt:       #fff8f0;
-      --q-code:      #fff3e0;
-      --online:      #16a34a;
-      --offline:     #dc2626;
-      --foot-fg:     #94a3b8;
-      --nav-fg:      #94a3b8;
-    }
-
+    *, *::before, *::after { box-sizing: border-box; }
     html, body {
-      width: 100%; height: 100%;
-      overflow: hidden; scrollbar-width: none;
-      font-family: 'Segoe UI', system-ui, sans-serif;
+      margin: 0;
+      min-height: 100%;
       background: var(--bg);
       color: var(--text);
+      font-family: "Segoe UI", system-ui, -apple-system, BlinkMacSystemFont, sans-serif;
     }
-    body { display: flex; flex-direction: column; }
-
-    /* ── Header ── */
-    .hdr {
-      background: var(--topbar);
-      padding: 5px 10px;
+    body {
+      min-height: 100dvh;
+      overflow: hidden;
       display: flex;
+      flex-direction: column;
+    }
+    button {
+      font: inherit;
+      touch-action: manipulation;
+      -webkit-tap-highlight-color: transparent;
+    }
+    .widget-top {
+      flex: 0 0 auto;
+      min-height: 50px;
+      padding: max(7px, env(safe-area-inset-top)) 10px 7px;
+      display: grid;
+      grid-template-columns: auto minmax(0, 1fr) auto;
+      gap: 10px;
       align-items: center;
-      gap: 6px;
-      flex-shrink: 0;
+      background: var(--bg-topbar);
       border-bottom: 1px solid var(--border);
     }
-
-    /* Dnes: zlaté/accent = nejsi dnes (upozornění), šedé = jsi dnes */
+    .today-btn,
+    .icon-btn {
+      min-height: 34px;
+      border: 1px solid var(--border-strong);
+      border-radius: 7px;
+      background: var(--surface);
+      color: var(--text);
+      font-weight: 800;
+      cursor: pointer;
+    }
     .today-btn {
-      font-size: 9px; font-weight: 700;
-      padding: 2px 8px; border-radius: 3px;
-      cursor: pointer; flex-shrink: 0;
-      transition: background .15s, color .15s;
-      background: var(--accent); color: var(--accent-fg);
-      border: 1px solid var(--accent);
+      min-width: 78px;
+      padding: 0 13px;
+      color: var(--accent);
+      border-color: color-mix(in srgb, var(--accent) 48%, var(--border));
     }
-    .today-btn.on-today {
-      background: var(--surface); color: var(--text-muted);
-      border-color: var(--border-mid); cursor: default;
+    .today-btn.is-today {
+      color: var(--text-muted);
+      border-color: var(--border);
     }
-    .today-btn:not(.on-today):hover { filter: brightness(1.1); }
-
-    /* Centre */
-    .hdr-center {
-      flex: 1;
-      display: flex; align-items: center; justify-content: center; gap: 6px;
+    .date-nav {
+      min-width: 0;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 12px;
     }
     .nav-btn {
-      background: none; border: none; cursor: pointer;
-      color: var(--nav-fg); font-size: 18px; font-weight: 700;
-      padding: 0 2px; line-height: 1; border-radius: 2px;
-      transition: color .12s; flex-shrink: 0;
+      width: 38px;
+      min-height: 38px;
+      border: 0;
+      border-radius: 8px;
+      background: transparent;
+      color: var(--accent);
+      font-size: 32px;
+      font-weight: 900;
+      line-height: 1;
+      cursor: pointer;
     }
-    .nav-btn:hover { color: var(--accent); }
-    .hdr-date {
-      font-size: 11px; font-weight: 700; color: var(--text);
+    .nav-btn:hover,
+    .nav-btn:focus-visible {
+      background: color-mix(in srgb, var(--accent) 15%, transparent);
+      outline: none;
+    }
+    #date-label {
+      min-width: 0;
+      text-align: center;
+      color: var(--text);
+      font-size: clamp(18px, 4vw, 28px);
+      font-weight: 900;
       white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
     }
-
-    /* Right: theme toggle + dot */
-    .hdr-right { display: flex; align-items: center; gap: 7px; flex-shrink: 0; }
-    .theme-btn {
-      background: none; border: none; cursor: pointer;
-      font-size: 13px; line-height: 1; padding: 0;
-      color: var(--nav-fg); transition: color .12s;
+    .right-tools {
+      display: flex;
+      align-items: center;
+      gap: 9px;
     }
-    .theme-btn:hover { color: var(--accent); }
-    .dot {
-      width: 6px; height: 6px; border-radius: 50%;
-      background: var(--online); flex-shrink: 0;
-      transition: background .4s;
+    #btn-theme.icon-btn {
+      width: 42px;
+      font-size: 20px;
     }
-    .dot.off { background: var(--offline); }
-
-    /* ── Table ── */
-    #content { flex: 0 0 auto; }
-
-    table {
-      border-collapse: collapse;
+    .status-dot {
+      width: 11px;
+      height: 11px;
+      border-radius: 50%;
+      background: #35d270;
+      box-shadow: 0 0 0 3px color-mix(in srgb, #35d270 18%, transparent);
+    }
+    .status-dot.off {
+      background: #e25c4f;
+      box-shadow: 0 0 0 3px color-mix(in srgb, #e25c4f 18%, transparent);
+    }
+    .table-wrap {
+      flex: 0 0 auto;
+      width: 100%;
+      overflow: hidden;
+      border-bottom: 1px solid var(--border);
+    }
+    .widget-table {
       width: 100%;
       table-layout: fixed;
+      border-collapse: collapse;
+      background: var(--surface);
     }
-    col.col-code  { width: 28px; }
-    col.col-code2 { width: 28px; }
-
-    thead th {
-      font-size: 10px; font-weight: 700; letter-spacing: .05em;
-      padding: 3px 7px; color: var(--accent);
-      background: var(--chdr-bg);
-      border-bottom: 2px solid var(--border-mid);
+    .widget-table col.code { width: 50px; }
+    .widget-table th {
+      padding: 9px 10px;
+      background: var(--surface-alt);
+      color: var(--accent);
+      border-bottom: 2px solid var(--border-strong);
+      font-size: clamp(15px, 3.2vw, 22px);
+      font-weight: 900;
+      letter-spacing: .08em;
     }
-    thead th.th-code  { background: var(--topbar); color: transparent; }
-    thead th.th-code2 { background: var(--topbar); color: transparent; border-left: 1px solid var(--border-mid); }
-    thead th.th-day   { border-right: 1px solid var(--border-mid); }
-
-    tbody tr         { border-bottom: 1px solid var(--border); }
-    tbody tr:last-child { border-bottom: none; }
-
-    tbody td {
-      font-size: 11px; padding: 3px 7px;
-      white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
-      vertical-align: middle; height: 26px;
+    .widget-table th.code-head {
+      background: var(--bg-topbar);
+      color: transparent;
     }
-
-    td.code {
-      font-size: 10px; font-weight: 800; color: var(--hotel-fg);
-      padding-left: 9px; padding-right: 4px;
-      border-right: 1px solid var(--border-mid);
-      background: var(--topbar);
+    .widget-table td {
+      height: clamp(36px, 5.15vh, 55px);
+      padding: 0 12px;
+      border-bottom: 1px solid var(--border);
+      font-size: clamp(16px, 3.7vw, 26px);
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
     }
-    td.code2 {
-      font-size: 10px; font-weight: 800; color: var(--hotel-fg);
-      padding-left: 9px; padding-right: 4px;
-      border-left: 1px solid var(--border-mid);
-      border-right: 1px solid var(--border-mid);
-      background: var(--topbar);
+    .widget-table td.code {
+      padding: 0;
+      text-align: center;
+      font-weight: 900;
+      color: var(--accent);
+      background: var(--bg-topbar);
+      border-right: 1px solid var(--border-strong);
     }
-    td.day { background: var(--surface);     border-right: 1px solid var(--border); color: var(--text); }
-    td.ngt { background: var(--surface-alt); color: var(--text); }
-
-    /* Stavové texty */
-    td.warn { color: var(--warn-fg); font-size: 9px; font-style: italic; }
-    td.info { color: var(--info-fg); font-size: 9px; font-style: italic; }
-
-    /* P / Q speciální řádky */
-    tr.p td.code  { background: var(--p-code); }
-    tr.p td.code2 { background: var(--p-code); }
-    tr.p td.day   { background: var(--p-day); }
-    tr.p td.ngt   { background: var(--p-ngt); }
-    tr.q td.code  { background: var(--q-code); }
-    tr.q td.code2 { background: var(--q-code); }
-    tr.q td.day   { background: var(--q-day); }
-    tr.q td.ngt   { background: var(--q-ngt); }
-
-    /* ── Footer ── */
-    .foot {
-      font-size: 9px;
-      padding: 3px 10px 4px;
+    .widget-table td.day {
+      color: var(--text);
+      background: var(--surface);
+      border-right: 1px solid var(--border-strong);
+    }
+    .widget-table td.night {
+      color: var(--text);
+      background: color-mix(in srgb, var(--surface-alt) 80%, var(--accent) 8%);
+    }
+    .widget-table tr.p td.code {
+      color: #ffe8ef;
+      background: color-mix(in srgb, #7e263e 74%, var(--bg-topbar));
+    }
+    .widget-table tr.p td.day,
+    .widget-table tr.p td.night {
+      background: color-mix(in srgb, #7e263e 36%, var(--surface));
+    }
+    .widget-table tr.q td.code {
+      color: #ffe9ca;
+      background: color-mix(in srgb, #8c561a 70%, var(--bg-topbar));
+    }
+    .widget-table tr.q td.day,
+    .widget-table tr.q td.night {
+      background: color-mix(in srgb, #8c561a 31%, var(--surface));
+    }
+    .missing {
+      color: #d33a2f;
+      font-weight: 900;
+    }
+    .note {
+      display: inline-block;
+      max-width: 100%;
+      color: var(--text-muted);
+      font-style: italic;
+      font-size: .84em;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      vertical-align: middle;
+    }
+    .widget-foot {
+      flex: 0 0 auto;
+      min-height: 32px;
+      padding: 5px 10px max(5px, env(safe-area-inset-bottom));
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 14px;
+      background: var(--bg-topbar);
       border-top: 1px solid var(--border);
-      background: var(--topbar);
-      white-space: nowrap; flex-shrink: 0;
-      display: flex; align-items: center; justify-content: space-between;
-      cursor: default; user-select: none;
+      color: var(--text-muted);
+      font-size: 13px;
     }
-    #foot-txt { color: var(--text); }
-    .resize-btn {
-      font-size: 11px; background: none; border: none;
-      color: var(--nav-fg); cursor: pointer; padding: 0 2px; line-height: 1;
-      transition: color .12s;
+    .empty {
+      padding: 34px 18px;
+      color: var(--text-muted);
+      text-align: center;
+      font-size: 18px;
     }
-    .resize-btn:hover { color: var(--accent); }
-    .logout-btn {
-      font-size: 12px; color: var(--nav-fg); text-decoration: none;
-      line-height: 1; padding: 0 2px; transition: color .12s;
+    .fill {
+      flex: 1 1 auto;
+      background: var(--bg);
     }
-    .logout-btn:hover { color: var(--offline); }
-
-    .msg { padding: 14px 20px; font-size: 11px; color: var(--text-muted); }
+    @media (max-width: 620px) {
+      .widget-top {
+        min-height: 48px;
+        grid-template-columns: 76px minmax(0, 1fr) 62px;
+        gap: 5px;
+        padding-left: 7px;
+        padding-right: 7px;
+      }
+      .today-btn {
+        min-width: 0;
+        padding: 0 8px;
+      }
+      .date-nav { gap: 4px; }
+      .nav-btn {
+        width: 30px;
+        min-height: 34px;
+        font-size: 28px;
+      }
+      #date-label { font-size: clamp(17px, 5vw, 24px); }
+      .right-tools { gap: 6px; justify-content: flex-end; }
+      #btn-theme.icon-btn {
+        width: 38px;
+        min-height: 34px;
+      }
+      .status-dot {
+        width: 9px;
+        height: 9px;
+      }
+      .widget-table col.code { width: 34px; }
+      .widget-table th { padding: 7px 4px; }
+      .widget-table td { padding: 0 7px; }
+    }
+    @media (orientation: landscape) and (max-height: 520px) {
+      .widget-top { min-height: 42px; padding-top: 4px; padding-bottom: 4px; }
+      .today-btn, .icon-btn { min-height: 30px; }
+      .nav-btn { min-height: 30px; font-size: 25px; }
+      .widget-table td { height: 31px; font-size: 15px; }
+      .widget-table th { padding: 5px 4px; font-size: 14px; }
+      .widget-foot { min-height: 26px; padding-top: 3px; padding-bottom: 3px; }
+    }
   </style>
 </head>
 <body>
-
-  <div class="hdr">
-    <button class="today-btn" id="btn-today" onclick="goToday()">Dnes</button>
-    <div class="hdr-center">
-      <button class="nav-btn" onclick="navDay(-1)">&#8249;</button>
-      <div class="hdr-date" id="hdr-date">—</div>
-      <button class="nav-btn" onclick="navDay(1)">&#8250;</button>
+  <header class="widget-top">
+    <button class="today-btn" id="today-btn" type="button">Dnes</button>
+    <div class="date-nav">
+      <button class="nav-btn" id="prev-day" type="button" aria-label="Předchozí den">‹</button>
+      <div id="date-label">Načítání...</div>
+      <button class="nav-btn" id="next-day" type="button" aria-label="Další den">›</button>
     </div>
-    <div class="hdr-right">
-      <button class="theme-btn" id="theme-btn" onclick="toggleTheme()" title="Přepnout světlý/tmavý motiv"></button>
-      <div class="dot" id="dot"></div>
+    <div class="right-tools">
+      <button id="btn-theme" class="icon-btn" type="button" title="Přepnout světlý/tmavý režim">☀</button>
+      <span class="status-dot" id="status-dot" title="Připojeno"></span>
     </div>
-  </div>
+  </header>
 
-  <div id="content"><div class="msg">Načítání…</div></div>
-
-  <div class="foot">
-    <span id="foot-txt">AVE Hotels · Recepce</span>
-    <div style="display:flex;align-items:center;gap:6px;">
-      <a href="/logout" class="logout-btn" title="Odhlásit se">⏻</a>
-      <button class="resize-btn" onclick="fitWindow()" title="Přizpůsobit velikost okna obsahu">⛶</button>
-    </div>
-  </div>
+  <main class="table-wrap" id="content">
+    <div class="empty">Načítání...</div>
+  </main>
+  <footer class="widget-foot">
+    <span id="updated-label">Aktualizováno...</span>
+    <span>AVE Hotels</span>
+  </footer>
+  <div class="fill"></div>
 
   <script>
-    const HOTELS = ['A','B','C','D','E','G','H','I','J','L','M','N','S','T','U','P','Q'];
-    const DAYS   = ['Neděle','Pondělí','Úterý','Středa','Čtvrtek','Pátek','Sobota'];
-    const MONTHS = ['ledna','února','března','dubna','května','června',
-                    'července','srpna','září','října','listopadu','prosince'];
+    const DAYS = ['Neděle', 'Pondělí', 'Úterý', 'Středa', 'Čtvrtek', 'Pátek', 'Sobota'];
+    const MONTHS = ['ledna', 'února', 'března', 'dubna', 'května', 'června', 'července', 'srpna', 'září', 'října', 'listopadu', 'prosince'];
+    const NO_NIGHT = new Set(['L', 'N', 'U']);
+    const ONLY_DAY = new Set(['J', 'S']);
+    let viewDate = new Date();
+    let eventSource = null;
+    let retryMs = 3000;
 
-    // Hotely bez noční recepce (info text)
-    const NO_NIGHT  = new Set(['L','N','U']);   // "Hotel bez noční recepce"
-    const ONLY_DAY  = new Set(['J','S']);        // "Pouze ve dne"
-
-    // ── Téma ──
-    let theme = localStorage.getItem('widget-theme') || 'dark';
-    function applyTheme(t) {
-      theme = t;
-      document.documentElement.setAttribute('data-theme', t);
-      document.getElementById('theme-btn').textContent = t === 'dark' ? '☀' : '🌙';
-      localStorage.setItem('widget-theme', t);
+    function pad(n) {
+      return String(n).padStart(2, '0');
     }
-    function toggleTheme() { applyTheme(theme === 'dark' ? 'light' : 'dark'); }
-    applyTheme(theme);
-
-    let data=null, updated=null;
-    const _n=new Date();
-    let viewDay=_n.getDate(), viewMonth=_n.getMonth()+1, viewYear=_n.getFullYear();
-
-    function isToday(){const n=new Date();return viewDay===n.getDate()&&viewMonth===n.getMonth()+1&&viewYear===n.getFullYear();}
-    function daysInMonth(m,y){return new Date(y,m,0).getDate();}
-    function fmt2(n){return String(n).padStart(2,'0');}
-    function fmtName(s){
-      if(!s) return null;
-      const c=s.trim().startsWith('z ')?s.trim().slice(2).trim():s.trim();
-      return c||null;
+    function sameDay(a, b) {
+      return a.getFullYear() === b.getFullYear() && a.getMonth() === b.getMonth() && a.getDate() === b.getDate();
     }
-
-    function fitWindow(){
-      try {
-        const chromeH = window.outerHeight - window.innerHeight;
-        const safeH   = chromeH > 5 ? chromeH : 33;
-        const hdr  = document.querySelector('.hdr');
-        const foot = document.querySelector('.foot');
-        if (!hdr || !foot) return;
-        const contentH =
-          hdr.getBoundingClientRect().height +
-          document.getElementById('content').getBoundingClientRect().height +
-          foot.getBoundingClientRect().height;
-        window.resizeTo(
-          window.outerWidth,
-          Math.ceil(contentH) + safeH
-        );
-      } catch(e) {}
+    function formatDate(date) {
+      return `${DAYS[date.getDay()]} ${date.getDate()}. ${MONTHS[date.getMonth()]} ${date.getFullYear()}`;
     }
-
-    function goToday(){const n=new Date();viewDay=n.getDate();viewMonth=n.getMonth()+1;viewYear=n.getFullYear();load();}
-    function navDay(d){
-      viewDay+=d;
-      const dim=daysInMonth(viewMonth,viewYear);
-      if(viewDay<1){viewMonth--;if(viewMonth<1){viewMonth=12;viewYear--;}viewDay=daysInMonth(viewMonth,viewYear);}
-      else if(viewDay>dim){viewDay=1;viewMonth++;if(viewMonth>12){viewMonth=1;viewYear++;}}
-      load();
+    function setStatus(ok) {
+      const dot = document.getElementById('status-dot');
+      if (dot) dot.classList.toggle('off', !ok);
     }
-
-    /* Vrátí { text, cls } pro buňku */
-    function cellContent(code, name, isNight) {
-      if (isNight) {
-        if (NO_NIGHT.has(code)) return { text: 'Hotel bez noční recepce', cls: 'info' };
-        if (ONLY_DAY.has(code)) return { text: 'Pouze ve dne',            cls: 'info' };
-      }
-      if (name) return { text: name, cls: '' };
-      // Prázdná směna
-      if (!isNight && code === 'P') return { text: 'Dnes není',    cls: 'warn' };
-      return                               { text: 'Zatím neudáno', cls: 'warn' };
+    function escapeHtml(value) {
+      const div = document.createElement('div');
+      div.textContent = value == null ? '' : String(value);
+      return div.innerHTML;
     }
-
-    function render(){
-      document.getElementById('btn-today').classList.toggle('on-today', isToday());
-      const el=document.getElementById('content');
-      if(!data){el.innerHTML='<div class="msg">Načítání…</div>';return;}
-      if(!data.ok){el.innerHTML='<div class="msg">Žádný rozpis pro tento den.</div>';return;}
-
-      const dt=new Date(data.year,data.month-1,data.day);
-      document.getElementById('hdr-date').textContent=
-        `${DAYS[dt.getDay()]} ${data.day}. ${MONTHS[data.month-1]} ${data.year}`;
-
-      const h=data.hotels||{};
-      let rows='';
-      for(const code of HOTELS){
-        const info=h[code]||{};
-        const dn=fmtName(info.day), nn=fmtName(info.night);
-        const cls=code==='P'?'p':code==='Q'?'q':'';
-
-        const dc=cellContent(code, dn, false);
-        const nc=cellContent(code, nn, true);
-
-        rows+=`<tr class="${cls}">` +
-          `<td class="code">${code}</td>` +
-          `<td class="day${dc.cls?' '+dc.cls:''}">${dc.text}</td>` +
-          `<td class="code2">${code}</td>` +
-          `<td class="ngt${nc.cls?' '+nc.cls:''}">${nc.text}</td>` +
-          `</tr>`;
-      }
-      el.innerHTML=`<table>
-        <colgroup><col class="col-code"><col><col class="col-code2"><col></colgroup>
-        <thead><tr>
-          <th class="th-code"></th>
-          <th class="th-day">Denní</th>
-          <th class="th-code2"></th>
-          <th class="th-ngt">Noční</th>
-        </tr></thead>
+    function cellHtml(letter, value, isNight, info) {
+      const dayOnly = !!(info && info.dayOnly);
+      if (isNight && (ONLY_DAY.has(letter) || (dayOnly && (letter === 'J' || letter === 'S')))) return '<span class="note">Pouze ve dne</span>';
+      if (isNight && (NO_NIGHT.has(letter) || dayOnly)) return '<span class="note">Hotel bez noční recepce</span>';
+      if (value) return escapeHtml(value);
+      return '<span class="missing">-</span>';
+    }
+    function updateLabels() {
+      const today = new Date();
+      document.getElementById('date-label').textContent = formatDate(viewDate);
+      document.getElementById('today-btn').classList.toggle('is-today', sameDay(today, viewDate));
+    }
+    function renderWidget(data) {
+      const map = data.hotels || {};
+      const order = Array.isArray(data.hotels_order) && data.hotels_order.length ? data.hotels_order : Object.keys(map);
+      const rows = order.map(letter => {
+        const item = map[letter] || {};
+        const cls = letter === 'P' ? ' class="p"' : letter === 'Q' ? ' class="q"' : '';
+        return `<tr${cls}>
+          <td class="code">${escapeHtml(letter)}</td>
+          <td class="day">${cellHtml(letter, item.day, false, item)}</td>
+          <td class="code">${escapeHtml(letter)}</td>
+          <td class="night">${cellHtml(letter, item.night, true, item)}</td>
+        </tr>`;
+      }).join('');
+      document.getElementById('content').innerHTML = `<table class="widget-table">
+        <colgroup><col class="code"><col><col class="code"><col></colgroup>
+        <thead><tr><th class="code-head"></th><th>Denní</th><th class="code-head"></th><th>Noční</th></tr></thead>
         <tbody>${rows}</tbody>
       </table>`;
-
-      if(updated)
-        document.getElementById('foot-txt').textContent=
-          `Aktualizováno ${fmt2(updated.getHours())}:${fmt2(updated.getMinutes())}`;
-
-      requestAnimationFrame(()=>requestAnimationFrame(fitWindow));
+      const now = new Date();
+      document.getElementById('updated-label').textContent = `Aktualizováno ${pad(now.getHours())}:${pad(now.getMinutes())}`;
     }
-
-    async function load(){
-      try{
-        const r=await fetch(`/api/widget-today?day=${viewDay}&month=${viewMonth}&year=${viewYear}`,{credentials:'include'});
-        if(!r.ok||r.redirected){window.location.href='/';return;}
-        data=await r.json(); updated=new Date(); render();
-      }catch(e){console.error(e);}
+    async function loadWidget() {
+      updateLabels();
+      const url = `/api/widget-today?day=${viewDate.getDate()}&month=${viewDate.getMonth() + 1}&year=${viewDate.getFullYear()}`;
+      try {
+        const res = await fetch(url, { credentials: 'include' });
+        if (res.redirected || res.status === 401) {
+          window.location.href = '/?next=/widget';
+          return;
+        }
+        const data = await res.json();
+        if (!data.ok) throw new Error(data.msg || 'Widget data error');
+        renderWidget(data);
+        setStatus(true);
+      } catch (err) {
+        console.error(err);
+        setStatus(false);
+        document.getElementById('content').innerHTML = '<div class="empty">Rozpis se nepodařilo načíst.</div>';
+      }
     }
-
-    let es, retryMs=3000;
-    function connect(){
-      if(es){es.close();es=null;}
-      es=new EventSource('/api/widget-events');
-      es.onopen=()=>{retryMs=3000;document.getElementById('dot').classList.remove('off');};
-      es.onmessage=e=>{if(e.data==='update')load();};
-      es.onerror=()=>{
-        document.getElementById('dot').classList.add('off');
-        es.close();es=null;retryMs=Math.min(retryMs*2,60000);
-        setTimeout(connect,retryMs);
+    function moveDay(delta) {
+      viewDate = new Date(viewDate.getFullYear(), viewDate.getMonth(), viewDate.getDate() + delta);
+      loadWidget();
+    }
+    function goToday() {
+      viewDate = new Date();
+      loadWidget();
+    }
+    function connectEvents() {
+      if (!window.EventSource) return;
+      if (eventSource) eventSource.close();
+      eventSource = new EventSource('/api/widget-events');
+      eventSource.onopen = () => {
+        retryMs = 3000;
+        setStatus(true);
+      };
+      eventSource.onmessage = (event) => {
+        if (event.data === 'update') loadWidget();
+      };
+      eventSource.onerror = () => {
+        setStatus(false);
+        if (eventSource) eventSource.close();
+        retryMs = Math.min(retryMs * 2, 60000);
+        setTimeout(connectEvents, retryMs);
       };
     }
-
-    function scheduleMidnight(){
-      const n=new Date(),m=new Date(n.getFullYear(),n.getMonth(),n.getDate()+1);
-      setTimeout(()=>{goToday();scheduleMidnight();},m-n+500);
-    }
-
-    window.addEventListener('load',()=>setTimeout(fitWindow,400));
-    load(); connect(); scheduleMidnight();
+    document.getElementById('prev-day').addEventListener('click', () => moveDay(-1));
+    document.getElementById('next-day').addEventListener('click', () => moveDay(1));
+    document.getElementById('today-btn').addEventListener('click', goToday);
+    setInterval(loadWidget, 60000);
+    loadWidget();
+    connectEvents();
   </script>
 </body>
 </html>

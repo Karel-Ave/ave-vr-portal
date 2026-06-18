@@ -1,15 +1,18 @@
 (function () {
   var THEME_KEY = 'ave-portal-theme';
   var SKIN_KEY = 'ave-portal-skin';
+  var LIGHT_SKIN_KEY = 'ave-portal-skin-light';
+  var DARK_SKIN_KEY = 'ave-portal-skin-dark';
   var USER_KEY = 'ave-portal-theme-user';
-  var DEFAULT_SKIN = 'default';
+  var DEFAULT_LIGHT_SKIN = 'indigo';
+  var DEFAULT_DARK_SKIN = 'green';
   var SKINS = [
-    { id: 'default', label: 'Výchozí' },
+    { id: 'default', label: 'Vychozi' },
     { id: 'graphite', label: 'Grafit' },
     { id: 'slate', label: 'Slate' },
-    { id: 'blue', label: 'Modrá' },
+    { id: 'blue', label: 'Modra' },
     { id: 'teal', label: 'Teal' },
-    { id: 'green', label: 'Zelená' },
+    { id: 'green', label: 'Zelena' },
     { id: 'olive', label: 'Oliva' },
     { id: 'amber', label: 'Amber' },
     { id: 'rose', label: 'Rose' },
@@ -18,9 +21,9 @@
     { id: 'cyan', label: 'Cyan' },
     { id: 'mint', label: 'Mint' },
     { id: 'lime', label: 'Lime' },
-    { id: 'yellow', label: 'Žlutá' },
-    { id: 'orange', label: 'Oranžová' },
-    { id: 'red', label: 'Červená' },
+    { id: 'yellow', label: 'Zluta' },
+    { id: 'orange', label: 'Oranzova' },
+    { id: 'red', label: 'Cervena' },
     { id: 'pink', label: 'Pink' },
     { id: 'plum', label: 'Plum' },
     { id: 'coffee', label: 'Coffee' },
@@ -31,24 +34,38 @@
   var lastThemeEventAt = 0;
   var lastLocalThemeChange = 0;
 
-  function normalizeSkin(skin) {
-    skin = String(skin || DEFAULT_SKIN).toLowerCase();
-    return SKIN_IDS.indexOf(skin) >= 0 ? skin : DEFAULT_SKIN;
+  function normalizeSkin(skin, fallback) {
+    fallback = fallback || DEFAULT_LIGHT_SKIN;
+    skin = String(skin || fallback).toLowerCase();
+    if (skin === 'mono') skin = 'default';
+    return SKIN_IDS.indexOf(skin) >= 0 ? skin : fallback;
   }
 
   function isDark() {
     return document.documentElement.getAttribute('data-theme') === 'dark';
   }
 
+  function getSkinForMode(dark) {
+    var key = dark ? DARK_SKIN_KEY : LIGHT_SKIN_KEY;
+    var fallback = dark ? DEFAULT_DARK_SKIN : DEFAULT_LIGHT_SKIN;
+    return normalizeSkin(localStorage.getItem(key), fallback);
+  }
+
   function getSkin() {
-    return normalizeSkin(document.documentElement.getAttribute('data-skin') || localStorage.getItem(SKIN_KEY));
+    return normalizeSkin(
+      document.documentElement.getAttribute('data-skin') ||
+      localStorage.getItem(SKIN_KEY) ||
+      getSkinForMode(isDark()),
+      isDark() ? DEFAULT_DARK_SKIN : DEFAULT_LIGHT_SKIN
+    );
   }
 
   function applyTheme(dark, skin) {
-    skin = normalizeSkin(skin || localStorage.getItem(SKIN_KEY));
+    skin = normalizeSkin(skin || getSkinForMode(dark), dark ? DEFAULT_DARK_SKIN : DEFAULT_LIGHT_SKIN);
     if (dark) document.documentElement.setAttribute('data-theme', 'dark');
     else document.documentElement.removeAttribute('data-theme');
     document.documentElement.setAttribute('data-skin', skin);
+    localStorage.setItem(SKIN_KEY, skin);
     var btn = document.getElementById('btn-theme');
     if (btn) btn.textContent = dark ? '☀️' : '🌙';
   }
@@ -65,13 +82,18 @@
         method: 'PATCH',
         credentials: 'include',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ theme: dark ? 'dark' : 'light', skin: normalizeSkin(skin) })
+        body: JSON.stringify({
+          theme: dark ? 'dark' : 'light',
+          skin: normalizeSkin(skin, dark ? DEFAULT_DARK_SKIN : DEFAULT_LIGHT_SKIN),
+          theme_skin_light: getSkinForMode(false),
+          theme_skin_dark: getSkinForMode(true)
+        })
       }).catch(function () {});
     } catch (e) {}
   }
 
   function setThemeMode(dark, persist) {
-    var skin = getSkin();
+    var skin = getSkinForMode(dark);
     if (persist !== false) lastLocalThemeChange = Date.now();
     localStorage.setItem(THEME_KEY, dark ? 'dark' : 'light');
     applyTheme(dark, skin);
@@ -80,9 +102,11 @@
   }
 
   function setSkin(skin, persist) {
-    skin = normalizeSkin(skin);
     var dark = isDark();
+    var key = dark ? DARK_SKIN_KEY : LIGHT_SKIN_KEY;
+    skin = normalizeSkin(skin, dark ? DEFAULT_DARK_SKIN : DEFAULT_LIGHT_SKIN);
     if (persist !== false) lastLocalThemeChange = Date.now();
+    localStorage.setItem(key, skin);
     localStorage.setItem(SKIN_KEY, skin);
     applyTheme(dark, skin);
     postThemeMessage(dark, skin);
@@ -108,13 +132,20 @@
     return toggleThemeNow();
   }
 
-  applyTheme(localStorage.getItem(THEME_KEY) === 'dark', normalizeSkin(localStorage.getItem(SKIN_KEY)));
+  function seedLocalDefaults() {
+    if (!localStorage.getItem(LIGHT_SKIN_KEY)) localStorage.setItem(LIGHT_SKIN_KEY, DEFAULT_LIGHT_SKIN);
+    if (!localStorage.getItem(DARK_SKIN_KEY)) localStorage.setItem(DARK_SKIN_KEY, DEFAULT_DARK_SKIN);
+  }
+
+  seedLocalDefaults();
+  applyTheme(localStorage.getItem(THEME_KEY) === 'dark', getSkinForMode(localStorage.getItem(THEME_KEY) === 'dark'));
 
   window.AVE_THEME_SKINS = SKINS;
   window.AVE_THEME = {
     apply: applyTheme,
     isDark: isDark,
     getSkin: getSkin,
+    getSkinForMode: getSkinForMode,
     setMode: setThemeMode,
     setSkin: setSkin,
     toggle: toggleThemeNow,
@@ -141,23 +172,24 @@
     }).then(function (user) {
       if (!user) return;
       var serverDark = user.theme === 'dark';
-      var serverSkin = normalizeSkin(user.theme_skin || DEFAULT_SKIN);
+      var lightSkin = normalizeSkin(user.theme_skin_light || (!serverDark && user.theme_skin) || DEFAULT_LIGHT_SKIN, DEFAULT_LIGHT_SKIN);
+      var darkSkin = normalizeSkin(user.theme_skin_dark || (serverDark && user.theme_skin) || DEFAULT_DARK_SKIN, DEFAULT_DARK_SKIN);
       var userKey = String(user.id || user.username || '');
 
-      // Server preference belongs to the logged-in user. Local storage is only a
-      // fast paint cache, so it must not leak the previous user's skin/mode.
       if (Date.now() - lastLocalThemeChange < 1500) return;
       localStorage.setItem(USER_KEY, userKey);
       localStorage.setItem(THEME_KEY, serverDark ? 'dark' : 'light');
-      localStorage.setItem(SKIN_KEY, serverSkin);
-      applyTheme(serverDark, serverSkin);
-      postThemeMessage(serverDark, serverSkin);
+      localStorage.setItem(LIGHT_SKIN_KEY, lightSkin);
+      localStorage.setItem(DARK_SKIN_KEY, darkSkin);
+      applyTheme(serverDark, serverDark ? darkSkin : lightSkin);
+      postThemeMessage(serverDark, serverDark ? darkSkin : lightSkin);
     }).catch(function () {});
   }
 
   window.addEventListener('storage', function (e) {
-    if (e.key === THEME_KEY || e.key === SKIN_KEY) {
-      applyTheme(localStorage.getItem(THEME_KEY) === 'dark', normalizeSkin(localStorage.getItem(SKIN_KEY)));
+    if ([THEME_KEY, SKIN_KEY, LIGHT_SKIN_KEY, DARK_SKIN_KEY].indexOf(e.key) >= 0) {
+      var dark = localStorage.getItem(THEME_KEY) === 'dark';
+      applyTheme(dark, getSkinForMode(dark));
       postThemeMessage(isDark(), getSkin());
     }
   });
@@ -165,8 +197,12 @@
   window.addEventListener('message', function (e) {
     if (e.data && e.data.type === 'ave-theme') {
       if (typeof e.data.dark === 'boolean') localStorage.setItem(THEME_KEY, e.data.dark ? 'dark' : 'light');
-      if (e.data.skin) localStorage.setItem(SKIN_KEY, normalizeSkin(e.data.skin));
-      applyTheme(localStorage.getItem(THEME_KEY) === 'dark', normalizeSkin(localStorage.getItem(SKIN_KEY)));
+      if (e.data.skin) {
+        var dark = localStorage.getItem(THEME_KEY) === 'dark';
+        localStorage.setItem(dark ? DARK_SKIN_KEY : LIGHT_SKIN_KEY, normalizeSkin(e.data.skin));
+      }
+      var modeDark = localStorage.getItem(THEME_KEY) === 'dark';
+      applyTheme(modeDark, getSkinForMode(modeDark));
       postThemeMessage(isDark(), getSkin());
     }
   });

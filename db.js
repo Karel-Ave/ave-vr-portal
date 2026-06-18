@@ -42,6 +42,28 @@ async function init() {
   await db.query(`
     ALTER TABLE users ALTER COLUMN theme_skin SET DEFAULT 'default'
   `);
+  await db.query(`
+    ALTER TABLE users ADD COLUMN IF NOT EXISTS theme_skin_light VARCHAR(30) DEFAULT 'indigo'
+  `);
+  await db.query(`
+    ALTER TABLE users ADD COLUMN IF NOT EXISTS theme_skin_dark VARCHAR(30) DEFAULT 'green'
+  `);
+  await db.query(`
+    ALTER TABLE users ALTER COLUMN theme_skin_light SET DEFAULT 'indigo'
+  `);
+  await db.query(`
+    ALTER TABLE users ALTER COLUMN theme_skin_dark SET DEFAULT 'green'
+  `);
+  await db.query(`
+    UPDATE users
+       SET theme_skin_light = 'indigo'
+     WHERE theme_skin_light IS NULL OR theme_skin_light IN ('default', 'mono')
+  `);
+  await db.query(`
+    UPDATE users
+       SET theme_skin_dark = 'green'
+     WHERE theme_skin_dark IS NULL OR theme_skin_dark IN ('default', 'mono')
+  `);
 
   await db.query(`
     CREATE TABLE IF NOT EXISTS settings (

@@ -803,10 +803,6 @@
     </div>
     <label>Barevný design</label>
     <div class="skin-grid" id="skin-grid"></div>
-    <div class="settings-section" style="margin-top:10px">
-      <label>Automatick&eacute; odhl&aacute;&scaron;en&iacute; p&rcaron;i ne&ccaron;innosti</label>
-      <div class="settings-choice-row" id="auto-logout-picks"></div>
-    </div>
     <div class="settings-section" id="public-raspis-pref" style="display:none;margin-top:12px">
       <label>V&yacute;choz&iacute; zobrazen&iacute; Rozpisu</label>
       <div class="public-hotel-picks" id="default-public-hotels"></div>
@@ -1013,7 +1009,6 @@
     frame.onload = function() {
       loading.classList.remove('visible');
       frame.classList.add('visible');
-      bindIdleEventsInFrame();
     };
     replaceFrameUrl(frame, decorateAppUrl(url));
     // Keep URL as /portal — app name stays hidden. State stored in sessionStorage for F5 restore.
@@ -1070,7 +1065,6 @@
     portalPrefs = prefData || {};
     portalPerms = perms || null;
     portalHotelLetters = getPortalHotelLetters(rtSettings);
-    setupIdleLogout();
 
     document.getElementById('user-label').textContent = user.name || user.fullName || user.username;
     document.getElementById('greet-name').textContent = user.name;
@@ -1200,25 +1194,8 @@
     document.getElementById('mode-light')?.classList.toggle('active', !dark);
     document.getElementById('mode-dark')?.classList.toggle('active', dark);
     renderSkinGrid();
-    refreshAutoLogoutPref();
     refreshPublicRaspisPref();
     refreshDefaultViewsPref();
-  }
-
-  function refreshAutoLogoutPref() {
-    const wrap = document.getElementById('auto-logout-picks');
-    if (!wrap) return;
-    const value = Number(portalPrefs.auto_logout_minutes ?? portalUser?.auto_logout_minutes ?? 30);
-    const options = [
-      [10, '10 min.'],
-      [30, '30 min.'],
-      [60, '1 hod.'],
-      [720, '12 hod.'],
-      [0, 'Nikdy']
-    ];
-    wrap.innerHTML = options.map(([minutes, label]) =>
-      `<button type="button" class="settings-choice${minutes === value ? ' active' : ''}" onclick="saveAutoLogout(${minutes})">${label}</button>`
-    ).join('');
   }
 
   function refreshPublicRaspisPref() {
@@ -1377,21 +1354,6 @@
     } catch(e) {}
   }
 
-  async function saveAutoLogout(minutes) {
-    const val = Number(minutes);
-    portalPrefs.auto_logout_minutes = val;
-    if (portalUser) portalUser.auto_logout_minutes = val;
-    refreshAutoLogoutPref();
-    setupIdleLogout();
-    try {
-      await fetch('/api/user-prefs/auto-logout', {
-        method: 'POST',
-        credentials: 'include',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ minutes: val })
-      });
-    } catch(e) {}
-  }
 
   let _modalPointerDownInside = false;
   function modalSelectionDragActive() {
@@ -1520,51 +1482,8 @@
   // Activity is shared across ALL browser windows/tabs via localStorage,
   // so moving the mouse on another monitor (another window of the same
   // browser) also counts as activity and resets the timer here.
-  const IDLE_LS_KEY = 'ave-last-activity';
-  let idleTimer = null;
-
-  function getAutoLogoutMinutes() {
-    return Number(portalPrefs.auto_logout_minutes ?? portalUser?.auto_logout_minutes ?? 30);
-  }
-
-  function resetIdleTimer() {
-    clearTimeout(idleTimer);
-    const minutes = getAutoLogoutMinutes();
-    if (!minutes) return;
-    idleTimer = setTimeout(() => { window.location.href = '/logout'; }, minutes * 60 * 1000);
-  }
-
-  function signalActivity() {
-    try { localStorage.setItem(IDLE_LS_KEY, String(Date.now())); } catch(e) {}
-    resetIdleTimer();
-  }
-
-  function bindIdleEventsInFrame() {
-    const frame = document.getElementById('app-frame');
-    if (!frame) return;
-    try {
-      const d = frame.contentDocument || frame.contentWindow.document;
-      ['mousemove', 'keydown', 'click', 'touchstart', 'wheel'].forEach(ev => {
-        d.removeEventListener(ev, signalActivity, true);
-        d.addEventListener(ev, signalActivity, true);
-      });
-    } catch(e) {}
-  }
-
-  function handleIdleStorage(e) {
-    if (e.key === IDLE_LS_KEY) resetIdleTimer();
-  }
-
-  function setupIdleLogout() {
-    ['mousemove', 'keydown', 'click', 'touchstart', 'wheel'].forEach(ev => {
-      document.removeEventListener(ev, signalActivity, true);
-      document.addEventListener(ev, signalActivity, true);
-    });
-    window.removeEventListener('storage', handleIdleStorage);
-    window.addEventListener('storage', handleIdleStorage);
-    bindIdleEventsInFrame();
-    resetIdleTimer();
-  }
+  function bindIdleEventsInFrame() {}
+  function setupIdleLogout() {}
 
   function esc(s) { const d = document.createElement('div'); d.textContent = s || ''; return d.innerHTML; }
 </script>
