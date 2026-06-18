@@ -9698,14 +9698,18 @@ function toggleMarkedOnly() {
   historySave();
 }
 
-function rowFilterRank(si, s) {
+function rowFilterRank(si, s, tblId = '') {
   if (filterHotels.size === 0) return 0;
+  const isTvorbaTbl = tblId === 'tvorba-tbl';
   const realHotels = selectedRealHotels();
-  const hasHotel = realHotels.length
-    ? getCalCols(state.month, state.year).some((_, ci) => realHotels.includes(String(state.schedule[`${si}_${ci}`] || '').toUpperCase()))
+  const selectedForPresence = isTvorbaTbl
+    ? realHotels
+    : Array.from(filterHotels).map(h => String(h).toUpperCase());
+  const hasHotel = selectedForPresence.length
+    ? getCalCols(state.month, state.year).some((_, ci) => selectedForPresence.includes(String(state.schedule[`${si}_${ci}`] || '').toUpperCase()))
     : false;
   if (hasHotel) return 0;
-  if (filterHotels.has('P') && staffCanTakeStandby(s) && !staffHasHotelShift(si, 'P')) return 0;
+  if (isTvorbaTbl && filterHotels.has('P') && staffCanTakeStandby(s) && !staffHasHotelShift(si, 'P')) return 0;
   if (showQualifiedWorkers && realHotels.length && staffCanWorkSelectedHotels(s)) return 1;
   if (markedWorkers.has(si)) return 2;
   return 9;
@@ -9720,6 +9724,7 @@ function applyRowFilters() {
     if (!tbl) return;
     const isPublicTbl = tblId === 'public-rozpis-tbl';
     const isReqTbl = tblId === 'pozadavky-tbl';
+    const isTvorbaTbl = tblId === 'tvorba-tbl';
     tbl.querySelectorAll('tbody tr[data-si]').forEach(tr => {
       const si = +tr.dataset.si;
       const s = state.staff[si];
@@ -9730,10 +9735,12 @@ function applyRowFilters() {
         hide = !markedWorkers.has(si);
       } else if (filterHotels.size > 0) {
         const calCols = getCalCols(state.month, state.year);
-        const selectedHotels = selectedRealHotels();
+        const selectedHotels = isTvorbaTbl
+          ? selectedRealHotels()
+          : Array.from(filterHotels).map(h => String(h).toUpperCase());
         const hasHotel = calCols.some((_, ci) => selectedHotels.includes(String(state.schedule[`${si}_${ci}`] || '').toUpperCase()));
         const canWorkHotel = showQualifiedWorkers && selectedHotels.length && staffCanWorkSelectedHotels(s);
-        const missingStandby = filterHotels.has('P') && staffCanTakeStandby(s) && !staffHasHotelShift(si, 'P');
+        const missingStandby = isTvorbaTbl && filterHotels.has('P') && staffCanTakeStandby(s) && !staffHasHotelShift(si, 'P');
         if (!hasHotel && !canWorkHotel && !missingStandby && !markedWorkers.has(si)) hide = true;
       }
       if (!hide && filterShift === 'day') {
@@ -9777,7 +9784,7 @@ function applyRowFilters() {
         const bSi = +b.dataset.si;
         const aOwn = (isPublicTbl || isReqTbl) && isCurrentUserStaff(state.staff[aSi]) ? -1 : 0;
         const bOwn = (isPublicTbl || isReqTbl) && isCurrentUserStaff(state.staff[bSi]) ? -1 : 0;
-        return aOwn - bOwn || rowFilterRank(aSi, state.staff[aSi]) - rowFilterRank(bSi, state.staff[bSi]) || aSi - bSi;
+        return aOwn - bOwn || rowFilterRank(aSi, state.staff[aSi], tblId) - rowFilterRank(bSi, state.staff[bSi], tblId) || aSi - bSi;
       });
       allRows.forEach(tr => staffTbody.appendChild(tr));
     } else {

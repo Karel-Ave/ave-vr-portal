@@ -155,7 +155,26 @@
   #pw-overlay .modal { width: 360px; }
 
   /* ── Modály s fixní šířkou: maximální šířka místo pevné ── */
-  #user-overlay .modal    { width: 460px; max-width: 100%; }
+  #user-overlay {
+    padding: 12px;
+    overflow: hidden;
+  }
+  #user-overlay .modal {
+    width: 460px;
+    max-width: 100%;
+    max-height: calc(100dvh - 24px);
+    overflow-y: auto;
+    overscroll-behavior: contain;
+    -webkit-overflow-scrolling: touch;
+  }
+  #user-overlay .modal-btns {
+    position: sticky;
+    bottom: -28px;
+    margin: 10px -28px -28px;
+    padding: 12px 28px 28px;
+    border-top: 1px solid var(--border);
+    background: var(--modal-bg);
+  }
   #overrides-overlay .modal {
     width: 500px;
     max-width: 100%;
