@@ -1159,6 +1159,7 @@ tbody tr.row-hidden { display: none !important; }
 #subtoolbar.tab-pozadavky #stb-show-selected,
 #subtoolbar.tab-pozadavky #stb-hide-sums,
 #subtoolbar.tab-pozadavky #stb-save-req,
+#subtoolbar.tab-pozadavky #stb-toggle-req-diff,
 #subtoolbar.tab-pozadavky #stb-hours-only,
 #subtoolbar.tab-pozadavky #stb-export2 {
   display: none !important;
@@ -1781,6 +1782,15 @@ tbody tr.row-filtered { display: none; }
   background: #222; color: #fff; padding: 3px 7px; border-radius: 4px;
   font-size: 10px; white-space: nowrap; pointer-events: none; z-index: 100;
 }
+body.hide-req-changes .sched-cell.cell-req-missing {
+  background: inherit !important;
+  outline: none !important;
+  box-shadow: none !important;
+}
+body.hide-req-changes .sched-cell[data-req-tip]:hover::after {
+  display: none !important;
+  content: none !important;
+}
 .sched-cell[data-dup-tip]:hover::after {
   content: attr(data-dup-tip);
   position: absolute; top: calc(100% + 4px); left: 50%; transform: translateX(-50%);
@@ -2103,8 +2113,19 @@ tbody tr.row-filtered { display: none; }
   }
   .tb-tab[data-tab="nastaveni"]::after { content: "Nast."; }
   .tb-tab[data-tab="tvorba"] { display: none !important; }
+  .tb-tab[data-tab="denni"]::after { content: "DR"; }
   .tb-tab[data-tab="rozpis"]::after { content: "Rozpis"; }
   .tb-tab[data-tab="public"]::after { content: "Rozpis"; }
+  .tb-tab[data-tab="denni"].active {
+    background: var(--surface) !important;
+    border-color: var(--accent) !important;
+    color: var(--accent-h) !important;
+    box-shadow: 0 1px 2px rgba(20,20,20,.10) !important;
+  }
+  [data-theme="dark"] .tb-tab[data-tab="denni"].active {
+    background: var(--surface) !important;
+    color: var(--accent-h) !important;
+  }
   .tb-tab[data-tab="pozadavky"]::after { content: "Požadavky"; }
 
   .tb-actions:not(.hidden),
@@ -2559,7 +2580,7 @@ tbody tr.row-filtered { display: none; }
 }
 .daily-schedule-wrap {
   min-height: 100%;
-  padding: 14px;
+  padding: 10px;
   background: var(--bg);
 }
 .daily-schedule-card {
@@ -2575,23 +2596,23 @@ tbody tr.row-filtered { display: none; }
   width: 100%;
   border-collapse: collapse;
   table-layout: fixed;
-  font-size: 18px;
+  font-size: 16px;
 }
-.daily-schedule-table col.daily-code-col { width: 48px; }
+.daily-schedule-table col.daily-code-col { width: 42px; }
 .daily-schedule-table th {
-  height: 36px;
+  height: 32px;
   border-bottom: 2px solid var(--border);
   background: var(--thead-bg);
   color: var(--thead-text);
-  font-size: 16px;
+  font-size: 14px;
   letter-spacing: .08em;
   text-transform: uppercase;
 }
 .daily-schedule-table td {
-  height: 38px;
+  height: 32px;
   border-bottom: 1px solid var(--border);
   border-right: 1px solid var(--border);
-  padding: 0 12px;
+  padding: 0 10px;
   color: var(--text);
   white-space: nowrap;
   overflow: hidden;
@@ -2653,15 +2674,15 @@ tbody tr.row-filtered { display: none; }
     border-right: 0;
     border-radius: 0;
   }
-  .daily-schedule-table { font-size: 15px; }
-  .daily-schedule-table col.daily-code-col { width: 36px; }
+  .daily-schedule-table { font-size: 12.5px; }
+  .daily-schedule-table col.daily-code-col { width: 30px; }
   .daily-schedule-table th {
-    height: 30px;
-    font-size: 13px;
+    height: 24px;
+    font-size: 11px;
   }
   .daily-schedule-table td {
-    height: 31px;
-    padding: 0 7px;
+    height: 25px;
+    padding: 0 5px;
   }
   #daily-date-label { min-width: 0; font-size: 14px; }
   #daily-updated { display: none; }
@@ -2675,9 +2696,9 @@ tbody tr.row-filtered { display: none; }
   <div id="tb-tabs">
     <button class="tb-tab" data-tab="nastaveni" type="button">Nastavení</button>
     <button class="tb-tab" data-tab="tvorba" type="button">Tvorba</button>
+    <button class="tb-tab" data-tab="denni" type="button">Denní rozpis</button>
     <button class="tb-tab" data-tab="rozpis" type="button">Rozpis</button>
     <button class="tb-tab" data-tab="public" type="button">Rozpis</button>
-    <button class="tb-tab" data-tab="denni" type="button">Denní rozpis</button>
     <button class="tb-tab" data-tab="pozadavky" type="button">Požadavky</button>
   </div>
 
@@ -2996,6 +3017,7 @@ tbody tr.row-filtered { display: none; }
     <div class="stb-spacer"></div>
     <button class="stb-btn" id="stb-hide-sums">Skrýt součty</button>
     <button class="stb-btn" id="stb-save-req">Zapamatuj požadavky</button>
+    <button class="stb-btn" id="stb-toggle-req-diff" type="button">Změny pož.</button>
   </div>
   <div class="stb-row stb-row-tools">
     <!-- Levá polovina: filtry — Zpět/Vpřed začínají horizontálně pod výběrem měsíce -->
@@ -4783,13 +4805,11 @@ function isAdmin() {
 
 function canManageRequirements() {
   const role = String((_user && _user.role) || '').toLowerCase();
-  return isAdmin()
-    || role.includes('ved')
-    || role === 'pb6'
-    || rtCan('req_edit_all', false)
-    || rtCan('req_create', false)
-    || rtCan('req_toggle_reception', false)
-    || rtCan('req_send_tvorba', false);
+  const managerFallback = isAdmin() || role.includes('ved') || role === 'pb6';
+  return rtCan('req_edit_all', managerFallback)
+    || rtCan('req_create', managerFallback)
+    || rtCan('req_toggle_reception', managerFallback)
+    || rtCan('req_send_tvorba', managerFallback);
 }
 
 function getCurrentRequirementStaffIndexForSave() {
@@ -4819,7 +4839,6 @@ async function loadRtPermissions() {
 }
 
 function rtCan(btnKey, fallback = true) {
-  if (isAdmin()) return true;
   const val = rtPermissions?.raspis?.buttons?.[btnKey];
   return val == null ? fallback : val !== false;
 }
@@ -6774,11 +6793,9 @@ function renderStaffTable() {
     }
     tr.appendChild(numTd);
 
-    // Name (colored bg, read-only)
+    // Name (read-only)
     const nameTd = document.createElement('td');
     nameTd.className = 'col-name';
-    const tc = TYPE_COLORS[s.type] || '';
-    if (tc) { nameTd.style.background = tc; }
     const nameInp = document.createElement('input');
     nameInp.type = 'text'; nameInp.value = s.name || '';
     nameInp.readOnly = true;
@@ -6950,9 +6967,7 @@ function renderStaffTable() {
 
     // Name (colored bg, read-only span — name changed via edit modal)
     const nameTd = document.createElement('td');
-    nameTd.style.cssText = 'min-width:180px;white-space:nowrap;padding:3px 6px;';
-    const tc2 = TYPE_COLORS[s.type] || '';
-    if (tc2) { nameTd.style.background = tc2; }
+    nameTd.style.cssText = 'min-width:180px;white-space:nowrap;padding:3px 6px;background:var(--surface);';
     const nameSpan = document.createElement('span');
     nameSpan.textContent = s.name || '';
     nameTd.appendChild(nameSpan);
@@ -10885,6 +10900,36 @@ function updateRememberRequirementsButton() {
    REGULAR PICKER
 ══════════════════════════════════════════════════════════════════════════════ */
 
+const reqDiffVisibleByTab = {
+  tvorba: true,
+  rozpis: false,
+  public: false
+};
+
+function reqDiffDefaultForTab(tab) {
+  return tab === 'tvorba';
+}
+
+function isReqDiffVisibleForActiveTab() {
+  const tab = document.body.dataset.activeTab || 'tvorba';
+  return reqDiffVisibleByTab[tab] ?? reqDiffDefaultForTab(tab);
+}
+
+function updateReqDiffToggle() {
+  const visible = isReqDiffVisibleForActiveTab();
+  document.body.classList.toggle('hide-req-changes', !visible);
+  const btn = document.getElementById('stb-toggle-req-diff');
+  if (!btn) return;
+  btn.classList.toggle('active', visible);
+  btn.textContent = visible ? 'Skrýt změny pož.' : 'Zobrazit změny pož.';
+}
+
+function toggleReqDiffVisibility() {
+  const tab = document.body.dataset.activeTab || 'tvorba';
+  reqDiffVisibleByTab[tab] = !isReqDiffVisibleForActiveTab();
+  updateReqDiffToggle();
+}
+
 let _rpSi = null;
 let _rpLabel = null;
 let _rpStaff = null;
@@ -12523,10 +12568,10 @@ function stopDailyRefresh() {
 }
 
 function mobileTabFallback() {
-  return ['rozpis', 'public', 'denni', 'pozadavky', 'nastaveni'].find(tab => {
+  return ['nastaveni', 'denni', 'rozpis', 'public', 'pozadavky'].find(tab => {
     const btn = document.querySelector(`.tb-tab[data-tab="${tab}"]`);
     return btn && !btn.classList.contains('perm-hidden');
-  }) || 'rozpis';
+  }) || 'denni';
 }
 
 function switchTab(name) {
@@ -12540,6 +12585,7 @@ function switchTab(name) {
   // Persist active tab so F5 stays on same tab
   try { sessionStorage.setItem('rt-active-tab', name); } catch(e) {}
   document.body.dataset.activeTab = name;
+  updateReqDiffToggle();
   document.querySelectorAll('.tb-tab').forEach(b => b.classList.toggle('active', b.dataset.tab === name));
   document.querySelectorAll('.tab-panel').forEach(p => p.classList.remove('active'));
   document.querySelectorAll('.tb-actions').forEach(a => a.classList.add('hidden'));
@@ -12803,6 +12849,7 @@ document.addEventListener('DOMContentLoaded', async () => {
   // ── Sub-toolbar ──
   document.getElementById('stb-mobile-toggle')?.addEventListener('click', () => setMobileControlsOpen(true));
   document.getElementById('stb-collapse-controls')?.addEventListener('click', () => setMobileControlsOpen(false));
+  document.getElementById('stb-toggle-req-diff')?.addEventListener('click', toggleReqDiffVisibility);
   document.getElementById('stb-vse').addEventListener('click', () => {
     if (document.querySelector('.tb-tab.active')?.dataset.tab === 'public') {
       publicHotelFilterTouched = true;

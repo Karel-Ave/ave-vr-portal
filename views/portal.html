@@ -974,7 +974,7 @@
     const views = normalizedDefaultViews();
     const picked = views[device]?.raspisTab;
     if (picked && canOpenRaspisTab(picked, device)) return picked;
-    return ['public', 'denni', 'rozpis', 'pozadavky', 'nastaveni', 'tvorba'].find(t => canOpenRaspisTab(t, device)) || 'public';
+    return ['nastaveni', 'tvorba', 'denni', 'rozpis', 'public', 'pozadavky'].find(t => canOpenRaspisTab(t, device)) || 'denni';
   }
 
   function decorateAppUrl(url) {
@@ -1261,7 +1261,7 @@
       ).join('');
     });
 
-    const tabOrder = ['nastaveni', 'tvorba', 'rozpis', 'public', 'denni', 'pozadavky'];
+    const tabOrder = ['nastaveni', 'tvorba', 'denni', 'rozpis', 'public', 'pozadavky'];
     const tabTargets = [
       ['desktop', 'default-rt-desktop'],
       ['mobile', 'default-rt-mobile']
