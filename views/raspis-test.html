@@ -4285,6 +4285,7 @@ const state = {
   staff: [],
   portalCustomData: {}, // key: userId → {maxHrs, noteM, noteP, x, xa, dates, regular, hotel, monthlyOverrides}
   schedule: {},        // key: `${si}_${ci}` → string (cell value), current month
+  coverageCounts: null,
   extras: {},          // key: si → {hours: string}, current month
   requirements: {},    // snapshot of schedule used for req highlighting
   reqXyLocks: {},
@@ -7374,6 +7375,8 @@ function buildSaveData() {
 function applyData(data) {
   if (!data) return;
 
+  state.coverageCounts = data.coverageCounts && typeof data.coverageCounts === 'object' ? data.coverageCounts : null;
+
   // ── Uložit staffOrder pro syncRaspisStaff ──
   // staffOrder = pole userId (nebo null pro speciální) v pořadí, v jakém byl rozvrh uložen.
   // syncRaspisStaff() podle toho rekonstruuje state.staff ve stejném pořadí, aby si_ci klíče
@@ -9981,6 +9984,9 @@ function updateDnCoverageColors() {
       tbl.querySelectorAll('thead th.th-dn').forEach(th => th.classList.remove('dn-uncovered'));
       return;
     }
+    const usePublishedCounts = tblId === 'public-rozpis-tbl'
+      && state.coverageCounts
+      && typeof state.coverageCounts === 'object';
     const thDns = Array.from(tbl.querySelectorAll('thead th.th-dn'));
     thDns.forEach((th, ci) => {
       if (hotelsToCheck.length === 0) { th.classList.remove('dn-uncovered'); return; }
@@ -9990,9 +9996,12 @@ function updateDnCoverageColors() {
       for (const letter of hotelsToCheck) {
         const hd = getHotelByLetter(letter);
         if (hd && hd.dayOnly && col.dn === 'n') continue;
-        const coverCount = state.staff.reduce((sum, _, si) => {
-          return sum + (String(state.schedule[`${si}_${ci}`] || '').trim().toUpperCase() === letter ? 1 : 0);
-        }, 0);
+        const countLetter = String(letter || '').trim().toUpperCase();
+        const coverCount = usePublishedCounts
+          ? Number(state.coverageCounts[`${ci}|${countLetter}`] || 0)
+          : state.staff.reduce((sum, _, si) => {
+              return sum + (String(state.schedule[`${si}_${ci}`] || '').trim().toUpperCase() === countLetter ? 1 : 0);
+            }, 0);
         if (coverCount !== 1) { uncovered = true; break; }
       }
       th.classList.toggle('dn-uncovered', uncovered);

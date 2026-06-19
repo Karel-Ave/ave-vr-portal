@@ -3755,6 +3755,21 @@ app.get('/api/rt/schedules', requireLogin, async (req, res) => {
   } catch (err) { console.error(err); res.status(500).json({ ok: false }); }
 });
 
+function buildRtCoverageCounts(data) {
+  const schedule = data && data.schedule && typeof data.schedule === 'object' ? data.schedule : {};
+  const counts = {};
+  for (const [key, raw] of Object.entries(schedule)) {
+    const val = String(raw || '').trim().toUpperCase();
+    if (!val || val === 'X' || val === 'Y' || val === 'Z' || val === 'Ž') continue;
+    const m = String(key).match(/^\d+_(\d+)$/);
+    if (!m) continue;
+    const ci = m[1];
+    const countKey = `${ci}|${val}`;
+    counts[countKey] = (counts[countKey] || 0) + 1;
+  }
+  return counts;
+}
+
 app.get('/api/rt/schedules/:key', requireLogin, async (req, res) => {
   const key = decodeURIComponent(req.params.key);
   try {
@@ -3766,6 +3781,7 @@ app.get('/api/rt/schedules/:key', requireLogin, async (req, res) => {
     try { parsed = typeof entry.data === 'string' ? JSON.parse(entry.data) : entry.data; } catch(e) { parsed = entry.data; }
     entry.data = await augmentRtDataWithActiveReceptionists(parsed, db);
     entry.data = await augmentRtDataWithSpecialStaff(entry.data, req.session.user.id, db);
+    entry.data.coverageCounts = buildRtCoverageCounts(entry.data);
     res.json({ ok: true, entry });
   } catch (err) { console.error(err); res.status(500).json({ ok: false }); }
 });
