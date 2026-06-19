@@ -136,6 +136,9 @@ body.with-subtoolbar:has(#schedule-legend.show) { padding-bottom: 30px; }
 #tb-act-tvorba {
   max-width: none;
 }
+#tb-act-denni {
+  display: none !important;
+}
 #btn-fonds { display: none !important; }
 #tb-act-tvorba .tb-btn,
 #tb-act-tvorba #sel-month-year {
@@ -2594,6 +2597,21 @@ body.hide-req-changes .sched-cell[data-req-tip]:hover::after {
   padding: 10px;
   background: var(--bg);
 }
+.daily-nav-strip {
+  position: relative;
+  width: min(980px, calc(100vw - 20px));
+  min-height: 34px;
+  margin: 2px auto 10px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+.daily-nav-controls {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+}
 .daily-schedule-card {
   width: min(980px, 100%);
   margin: 0 auto;
@@ -2690,7 +2708,8 @@ body.hide-req-changes .sched-cell[data-req-tip]:hover::after {
   color: var(--text-muted);
   text-align: center;
 }
-#daily-date-label {
+#daily-date-label,
+#daily-date-label-panel {
   min-width: 210px;
   color: var(--accent-h);
   font-weight: 900;
@@ -2701,7 +2720,8 @@ body.hide-req-changes .sched-cell[data-req-tip]:hover::after {
   border-radius: 7px;
   padding: 2px 6px;
 }
-#daily-date-label:hover {
+#daily-date-label:hover,
+#daily-date-label-panel:hover {
   background: color-mix(in srgb, var(--accent) 14%, transparent);
 }
 .daily-date-picker {
@@ -2710,12 +2730,14 @@ body.hide-req-changes .sched-cell[data-req-tip]:hover::after {
   align-items: center;
   justify-content: center;
 }
-#btn-daily-today {
+#btn-daily-today,
+#btn-daily-today-panel {
   background: var(--accent) !important;
   border-color: var(--accent) !important;
   color: var(--hotel-btn-active-color, var(--accent-fg,#fff)) !important;
 }
-[data-theme="dark"] #btn-daily-today {
+[data-theme="dark"] #btn-daily-today,
+[data-theme="dark"] #btn-daily-today-panel {
   color: var(--hotel-btn-active-color, #1A1A18) !important;
 }
 .daily-date-input {
@@ -2799,14 +2821,26 @@ body.hide-req-changes .sched-cell[data-req-tip]:hover::after {
   pointer-events: none;
   cursor: default;
 }
-#daily-updated {
-  margin-left: auto;
+#daily-updated,
+#daily-updated-panel {
+  position: absolute;
+  right: 0;
   color: var(--text-muted);
   font-size: 12px;
   white-space: nowrap;
 }
 @media (max-width: 700px) {
   .daily-schedule-wrap { padding: 0; }
+  .daily-nav-strip {
+    width: 100%;
+    min-height: 0;
+    margin: 6px auto;
+    padding: 0 8px;
+  }
+  .daily-nav-controls {
+    width: 100%;
+    gap: 6px;
+  }
   .daily-schedule-card {
     width: 100%;
     border-left: 0;
@@ -2828,8 +2862,10 @@ body.hide-req-changes .sched-cell[data-req-tip]:hover::after {
     padding: 5px 7px;
     font-size: 9.5px;
   }
-  #daily-date-label { min-width: 0; font-size: 14px; }
-  #daily-updated { display: none; }
+  #daily-date-label,
+  #daily-date-label-panel { min-width: 0; font-size: 14px; }
+  #daily-updated,
+  #daily-updated-panel { display: none; }
 }
 @media (max-width: 900px), (pointer: coarse) {
   #topbar .tb-actions:not(.hidden) {
@@ -3224,6 +3260,17 @@ body.hide-req-changes .sched-cell[data-req-tip]:hover::after {
 
 <div class="tab-panel" id="tab-denni">
   <div class="daily-schedule-wrap" id="daily-wrap">
+    <div class="daily-nav-strip">
+      <div class="daily-nav-controls">
+        <button class="tb-btn" id="btn-daily-today-panel" type="button">Dnes</button>
+        <button class="tb-btn" id="btn-daily-prev-panel" type="button">&larr; Zpět</button>
+        <span class="daily-date-picker">
+          <span id="daily-date-label-panel" role="button" tabindex="0" title="Vybrat datum">Denní rozpis</span>
+        </span>
+        <button class="tb-btn" id="btn-daily-next-panel" type="button">Vpřed &rarr;</button>
+      </div>
+      <span id="daily-updated-panel"></span>
+    </div>
     <div class="spinner-wrap" id="daily-spinner" style="display:none"><div class="spinner"></div></div>
     <div id="daily-content" class="daily-empty">Denní rozpis se načte po otevření listu.</div>
   </div>
@@ -12761,6 +12808,8 @@ function dailyLegendHtml(order, map) {
 function updateDailyLabels() {
   const label = document.getElementById('daily-date-label');
   if (label) label.textContent = dailyDateLabel(dailyViewDate);
+  const panelLabel = document.getElementById('daily-date-label-panel');
+  if (panelLabel) panelLabel.textContent = dailyDateLabel(dailyViewDate);
   const input = document.getElementById('daily-date-input');
   if (input) input.value = dailyDateInputValue(dailyViewDate);
 }
@@ -12768,6 +12817,7 @@ function updateDailyLabels() {
 function renderDailySchedule(data) {
   const content = document.getElementById('daily-content');
   const updated = document.getElementById('daily-updated');
+  const updatedPanel = document.getElementById('daily-updated-panel');
   if (!content) return;
   const map = data?.hotels || {};
   const order = Array.isArray(data?.hotels_order) && data.hotels_order.length ? data.hotels_order : Object.keys(map);
@@ -12775,6 +12825,7 @@ function renderDailySchedule(data) {
     content.className = 'daily-empty';
     content.textContent = 'Pro vybraný den není dostupný publikovaný rozpis.';
     if (updated) updated.textContent = '';
+    if (updatedPanel) updatedPanel.textContent = '';
     return;
   }
   const rows = order.map(letter => {
@@ -12798,6 +12849,7 @@ function renderDailySchedule(data) {
     const now = new Date();
     updated.textContent = `Aktualizováno ${String(now.getHours()).padStart(2, '0')}:${String(now.getMinutes()).padStart(2, '0')}`;
   }
+  if (updatedPanel && updated) updatedPanel.textContent = updated.textContent;
 }
 
 async function loadDailySchedule() {
@@ -13070,8 +13122,18 @@ document.addEventListener('DOMContentLoaded', async () => {
   document.getElementById('btn-daily-today')?.addEventListener('click', goDailyToday);
   document.getElementById('btn-daily-prev')?.addEventListener('click', () => moveDailySchedule(-1));
   document.getElementById('btn-daily-next')?.addEventListener('click', () => moveDailySchedule(1));
+  document.getElementById('btn-daily-today-panel')?.addEventListener('click', goDailyToday);
+  document.getElementById('btn-daily-prev-panel')?.addEventListener('click', () => moveDailySchedule(-1));
+  document.getElementById('btn-daily-next-panel')?.addEventListener('click', () => moveDailySchedule(1));
   document.getElementById('daily-date-label')?.addEventListener('click', openDailyDatePicker);
   document.getElementById('daily-date-label')?.addEventListener('keydown', e => {
+    if (e.key === 'Enter' || e.key === ' ') {
+      e.preventDefault();
+      openDailyDatePicker();
+    }
+  });
+  document.getElementById('daily-date-label-panel')?.addEventListener('click', openDailyDatePicker);
+  document.getElementById('daily-date-label-panel')?.addEventListener('keydown', e => {
     if (e.key === 'Enter' || e.key === ' ') {
       e.preventDefault();
       openDailyDatePicker();
