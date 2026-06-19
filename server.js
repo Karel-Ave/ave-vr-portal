@@ -3779,6 +3779,7 @@ app.post('/api/rt/schedules/publish', requireLogin, requirePermDefault('raspis',
     const db = getPool();
     data = await augmentRtDataWithActiveReceptionists(data, db);
     data = await augmentRtDataWithSpecialStaff(data, req.session.user.id, db);
+    const knownHotelSync = await syncRtKnownHotelsFromSchedule(data, db);
     await db.query(
       `INSERT INTO rt_schedules (key, month, year, label, data, published_at, published_by)
        VALUES ($1,$2,$3,$4,$5,NOW(),$6)
@@ -3801,7 +3802,7 @@ app.post('/api/rt/schedules/publish', requireLogin, requirePermDefault('raspis',
       }
     }
     broadcastWidgetUpdate();
-    res.json({ ok: true, key });
+    res.json({ ok: true, key, knownHotelSync });
   } catch (err) { console.error(err); res.json({ ok: false, msg: 'Chyba serveru.' }); }
 });
 
@@ -3864,9 +3865,10 @@ app.post('/api/rt/schedules/save-edits', requireLogin, requirePerm('raspis', 'ed
     const db = getPool();
     data = await augmentRtDataWithActiveReceptionists(data, db);
     data = await augmentRtDataWithSpecialStaff(data, req.session.user.id, db);
+    const knownHotelSync = await syncRtKnownHotelsFromSchedule(data, db);
     await db.query('UPDATE rt_schedules SET data = $1 WHERE key = $2', [JSON.stringify(data), key]);
     broadcastWidgetUpdate();
-    res.json({ ok: true });
+    res.json({ ok: true, knownHotelSync });
   } catch (err) { console.error(err); res.json({ ok: false }); }
 });
 
@@ -3960,6 +3962,114 @@ async function loadRtPortalReceptionists(db) {
     });
   }
   return out;
+}
+
+function rtAutoKnownHotelLetters(data) {
+  const blocked = new Set(['', 'P', 'Q', 'X', 'Y', 'Z', 'Ž']);
+  const out = new Set();
+  const hotels = Array.isArray(data?.hotels) ? data.hotels : [];
+  for (const h of hotels) {
+    const letter = String(h?.letter || '').trim().toUpperCase();
+    if (!letter || blocked.has(letter) || h?.active === false) continue;
+    out.add(letter);
+  }
+  return out;
+}
+
+function rtScheduleHotelAssignmentsByStaff(data) {
+  const staff = Array.isArray(data?.staff) ? data.staff : [];
+  const cells = data?.cells && typeof data.cells === 'object' ? data.cells : {};
+  const allowedHotels = rtAutoKnownHotelLetters(data);
+  const out = new Map();
+  if (!allowedHotels.size || !staff.length) return out;
+
+  for (const [key, rawValue] of Object.entries(cells)) {
+    const parts = String(key).split('_');
+    const staffIndex = parseInt(parts[0], 10);
+    if (!Number.isInteger(staffIndex) || !staff[staffIndex]) continue;
+    const letter = String(rawValue || '').trim().toUpperCase();
+    if (!allowedHotels.has(letter)) continue;
+    if (!out.has(staffIndex)) out.set(staffIndex, new Set());
+    out.get(staffIndex).add(letter);
+  }
+  return out;
+}
+
+async function syncRtKnownHotelsFromSchedule(data, db) {
+  const staff = Array.isArray(data?.staff) ? data.staff : [];
+  const assignments = rtScheduleHotelAssignmentsByStaff(data);
+  if (!assignments.size) return { updatedUsers: 0, addedHotels: 0 };
+
+  const { rows } = await db.query(
+    'SELECT id, name, username, perm_overrides FROM users WHERE perm_overrides IS NOT NULL'
+  );
+  const byId = new Map();
+  const byLogin = new Map();
+  const byName = new Map();
+
+  for (const u of rows) {
+    let overrides = null;
+    try {
+      overrides = typeof u.perm_overrides === 'string'
+        ? JSON.parse(u.perm_overrides)
+        : u.perm_overrides;
+    } catch (e) { continue; }
+    const rs = overrides?.raspis_staff;
+    if (!rs || !rs.active || !rtIsReceptionistType(rs.type)) continue;
+    const rec = { user: u, overrides, rs };
+    byId.set(String(u.id), rec);
+    const login = String(rs.login || u.username || '').trim().toUpperCase();
+    if (login) byLogin.set(login, rec);
+    const nameKey = rtNormalizeStaffName(rs.displayName || u.name || '');
+    if (nameKey) byName.set(nameKey, rec);
+  }
+
+  const additionsByUser = new Map();
+  for (const [staffIndex, letters] of assignments.entries()) {
+    const s = staff[staffIndex] || {};
+    let rec = null;
+    if (s.userId && byId.has(String(s.userId))) rec = byId.get(String(s.userId));
+    if (!rec) {
+      const login = String(s.login || '').trim().toUpperCase();
+      if (login && byLogin.has(login)) rec = byLogin.get(login);
+    }
+    if (!rec) {
+      const nameKey = rtNormalizeStaffName(s.name || '');
+      if (nameKey && byName.has(nameKey)) rec = byName.get(nameKey);
+    }
+    if (!rec) continue;
+    const userId = String(rec.user.id);
+    if (!additionsByUser.has(userId)) additionsByUser.set(userId, { rec, letters: new Set() });
+    const target = additionsByUser.get(userId).letters;
+    for (const letter of letters) target.add(letter);
+  }
+
+  let updatedUsers = 0;
+  let addedHotels = 0;
+  for (const { rec, letters } of additionsByUser.values()) {
+    const existing = Array.isArray(rec.rs.hotels)
+      ? rec.rs.hotels
+      : (Array.isArray(rec.rs.hotelSkills) ? rec.rs.hotelSkills : []);
+    const merged = new Set(existing.map(h => String(h || '').trim().toUpperCase()).filter(Boolean));
+    let changed = false;
+    for (const letter of letters) {
+      if (!merged.has(letter)) {
+        merged.add(letter);
+        changed = true;
+        addedHotels += 1;
+      }
+    }
+    if (!changed) continue;
+    rec.overrides.raspis_staff = rec.overrides.raspis_staff || {};
+    rec.overrides.raspis_staff.hotels = Array.from(merged).sort((a, b) => a.localeCompare(b, 'cs'));
+    await db.query('UPDATE users SET perm_overrides = $1 WHERE id = $2', [
+      JSON.stringify(rec.overrides),
+      rec.user.id
+    ]);
+    updatedUsers += 1;
+  }
+
+  return { updatedUsers, addedHotels };
 }
 
 async function loadRtSpecialStaffForUser(db, userId) {
