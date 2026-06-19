@@ -2637,8 +2637,15 @@ body.hide-req-changes .sched-cell[data-req-tip]:hover::after {
   color: var(--accent-h);
   background: color-mix(in srgb, var(--topbar-bg) 86%, var(--surface));
 }
+.daily-schedule-table td.daily-code-empty {
+  color: transparent;
+  background: color-mix(in srgb, var(--accent) 4%, var(--surface));
+}
 .daily-schedule-table td.daily-night {
   background: color-mix(in srgb, var(--accent) 8%, var(--surface));
+}
+.daily-schedule-table td.daily-night-disabled {
+  background: color-mix(in srgb, var(--accent) 4%, var(--surface));
 }
 .daily-schedule-table .daily-row-p td.daily-code,
 .daily-schedule-table .daily-row-p td.daily-day,
@@ -2658,6 +2665,24 @@ body.hide-req-changes .sched-cell[data-req-tip]:hover::after {
 .daily-note {
   color: var(--text-muted);
   font-style: italic;
+}
+.daily-hotel-legend {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px 12px;
+  padding: 7px 10px;
+  border-top: 1px solid var(--border);
+  background: color-mix(in srgb, var(--surface) 92%, var(--accent));
+  color: var(--text-muted);
+  font-size: 11px;
+  line-height: 1.25;
+}
+.daily-hotel-legend span {
+  white-space: nowrap;
+}
+.daily-hotel-legend strong {
+  color: var(--accent-h);
+  font-weight: 900;
 }
 .daily-empty {
   padding: 42px 16px;
@@ -2694,6 +2719,11 @@ body.hide-req-changes .sched-cell[data-req-tip]:hover::after {
   .daily-schedule-table td {
     height: 25px;
     padding: 0 5px;
+  }
+  .daily-hotel-legend {
+    gap: 3px 8px;
+    padding: 5px 7px;
+    font-size: 9.5px;
   }
   #daily-date-label { min-width: 0; font-size: 14px; }
   #daily-updated { display: none; }
@@ -12474,8 +12504,6 @@ function addStaff() {
 
 const DAILY_MONTHS = ['ledna','února','března','dubna','května','června','července','srpna','září','října','listopadu','prosince'];
 const DAILY_DAYS = ['Neděle','Pondělí','Úterý','Středa','Čtvrtek','Pátek','Sobota'];
-const DAILY_NO_NIGHT = new Set(['L', 'N', 'U']);
-const DAILY_DAY_ONLY = new Set(['J', 'S']);
 let dailyViewDate = new Date();
 let dailyRefreshTimer = null;
 
@@ -12491,14 +12519,22 @@ function dailyDateLabel(date) {
 
 function dailyCellHtml(letter, value, isNight, info) {
   const dayOnly = !!info?.dayOnly;
-  if (isNight && (DAILY_DAY_ONLY.has(letter) || (dayOnly && (letter === 'J' || letter === 'S')))) {
-    return '<span class="daily-note">Pouze ve dne</span>';
-  }
-  if (isNight && (DAILY_NO_NIGHT.has(letter) || dayOnly)) {
-    return '<span class="daily-note">Hotel bez noční recepce</span>';
-  }
+  if (isNight && dayOnly) return '';
   if (value) return rtHtml(value);
   return '<span class="daily-missing">-</span>';
+}
+
+function dailyCodeHtml(letter, isNight, info) {
+  return isNight && !!info?.dayOnly ? '' : rtHtml(letter);
+}
+
+function dailyLegendHtml(order, map) {
+  const items = order.map(letter => {
+    const item = map[letter] || {};
+    const name = String(item.name || '').trim();
+    return `<span><strong>${rtHtml(letter)}</strong> - ${rtHtml(name)}</span>`;
+  }).join('');
+  return `<div class="daily-hotel-legend">${items}</div>`;
 }
 
 function updateDailyLabels() {
@@ -12521,11 +12557,12 @@ function renderDailySchedule(data) {
   const rows = order.map(letter => {
     const item = map[letter] || {};
     const cls = letter === 'P' ? ' daily-row-p' : letter === 'Q' ? ' daily-row-q' : '';
+    const nightDisabled = !!item.dayOnly;
     return `<tr class="${cls.trim()}">
       <td class="daily-code">${rtHtml(letter)}</td>
       <td class="daily-day">${dailyCellHtml(letter, item.day, false, item)}</td>
-      <td class="daily-code">${rtHtml(letter)}</td>
-      <td class="daily-night">${dailyCellHtml(letter, item.night, true, item)}</td>
+      <td class="daily-code ${nightDisabled ? 'daily-code-empty' : ''}">${dailyCodeHtml(letter, true, item)}</td>
+      <td class="daily-night ${nightDisabled ? 'daily-night-disabled' : ''}">${dailyCellHtml(letter, item.night, true, item)}</td>
     </tr>`;
   }).join('');
   content.className = 'daily-schedule-card';
@@ -12533,7 +12570,7 @@ function renderDailySchedule(data) {
     <colgroup><col class="daily-code-col"><col><col class="daily-code-col"><col></colgroup>
     <thead><tr><th></th><th>Denní</th><th></th><th>Noční</th></tr></thead>
     <tbody>${rows}</tbody>
-  </table>`;
+  </table>${dailyLegendHtml(order, map)}`;
   if (updated) {
     const now = new Date();
     updated.textContent = `Aktualizováno ${String(now.getHours()).padStart(2, '0')}:${String(now.getMinutes()).padStart(2, '0')}`;
