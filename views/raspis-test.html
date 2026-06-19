@@ -1174,6 +1174,12 @@ tbody tr.row-hidden { display: none !important; }
 #subtoolbar.tab-pozadavky #stb-export2 {
   display: none !important;
 }
+#btn-copy-xls {
+  display: none;
+}
+#subtoolbar.tab-rozpis #btn-copy-xls {
+  display: inline-flex;
+}
 .stb-sep { width: 1px; height: 20px; background: var(--btn-top-border,#3E3E3E); flex-shrink: 0; margin: 0 2px; }
 .stb-spacer { flex: 1; }
 .stb-btn {
@@ -2380,6 +2386,12 @@ body.hide-req-changes .sched-cell[data-req-tip]:hover::after {
   #stb-row-hotels > #stb-save-req {
     order: 2;
   }
+  #stb-toggle-req-diff,
+  #btn-copy-xls,
+  #btn-public-print,
+  #btn-req-print {
+    display: none !important;
+  }
   #stb-hotels-right {
     display: flex;
     justify-content: center;
@@ -2922,7 +2934,6 @@ body.hide-req-changes .sched-cell[data-req-tip]:hover::after {
     <select id="pub-sel" class="tb-btn" style="padding:4px 6px;font-size:12px;"></select>
     <button class="tb-btn" id="btn-view-edit" data-mobile-label="Editovat">Editovat</button>
     <button class="tb-btn" id="btn-view-cancel" data-mobile-label="Zrušit" style="display:none">Zrušit</button>
-    <button class="tb-btn" id="btn-copy-xls" type="button" data-mobile-label="Excel">Kopírovat do Excelu</button>
     <span id="lock-info"></span>
     <div class="rt-fonds-info" style="display:none">
       <span class="fonds-label">Fond HPP:</span><strong class="rt-fond-hpp-info">-</strong>
@@ -3207,6 +3218,7 @@ body.hide-req-changes .sched-cell[data-req-tip]:hover::after {
     <button class="stb-btn" id="stb-hide-sums">Skrýt součty</button>
     <button class="stb-btn" id="stb-save-req">Zapamatuj požadavky</button>
     <button class="stb-btn" id="stb-toggle-req-diff" type="button">Změny pož.</button>
+    <button class="stb-btn" id="btn-copy-xls" type="button">Kopírovat do Excelu</button>
   </div>
   <div class="stb-row stb-row-tools">
     <!-- Levá polovina: filtry — Zpět/Vpřed začínají horizontálně pod výběrem měsíce -->
