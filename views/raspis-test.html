@@ -2725,7 +2725,79 @@ body.hide-req-changes .sched-cell[data-req-tip]:hover::after {
   height: 100%;
   opacity: 0.01;
   cursor: pointer;
-  pointer-events: auto;
+  pointer-events: none;
+}
+.daily-date-modal {
+  width: min(330px, calc(100vw - 28px));
+  padding: 16px;
+}
+.daily-date-modal .modal-header {
+  padding: 0 0 12px;
+  border-bottom: 1px solid var(--border);
+}
+.daily-date-modal .modal-header h3 {
+  font-size: 18px;
+  margin: 0;
+}
+.daily-date-modal .modal-close {
+  color: var(--text-muted);
+}
+.daily-dp-header {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 14px 0 8px;
+}
+.daily-dp-header span {
+  flex: 1;
+  text-align: center;
+  font-weight: 900;
+  color: var(--text);
+}
+.daily-dp-grid,
+.daily-dp-weekdays {
+  display: grid;
+  grid-template-columns: repeat(7, minmax(0, 1fr));
+}
+.daily-dp-weekday {
+  text-align: center;
+  color: var(--text-muted);
+  font-size: 11px;
+  font-weight: 800;
+  padding: 5px 0;
+}
+.daily-dp-grid {
+  grid-auto-rows: 36px;
+}
+.daily-dp-day {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border: 0;
+  border-radius: 50%;
+  background: transparent;
+  color: var(--text);
+  font: inherit;
+  font-size: 14px;
+  cursor: pointer;
+  transition: background .12s ease, color .12s ease, box-shadow .12s ease;
+}
+.daily-dp-day:hover:not(.empty):not(.selected) {
+  background: color-mix(in srgb, var(--accent) 16%, transparent);
+}
+.daily-dp-day.today:not(.selected) {
+  color: var(--accent);
+  font-weight: 900;
+}
+.daily-dp-day.selected {
+  background: var(--accent);
+  color: var(--hotel-btn-active-color, var(--accent-fg, #fff));
+  font-weight: 900;
+  box-shadow: 0 0 0 2px color-mix(in srgb, var(--accent) 32%, transparent);
+}
+.daily-dp-day.empty {
+  pointer-events: none;
+  cursor: default;
 }
 #daily-updated {
   margin-left: auto;
@@ -3162,6 +3234,30 @@ body.hide-req-changes .sched-cell[data-req-tip]:hover::after {
     <div class="spinner-wrap" id="requests-spinner"><div class="spinner"></div></div>
     <table class="sched-tbl" id="pozadavky-tbl" style="display:none"></table>
     <div class="empty-state" id="requests-empty" style="display:none">Žádné požadavky pro vybraný měsíc</div>
+  </div>
+</div>
+
+<div class="overlay" id="daily-date-modal">
+  <div class="modal daily-date-modal" role="dialog" aria-modal="true" aria-labelledby="daily-date-title">
+    <div class="modal-header">
+      <h3 id="daily-date-title">Vyberte datum</h3>
+      <button class="modal-close" id="daily-date-close" type="button">×</button>
+    </div>
+    <div class="daily-dp-header">
+      <button class="tb-btn" id="daily-dp-prev" type="button">◀</button>
+      <span id="daily-dp-month-label"></span>
+      <button class="tb-btn" id="daily-dp-next" type="button">▶</button>
+    </div>
+    <div class="daily-dp-weekdays" aria-hidden="true">
+      <span class="daily-dp-weekday">Po</span>
+      <span class="daily-dp-weekday">Út</span>
+      <span class="daily-dp-weekday">St</span>
+      <span class="daily-dp-weekday">Čt</span>
+      <span class="daily-dp-weekday">Pá</span>
+      <span class="daily-dp-weekday">So</span>
+      <span class="daily-dp-weekday">Ne</span>
+    </div>
+    <div class="daily-dp-grid" id="daily-dp-grid"></div>
   </div>
 </div>
 
@@ -12547,9 +12643,12 @@ function addStaff() {
 ══════════════════════════════════════════════════════════════════════════════ */
 
 const DAILY_MONTHS = ['ledna','února','března','dubna','května','června','července','srpna','září','října','listopadu','prosince'];
+const DAILY_MONTHS_TITLE = ['Leden','Únor','Březen','Duben','Květen','Červen','Červenec','Srpen','Září','Říjen','Listopad','Prosinec'];
 const DAILY_DAYS = ['Neděle','Pondělí','Úterý','Středa','Čtvrtek','Pátek','Sobota'];
 let dailyViewDate = new Date();
 let dailyRefreshTimer = null;
+let dailyPickerYear = dailyViewDate.getFullYear();
+let dailyPickerMonth = dailyViewDate.getMonth();
 
 function rtHtml(value) {
   const div = document.createElement('div');
@@ -12575,15 +12674,68 @@ function setDailyDateFromInput(value) {
   loadDailySchedule();
 }
 
-function openDailyDatePicker() {
-  const input = document.getElementById('daily-date-input');
-  if (!input) return;
-  input.value = dailyDateInputValue(dailyViewDate);
-  if (typeof input.showPicker === 'function') {
-    input.showPicker();
-  } else {
-    input.click();
+function isSameDailyDate(a, b) {
+  return !!a && !!b &&
+    a.getFullYear() === b.getFullYear() &&
+    a.getMonth() === b.getMonth() &&
+    a.getDate() === b.getDate();
+}
+
+function closeDailyDatePicker() {
+  document.getElementById('daily-date-modal')?.classList.remove('show');
+}
+
+function renderDailyDatePicker() {
+  const label = document.getElementById('daily-dp-month-label');
+  const grid = document.getElementById('daily-dp-grid');
+  if (!label || !grid) return;
+  label.textContent = `${DAILY_MONTHS_TITLE[dailyPickerMonth]} ${dailyPickerYear}`;
+  grid.innerHTML = '';
+
+  const first = new Date(dailyPickerYear, dailyPickerMonth, 1);
+  const daysInMonth = new Date(dailyPickerYear, dailyPickerMonth + 1, 0).getDate();
+  const mondayOffset = (first.getDay() + 6) % 7;
+  for (let i = 0; i < mondayOffset; i++) {
+    const empty = document.createElement('span');
+    empty.className = 'daily-dp-day empty';
+    grid.appendChild(empty);
   }
+
+  const today = new Date();
+  for (let day = 1; day <= daysInMonth; day++) {
+    const date = new Date(dailyPickerYear, dailyPickerMonth, day);
+    const btn = document.createElement('button');
+    btn.type = 'button';
+    btn.className = 'daily-dp-day';
+    btn.textContent = String(day);
+    if (isSameDailyDate(date, today)) btn.classList.add('today');
+    if (isSameDailyDate(date, dailyViewDate)) btn.classList.add('selected');
+    btn.addEventListener('click', () => {
+      dailyViewDate = date;
+      closeDailyDatePicker();
+      loadDailySchedule();
+    });
+    grid.appendChild(btn);
+  }
+}
+
+function moveDailyDatePickerMonth(delta) {
+  const next = new Date(dailyPickerYear, dailyPickerMonth + delta, 1);
+  dailyPickerYear = next.getFullYear();
+  dailyPickerMonth = next.getMonth();
+  renderDailyDatePicker();
+}
+
+function openDailyDatePicker() {
+  const modal = document.getElementById('daily-date-modal');
+  if (!modal) return;
+  dailyPickerYear = dailyViewDate.getFullYear();
+  dailyPickerMonth = dailyViewDate.getMonth();
+  renderDailyDatePicker();
+  modal.classList.add('show');
+  document.getElementById('daily-date-close')?.focus();
+  const input = document.getElementById('daily-date-input');
+  if (input) input.value = dailyDateInputValue(dailyViewDate);
 }
 
 function dailyCellHtml(letter, value, isNight, info) {
@@ -12926,6 +13078,9 @@ document.addEventListener('DOMContentLoaded', async () => {
     }
   });
   document.getElementById('daily-date-input')?.addEventListener('change', e => setDailyDateFromInput(e.target.value));
+  document.getElementById('daily-date-close')?.addEventListener('click', closeDailyDatePicker);
+  document.getElementById('daily-dp-prev')?.addEventListener('click', () => moveDailyDatePickerMonth(-1));
+  document.getElementById('daily-dp-next')?.addEventListener('click', () => moveDailyDatePickerMonth(1));
 
   // Re-measure subtoolbar height: hotel buttons are now rendered and the row may have wrapped.
   // updateSubtoolbar() at switchTab() time (above) ran before hotel buttons existed, so
