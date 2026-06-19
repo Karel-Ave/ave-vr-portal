@@ -5323,11 +5323,12 @@ function applyRegularAndReqClasses(td, si, ci, col, val) {
   // Requirements
   const req = state.requirements && state.requirements[`${si}_${ci}`];
   const reqMissing = !!(req && !val);
+  const showReqDiff = isReqDiffVisibleForActiveTab();
 
   td.classList.toggle('cell-regular-off', !isPublicView && !!(unavailable && !val));
   td.classList.toggle('cell-unavailable-conflict', !isPublicView && !!(unavailable && val));
-  td.classList.toggle('cell-req-missing', reqMissing);
-  if (reqMissing) td.dataset.reqTip = `Původně: ${req}`;
+  td.classList.toggle('cell-req-missing', reqMissing && showReqDiff);
+  if (reqMissing && showReqDiff) td.dataset.reqTip = `Původně: ${req}`;
   else delete td.dataset.reqTip;
 }
 
@@ -9419,20 +9420,21 @@ function moveToolbarElementHome(id) {
 }
 
 function relocateScheduleEditButtons() {
-  ['btn-view-edit', 'btn-view-cancel', 'btn-req-edit', 'lock-info'].forEach(rememberToolbarElementHome);
+  const centeredIds = ['btn-draft-save', 'btn-view-edit', 'btn-view-cancel', 'btn-req-edit', 'btn-req-cancel', 'lock-info'];
+  centeredIds.forEach(rememberToolbarElementHome);
   ensureScheduleCenterSlot();
   const slot = document.getElementById('stb-center-edit-slot');
   const active = document.body.dataset.activeTab;
   const desktop = !isMobileLike();
-  const targetId = desktop && active === 'rozpis' ? 'btn-view-edit'
-    : desktop && active === 'pozadavky' ? 'btn-req-edit'
-    : null;
-  ['btn-view-edit', 'btn-view-cancel', 'btn-req-edit', 'lock-info'].forEach(id => {
+  centeredIds.forEach(id => {
     const btn = document.getElementById(id);
     if (!btn) return;
-    if ((id === targetId
-      || (id === 'btn-view-cancel' && desktop && active === 'rozpis' && viewEditMode && lockOwned)
-      || (id === 'lock-info' && desktop && active === 'rozpis')) && slot) slot.appendChild(btn);
+    const shouldCenter = desktop && slot && (
+      (active === 'tvorba' && id === 'btn-draft-save') ||
+      (active === 'rozpis' && (id === 'btn-view-edit' || id === 'lock-info' || (id === 'btn-view-cancel' && viewEditMode && lockOwned))) ||
+      (active === 'pozadavky' && (id === 'btn-req-edit' || id === 'btn-req-cancel'))
+    );
+    if (shouldCenter) slot.appendChild(btn);
     else moveToolbarElementHome(id);
   });
 }
@@ -10918,6 +10920,7 @@ function isReqDiffVisibleForActiveTab() {
 function updateReqDiffToggle() {
   const visible = isReqDiffVisibleForActiveTab();
   document.body.classList.toggle('hide-req-changes', !visible);
+  updateRequirementClasses();
   const btn = document.getElementById('stb-toggle-req-diff');
   if (!btn) return;
   btn.classList.toggle('active', visible);
