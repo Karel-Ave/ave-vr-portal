@@ -21,7 +21,7 @@ body.with-subtoolbar:has(#schedule-legend.show) { padding-bottom: 30px; }
 #topbar {
   position: fixed; top: 0; left: 0; right: 0; z-index: 900;
   width: 100vw; max-width: 100vw;
-  min-height: var(--topbar-h,48px); background: var(--bg-topbar); border-bottom: 1px solid var(--bg-controls-border);
+  min-height: 48px; background: var(--bg-topbar); border-bottom: 1px solid var(--bg-controls-border);
   display: flex; align-items: center; gap: 6px; padding: 0 10px;
   overflow: visible; scrollbar-width: none;
 }
@@ -4525,7 +4525,9 @@ function updateChromeHeights() {
   const legend = document.getElementById('schedule-legend');
   renderScheduleLegend();
   if (topbar) {
-    const h = Math.max(48, Math.ceil(topbar.getBoundingClientRect().height || topbar.offsetHeight || 48));
+    topbar.style.minHeight = '48px';
+    const measured = Math.ceil(topbar.getBoundingClientRect().height || topbar.offsetHeight || 48);
+    const h = isMobileLike() ? Math.max(48, Math.min(measured, 220)) : 48;
     document.documentElement.style.setProperty('--topbar-h', h + 'px');
   }
   if (legend) {
@@ -5944,18 +5946,19 @@ function renderScheduleTable(tableId, editable) {
       } else if (idx === 6) {
         // Σhod — coloured by fond/maxHrs, click toggles override
         const hrs = sums.totalHrs;
-        const suppressHoursState = isPublicView || tableId === 'pozadavky-tbl';
-        const cls = suppressHoursState ? '' : getHrsClass(si, hrs);
+        const canUseHoursState = tableId === 'tvorba-tbl';
+        const cls = canUseHoursState ? getHrsClass(si, hrs) : '';
         td.classList.add('sum-bold');
         if (cls) td.classList.add(cls);
         td.title = 'Kliknutím přepneš zvýraznění dle fondu';
-        if (suppressHoursState) td.removeAttribute('title');
+        if (!canUseHoursState) td.removeAttribute('title');
         td.textContent = hrs % 1 === 0 ? hrs : hrs.toFixed(1);
-        if (suppressHoursState) {
+        if (!canUseHoursState) {
           td.removeAttribute('title');
+          td.style.cursor = 'default';
           td.classList.remove('col-hrs-green', 'col-hrs-red', 'col-hrs-warn');
         }
-        if (editable && !suppressHoursState) {
+        if (editable && canUseHoursState) {
           td.addEventListener('click', () => {
             if (!state.hrsColorOverride) state.hrsColorOverride = {};
             if (state.hrsColorOverride[si]) delete state.hrsColorOverride[si];
@@ -6138,14 +6141,16 @@ function updateSumRow(si) {
       if (!td) return;
       const vals = [sums.total, sums.dw, sums.nw, sums.dk, sums.nk, '', sums.totalHrs];
       if (idx === 6) {
-        const isPublicView = tblId === 'public-rozpis-tbl';
-        const suppressHoursState = isPublicView || tblId === 'pozadavky-tbl';
+        const canUseHoursState = tblId === 'tvorba-tbl';
         const hrs = sums.totalHrs;
         td.className = 'sum-cell sum-bold sum-hrs';
-        const cls = suppressHoursState ? '' : getHrsClass(si, hrs);
+        const cls = canUseHoursState ? getHrsClass(si, hrs) : '';
         if (cls) td.classList.add(cls);
         td.title = 'Kliknutím přepneš zvýraznění dle fondu';
-        if (suppressHoursState) td.removeAttribute('title');
+        if (!canUseHoursState) {
+          td.removeAttribute('title');
+          td.style.cursor = 'default';
+        }
         td.textContent = hrs % 1 === 0 ? hrs : hrs.toFixed(1);
       } else {
         td.textContent = vals[idx];
