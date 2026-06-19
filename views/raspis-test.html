@@ -2922,6 +2922,7 @@ body.hide-req-changes .sched-cell[data-req-tip]:hover::after {
     <select id="pub-sel" class="tb-btn" style="padding:4px 6px;font-size:12px;"></select>
     <button class="tb-btn" id="btn-view-edit" data-mobile-label="Editovat">Editovat</button>
     <button class="tb-btn" id="btn-view-cancel" data-mobile-label="Zrušit" style="display:none">Zrušit</button>
+    <button class="tb-btn" id="btn-copy-xls" type="button" data-mobile-label="Excel">Kopírovat do Excelu</button>
     <span id="lock-info"></span>
     <div class="rt-fonds-info" style="display:none">
       <span class="fonds-label">Fond HPP:</span><strong class="rt-fond-hpp-info">-</strong>
@@ -13245,6 +13246,7 @@ document.addEventListener('DOMContentLoaded', async () => {
   document.getElementById('stb-undo').addEventListener('click', historyUndo);
   document.getElementById('stb-redo').addEventListener('click', historyRedo);
   document.getElementById('stb-export2').addEventListener('click', exportXlsx);
+  document.getElementById('btn-copy-xls')?.addEventListener('click', copyScheduleForXls);
 
   // ── ±hod popup ──
   document.getElementById('extra-pop-plus').addEventListener('click', () => {
