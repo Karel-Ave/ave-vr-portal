@@ -3978,7 +3978,9 @@ function rtAutoKnownHotelLetters(data) {
 
 function rtScheduleHotelAssignmentsByStaff(data) {
   const staff = Array.isArray(data?.staff) ? data.staff : [];
-  const cells = data?.cells && typeof data.cells === 'object' ? data.cells : {};
+  const cells = data?.cells && typeof data.cells === 'object'
+    ? data.cells
+    : (data?.schedule && typeof data.schedule === 'object' ? data.schedule : {});
   const allowedHotels = rtAutoKnownHotelLetters(data);
   const out = new Map();
   if (!allowedHotels.size || !staff.length) return out;
