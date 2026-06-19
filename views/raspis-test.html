@@ -3217,7 +3217,7 @@ body.hide-req-changes .sched-cell[data-req-tip]:hover::after {
     <div class="stb-spacer"></div>
     <button class="stb-btn" id="stb-hide-sums">Skrýt součty</button>
     <button class="stb-btn" id="stb-save-req">Zapamatuj požadavky</button>
-    <button class="stb-btn" id="stb-toggle-req-diff" type="button">Změny pož.</button>
+    <button class="stb-btn" id="stb-toggle-req-diff" type="button">Zobrazit změny</button>
     <button class="stb-btn" id="btn-copy-xls" type="button">Kopírovat do Excelu</button>
   </div>
   <div class="stb-row stb-row-tools">
@@ -11165,7 +11165,7 @@ function updateReqDiffToggle() {
   const btn = document.getElementById('stb-toggle-req-diff');
   if (!btn) return;
   btn.classList.toggle('active', visible);
-  btn.textContent = visible ? 'Skrýt změny pož.' : 'Zobrazit změny pož.';
+  btn.textContent = visible ? 'Skrýt změny' : 'Zobrazit změny';
 }
 
 function toggleReqDiffVisibility() {
