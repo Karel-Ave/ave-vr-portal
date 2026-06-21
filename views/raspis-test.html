@@ -413,7 +413,7 @@ body.with-subtoolbar .tab-panel { height: calc(100dvh - var(--topbar-h,48px) - v
 .settings-top select:focus, .settings-top input:focus { outline: none; border-color: var(--accent); }
 
 /* Staff table */
-.staff-table-wrap { overflow: auto; margin-top: 12px; max-height: calc(100dvh - 245px); }
+.staff-table-wrap { overflow-x: auto; overflow-y: visible; margin-top: 12px; }
 table.staff-tbl {
   border-collapse: collapse; font-size: 13px; min-width: 900px; width: 100%;
 }
@@ -462,6 +462,30 @@ table.staff-tbl {
   font-style: italic;
 }
 .staff-tbl .col-save { width: 90px; text-align: center; }
+
+@media (max-width: 700px), (pointer: coarse) and (max-height: 520px) {
+  #staff-tbl .col-name,
+  #staff-tbl .col-type,
+  #staff-tbl .col-contract,
+  #staff-tbl .col-save {
+    display: none;
+  }
+  #staff-tbl {
+    min-width: 520px;
+  }
+  #staff-tbl .col-note {
+    min-width: 240px;
+  }
+  #staff-tbl .col-login {
+    width: 64px;
+    min-width: 64px;
+    max-width: 64px;
+  }
+  #staff-tbl .col-maxhrs {
+    width: 66px;
+    min-width: 66px;
+  }
+}
 .staff-section-sep td { padding: 0; }
 
 /* Nastavení mode bar */
