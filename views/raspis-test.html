@@ -394,7 +394,7 @@ body[data-active-tab="pozadavky"] #tb-right-actions { display: none; }
 .tab-panel { display: none; max-width: 100vw; height: calc(100dvh - 48px); overflow-x: hidden; }
 body.with-subtoolbar .tab-panel { height: calc(100dvh - var(--topbar-h,48px) - var(--stb-h,0px)); }
 .tab-panel.active { display: block; }
-#tab-nastaveni { overflow-y: auto; }
+#tab-nastaveni { overflow: auto; }
 
 /* ── Nastavení tab ── */
 .wrap { max-width: 1400px; margin: 0 auto; padding: 16px 14px 80px; }
@@ -413,14 +413,14 @@ body.with-subtoolbar .tab-panel { height: calc(100dvh - var(--topbar-h,48px) - v
 .settings-top select:focus, .settings-top input:focus { outline: none; border-color: var(--accent); }
 
 /* Staff table */
-.staff-table-wrap { overflow-x: auto; overflow-y: visible; margin-top: 12px; }
+.staff-table-wrap { overflow: visible; margin-top: 12px; }
 table.staff-tbl {
   border-collapse: collapse; font-size: 13px; min-width: 900px; width: 100%;
 }
 .staff-tbl th {
   background: var(--thead-bg); color: var(--thead-text); padding: 7px 8px;
   font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: .04em;
-  border: 1px solid var(--thead-border); white-space: nowrap; position: sticky; top: var(--settings-head-top, 104px); z-index: 10;
+  border: 1px solid var(--thead-border); white-space: nowrap; position: sticky; top: var(--settings-head-top, 64px); z-index: 10;
 }
 .staff-tbl td {
   padding: 1px 4px; border: 1px solid var(--border); vertical-align: middle;
@@ -12149,8 +12149,7 @@ function updateOverrideInfoLabel() {
 
 function updateSettingsHeaderStickyTop() {
   const top = document.querySelector('#tab-nastaveni .settings-top');
-  const rect = top ? top.getBoundingClientRect() : null;
-  const value = rect ? Math.max(48, Math.round(rect.bottom)) : 104;
+  const value = top ? Math.max(48, Math.round(top.offsetHeight)) : 64;
   document.documentElement.style.setProperty('--settings-head-top', `${value}px`);
 }
 
