@@ -399,18 +399,18 @@ body.with-subtoolbar .tab-panel { height: calc(100dvh - var(--topbar-h,48px) - v
 /* ── Nastavení tab ── */
 .wrap { max-width: 1400px; margin: 0 auto; padding: 16px 14px 80px; }
 
-.settings-top {
+#nastaveni-mode-bar {
   display: flex; gap: 12px; flex-wrap: wrap; align-items: flex-end;
   padding: 12px 14px; border-bottom: 1px solid var(--border);
-  background: var(--bg); position: sticky; top: 48px; z-index: 80;
+  background: var(--bg); position: sticky; top: 0; z-index: 80;
 }
-.settings-top label { font-size: 11px; font-weight: 700; text-transform: uppercase;
+#nastaveni-mode-bar label { font-size: 11px; font-weight: 700; text-transform: uppercase;
   letter-spacing: .05em; color: var(--text-muted); display: block; margin-bottom: 3px; }
-.settings-top select, .settings-top input[type="number"], .settings-top input[type="text"] {
+#nastaveni-mode-bar select, #nastaveni-mode-bar input[type="number"], #nastaveni-mode-bar input[type="text"] {
   padding: 5px 8px; border: 1px solid var(--border); border-radius: 6px;
   background: var(--input-bg,var(--bg)); color: var(--text); font-size: 13px; font-family: inherit;
 }
-.settings-top select:focus, .settings-top input:focus { outline: none; border-color: var(--accent); }
+#nastaveni-mode-bar select:focus, #nastaveni-mode-bar input:focus { outline: none; border-color: var(--accent); }
 
 /* Staff table */
 .staff-table-wrap { overflow: visible; margin-top: 12px; }
@@ -420,7 +420,7 @@ table.staff-tbl {
 .staff-tbl th {
   background: var(--thead-bg); color: var(--thead-text); padding: 7px 8px;
   font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: .04em;
-  border: 1px solid var(--thead-border); white-space: nowrap; position: sticky; top: var(--settings-head-top, 64px); z-index: 10;
+  border: 1px solid var(--thead-border); white-space: nowrap; position: sticky; top: var(--settings-head-top, 64px); z-index: 70;
 }
 .staff-tbl td {
   padding: 1px 4px; border: 1px solid var(--border); vertical-align: middle;
@@ -489,18 +489,33 @@ table.staff-tbl {
   #override-month-controls #btn-clear-month-overrides {
     min-height: 26px;
     height: 26px;
-    padding: 3px 8px;
+    padding: 3px 7px;
     line-height: 1;
     align-self: center;
     white-space: nowrap;
     display: inline-flex;
     align-items: center;
+    font-size: 0;
+  }
+  #override-month-controls #btn-set-as-default::after,
+  #override-month-controls #btn-clear-month-overrides::after {
+    font-size: 12px;
+    line-height: 1;
+  }
+  #override-month-controls #btn-set-as-default::after {
+    content: "Jako výchozí";
+  }
+  #override-month-controls #btn-clear-month-overrides::after {
+    content: "Smazat";
   }
 }
 .staff-section-sep td { padding: 0; }
 
 /* Nastavení mode bar */
-#nastaveni-mode-bar { display:flex; align-items:center; gap:8px; padding:8px 0 6px; flex-wrap:wrap; justify-content:center; }
+#nastaveni-mode-bar {
+  display:flex; align-items:center; gap:8px; padding:8px 0 6px; flex-wrap:wrap; justify-content:center;
+  position: sticky; top: 0; z-index: 90; background: var(--bg);
+}
 .mode-label { font-size:12px; color:var(--text-muted); }
 .mode-btn { padding:5px 18px; border:1px solid var(--border); border-radius:5px; cursor:pointer; font-size:12px; background:var(--surface); color:var(--text-muted); transition:all .15s; }
 .mode-btn.active { background:var(--accent); color:#fff; border-color:var(--accent); font-weight:600; }
@@ -511,6 +526,7 @@ table.staff-tbl {
   background:color-mix(in srgb, var(--accent) 13%, var(--surface) 87%);
   border:1px solid color-mix(in srgb, var(--accent) 34%, var(--border) 66%);
   text-align:center;
+  position: sticky; top: var(--settings-info-top, 48px); z-index: 89;
 }
 #override-info .override-info-mark {
   background:color-mix(in srgb, var(--accent) 22%, transparent);
@@ -12148,9 +12164,13 @@ function updateOverrideInfoLabel() {
 }
 
 function updateSettingsHeaderStickyTop() {
-  const top = document.querySelector('#tab-nastaveni .settings-top');
-  const value = top ? Math.max(48, Math.round(top.offsetHeight)) : 64;
-  document.documentElement.style.setProperty('--settings-head-top', `${value}px`);
+  const modeBar = document.getElementById('nastaveni-mode-bar');
+  const info = document.getElementById('override-info');
+  const modeH = modeBar ? Math.round(modeBar.offsetHeight) : 48;
+  const infoVisible = info && getComputedStyle(info).display !== 'none';
+  const infoH = infoVisible ? Math.round(info.offsetHeight + 8) : 0;
+  document.documentElement.style.setProperty('--settings-info-top', `${modeH}px`);
+  document.documentElement.style.setProperty('--settings-head-top', `${modeH + infoH}px`);
 }
 
 function setNastaveniMode(mode) {
