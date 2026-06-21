@@ -420,7 +420,7 @@ table.staff-tbl {
 .staff-tbl th {
   background: var(--thead-bg); color: var(--thead-text); padding: 7px 8px;
   font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: .04em;
-  border: 1px solid var(--thead-border); white-space: nowrap; position: sticky; top: 0; z-index: 10;
+  border: 1px solid var(--thead-border); white-space: nowrap; position: sticky; top: var(--settings-head-top, 104px); z-index: 10;
 }
 .staff-tbl td {
   padding: 1px 4px; border: 1px solid var(--border); vertical-align: middle;
@@ -484,6 +484,17 @@ table.staff-tbl {
   #staff-tbl .col-maxhrs {
     width: 66px;
     min-width: 66px;
+  }
+  #override-month-controls #btn-set-as-default,
+  #override-month-controls #btn-clear-month-overrides {
+    min-height: 26px;
+    height: 26px;
+    padding: 3px 8px;
+    line-height: 1;
+    align-self: center;
+    white-space: nowrap;
+    display: inline-flex;
+    align-items: center;
   }
 }
 .staff-section-sep td { padding: 0; }
@@ -12136,6 +12147,13 @@ function updateOverrideInfoLabel() {
   if (lbl) lbl.textContent = `${MONTH_NAMES_LONG[overrideModeMonth]} ${overrideModeYear}`;
 }
 
+function updateSettingsHeaderStickyTop() {
+  const top = document.querySelector('#tab-nastaveni .settings-top');
+  const rect = top ? top.getBoundingClientRect() : null;
+  const value = rect ? Math.max(48, Math.round(rect.bottom)) : 104;
+  document.documentElement.style.setProperty('--settings-head-top', `${value}px`);
+}
+
 function setNastaveniMode(mode) {
   nastaveniMode = mode;
   if (mode === 'monthly') {
@@ -12155,6 +12173,7 @@ function setNastaveniMode(mode) {
   if (info) info.style.display = mode === 'monthly' ? 'block' : 'none';
   if (mode === 'monthly') updateOverrideInfoLabel();
   renderStaffTable();
+  requestAnimationFrame(updateSettingsHeaderStickyTop);
 }
 
 function setOverrideMonth() {
@@ -13035,6 +13054,7 @@ function switchTab(name) {
   if (name === 'denni') startDailyRefresh();
   else stopDailyRefresh();
   updateChromeHeights();
+  if (name === 'nastaveni') requestAnimationFrame(updateSettingsHeaderStickyTop);
 
   // Show/hide subtoolbar
   updateSubtoolbar();
@@ -13279,6 +13299,7 @@ document.addEventListener('DOMContentLoaded', async () => {
   document.body.classList.add('rt-ready');
   window.addEventListener('resize', () => {
     updateChromeHeights();
+    if (document.body.dataset.activeTab === 'nastaveni') requestAnimationFrame(updateSettingsHeaderStickyTop);
     updateRequirementsFundsInfo();
     if (isMobileLike() && document.body.dataset.activeTab === 'tvorba') {
       switchTab(mobileTabFallback());
