@@ -363,7 +363,7 @@
     </div>
     <div class="form-group">
       <label>Telefon</label>
-      <input type="text" id="u-phone" placeholder="+420 ...">
+      <input type="text" id="u-phone" placeholder="+420 605 444 565">
     </div>
     <div class="form-group">
       <label>Skupina</label>
@@ -795,6 +795,7 @@
     currentUserId = null;
     document.getElementById('modal-title').textContent = 'Přidat uživatele';
     ['u-name','u-username','u-password','u-phone'].forEach(id => document.getElementById(id).value = '');
+    document.getElementById('u-phone').value = '+420 ';
     document.getElementById('u-username').disabled = false;
     document.getElementById('pw-hint-label').style.display = 'none';
     populateRoleSelect(document.getElementById('u-role'), 'vedoucí');
@@ -831,11 +832,28 @@
 
   function closeUserModal() { document.getElementById('user-overlay').classList.remove('show'); }
 
+  function formatPhoneInput(value) {
+    const raw = String(value || '').trim();
+    if (!raw || raw === '+') return '';
+    let prefix = '+420';
+    let rest = raw;
+    const m = raw.match(/^\s*(\+\d{1,4})\s*(.*)$/);
+    if (m) {
+      prefix = m[1];
+      rest = m[2] || '';
+    }
+    const digits = rest.replace(/\D/g, '');
+    if (!digits) return '';
+    return (prefix + ' ' + digits.replace(/(.{3})(?=.)/g, '$1 ')).trim();
+  }
+
   async function saveUser() {
     const name = document.getElementById('u-name').value.trim();
     const username = document.getElementById('u-username').value.trim();
     const password = document.getElementById('u-password').value;
-    const phone = document.getElementById('u-phone').value.trim();
+    const phoneInput = document.getElementById('u-phone');
+    const phone = formatPhoneInput(phoneInput.value);
+    phoneInput.value = phone || '+420 ';
     const role = document.getElementById('u-role').value;
     const msg = document.getElementById('user-msg');
     if (!name) { setMsg(msg, 'err', 'Zadejte jméno.'); return; }

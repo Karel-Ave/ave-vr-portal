@@ -163,6 +163,21 @@ function userIdentityValues(user) {
     .filter(Boolean))];
 }
 
+function formatPhoneForStorage(value) {
+  const raw = String(value || '').trim();
+  if (!raw || raw === '+') return null;
+  let prefix = '+420';
+  let rest = raw;
+  const match = raw.match(/^\s*(\+\d{1,4})\s*(.*)$/);
+  if (match) {
+    prefix = match[1];
+    rest = match[2] || '';
+  }
+  const digits = rest.replace(/\D/g, '');
+  if (!digits) return null;
+  return `${prefix} ${digits.replace(/(.{3})(?=.)/g, '$1 ')}`.trim();
+}
+
 async function canViewAllPriplatky(user) {
   if (!user) return false;
   if (user.role === 'admin') return true;
@@ -410,7 +425,7 @@ app.post('/api/users', requireLogin, requireAdmin, async (req, res) => {
     }
     const { rows: inserted } = await db.query(
       'INSERT INTO users (name, username, password_hash, role, phone) VALUES ($1, $2, $3, $4, $5) RETURNING id',
-      [name.trim(), username.trim(), bcrypt.hashSync(password, 10), role, phone?.trim() || null]
+      [name.trim(), username.trim(), bcrypt.hashSync(password, 10), role, formatPhoneForStorage(phone)]
     );
     res.json({ ok: true, id: inserted[0].id });
   } catch (err) {
@@ -440,7 +455,7 @@ app.patch('/api/users/:id', requireLogin, requireAdmin, async (req, res) => {
     }
     if (name) await db.query('UPDATE users SET name = $1 WHERE id = $2', [name.trim(), id]);
     if (role) await db.query('UPDATE users SET role = $1 WHERE id = $2', [role, id]);
-    if (phone !== undefined) await db.query('UPDATE users SET phone = $1 WHERE id = $2', [phone?.trim() || null, id]);
+    if (phone !== undefined) await db.query('UPDATE users SET phone = $1 WHERE id = $2', [formatPhoneForStorage(phone), id]);
     if (password) {
       if (password.length < 6) return res.json({ ok: false, msg: 'Heslo musí mít alespoň 6 znaků.' });
       await db.query('UPDATE users SET password_hash = $1 WHERE id = $2',

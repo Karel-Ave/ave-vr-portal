@@ -1858,6 +1858,7 @@ body.hide-req-changes .sched-cell[data-req-tip]:hover::after {
   background: var(--accent);
 }
 #snt-name { color: var(--accent-h); }
+#snt-phone { color: var(--accent-h); font-weight: 800; opacity: 1 !important; }
 #snt-sums, #snt-prev { color: var(--text); }
 #snt-pref, #snt-notes { color: var(--text-muted); opacity: 1 !important; }
 [data-theme="dark"] #sched-name-tip {
@@ -3975,6 +3976,7 @@ body.hide-req-changes .sched-cell[data-req-tip]:hover::after {
 
 <div id="sched-name-tip" style="position:fixed;z-index:9998;display:none;pointer-events:none;background:rgba(28,28,28,.97);color:#fff;padding:8px 12px;border-radius:8px;min-width:160px;max-width:280px;box-shadow:0 4px 16px rgba(0,0,0,.45)">
   <div id="snt-name" style="font-weight:700;font-size:12px;margin-bottom:4px"></div>
+  <div id="snt-phone" style="font-size:11px;margin-bottom:4px"></div>
   <div id="snt-sums" style="font-size:11px;margin-bottom:2px"></div>
   <div id="snt-prev" style="font-size:11px;margin-bottom:2px"></div>
   <div id="snt-pref" style="font-size:11px;font-style:italic;opacity:.75"></div>
@@ -4005,16 +4007,22 @@ function showSchedTip(si, x, y) {
 
   document.getElementById('snt-name').textContent = s.name || `(pracovn\u00edk ${si + 1})`;
   const sumsEl = document.getElementById('snt-sums');
+  const phoneEl = document.getElementById('snt-phone');
   const prevEl = document.getElementById('snt-prev');
   const prefEl = document.getElementById('snt-pref');
   const noteEl = document.getElementById('snt-notes');
   prefEl.style.display = 'none';
+  if (phone && activeTab !== 'tvorba') {
+    phoneEl.textContent = `Tel.: ${phone}`;
+    phoneEl.style.display = '';
+  } else {
+    phoneEl.style.display = 'none';
+  }
 
   if (activeTab === 'public' || activeTab === 'pozadavky') {
     sumsEl.style.display = 'none';
     prevEl.style.display = 'none';
-    if (phone) { noteEl.textContent = `Tel.: ${phone}`; noteEl.style.display = ''; }
-    else noteEl.style.display = 'none';
+    noteEl.style.display = 'none';
     positionSchedTip(x, y);
     return;
   }
@@ -4038,7 +4046,6 @@ function showSchedTip(si, x, y) {
   if (s.noteP) noteParts.push(s.noteP);
   s.dates = rawTipDates;
   s.noteM = rawTipNoteM;
-  if (activeTab === 'rozpis' && phone) noteParts.push(`Tel.: ${phone}`);
   if (noteParts.length) { noteEl.textContent = noteParts.join('\n'); noteEl.style.display = ''; }
   else noteEl.style.display = 'none';
 
