@@ -295,10 +295,10 @@
     <div class="table-wrap">
       <table>
         <thead>
-          <tr><th>#</th><th>Jméno</th><th>Login</th><th>Skupina</th><th>Přidán</th><th></th></tr>
+          <tr><th>#</th><th>Jméno</th><th>Login</th><th>Telefon</th><th>Skupina</th><th>Přidán</th><th></th></tr>
         </thead>
         <tbody id="users-tbody">
-          <tr class="empty-row"><td colspan="6">Načítám…</td></tr>
+          <tr class="empty-row"><td colspan="7">Načítám…</td></tr>
         </tbody>
       </table>
     </div>
@@ -360,6 +360,10 @@
     <div class="form-group">
       <label>Heslo <span id="pw-hint-label" style="color:#555;font-weight:400">(ponechte prázdné pro zachování)</span></label>
       <input type="password" id="u-password" placeholder="min. 6 znaků">
+    </div>
+    <div class="form-group">
+      <label>Telefon</label>
+      <input type="text" id="u-phone" placeholder="+420 ...">
     </div>
     <div class="form-group">
       <label>Skupina</label>
@@ -543,7 +547,8 @@
       delete: { label: 'Smazat záznam', default: false },
       export: { label: 'Export', default: true },
       settings: { label: 'List Nastavení', default: false },
-      manageTexts: { label: 'Spravovat přednastavené texty', default: false }
+      manageTexts: { label: 'Spravovat přednastavené texty', default: false },
+      internalNote: { label: 'Vid\u011bt a editovat intern\u00ed pozn\u00e1mku', default: false }
     } },
     blacklist: { label: 'Blacklist', buttons: {
       view:           'Zobrazit',
@@ -732,7 +737,7 @@
         (a.username || '').localeCompare(b.username || '', 'cs', { sensitivity: 'base' })
       );
     if (!filtered.length) {
-      tbody.innerHTML = `<tr class="empty-row"><td colspan="6">${currentSublist === 'Neaktivní' ? 'Žádní neaktivní uživatelé z Rozpisu a požadavků.' : 'Žádní uživatelé v tomto podlistu.'}</td></tr>`;
+      tbody.innerHTML = `<tr class="empty-row"><td colspan="7">${currentSublist === 'Neaktivní' ? 'Žádní neaktivní uživatelé z Rozpisu a požadavků.' : 'Žádní uživatelé v tomto podlistu.'}</td></tr>`;
       return;
     }
     tbody.innerHTML = filtered.map((u, i) => {
@@ -744,10 +749,11 @@
         <td style="color:#888;font-size:12px">${i + 1}</td>
         <td style="font-weight:500;">${esc(u.name)} ${inactiveBadge}</td>
         <td style="color:#555;font-family:monospace;font-size:12px">${esc(u.username)}</td>
+        <td style="color:#555;font-size:12px">${esc(u.phone || '')}</td>
         <td><span class="role-badge ${roleClass(u.role)}">${grpLabel}</span></td>
         <td style="color:#777;font-size:12px">${formatDate(u.created_at)}</td>
         <td class="td-actions">
-          <button class="btn-action" onclick="openEditModal(${u.id},'${esc(u.name)}','${esc(u.username)}','${esc(u.role)}')">Upravit</button>
+          <button class="btn-action" onclick="openEditModal(${u.id})">Upravit</button>
           <button class="btn-action" onclick="openOverridesModal(${u.id},'${esc(u.name)}','${esc(u.role)}')">Oprávnění</button>
           ${inactive ? `<button class="btn-action" onclick="reactivateRaspisUser(${u.id},'${esc(u.name)}')">Aktivovat</button>` : ''}
           ${u.id !== myId ? `<button class="btn-action danger" onclick="deleteUser(${u.id},'${esc(u.name)}')">Smazat</button>` : ''}
@@ -760,10 +766,10 @@
     const tbody = document.getElementById('users-tbody');
     try {
       const r = await fetch('/api/users');
-      if (!r.ok) { tbody.innerHTML = '<tr class="empty-row"><td colspan="6">Chyba načtení.</td></tr>'; return; }
+      if (!r.ok) { tbody.innerHTML = '<tr class="empty-row"><td colspan="7">Chyba načtení.</td></tr>'; return; }
       allUsers = await r.json();
       renderUsersTable();
-    } catch { tbody.innerHTML = '<tr class="empty-row"><td colspan="6">Chyba načtení.</td></tr>'; }
+    } catch { tbody.innerHTML = '<tr class="empty-row"><td colspan="7">Chyba načtení.</td></tr>'; }
   }
 
   function esc(s) {
@@ -788,7 +794,7 @@
   function openAddModal() {
     currentUserId = null;
     document.getElementById('modal-title').textContent = 'Přidat uživatele';
-    ['u-name','u-username','u-password'].forEach(id => document.getElementById(id).value = '');
+    ['u-name','u-username','u-password','u-phone'].forEach(id => document.getElementById(id).value = '');
     document.getElementById('u-username').disabled = false;
     document.getElementById('pw-hint-label').style.display = 'none';
     populateRoleSelect(document.getElementById('u-role'), 'vedoucí');
@@ -798,12 +804,17 @@
     setTimeout(() => document.getElementById('u-name').focus(), 50);
   }
 
-  async function openEditModal(id, name, username, role) {
+  async function openEditModal(id) {
+    const user = allUsers.find(u => Number(u.id) === Number(id)) || {};
+    const name = user.name || '';
+    const username = user.username || '';
+    const role = user.role || '';
     currentUserId = id;
     document.getElementById('modal-title').textContent = 'Upravit uživatele';
     document.getElementById('u-name').value = name;
     document.getElementById('u-username').value = username;
     document.getElementById('u-password').value = '';
+    document.getElementById('u-phone').value = user.phone || '';
     document.getElementById('u-username').disabled = false;
     document.getElementById('pw-hint-label').style.display = 'inline';
     populateRoleSelect(document.getElementById('u-role'), role);
@@ -824,6 +835,7 @@
     const name = document.getElementById('u-name').value.trim();
     const username = document.getElementById('u-username').value.trim();
     const password = document.getElementById('u-password').value;
+    const phone = document.getElementById('u-phone').value.trim();
     const role = document.getElementById('u-role').value;
     const msg = document.getElementById('user-msg');
     if (!name) { setMsg(msg, 'err', 'Zadejte jméno.'); return; }
@@ -831,10 +843,10 @@
     if (currentUserId === null) {
       if (!username) { setMsg(msg, 'err', 'Zadejte uživatelské jméno.'); return; }
       if (!password) { setMsg(msg, 'err', 'Zadejte heslo.'); return; }
-      r = await fetch('/api/users', { method: 'POST', headers: {'Content-Type':'application/json'}, body: JSON.stringify({ name, username, password, role }) });
+      r = await fetch('/api/users', { method: 'POST', headers: {'Content-Type':'application/json'}, body: JSON.stringify({ name, username, password, role, phone }) });
     } else {
       if (!username) { setMsg(msg, 'err', 'Zadejte uživatelské jméno.'); return; }
-      const body = { name, role, username }; if (password) body.password = password;
+      const body = { name, role, username, phone }; if (password) body.password = password;
       r = await fetch(`/api/users/${currentUserId}`, { method: 'PATCH', headers: {'Content-Type':'application/json'}, body: JSON.stringify(body) });
     }
     const data = await r.json();

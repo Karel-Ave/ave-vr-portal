@@ -49,6 +49,9 @@ async function init() {
     ALTER TABLE users ADD COLUMN IF NOT EXISTS theme_skin_dark VARCHAR(30) DEFAULT 'green'
   `);
   await db.query(`
+    ALTER TABLE users ADD COLUMN IF NOT EXISTS phone VARCHAR(50)
+  `);
+  await db.query(`
     ALTER TABLE users ALTER COLUMN theme_skin_light SET DEFAULT 'indigo'
   `);
   await db.query(`
@@ -266,7 +269,7 @@ async function init() {
       req_create: true, req_edit: true, req_toggle_reception: true, req_send_tvorba: true, req_delete: true, req_archive: true,
       hotel_manager: true, settings_monthly: true, settings_add_staff: true, settings_clear_overrides: true
     } },
-    priplatky: { enabled: true, visible: true, buttons: { viewAll: true, add: true, edit: true, delete: true, export: true, template: true, settings: true, manageReceptionists: true, manageTexts: true } },
+    priplatky: { enabled: true, visible: true, buttons: { viewAll: true, add: true, edit: true, delete: true, export: true, template: true, settings: true, manageReceptionists: true, manageTexts: true, internalNote: true } },
     blacklist: { enabled: true, visible: true, buttons: { view: true, add: true, remove: true, edit: true, export_pdf: true, export_email: true, edit_intro: true, history: true, history_delete: true } },
     admin: { enabled: true, visible: true, buttons: { users_add: true, users_edit: true, users_delete: true, user_permissions: true, groups_manage: true, logs_view: true, logs_delete: true } }
   });
@@ -279,7 +282,7 @@ async function init() {
       req_create: true, req_edit: true, req_toggle_reception: true, req_send_tvorba: true, req_delete: false, req_archive: true,
       hotel_manager: false, settings_monthly: true, settings_add_staff: true, settings_clear_overrides: false
     } },
-    priplatky: { enabled: true, visible: true, buttons: { viewAll: false, add: true, edit: true, delete: false, export: true, template: false, settings: false, manageReceptionists: false, manageTexts: false } },
+    priplatky: { enabled: true, visible: true, buttons: { viewAll: false, add: true, edit: true, delete: false, export: true, template: false, settings: false, manageReceptionists: false, manageTexts: false, internalNote: true } },
     blacklist: { enabled: true, visible: true, buttons: { view: true, add: true, remove: true, edit: true, export_pdf: true, export_email: true, edit_intro: false, history: true, history_delete: false } },
     admin: { enabled: false, visible: false, buttons: { users_add: false, users_edit: false, users_delete: false, user_permissions: false, groups_manage: false, logs_view: false, logs_delete: false } }
   });
@@ -292,7 +295,7 @@ async function init() {
       req_create: false, req_edit: false, req_toggle_reception: false, req_send_tvorba: false, req_delete: false, req_archive: false,
       hotel_manager: false, settings_monthly: false, settings_add_staff: false, settings_clear_overrides: false
     } },
-    priplatky: { enabled: false, visible: false, buttons: { viewAll: false, add: false, edit: false, delete: false, export: false, template: false, settings: false, manageReceptionists: false, manageTexts: false } },
+    priplatky: { enabled: false, visible: false, buttons: { viewAll: false, add: false, edit: false, delete: false, export: false, template: false, settings: false, manageReceptionists: false, manageTexts: false, internalNote: false } },
     blacklist: { enabled: false, visible: false, buttons: { view: false, add: false, remove: false, edit: false, export_pdf: false, export_email: false, edit_intro: false, history: false, history_delete: false } },
     admin: { enabled: false, visible: false, buttons: { users_add: false, users_edit: false, users_delete: false, user_permissions: false, groups_manage: false, logs_view: false, logs_delete: false } }
   });
@@ -305,7 +308,7 @@ async function init() {
       req_create: false, req_edit: false, req_toggle_reception: false, req_send_tvorba: false, req_delete: false, req_archive: false,
       hotel_manager: false, settings_monthly: false, settings_add_staff: false, settings_clear_overrides: false
     } },
-    priplatky: { enabled: true, visible: true, buttons: { viewAll: false, add: true, edit: true, delete: false, export: true, template: false, settings: false, manageReceptionists: false, manageTexts: false } },
+    priplatky: { enabled: true, visible: true, buttons: { viewAll: false, add: true, edit: true, delete: false, export: true, template: false, settings: false, manageReceptionists: false, manageTexts: false, internalNote: false } },
     blacklist: { enabled: true, visible: true, buttons: { view: true, add: false, remove: false, edit: false, export_pdf: false, export_email: false, edit_intro: false, history: false, history_delete: false } },
     admin: { enabled: false, visible: false, buttons: { users_add: false, users_edit: false, users_delete: false, user_permissions: false, groups_manage: false, logs_view: false, logs_delete: false } }
   });
@@ -318,7 +321,7 @@ async function init() {
       req_create: false, req_edit: true, req_toggle_reception: false, req_send_tvorba: false, req_delete: false, req_archive: false,
       hotel_manager: false, settings_monthly: false, settings_add_staff: false, settings_clear_overrides: false
     } },
-    priplatky: { enabled: false, visible: false, buttons: { viewAll: false, add: false, edit: false, delete: false, export: false, template: false, settings: false, manageReceptionists: false, manageTexts: false } },
+    priplatky: { enabled: false, visible: false, buttons: { viewAll: false, add: false, edit: false, delete: false, export: false, template: false, settings: false, manageReceptionists: false, manageTexts: false, internalNote: false } },
     blacklist: { enabled: false, visible: false, buttons: { view: false, add: false, remove: false, edit: false, export_pdf: false, export_email: false, edit_intro: false, history: false, history_delete: false } },
     admin: { enabled: false, visible: false, buttons: { users_add: false, users_edit: false, users_delete: false, user_permissions: false, groups_manage: false, logs_view: false, logs_delete: false } }
   });
@@ -441,6 +444,7 @@ async function init() {
   `);
   await db.query(`CREATE INDEX IF NOT EXISTS idx_pz_rok_mesic ON priplatky_zaznamy (rok, mesic)`);
   await db.query(`CREATE INDEX IF NOT EXISTS idx_pz_login    ON priplatky_zaznamy (login)`);
+  await db.query(`ALTER TABLE priplatky_zaznamy ADD COLUMN IF NOT EXISTS internal_note TEXT`);
 
   // ── Příplatky a pokuty: předdefinované poznámky ──────────────────────────────
   await db.query(`

@@ -161,6 +161,18 @@ body.with-subtoolbar:has(#schedule-legend.show) { padding-bottom: 30px; }
   color: #fff;
   border-color: transparent;
 }
+#btn-draft-save,
+#btn-req-edit {
+  background: var(--thead-bg);
+  color: #fff;
+  border-color: transparent;
+  min-width: 82px;
+  height: 30px;
+}
+#btn-draft-save:hover,
+#btn-req-edit:hover {
+  opacity: .88;
+}
 .tvorba-month-label {
   min-width: 112px;
   padding: 5px 2px;
@@ -187,6 +199,12 @@ body.with-subtoolbar:has(#schedule-legend.show) { padding-bottom: 30px; }
   border-color: transparent;
 }
 [data-theme="dark"] #tb-act-tvorba #btn-draft-save {
+  background: var(--accent,#C4A96A);
+  color: #1A1A18;
+  border-color: transparent;
+}
+[data-theme="dark"] #btn-draft-save,
+[data-theme="dark"] #btn-req-edit {
   background: var(--accent,#C4A96A);
   color: #1A1A18;
   border-color: transparent;
@@ -395,7 +413,7 @@ body.with-subtoolbar .tab-panel { height: calc(100dvh - var(--topbar-h,48px) - v
 .settings-top select:focus, .settings-top input:focus { outline: none; border-color: var(--accent); }
 
 /* Staff table */
-.staff-table-wrap { overflow-x: auto; margin-top: 12px; }
+.staff-table-wrap { overflow: auto; margin-top: 12px; max-height: calc(100dvh - 245px); }
 table.staff-tbl {
   border-collapse: collapse; font-size: 13px; min-width: 900px; width: 100%;
 }
@@ -423,6 +441,7 @@ table.staff-tbl {
 .staff-tbl .col-regular { width: 36px; min-width: 36px; max-width: 36px; text-align: center; }
 .staff-tbl .col-dates { width: 36px; min-width: 36px; max-width: 36px; text-align: center; }
 #staff-tbl:not(.settings-monthly-mode) .col-monthly-only { display: none; }
+#staff-tbl.settings-monthly-mode .col-default-only { display: none; }
 .staff-tbl .col-note { min-width: 110px; }
 .staff-tbl .col-note textarea {
   width: 100%; min-height: unset; height: 18px; border: none; background: transparent;
@@ -1798,7 +1817,8 @@ tbody tr.row-filtered { display: none; }
   background: #222; color: #fff; padding: 3px 7px; border-radius: 4px;
   font-size: 10px; white-space: nowrap; pointer-events: none; z-index: 100;
 }
-body.hide-req-changes .sched-cell.cell-req-missing {
+body.hide-req-changes .sched-cell.cell-req-missing,
+body.hide-req-changes .sched-cell.req-changed {
   background: inherit !important;
   outline: none !important;
   box-shadow: none !important;
@@ -3029,10 +3049,10 @@ body.hide-req-changes .sched-cell[data-req-tip]:hover::after {
             <th class="col-type">Typ</th>
             <th class="col-contract">Smlouva</th>
             <th class="col-maxhrs">Max.hod</th>
-            <th class="col-regular" title="Stálé volno">x</th>
+            <th class="col-regular col-default-only" title="Stálé volno">x</th>
             <th class="col-dates col-monthly-only" title="Nemůže aktuálně">xA</th>
             <th class="col-note col-monthly-only">Pozn. aktuální</th>
-            <th class="col-note">Pozn. trvalá</th>
+            <th class="col-note col-default-only">Pozn. trvalá</th>
             <th class="col-save">Tvorba</th>
           </tr>
         </thead>
@@ -3975,44 +3995,64 @@ body.hide-req-changes .sched-cell[data-req-tip]:hover::after {
 function showSchedTip(si, x, y) {
   const s = state.staff[si];
   if (!s) return;
+  const activeTab = document.body.dataset.activeTab || 'tvorba';
+  const portalMatch = (state.allPortalUsers || []).find(p =>
+    (s.userId && String(p.userId || '') === String(s.userId)) ||
+    (s.login && String(p.login || '').trim().toLowerCase() === String(s.login).trim().toLowerCase()) ||
+    (s.name && normalizeStaffName(p.name || '') === normalizeStaffName(s.name || ''))
+  );
+  const phone = s.phone || portalMatch?.phone || '';
+
+  document.getElementById('snt-name').textContent = s.name || `(pracovn\u00edk ${si + 1})`;
+  const sumsEl = document.getElementById('snt-sums');
+  const prevEl = document.getElementById('snt-prev');
+  const prefEl = document.getElementById('snt-pref');
+  const noteEl = document.getElementById('snt-notes');
+  prefEl.style.display = 'none';
+
+  if (activeTab === 'public' || activeTab === 'pozadavky') {
+    sumsEl.style.display = 'none';
+    prevEl.style.display = 'none';
+    if (phone) { noteEl.textContent = `Tel.: ${phone}`; noteEl.style.display = ''; }
+    else noteEl.style.display = 'none';
+    positionSchedTip(x, y);
+    return;
+  }
+
   const calCols = getCalCols(state.month, state.year);
   const sums = calcSums(si, calCols, state);
-  const targetHrs = parseFloat(s.maxHrs) || (s.contract === 'HPP' ? parseFloat(state.fondHpp) : parseFloat(state.fondZpp)) || 0;
-  const targetShifts = targetHrs > 0 ? Math.round(targetHrs / 12) : 0;
+  sumsEl.textContent = `Sm\u011bn: ${sums.total}   Hodin: ${sums.totalHrs % 1 === 0 ? sums.totalHrs : sums.totalHrs.toFixed(1)}`;
+  sumsEl.style.display = '';
 
-  document.getElementById('snt-name').textContent = s.name || `(pracovník ${si+1})`;
-  document.getElementById('snt-sums').textContent = `Směn: ${sums.total}   Hodin: ${sums.totalHrs % 1 === 0 ? sums.totalHrs : sums.totalHrs.toFixed(1)}`;
-  const prevEl = document.getElementById('snt-prev');
   const prevEnd = getPreviousMonthEndSummary(si);
-  if (prevEnd) { prevEl.textContent = `Konec měsíce: ${prevEnd}`; prevEl.style.display = ''; }
+  if (prevEnd) { prevEl.textContent = `Konec m\u011bs\u00edce: ${prevEnd}`; prevEl.style.display = ''; }
   else prevEl.style.display = 'none';
-  const prefEl = document.getElementById('snt-pref');
-  if (targetShifts > 0) { prefEl.textContent = `chtěl by ideálně ${targetShifts} směn`; prefEl.style.display = ''; }
-  else prefEl.style.display = 'none';
 
   const noteParts = [];
   const rawTipDates = s.dates;
   const rawTipNoteM = s.noteM;
   s.dates = getEffectiveForSchedule(s, 'dates');
   s.noteM = getEffectiveForSchedule(s, 'noteM');
-  if (s.dates) noteParts.push(`Nemůže: ${s.dates}`);
+  if (s.dates) noteParts.push(`Nem\u016f\u017ee: ${s.dates}`);
   if (s.noteM) noteParts.push(s.noteM);
   if (s.noteP) noteParts.push(s.noteP);
   s.dates = rawTipDates;
   s.noteM = rawTipNoteM;
-  const noteEl = document.getElementById('snt-notes');
+  if (activeTab === 'rozpis' && phone) noteParts.push(`Tel.: ${phone}`);
   if (noteParts.length) { noteEl.textContent = noteParts.join('\n'); noteEl.style.display = ''; }
   else noteEl.style.display = 'none';
 
+  positionSchedTip(x, y);
+}
+
+function positionSchedTip(x, y) {
   const tip = document.getElementById('sched-name-tip');
   tip.style.display = 'block';
-  // Position after layout
   const w = tip.offsetWidth || 200;
   const h = tip.offsetHeight || 80;
   tip.style.left = Math.min(x + 14, window.innerWidth - w - 8) + 'px';
   tip.style.top = Math.min(y + 8, window.innerHeight - h - 8) + 'px';
 }
-
 function hideSchedTip() {
   document.getElementById('sched-name-tip').style.display = 'none';
 }
@@ -5264,6 +5304,7 @@ function printScheduleTab(tab) {
   wrap.className = 'schedule-wrap';
   const clone = srcTbl.cloneNode(true);
   clone.id = `${tblId}-print`;
+  restorePrintStaffAlphaOrder(clone);
   clone.querySelectorAll('input').forEach(inp => {
     const span = document.createElement('span');
     span.className = 'cell-val';
@@ -5352,6 +5393,19 @@ function printScheduleTab(tab) {
   window.addEventListener('afterprint', cleanup, { once: true });
   setTimeout(cleanup, 30000);
   window.print();
+}
+
+function restorePrintStaffAlphaOrder(clone) {
+  const staffTbody = clone.querySelector('.staff-tbody');
+  if (!staffTbody) return;
+  const rows = Array.from(staffTbody.querySelectorAll('tr[data-si]'));
+  rows.sort((a, b) => {
+    const aStaff = state.staff[+a.dataset.si] || {};
+    const bStaff = state.staff[+b.dataset.si] || {};
+    return (aStaff.name || '').localeCompare(bStaff.name || '', 'cs', { sensitivity: 'base' }) ||
+      (+a.dataset.si) - (+b.dataset.si);
+  });
+  rows.forEach(tr => staffTbody.appendChild(tr));
 }
 
 let _toastTimer = null;
@@ -6926,6 +6980,7 @@ function staffExistsInCurrentSchedule(s) {
 function makeScheduleStaffFromSettings(s) {
   return {
     name: s.name || '',
+    phone: s.phone || '',
     login: s.login || '',
     type: s.type || '',
     contract: s.contract || '',
@@ -7101,7 +7156,7 @@ function renderStaffTable() {
 
     // Regular (stálé volno) — indicator button
     const regTd = document.createElement('td');
-    regTd.className = 'col-regular';
+    regTd.className = 'col-regular col-default-only';
     const { val: regularVal, overridden: regularOvr } = getEffective(s, 'regular');
     if (regularOvr) regTd.classList.add('override-cell');
     const regBtn = document.createElement('button');
@@ -7159,7 +7214,7 @@ function renderStaffTable() {
 
     // Note permanent (noteP)
     const notePTd = document.createElement('td');
-    notePTd.className = 'col-note';
+    notePTd.className = 'col-note col-default-only';
     const { val: notePVal, overridden: notePOvr } = getEffective(s, 'noteP');
     if (notePOvr) notePTd.classList.add('override-cell');
     const notePArea = document.createElement('textarea');
@@ -7983,6 +8038,7 @@ async function syncRaspisStaff() {
       return {
         userId:   as.userId,
         name:     as.displayName || '',
+        phone:    as.phone       || '',
         login:    as.login       || '',
         type:     as.type        || '',
         contract: as.contract    || '',

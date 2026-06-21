@@ -170,6 +170,10 @@ async function canViewAllPriplatky(user) {
   return getEffectiveBtnPermDefault(groupPerms, userOv, 'priplatky', 'viewAll', false);
 }
 
+async function canUsePriplatkyInternalNote(user) {
+  return hasButtonPerm(user, 'priplatky', 'internalNote', false);
+}
+
 async function hasButtonPerm(user, appKey, btnKey, defaultValue = true) {
   if (!user) return false;
   if (user.role === 'admin') return true;
@@ -381,7 +385,7 @@ app.get('/api/users', requireLogin, requireAdmin, async (req, res) => {
   try {
     const db = getPool();
     const { rows } = await db.query(
-      'SELECT id, name, username, role, created_at, perm_overrides FROM users ORDER BY LOWER(name), LOWER(username), id'
+      'SELECT id, name, username, role, phone, created_at, perm_overrides FROM users ORDER BY LOWER(name), LOWER(username), id'
     );
     res.json(rows);
   } catch (err) {
@@ -391,7 +395,7 @@ app.get('/api/users', requireLogin, requireAdmin, async (req, res) => {
 });
 
 app.post('/api/users', requireLogin, requireAdmin, async (req, res) => {
-  const { name, username, password, role } = req.body;
+  const { name, username, password, role, phone } = req.body;
   if (!name?.trim() || !username?.trim() || !password || !role) {
     return res.json({ ok: false, msg: 'Vyplňte všechna pole.' });
   }
@@ -405,8 +409,8 @@ app.post('/api/users', requireLogin, requireAdmin, async (req, res) => {
       return res.json({ ok: false, msg: 'Neplatná skupina.' });
     }
     const { rows: inserted } = await db.query(
-      'INSERT INTO users (name, username, password_hash, role) VALUES ($1, $2, $3, $4) RETURNING id',
-      [name.trim(), username.trim(), bcrypt.hashSync(password, 10), role]
+      'INSERT INTO users (name, username, password_hash, role, phone) VALUES ($1, $2, $3, $4, $5) RETURNING id',
+      [name.trim(), username.trim(), bcrypt.hashSync(password, 10), role, phone?.trim() || null]
     );
     res.json({ ok: true, id: inserted[0].id });
   } catch (err) {
@@ -418,7 +422,7 @@ app.post('/api/users', requireLogin, requireAdmin, async (req, res) => {
 
 app.patch('/api/users/:id', requireLogin, requireAdmin, async (req, res) => {
   const id = parseInt(req.params.id, 10);
-  const { name, role, password, username } = req.body;
+  const { name, role, password, username, phone } = req.body;
 
   if (id === req.session.user.id && role && role !== 'admin') {
     return res.json({ ok: false, msg: 'Nemůžete si sami odebrat roli admina.' });
@@ -436,6 +440,7 @@ app.patch('/api/users/:id', requireLogin, requireAdmin, async (req, res) => {
     }
     if (name) await db.query('UPDATE users SET name = $1 WHERE id = $2', [name.trim(), id]);
     if (role) await db.query('UPDATE users SET role = $1 WHERE id = $2', [role, id]);
+    if (phone !== undefined) await db.query('UPDATE users SET phone = $1 WHERE id = $2', [phone?.trim() || null, id]);
     if (password) {
       if (password.length < 6) return res.json({ ok: false, msg: 'Heslo musí mít alespoň 6 znaků.' });
       await db.query('UPDATE users SET password_hash = $1 WHERE id = $2',
@@ -602,7 +607,8 @@ app.get('/api/my-permissions', requireLogin, async (req, res) => {
         delete: isAdm,
         export: true,
         settings: isAdm,
-        manageTexts: isAdm
+        manageTexts: isAdm,
+        internalNote: isManager
       } },
       blacklist: { enabled: true, visible: true, buttons: {
         view: true,
@@ -2218,12 +2224,15 @@ app.get('/api/priplatky/zaznamy', requireLogin, async (req, res) => {
      ORDER BY z.datum, z.id`,
     params
   );
+  if (!(await canUsePriplatkyInternalNote(req.session.user))) {
+    rows.forEach(r => { delete r.internal_note; });
+  }
   res.json(rows);
 });
 
 app.post('/api/priplatky/zaznamy', requireLogin, requirePermDefault('priplatky', 'add', true), async (req, res) => {
   const { den, mesic, rok, mesicDatum, rokDatum, sekce, login, hotel, castka,
-          poznamka, partner, klient, koho_skolil } = req.body;
+          poznamka, internal_note, partner, klient, koho_skolil } = req.body;
   const db = getPool();
   if (!(await canTouchPriplatkyLogin(req, login))) {
     return res.status(403).json({ ok: false, msg: 'Můžete přidat jen vlastní záznam.' });
@@ -2233,12 +2242,13 @@ app.post('/api/priplatky/zaznamy', requireLogin, requirePermDefault('priplatky',
   const dR = rokDatum   || rok;
   const datum = `${dR}-${String(dM).padStart(2,'0')}-${String(den).padStart(2,'0')}`;
   try {
+    const savedInternalNote = (await canUsePriplatkyInternalNote(req.session.user)) ? (internal_note || null) : null;
     const r = await db.query(
       `INSERT INTO priplatky_zaznamy
-         (rok,mesic,sekce,login,datum,hotel,castka,poznamka,partner,klient,koho_skolil,vlozil)
-       VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12) RETURNING id`,
+         (rok,mesic,sekce,login,datum,hotel,castka,poznamka,internal_note,partner,klient,koho_skolil,vlozil)
+       VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13) RETURNING id`,
       [rok, mesic, sekce, login, datum, hotel||null, castka||0,
-       poznamka||null, partner||null, klient||null, koho_skolil||null,
+       poznamka||null, savedInternalNote, partner||null, klient||null, koho_skolil||null,
        req.session.user.username]
     );
     await logEvent(req.session.user.id, req.session.user.username,
@@ -2251,7 +2261,7 @@ app.post('/api/priplatky/zaznamy', requireLogin, requirePermDefault('priplatky',
 
 app.patch('/api/priplatky/zaznamy/:id', requireLogin, requirePermDefault('priplatky', 'edit', true), async (req, res) => {
   const { den, mesic, rok, mesicDatum, rokDatum, sekce, login, hotel, castka,
-          poznamka, partner, klient, koho_skolil } = req.body;
+          poznamka, internal_note, partner, klient, koho_skolil } = req.body;
   const db = getPool();
   if (!(await canTouchPriplatkyRecord(req, db, req.params.id)) || !(await canTouchPriplatkyLogin(req, login))) {
     return res.status(403).json({ ok: false, msg: 'Nemáte oprávnění upravit tento záznam.' });
@@ -2262,15 +2272,17 @@ app.patch('/api/priplatky/zaznamy/:id', requireLogin, requirePermDefault('pripla
     ? `${dR}-${String(dM).padStart(2,'0')}-${String(den).padStart(2,'0')}`
     : undefined;
   try {
+    const canInternalNote = await canUsePriplatkyInternalNote(req.session.user);
     await db.query(
       `UPDATE priplatky_zaznamy SET
          rok=$1, mesic=$2, sekce=$3, login=$4,
          datum=COALESCE($5,datum), hotel=$6, castka=$7,
-         poznamka=$8, partner=$9, klient=$10, koho_skolil=$11,
-         upravil=$12, upraveno_kdy=NOW()
-       WHERE id=$13`,
+         poznamka=$8, internal_note=CASE WHEN $9 THEN $10 ELSE internal_note END,
+         partner=$11, klient=$12, koho_skolil=$13,
+         upravil=$14, upraveno_kdy=NOW()
+       WHERE id=$15`,
       [rok, mesic, sekce, login, datum||null, hotel||null, castka||0,
-       poznamka||null, partner||null, klient||null, koho_skolil||null,
+       poznamka||null, canInternalNote, internal_note || null, partner||null, klient||null, koho_skolil||null,
        req.session.user.username, req.params.id]
     );
     res.json({ ok: true });
@@ -3549,7 +3561,7 @@ app.get('/api/raspis-staff', requireLogin, async (req, res) => {
 
     // 1. Uživatelé s raspis_staff.active = true v perm_overrides
     const { rows: users } = await db.query(
-      'SELECT id, name, perm_overrides FROM users WHERE perm_overrides IS NOT NULL'
+      'SELECT id, name, phone, perm_overrides FROM users WHERE perm_overrides IS NOT NULL'
     );
 
     const raspisUsers = [];
@@ -3565,6 +3577,7 @@ app.get('/api/raspis-staff', requireLogin, async (req, res) => {
         raspisUsers.push({
           userId:      u.id,
           displayName: rs.displayName || u.name,
+          phone:       u.phone || '',
           login:       rs.login       || '',
           type:        rs.type        || '',
           contract:    rs.contract    || '',
@@ -3950,7 +3963,7 @@ function rtReqLimit(value, fallback) {
 
 async function loadRtPortalReceptionists(db) {
   const { rows } = await db.query(
-    'SELECT id, name, username, perm_overrides FROM users WHERE perm_overrides IS NOT NULL'
+    'SELECT id, name, username, phone, perm_overrides FROM users WHERE perm_overrides IS NOT NULL'
   );
   const out = [];
   for (const u of rows) {
@@ -3965,6 +3978,7 @@ async function loadRtPortalReceptionists(db) {
     out.push({
       userId: u.id,
       name: rs.displayName || u.name || '',
+      phone: u.phone || '',
       login: rs.login || u.username || '',
       type: rs.type || '',
       contract: rs.contract || '',

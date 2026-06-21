@@ -566,6 +566,10 @@ table.dtbl { width: 100%; border-collapse: collapse; table-layout: fixed; font-s
         </div>
         <textarea name="poznamka" rows="2" placeholder="Volný text…"></textarea>
       </div>
+      <div class="field" id="field-internal-note">
+        <label>Intern&iacute; pozn&aacute;mka</label>
+        <textarea name="internal_note" rows="2" placeholder="Jen pro admin/VR"></textarea>
+      </div>
 
     </form>
     </div><!-- /form-page -->
@@ -648,6 +652,7 @@ function applyPriplatkyPermissions() {
   setPriplatkyVisible('link-export', priplatkyCan('export', true));
   setPriplatkyVisible('btn-add-duvod-brani', priplatkyCan('manageTexts', false));
   setPriplatkyVisible('btn-add-duvod-obecne', priplatkyCan('manageTexts', false));
+  setPriplatkyVisible('field-internal-note', priplatkyCan('internalNote', false));
   if (!showSettings) {
     document.querySelectorAll('.tab-panel').forEach(p => p.classList.remove('active'));
     document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
@@ -976,7 +981,7 @@ function openDetail(login) {
       <td>${dat}</td>
       <td>${esc(z.hotel||'')}</td>
       <td><strong>${z.castka} Kč</strong></td>
-      <td>${esc((z.poznamka||'') + extra)}</td>
+      <td>${esc((z.poznamka||'') + extra)}${priplatkyCan('internalNote', false) && z.internal_note ? `<div class="audit-info"><strong>Intern&iacute;:</strong> ${esc(z.internal_note)}</div>` : ''}</td>
       <td style="white-space:nowrap">
         ${rowActions}
       </td>
@@ -1143,6 +1148,7 @@ document.getElementById('btn-zaznam-save').addEventListener('click', async () =>
     mesic: document.getElementById('sel-mesic-platby').value,
     rok:   document.getElementById('inp-rok-platby').value,
     castka, poznamka,
+    internal_note: priplatkyCan('internalNote', false) ? (d.internal_note || null) : null,
     partner:     d.partner     || null,
     klient:      d.klient      || null,
     koho_skolil: d.koho_skolil || null,
@@ -1229,6 +1235,8 @@ function editZaznam(id) {
   } else {
     form.elements.poznamka.value = z.poznamka || '';
   }
+
+  if (form.elements.internal_note) form.elements.internal_note.value = z.internal_note || '';
 
   if (z.partner)     form.elements.partner.value     = z.partner;
   if (z.klient)      form.elements.klient.value      = z.klient;
