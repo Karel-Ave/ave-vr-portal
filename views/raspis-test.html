@@ -4003,7 +4003,6 @@ body.hide-req-changes .sched-cell[data-req-tip]:hover::after {
   </table>
   <div class="rp-footer">
     <label><input type="checkbox" id="rp-sv"> Svátky</label>
-    <label><input type="checkbox" id="rp-hols"> Víkendy</label>
     <div style="flex:1"></div>
     <button class="btn-rp btn-rp-ok" id="rp-apply">OK</button>
     <button class="btn-rp btn-rp-cancel" id="rp-cancel">✕</button>
@@ -5647,7 +5646,7 @@ function staffTypeAllowsColumn(s, col) {
   return false;
 }
 
-function regularToString(checks, sv, wk) {
+function regularToString(checks, sv) {
   const DOW_NAMES_R = {1:'po',2:'út',3:'st',4:'čt',5:'pá',6:'so',0:'ne'};
   const parts = [];
   // Group d+n for same day
@@ -5659,7 +5658,6 @@ function regularToString(checks, sv, wk) {
     else if (hasn) parts.push(DOW_NAMES_R[dow] + '-n');
   });
   if (sv) parts.push('sv');
-  if (wk) parts.push('vik');
   return parts.join(',');
 }
 
@@ -11361,7 +11359,6 @@ function openRegularPicker(si, labelEl, triggerEl, staffObj = null) {
     chk.checked = parsed.has(`${dow}-${dn}`);
   });
   document.getElementById('rp-sv').checked = parsed.has('sv');
-  document.getElementById('rp-hols').checked = parsed.has('wk');
 
   // Position near trigger
   const rect = triggerEl.getBoundingClientRect();
@@ -11391,8 +11388,7 @@ function applyRegularPicker() {
   const picker = document.getElementById('regular-picker');
   const checks = Array.from(picker.querySelectorAll('input[data-dow]'));
   const sv = document.getElementById('rp-sv').checked;
-  const wk = document.getElementById('rp-hols').checked;
-  const val = regularToString(checks, sv, wk);
+  const val = regularToString(checks, sv);
   setFieldValue(_rpStaff || state.staff[_rpSi], 'regular', val);
   if (_rpLabel) {
     _rpLabel.textContent = val ? '●' : '○';
