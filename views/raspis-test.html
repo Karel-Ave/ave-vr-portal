@@ -697,7 +697,11 @@ table.sched-tbl {
   white-space: nowrap;
 }
 .sched-tbl th, .sched-tbl td {
-  border: 1px solid var(--sched-grid); padding: 0; height: var(--sched-row-h);
+  border: 1px solid var(--sched-grid); padding: 0; height: var(--sched-row-h); box-sizing: border-box;
+}
+.sched-tbl .staff-tbody tr { height: var(--sched-row-h); }
+.sched-tbl .staff-tbody td {
+  height: var(--sched-row-h); min-height: var(--sched-row-h); max-height: var(--sched-row-h);
 }
 /* Name column sticky */
 .sched-tbl .col-name-th {
@@ -818,17 +822,18 @@ table.sched-tbl {
     inset 0 -1px 0 var(--sched-grid-row);
 }
 .sched-tbl td.sched-cell input {
-  width: 100%; height: 100%; border: none; background: transparent;
-  text-align: center; font-size: 10px; font-family: inherit;
+  display: block; width: 100%; height: var(--sched-row-h); min-height: var(--sched-row-h); max-height: var(--sched-row-h);
+  border: none; background: transparent;
+  text-align: center; font-size: 10px; line-height: var(--sched-row-h); font-family: inherit;
   color: inherit; padding: 0; cursor: pointer; font-weight: 400;
-  caret-color: transparent; outline: none;
+  caret-color: transparent; outline: none; box-sizing: border-box;
 }
 .sched-tbl td.sched-cell.focused {
   outline: 2px solid var(--accent); outline-offset: -1px; z-index: 3;
 }
 .sched-tbl td.sched-cell .cell-val {
-  display: block; text-align: center; font-size: 10px; line-height: 22px;
-  user-select: none; font-weight: 400;
+  display: block; height: var(--sched-row-h); text-align: center; font-size: 10px; line-height: var(--sched-row-h);
+  user-select: none; font-weight: 400; box-sizing: border-box;
 }
 :root:not([data-theme="dark"]) .sched-tbl td.sched-cell,
 :root:not([data-theme="dark"]) .sched-tbl td.sched-cell input,
