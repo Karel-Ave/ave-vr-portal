@@ -453,10 +453,14 @@ table.staff-tbl {
 .staff-tbl .col-note textarea:focus { outline: 1px solid var(--accent); border-radius: 3px; resize: vertical; }
 .pr-note-btn, .req-note-btn {
   display: inline-flex; align-items: center; justify-content: center;
-  min-width: 24px; height: 20px; padding: 0 5px; border-radius: 5px;
-  border: 1px solid var(--border); background: var(--surface); color: var(--text);
+  min-width: 22px; height: 18px; padding: 0 4px; border-radius: 5px;
+  border: 1px solid color-mix(in srgb, var(--accent) 35%, var(--border));
+  background: color-mix(in srgb, var(--accent) 10%, var(--surface));
+  color: var(--text);
   font-size: 10px; font-weight: 800; line-height: 1; cursor: pointer;
 }
+.req-note-btn { min-width: 20px; height: 16px; padding: 0 4px; font-size: 9px; }
+.req-note-btn:disabled { opacity: .45; cursor: default; filter: grayscale(.25); }
 .pr-note-btn.pending, .req-note-btn.pending {
   background: #d93025; border-color: #d93025; color: #fff;
 }
@@ -3331,6 +3335,7 @@ body.hide-req-changes .sched-cell[data-req-tip]:hover::after {
       <textarea id="request-note-text"></textarea>
     </div>
     <div class="modal-footer">
+      <button class="tb-btn danger" id="request-note-delete" type="button" style="display:none;margin-right:auto;">Smazat PR</button>
       <button class="tb-btn" id="request-note-cancel" type="button">Zrušit</button>
       <button class="tb-btn primary" id="request-note-save" type="button">Uložit</button>
     </div>
@@ -6197,10 +6202,14 @@ function renderScheduleTable(tableId, editable) {
       noteBtn.type = 'button';
       noteBtn.className = 'req-note-btn' + (noteEntry?.note ? ' pending' : '');
       noteBtn.textContent = 'PR';
-      noteBtn.title = noteEntry?.note ? 'Poznámka k požadavkům' : 'Přidat poznámku k požadavkům';
+      noteBtn.disabled = !rowEditable;
+      noteBtn.title = rowEditable
+        ? (noteEntry?.note ? 'Poznámka k požadavkům' : 'Přidat poznámku k požadavkům')
+        : 'Poznámku lze upravit až po kliknutí na Editovat';
       noteBtn.addEventListener('click', e => {
         e.preventDefault();
         e.stopPropagation();
+        if (!rowEditable) return;
         openRequirementNoteModal(si);
       });
       wrap.appendChild(txt);
@@ -8937,17 +8946,25 @@ function closeRequestNoteModal() {
   document.getElementById('overlay-request-note')?.classList.remove('show');
   requestNoteModalMode = null;
   requestNoteModalContext = null;
+  const del = document.getElementById('request-note-delete');
+  if (del) del.style.display = 'none';
+  const save = document.getElementById('request-note-save');
+  if (save) save.textContent = 'Uložit';
 }
 
 function openRequirementNoteModal(si) {
   const s = state.staff[si];
-  if (!s || !canEditRequirementStaff(s)) return;
+  if (!s || !reqEditMode || !canEditRequirementStaff(s)) return;
   const entry = getRequirementNoteEntry(s, si);
   requestNoteModalMode = 'requirements';
   requestNoteModalContext = { si };
   document.getElementById('request-note-title').textContent = `Poznámka k požadavkům - ${s.name || ''}`;
   document.getElementById('request-note-source-wrap').style.display = 'none';
   document.getElementById('request-note-text-label').textContent = 'Poznámka pro tento měsíc';
+  const del = document.getElementById('request-note-delete');
+  if (del) del.style.display = 'none';
+  const save = document.getElementById('request-note-save');
+  if (save) save.textContent = 'OK';
   const txt = document.getElementById('request-note-text');
   txt.value = entry?.note || '';
   document.getElementById('overlay-request-note')?.classList.add('show');
@@ -8963,6 +8980,10 @@ function openSettingsRequestNoteModal(s) {
   document.getElementById('request-note-source-wrap').style.display = '';
   document.getElementById('request-note-source').value = item.note || '';
   document.getElementById('request-note-text-label').textContent = 'Moje aktuální poznámka';
+  const del = document.getElementById('request-note-delete');
+  if (del) del.style.display = '';
+  const save = document.getElementById('request-note-save');
+  if (save) save.textContent = 'Uložit';
   const current = getEffective(s, 'noteM').val || '';
   const txt = document.getElementById('request-note-text');
   txt.value = current;
@@ -8978,7 +8999,6 @@ async function saveRequestNoteModal() {
     if (!s) return closeRequestNoteModal();
     setRequirementNoteEntry(s, si, text);
     renderScheduleTable('pozadavky-tbl', reqEditMode);
-    scheduleRequirementsAutoSave();
     closeRequestNoteModal();
     return;
   }
@@ -9016,6 +9036,30 @@ async function saveRequestNoteModal() {
       console.warn('saveRequestNoteModal:', e);
       toast('PR poznámku se nepodařilo uložit', true);
     }
+  }
+}
+
+async function deleteRequestNoteModal() {
+  if (requestNoteModalMode !== 'settings') return;
+  const s = requestNoteModalContext?.staff;
+  const noteId = requestNoteModalContext?.noteId;
+  if (!s || !noteId) return closeRequestNoteModal();
+  if (!confirm('Trvale smazat tuto PR poznámku?')) return;
+  try {
+    const r = await fetch(`/api/rt/request-notes/${encodeURIComponent(noteId)}`, {
+      method: 'DELETE',
+      credentials: 'include'
+    });
+    const d = await r.json().catch(() => ({}));
+    if (!r.ok || !d.ok) throw new Error(d.msg || r.status);
+    const login = getRequestNoteKey(s).toUpperCase();
+    if (login) settingsRequestNotesByLogin.delete(login);
+    renderStaffTable();
+    closeRequestNoteModal();
+    toast('PR poznámka smazána');
+  } catch (e) {
+    console.warn('deleteRequestNoteModal:', e);
+    toast('PR poznámku se nepodařilo smazat', true);
   }
 }
 
@@ -14020,6 +14064,7 @@ document.addEventListener('DOMContentLoaded', async () => {
   document.getElementById('request-note-close')?.addEventListener('click', closeRequestNoteModal);
   document.getElementById('request-note-cancel')?.addEventListener('click', closeRequestNoteModal);
   document.getElementById('request-note-save')?.addEventListener('click', saveRequestNoteModal);
+  document.getElementById('request-note-delete')?.addEventListener('click', deleteRequestNoteModal);
   document.getElementById('request-note-copy')?.addEventListener('click', () => {
     const src = document.getElementById('request-note-source');
     const dst = document.getElementById('request-note-text');

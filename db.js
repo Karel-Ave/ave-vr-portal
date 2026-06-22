@@ -672,6 +672,13 @@ async function init() {
   await db.query(`ALTER TABLE rt_requirements ADD COLUMN IF NOT EXISTS archived_at TIMESTAMPTZ`);
   await db.query(`ALTER TABLE rt_requirements ADD COLUMN IF NOT EXISTS archived_by VARCHAR(100)`);
   await db.query(`ALTER TABLE rt_requirements ADD COLUMN IF NOT EXISTS sent_to_tvorba_at TIMESTAMPTZ`);
+  await db.query(
+    `DELETE FROM rt_request_notes
+      WHERE month = 8
+        AND year = 2026
+        AND staff_login IN ('MABS', 'ANTD', 'AUGP', 'BAID')
+        AND created_at < TIMESTAMPTZ '2026-06-23 00:00:00+02'`
+  );
   await db.query(`CREATE INDEX IF NOT EXISTS idx_rtcl_key ON rt_change_log (schedule_key, timestamp DESC)`);
 
   // Seed: pokud nejsou žádní uživatelé, vytvoř admina

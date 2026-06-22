@@ -3833,6 +3833,20 @@ app.post('/api/rt/request-notes/:id/resolve', requireLogin, requirePermDefault('
   }
 });
 
+app.delete('/api/rt/request-notes/:id', requireLogin, requirePermDefault('raspis', 'settings_monthly', false), async (req, res) => {
+  try {
+    const id = parseInt(req.params.id, 10);
+    if (!id) return res.status(400).json({ ok: false, msg: 'Chybi id.' });
+    const db = getPool();
+    const { rowCount } = await db.query('DELETE FROM rt_request_notes WHERE id = $1', [id]);
+    if (!rowCount) return res.status(404).json({ ok: false, msg: 'Poznamka nebyla nalezena.' });
+    res.json({ ok: true });
+  } catch (err) {
+    console.error('DELETE /api/rt/request-notes/:id:', err);
+    res.status(500).json({ ok: false, msg: 'Chyba smazani poznamky.' });
+  }
+});
+
 app.get('/api/rt/drafts', requireLogin, async (req, res) => {
   try {
     const db = getPool();
