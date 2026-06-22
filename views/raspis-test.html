@@ -13181,14 +13181,6 @@ function mobileTabFallback() {
   }) || 'denni';
 }
 
-function setActiveTabPanel(name) {
-  document.querySelectorAll('.tab-panel').forEach(p => {
-    const active = p.id === `tab-${name}`;
-    p.classList.toggle('active', active);
-    p.hidden = !active;
-  });
-}
-
 function switchTab(name) {
   closeMobileKeypad();
   if (name === 'tvorba' && isMobileLike()) name = mobileTabFallback();
@@ -13202,8 +13194,11 @@ function switchTab(name) {
   document.body.dataset.activeTab = name;
   updateReqDiffToggle();
   document.querySelectorAll('.tb-tab').forEach(b => b.classList.toggle('active', b.dataset.tab === name));
+  document.querySelectorAll('.tab-panel').forEach(p => p.classList.remove('active'));
   document.querySelectorAll('.tb-actions').forEach(a => a.classList.add('hidden'));
-  setActiveTabPanel(name);
+
+  const panel = document.getElementById(`tab-${name}`);
+  if (panel) panel.classList.add('active');
 
   const act = document.getElementById(`tb-act-${name}`);
   if (act) act.classList.remove('hidden');
@@ -13235,10 +13230,10 @@ function switchTab(name) {
     if (activeScheduleSource !== 'draft') {
       loadPreferredTvorbaDraftIfNeeded({ force: true }).then(loaded => {
         if (!loaded && !restoreTvorbaDraftSnapshot()) restoreTvorbaDraftAfterRequirements();
-      }).catch(e => console.warn('loadPreferredTvorbaDraftIfNeeded:', e));
+      });
       return;
     }
-    if (!window._initRendering) loadPreferredTvorbaDraftIfNeeded().catch(e => console.warn('loadPreferredTvorbaDraftIfNeeded:', e));
+    if (!window._initRendering) loadPreferredTvorbaDraftIfNeeded();
     const tbl = document.getElementById('tvorba-tbl');
     const spinner = document.getElementById('tvorba-spinner');
     // Skip the lazy render during DOMContentLoaded init — loadDraft() renders authoritatively
