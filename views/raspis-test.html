@@ -6133,7 +6133,7 @@ function renderScheduleTable(tableId, editable) {
     nameTd.dataset.si = si;
     nameTd.textContent = s.name || `(pracovník ${si+1})`;
     const currentNote = String(getEffectiveForSchedule(s, 'noteM') || '').trim();
-    if (currentNote && (tableId === 'tvorba-tbl' || tableId === 'rozpis-tbl')) nameTd.classList.add('has-current-note');
+    if (currentNote && tableId === 'tvorba-tbl') nameTd.classList.add('has-current-note');
     const tc = getScheduleTypeColor(s.type, tableId);
     if (tc) { nameTd.style.background = tc; nameTd.style.color = '#222'; }
     if (s.unmatchedXls) {
