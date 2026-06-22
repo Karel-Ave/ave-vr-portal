@@ -800,6 +800,116 @@ async function init() {
     }
   }
 
+  // One-time safe phone import from Seznam_recepcnich_2026_01.xls.
+  // Fills only empty phones, so manually saved numbers are not overwritten.
+  {
+    const phones202601 = [
+      ['MABS', '+420 702 177 565'],
+      ['ANTD', '+420 776 437 597'],
+      ['AUGP', '+420 608 755 477'],
+      ['BAID', '+420 702 171 495'],
+      ['MINA', '+420 603 590 502'],
+      ['LIZA', '+420 773 626 462'],
+      ['BST', '+420 608 613 337'],
+      ['BERN', '+420 777 197 466'],
+      ['BICI', '+420 736 630 821'],
+      ['RADEK', '+420 604 796 979'],
+      ['BOGD', '+420 608 856 602'],
+      ['BRIS', '+421 915 467 701'],
+      ['BRO', '+420 776 003 509'],
+      ['BURD', '+420 737 013 494'],
+      ['GLEB', '+420 777 450 219'],
+      ['CIPL', '+420 608 651 750'],
+      ['CAD', '+420 777 805 586'],
+      ['CEH', '+420 602 383 822'],
+      ['CERN', '+420 776 057 807'],
+      ['DOGM', '+420 777 597 797'],
+      ['DUBI', '+420 606 547 535'],
+      ['FAL', '+420 728 324 576'],
+      ['FORT', '+420 728 312 306'],
+      ['HOP', '+420 606 688 960'],
+      ['HUDK', '+420 776 787 693'],
+      ['GIUS', '+420 604 562 857'],
+      ['SASHA', '+420 777 529 216'],
+      ['JANAJ', '+420 777 319 251'],
+      ['KLIM', '+420 608 294 675'],
+      ['KOCH', '+420 778 013 157'],
+      ['KONO', '+420 775 078 398'],
+      ['KRJ', '+420 732 760 214'],
+      ['KOAL', '+420 603 718 707'],
+      ['KUK', '+420 773 236 413'],
+      ['KUUL', '+420 777 229 322'],
+      ['LESL', '+420 774 628 743'],
+      ['LINH', '+420 776 158 996'],
+      ['LITV', '+420 774 188 736'],
+      ['MAKH', '+420 778 564 015'],
+      ['MOTE', '+420 607 111 248'],
+      ['JAROSLAV', '+420 776 878 023'],
+      ['NERM', '+420 728 148 800'],
+      ['NGUY', '+420 773 617 085'],
+      ['ROMANA', '+420 777 037 436'],
+      ['PAVE', '+420 603 869 306'],
+      ['PESS', '+420 728 125 269'],
+      ['POLA', '+420 739 414 600'],
+      ['PROA', '+420 792 828 058'],
+      ['SKR', '+420 731 884 116'],
+      ['SMOK', '+420 722 942 906'],
+      ['SMJ', '+420 737 127 306'],
+      ['SEZ', '+420 775 383 402'],
+      ['OLES', '+420 722 283 315'],
+      ['STEN', '+420 728 032 316'],
+      ['IVAS', '+420 775 358 208'],
+      ['SMEI', '+420 604 650 550'],
+      ['STEO', '+420 739 157 704'],
+      ['JUN', '+420 775 140 218'],
+      ['TATA', '+420 608 773 653'],
+      ['THA', '+420 602 806 804'],
+      ['TSAR', '+420 608 455 737'],
+      ['VALE', '+420 770 690 696'],
+      ['ALEKS', '+420 606 729 336'],
+      ['VORO', '+420 608 297 509'],
+      ['VRAM', '+420 731 838 327'],
+    ];
+    let phoneUpdates = 0;
+    for (const [login, phone] of phones202601) {
+      const { rowCount } = await db.query(
+        `UPDATE users
+            SET phone = $2
+          WHERE UPPER(username) = $1
+            AND (phone IS NULL OR BTRIM(phone) = '')`,
+        [login, phone]
+      );
+      phoneUpdates += rowCount;
+    }
+    if (phoneUpdates > 0) console.log(`Migrace telefonu recepcnich: doplneno ${phoneUpdates} cisel.`);
+
+    const knownPhoneLogins = new Set(phones202601.map(([login]) => login));
+    const { rows: phoneUsers } = await db.query(
+      `SELECT name, username, perm_overrides
+         FROM users
+        WHERE role = 'recepční'
+           OR perm_overrides::text LIKE '%"raspis_staff"%'
+        ORDER BY name`
+    );
+    const missingPhoneUsers = [];
+    for (const user of phoneUsers) {
+      let staffLogin = user.username;
+      let staffName = user.name;
+      if (user.perm_overrides) {
+        try {
+          const ov = JSON.parse(user.perm_overrides);
+          staffLogin = ov?.raspis_staff?.login || staffLogin;
+          staffName = ov?.raspis_staff?.displayName || staffName;
+        } catch (_) {}
+      }
+      const login = String(staffLogin || '').trim().toUpperCase();
+      if (login && !knownPhoneLogins.has(login)) missingPhoneUsers.push(`${staffName} (${login})`);
+    }
+    if (missingPhoneUsers.length > 0) {
+      console.log(`Recepcni bez telefonu v importu: ${missingPhoneUsers.join(', ')}`);
+    }
+  }
+
   console.log('Databáze připravena.');
 }
 
