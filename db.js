@@ -647,6 +647,26 @@ async function init() {
       details   TEXT
     )
   `);
+  await db.query(`
+    CREATE TABLE IF NOT EXISTS rt_request_notes (
+      id            BIGSERIAL PRIMARY KEY,
+      month         INTEGER NOT NULL,
+      year          INTEGER NOT NULL,
+      staff_user_id INTEGER REFERENCES users(id) ON DELETE SET NULL,
+      staff_login   VARCHAR(100) NOT NULL,
+      staff_name    VARCHAR(100) NOT NULL,
+      note          TEXT NOT NULL DEFAULT '',
+      status        VARCHAR(20) NOT NULL DEFAULT 'pending',
+      created_by    INTEGER REFERENCES users(id) ON DELETE SET NULL,
+      created_name  VARCHAR(100),
+      created_at    TIMESTAMPTZ DEFAULT NOW(),
+      updated_at    TIMESTAMPTZ DEFAULT NOW(),
+      resolved_by   INTEGER REFERENCES users(id) ON DELETE SET NULL,
+      resolved_name VARCHAR(100),
+      resolved_at   TIMESTAMPTZ,
+      UNIQUE(month, year, staff_login)
+    )
+  `);
   await db.query(`ALTER TABLE rt_requirements ADD COLUMN IF NOT EXISTS allow_duplicates BOOLEAN NOT NULL DEFAULT TRUE`);
   await db.query(`ALTER TABLE rt_requirements ADD COLUMN IF NOT EXISTS xy_locks TEXT NOT NULL DEFAULT '{}'`);
   await db.query(`ALTER TABLE rt_requirements ADD COLUMN IF NOT EXISTS archived_at TIMESTAMPTZ`);

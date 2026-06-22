@@ -440,6 +440,7 @@ table.staff-tbl {
 .staff-tbl .col-maxhrs { width: 70px; }
 .staff-tbl .col-regular { width: 36px; min-width: 36px; max-width: 36px; text-align: center; }
 .staff-tbl .col-dates { width: 36px; min-width: 36px; max-width: 36px; text-align: center; }
+.staff-tbl .col-pr { width: 38px; min-width: 38px; max-width: 38px; text-align: center; }
 #staff-tbl:not(.settings-monthly-mode) .col-monthly-only { display: none; }
 #staff-tbl.settings-monthly-mode .col-default-only { display: none; }
 #staff-tbl.settings-monthly-mode .col-maxhrs { display: none; }
@@ -450,6 +451,32 @@ table.staff-tbl {
   resize: none; overflow: hidden; line-height: 1.4; display: block;
 }
 .staff-tbl .col-note textarea:focus { outline: 1px solid var(--accent); border-radius: 3px; resize: vertical; }
+.pr-note-btn, .req-note-btn {
+  display: inline-flex; align-items: center; justify-content: center;
+  min-width: 24px; height: 20px; padding: 0 5px; border-radius: 5px;
+  border: 1px solid var(--border); background: var(--surface); color: var(--text);
+  font-size: 10px; font-weight: 800; line-height: 1; cursor: pointer;
+}
+.pr-note-btn.pending, .req-note-btn.pending {
+  background: #d93025; border-color: #d93025; color: #fff;
+}
+.pr-note-btn.resolved {
+  background: color-mix(in srgb, var(--accent) 28%, var(--surface));
+  border-color: color-mix(in srgb, var(--accent) 55%, var(--border));
+  color: var(--text);
+}
+.req-name-wrap { display:inline-flex; align-items:center; gap:6px; min-width:0; max-width:100%; }
+.req-name-wrap .req-name-text { overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+.request-note-modal textarea {
+  width: 100%; min-height: 92px; resize: vertical; border: 1px solid var(--border);
+  border-radius: 8px; background: var(--surface); color: var(--text);
+  font-family: inherit; font-size: 13px; line-height: 1.4; padding: 8px 10px;
+}
+.request-note-modal label {
+  display:block; margin: 0 0 6px; font-size: 11px; font-weight: 800;
+  text-transform: uppercase; letter-spacing: .04em; color: var(--text-muted);
+}
+.request-note-modal .note-copy-row { display:flex; justify-content:center; margin: 10px 0; }
 .staff-tbl .monthly-only-disabled {
   display: inline-flex;
   align-items: center;
@@ -3113,6 +3140,7 @@ body.hide-req-changes .sched-cell[data-req-tip]:hover::after {
             <th class="col-regular col-default-only" title="Stálé volno">x</th>
             <th class="col-dates col-monthly-only" title="Nemůže aktuálně">xA</th>
             <th class="col-note col-monthly-only">Pozn. aktuální</th>
+            <th class="col-pr col-monthly-only" title="Poznámka od recepčního">PR</th>
             <th class="col-note col-default-only">Pozn. trvalá</th>
             <th class="col-save">Tvorba</th>
           </tr>
@@ -3281,6 +3309,30 @@ body.hide-req-changes .sched-cell[data-req-tip]:hover::after {
     </div>
     <div class="modal-footer">
       <button class="tb-btn" id="req-archive-close2">Zavřít</button>
+    </div>
+  </div>
+</div>
+
+<div class="overlay" id="overlay-request-note">
+  <div class="modal request-note-modal" style="width:min(560px,100%)">
+    <div class="modal-header">
+      <h3 id="request-note-title">Poznámka</h3>
+      <button class="modal-close" id="request-note-close" type="button">×</button>
+    </div>
+    <div class="modal-body">
+      <div id="request-note-source-wrap">
+        <label for="request-note-source">Poznámka od recepčního</label>
+        <textarea id="request-note-source" readonly></textarea>
+        <div class="note-copy-row">
+          <button class="tb-btn" id="request-note-copy" type="button">Zkopírovat níže</button>
+        </div>
+      </div>
+      <label for="request-note-text" id="request-note-text-label">Poznámka</label>
+      <textarea id="request-note-text"></textarea>
+    </div>
+    <div class="modal-footer">
+      <button class="tb-btn" id="request-note-cancel" type="button">Zrušit</button>
+      <button class="tb-btn primary" id="request-note-save" type="button">Uložit</button>
     </div>
   </div>
 </div>
@@ -4408,6 +4460,7 @@ const state = {
   requirements: {},    // snapshot of schedule used for req highlighting
   reqXyLocks: {},
   reqMeta: {},
+  reqNotes: {},
   month: new Date().getMonth() + 1,
   year:  new Date().getFullYear(),
   fondHpp: '',
@@ -6132,6 +6185,28 @@ function renderScheduleTable(tableId, editable) {
     nameTd.className = 'col-name-td';
     nameTd.dataset.si = si;
     nameTd.textContent = s.name || `(pracovník ${si+1})`;
+    if (isRequirementsView && canEditRequirementStaff(s)) {
+      nameTd.textContent = '';
+      const wrap = document.createElement('span');
+      wrap.className = 'req-name-wrap';
+      const txt = document.createElement('span');
+      txt.className = 'req-name-text';
+      txt.textContent = s.name || `(pracovník ${si+1})`;
+      const noteEntry = getRequirementNoteEntry(s, si);
+      const noteBtn = document.createElement('button');
+      noteBtn.type = 'button';
+      noteBtn.className = 'req-note-btn' + (noteEntry?.note ? ' pending' : '');
+      noteBtn.textContent = 'PR';
+      noteBtn.title = noteEntry?.note ? 'Poznámka k požadavkům' : 'Přidat poznámku k požadavkům';
+      noteBtn.addEventListener('click', e => {
+        e.preventDefault();
+        e.stopPropagation();
+        openRequirementNoteModal(si);
+      });
+      wrap.appendChild(txt);
+      wrap.appendChild(noteBtn);
+      nameTd.appendChild(wrap);
+    }
     const currentNote = String(getEffectiveForSchedule(s, 'noteM') || '').trim();
     if (currentNote && tableId === 'tvorba-tbl') nameTd.classList.add('has-current-note');
     const tc = getScheduleTypeColor(s.type, tableId);
@@ -7295,6 +7370,26 @@ function renderStaffTable() {
       });
       noteMTd.appendChild(noteMArea);
       tr.appendChild(noteMTd);
+
+      const prTd = document.createElement('td');
+      prTd.className = 'col-pr col-monthly-only';
+      const prNote = getSettingsRequestNoteForStaff(s);
+      if (prNote) {
+        const prBtn = document.createElement('button');
+        prBtn.type = 'button';
+        prBtn.className = 'pr-note-btn ' + (prNote.status === 'resolved' ? 'resolved' : 'pending');
+        prBtn.textContent = 'PR';
+        prBtn.title = prNote.status === 'resolved'
+          ? 'Poznámka od recepčního - vyřízeno'
+          : 'Poznámka od recepčního - čeká';
+        prBtn.addEventListener('click', e => {
+          e.preventDefault();
+          e.stopPropagation();
+          openSettingsRequestNoteModal(s);
+        });
+        prTd.appendChild(prBtn);
+      }
+      tr.appendChild(prTd);
     }
 
     // Note permanent (noteP)
@@ -7464,7 +7559,8 @@ function buildSaveData() {
     fondZpp:  state.fondZpp,
     holidays: state.holidays,
     reqXyLocks: JSON.parse(JSON.stringify(state.reqXyLocks || {})),
-    reqMeta: JSON.parse(JSON.stringify(state.reqMeta || {}))
+    reqMeta: JSON.parse(JSON.stringify(state.reqMeta || {})),
+    reqNotes: JSON.parse(JSON.stringify(state.reqNotes || {}))
   };
   return {
     month: state.month,
@@ -7498,6 +7594,7 @@ function buildSaveData() {
     requirements: JSON.parse(JSON.stringify(state.requirements || {})),
     reqXyLocks: JSON.parse(JSON.stringify(state.reqXyLocks || {})),
     reqMeta: JSON.parse(JSON.stringify(state.reqMeta || {})),
+    reqNotes: JSON.parse(JSON.stringify(state.reqNotes || {})),
     fondHpp: state.fondHpp,
     fondZpp: state.fondZpp,
     holidays: state.holidays,
@@ -7585,6 +7682,7 @@ function applyData(data) {
       requirements: data.requirements || {},
       reqXyLocks:   data.reqXyLocks   || {},
       reqMeta:      data.reqMeta      || {},
+      reqNotes:     data.reqNotes     || {},
       fondHpp:  data.fondHpp  || '',
       fondZpp:  data.fondZpp  || '',
       holidays: data.holidays || ''
@@ -7599,6 +7697,7 @@ function applyData(data) {
     state.requirements = md.requirements || {};
     state.reqXyLocks   = md.reqXyLocks   || data.reqXyLocks || {};
     state.reqMeta      = md.reqMeta      || data.reqMeta || {};
+    state.reqNotes     = md.reqNotes     || data.reqNotes || {};
     state.fondHpp  = md.fondHpp  || '';
     state.fondZpp  = md.fondZpp  || '';
     state.holidays = md.holidays || '';
@@ -7609,6 +7708,7 @@ function applyData(data) {
     state.requirements = data.requirements || {};
     state.reqXyLocks   = data.reqXyLocks   || {};
     state.reqMeta      = data.reqMeta      || {};
+    state.reqNotes     = data.reqNotes     || {};
     state.fondHpp  = data.fondHpp  || '';
     state.fondZpp  = data.fondZpp  || '';
     state.holidays = data.holidays || '';
@@ -8754,6 +8854,169 @@ function canEditRequirementStaff(s) {
   if (!currentReqEntry) return false;
   if (canManageRequirements()) return true;
   return currentReqEntry.status === 'open' && isCurrentUserStaff(s);
+}
+
+function getRequestNoteKey(s, si = null) {
+  const login = String(s?.login || s?.username || '').trim().toUpperCase();
+  if (login) return login;
+  if (s?.userId) return `U${s.userId}`;
+  const name = normalizeStaffName(s?.name || '');
+  return name || (si !== null ? `ROW${si}` : '');
+}
+
+function getRequirementNoteEntry(s, si) {
+  const key = getRequestNoteKey(s, si);
+  if (!key) return null;
+  const entry = state.reqNotes?.[key];
+  if (!entry) return null;
+  return typeof entry === 'object' ? entry : { note: String(entry || '') };
+}
+
+function setRequirementNoteEntry(s, si, note) {
+  const key = getRequestNoteKey(s, si);
+  if (!key) return;
+  state.reqNotes = state.reqNotes && typeof state.reqNotes === 'object' ? state.reqNotes : {};
+  const text = String(note || '').trim();
+  if (!text) {
+    state.reqNotes[key] = {
+      note: '',
+      staffIndex: si,
+      staffUserId: s?.userId || null,
+      staffLogin: String(s?.login || key).trim().toUpperCase(),
+      staffName: s?.name || ''
+    };
+    return;
+  }
+  state.reqNotes[key] = {
+    note: text,
+    staffIndex: si,
+    staffUserId: s?.userId || null,
+    staffLogin: String(s?.login || key).trim().toUpperCase(),
+    staffName: s?.name || ''
+  };
+}
+
+let requestNoteModalMode = null;
+let requestNoteModalContext = null;
+let settingsRequestNotesByLogin = new Map();
+let settingsRequestNotesMonthKey = '';
+
+async function loadSettingsRequestNotes() {
+  if (nastaveniMode !== 'monthly') return;
+  const month = overrideModeMonth;
+  const year = overrideModeYear;
+  const key = `${year}-${month}`;
+  try {
+    const r = await fetch(`/api/rt/request-notes?month=${month}&year=${year}`, { credentials: 'include' });
+    const d = await r.json().catch(() => ({}));
+    if (!r.ok || !d.ok) throw new Error(d.msg || r.status);
+    if (key !== `${overrideModeYear}-${overrideModeMonth}`) return;
+    settingsRequestNotesMonthKey = key;
+    settingsRequestNotesByLogin = new Map();
+    (Array.isArray(d.notes) ? d.notes : []).forEach(note => {
+      const login = String(note.staff_login || '').trim().toUpperCase();
+      if (login) settingsRequestNotesByLogin.set(login, note);
+    });
+    renderStaffTable();
+  } catch (e) {
+    settingsRequestNotesMonthKey = key;
+    settingsRequestNotesByLogin = new Map();
+    console.warn('loadSettingsRequestNotes:', e);
+  }
+}
+
+function getSettingsRequestNoteForStaff(s) {
+  if (nastaveniMode !== 'monthly') return null;
+  const key = `${overrideModeYear}-${overrideModeMonth}`;
+  if (settingsRequestNotesMonthKey !== key) return null;
+  const login = getRequestNoteKey(s).toUpperCase();
+  return login ? settingsRequestNotesByLogin.get(login) || null : null;
+}
+
+function closeRequestNoteModal() {
+  document.getElementById('overlay-request-note')?.classList.remove('show');
+  requestNoteModalMode = null;
+  requestNoteModalContext = null;
+}
+
+function openRequirementNoteModal(si) {
+  const s = state.staff[si];
+  if (!s || !canEditRequirementStaff(s)) return;
+  const entry = getRequirementNoteEntry(s, si);
+  requestNoteModalMode = 'requirements';
+  requestNoteModalContext = { si };
+  document.getElementById('request-note-title').textContent = `Poznámka k požadavkům - ${s.name || ''}`;
+  document.getElementById('request-note-source-wrap').style.display = 'none';
+  document.getElementById('request-note-text-label').textContent = 'Poznámka pro tento měsíc';
+  const txt = document.getElementById('request-note-text');
+  txt.value = entry?.note || '';
+  document.getElementById('overlay-request-note')?.classList.add('show');
+  setTimeout(() => txt.focus(), 50);
+}
+
+function openSettingsRequestNoteModal(s) {
+  const item = getSettingsRequestNoteForStaff(s);
+  if (!item) return;
+  requestNoteModalMode = 'settings';
+  requestNoteModalContext = { userId: s.userId, staff: s, noteId: item.id };
+  document.getElementById('request-note-title').textContent = `PR - ${s.name || item.staff_name || ''}`;
+  document.getElementById('request-note-source-wrap').style.display = '';
+  document.getElementById('request-note-source').value = item.note || '';
+  document.getElementById('request-note-text-label').textContent = 'Moje aktuální poznámka';
+  const current = getEffective(s, 'noteM').val || '';
+  const txt = document.getElementById('request-note-text');
+  txt.value = current;
+  document.getElementById('overlay-request-note')?.classList.add('show');
+  setTimeout(() => txt.focus(), 50);
+}
+
+async function saveRequestNoteModal() {
+  const text = document.getElementById('request-note-text')?.value || '';
+  if (requestNoteModalMode === 'requirements') {
+    const si = requestNoteModalContext?.si;
+    const s = state.staff[si];
+    if (!s) return closeRequestNoteModal();
+    setRequirementNoteEntry(s, si, text);
+    renderScheduleTable('pozadavky-tbl', reqEditMode);
+    scheduleRequirementsAutoSave();
+    closeRequestNoteModal();
+    return;
+  }
+  if (requestNoteModalMode === 'settings') {
+    const s = requestNoteModalContext?.staff;
+    const noteId = requestNoteModalContext?.noteId;
+    if (!s || !noteId) return closeRequestNoteModal();
+    try {
+      const r = await fetch(`/api/rt/request-notes/${encodeURIComponent(noteId)}/resolve`, {
+        method: 'POST',
+        credentials: 'include',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ noteM: text })
+      });
+      const d = await r.json().catch(() => ({}));
+      if (!r.ok || !d.ok) throw new Error(d.msg || r.status);
+      if (String(text || '').trim()) {
+        if (!s.monthlyOverrides) s.monthlyOverrides = {};
+        const key = getMonthKey();
+        if (!s.monthlyOverrides[key]) s.monthlyOverrides[key] = {};
+        s.monthlyOverrides[key].noteM = String(text || '').trim();
+        syncSettingsWorker(s);
+      }
+      const login = getRequestNoteKey(s).toUpperCase();
+      const item = login ? settingsRequestNotesByLogin.get(login) : null;
+      if (item) {
+        item.status = 'resolved';
+        item.resolved_name = '';
+        item.resolved_at = new Date().toISOString();
+      }
+      renderStaffTable();
+      closeRequestNoteModal();
+      toast('PR poznámka uložena');
+    } catch (e) {
+      console.warn('saveRequestNoteModal:', e);
+      toast('PR poznámku se nepodařilo uložit', true);
+    }
+  }
 }
 
 function canEditCellInTable(si, tableId) {
@@ -12291,6 +12554,7 @@ async function ensureOverrideMonthFromLatestDraft() {
     if (nastaveniMode === 'monthly') {
       syncOverrideMonthToCurrentDraft();
       renderStaffTable();
+      loadSettingsRequestNotes();
     }
   } catch (e) {
     console.warn('ensureOverrideMonthFromLatestDraft:', e);
@@ -12313,6 +12577,7 @@ function setNastaveniMode(mode) {
     // Výchozí: nastavit na aktuální měsíc rozpisu
     syncOverrideMonthToCurrentDraft();
     ensureOverrideMonthFromLatestDraft();
+    loadSettingsRequestNotes();
   }
   document.getElementById('mode-default-btn').classList.toggle('active', mode === 'default');
   document.getElementById('mode-monthly-btn').classList.toggle('active', mode === 'monthly');
@@ -12332,6 +12597,7 @@ function setOverrideMonth() {
   overrideModeYear  = parseInt(ySel.value, 10) || state.year;
   updateOverrideInfoLabel();
   renderStaffTable();
+  loadSettingsRequestNotes();
 }
 
 function updateModeMonthLabel() {
@@ -13750,6 +14016,20 @@ document.addEventListener('DOMContentLoaded', async () => {
   document.getElementById('req-archive-close2')?.addEventListener('click', closeRequirementsArchive);
   document.getElementById('overlay-req-archive')?.addEventListener('click', e => {
     // Zavírání klikem na pozadí je vypnuté; použijte explicitní tlačítka.
+  });
+  document.getElementById('request-note-close')?.addEventListener('click', closeRequestNoteModal);
+  document.getElementById('request-note-cancel')?.addEventListener('click', closeRequestNoteModal);
+  document.getElementById('request-note-save')?.addEventListener('click', saveRequestNoteModal);
+  document.getElementById('request-note-copy')?.addEventListener('click', () => {
+    const src = document.getElementById('request-note-source');
+    const dst = document.getElementById('request-note-text');
+    if (src && dst) {
+      dst.value = src.value || '';
+      dst.focus();
+    }
+  });
+  document.getElementById('overlay-request-note')?.addEventListener('click', e => {
+    // Closing by backdrop is disabled; use explicit buttons.
   });
   document.getElementById('btn-delete-schedule').addEventListener('click', deleteSchedule);
   document.getElementById('btn-schedule-archive').addEventListener('click', showScheduleArchive);

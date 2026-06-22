@@ -3758,6 +3758,81 @@ app.post('/api/rt/staff-settings', requireLogin, requirePermDefault('raspis', 'e
   }
 });
 
+app.get('/api/rt/request-notes', requireLogin, requirePermDefault('raspis', 'settings_monthly', false), async (req, res) => {
+  try {
+    const month = parseInt(req.query.month, 10);
+    const year = parseInt(req.query.year, 10);
+    if (!month || !year) return res.status(400).json({ ok: false, msg: 'Chybi mesic/rok.' });
+    const db = getPool();
+    const { rows } = await db.query(
+      `SELECT id, month, year, staff_user_id, staff_login, staff_name, note, status,
+              created_name, created_at, resolved_name, resolved_at
+         FROM rt_request_notes
+        WHERE month = $1 AND year = $2
+        ORDER BY LOWER(staff_name), id`,
+      [month, year]
+    );
+    res.json({ ok: true, notes: rows });
+  } catch (err) {
+    console.error('GET /api/rt/request-notes:', err);
+    res.status(500).json({ ok: false, msg: 'Chyba nacteni poznamek.' });
+  }
+});
+
+app.post('/api/rt/request-notes/:id/resolve', requireLogin, requirePermDefault('raspis', 'settings_monthly', false), async (req, res) => {
+  const id = parseInt(req.params.id, 10);
+  const noteM = String(req.body?.noteM || '').trim();
+  const db = getPool();
+  const client = await db.connect();
+  try {
+    await client.query('BEGIN');
+    const { rows } = await client.query('SELECT * FROM rt_request_notes WHERE id = $1 FOR UPDATE', [id]);
+    if (!rows.length) {
+      await client.query('ROLLBACK');
+      return res.status(404).json({ ok: false, msg: 'Poznamka nebyla nalezena.' });
+    }
+    const item = rows[0];
+    if (noteM && item.staff_user_id) {
+      const settingsRows = await client.query('SELECT data FROM rt_staff_settings WHERE user_id = $1 FOR UPDATE', [item.staff_user_id]);
+      const current = settingsRows.rows.length
+        ? (typeof settingsRows.rows[0].data === 'string' ? JSON.parse(settingsRows.rows[0].data || '{}') : (settingsRows.rows[0].data || {}))
+        : {};
+      current.monthlyOverrides = current.monthlyOverrides && typeof current.monthlyOverrides === 'object' ? current.monthlyOverrides : {};
+      const key = `${item.year}-${item.month}`;
+      current.monthlyOverrides[key] = current.monthlyOverrides[key] && typeof current.monthlyOverrides[key] === 'object'
+        ? current.monthlyOverrides[key]
+        : {};
+      current.monthlyOverrides[key].noteM = noteM;
+      const normalized = normalizeRtStaffSettings(current);
+      await client.query(
+        `INSERT INTO rt_staff_settings (user_id, data, updated_at, updated_by)
+         VALUES ($1, $2, NOW(), $3)
+         ON CONFLICT (user_id) DO UPDATE
+         SET data = EXCLUDED.data, updated_at = NOW(), updated_by = EXCLUDED.updated_by`,
+        [item.staff_user_id, JSON.stringify(normalized), req.session.user.id]
+      );
+    }
+    await client.query(
+      `UPDATE rt_request_notes
+          SET status = 'resolved',
+              resolved_by = $2,
+              resolved_name = $3,
+              resolved_at = NOW(),
+              updated_at = NOW()
+        WHERE id = $1`,
+      [id, req.session.user.id, req.session.user.name]
+    );
+    await client.query('COMMIT');
+    res.json({ ok: true, noteM, noteId: id });
+  } catch (err) {
+    try { await client.query('ROLLBACK'); } catch(e) {}
+    console.error('POST /api/rt/request-notes/:id/resolve:', err);
+    res.status(500).json({ ok: false, msg: 'Chyba ulozeni poznamky.' });
+  } finally {
+    client.release();
+  }
+});
+
 app.get('/api/rt/drafts', requireLogin, async (req, res) => {
   try {
     const db = getPool();
@@ -4149,6 +4224,58 @@ function applyRtStaffSettings(target, settings) {
     ? JSON.parse(JSON.stringify(settings.monthlyOverrides))
     : {};
   return target;
+}
+
+function rtRequestNoteKey(staff, index = null) {
+  const login = String(staff?.login || staff?.username || '').trim().toUpperCase();
+  if (login) return login;
+  if (staff?.userId) return `U${staff.userId}`;
+  const name = rtNormalizeStaffName(staff?.name || staff?.displayName || '');
+  return name || (index !== null ? `ROW${index}` : '');
+}
+
+function rtCollectRequestNotes(data = {}) {
+  const notes = data.reqNotes && typeof data.reqNotes === 'object' ? data.reqNotes : {};
+  const staff = Array.isArray(data.staff) ? data.staff : [];
+  const out = [];
+  for (const [rawKey, rawNote] of Object.entries(notes)) {
+    const entry = rawNote && typeof rawNote === 'object' ? rawNote : { note: rawNote };
+    const note = String(entry.note || '').trim();
+    if (!note) continue;
+    const staffIndex = Number.isFinite(Number(entry.staffIndex)) ? Number(entry.staffIndex) : -1;
+    const staffRow = staffIndex >= 0 ? staff[staffIndex] : null;
+    const staffLogin = String(entry.staffLogin || staffRow?.login || rawKey || '').trim().toUpperCase();
+    if (!staffLogin) continue;
+    out.push({
+      staffUserId: Number.isFinite(Number(entry.staffUserId || staffRow?.userId)) ? Number(entry.staffUserId || staffRow?.userId) : null,
+      staffLogin,
+      staffName: String(entry.staffName || staffRow?.name || staffRow?.displayName || staffLogin).trim(),
+      note
+    });
+  }
+  return out;
+}
+
+async function saveRequestNotesForTvorba(db, data, month, year, user) {
+  const notes = rtCollectRequestNotes(data);
+  for (const item of notes) {
+    await db.query(
+      `INSERT INTO rt_request_notes
+         (month, year, staff_user_id, staff_login, staff_name, note, status, created_by, created_name, updated_at)
+       VALUES ($1,$2,$3,$4,$5,$6,'pending',$7,$8,NOW())
+       ON CONFLICT (month, year, staff_login) DO UPDATE
+          SET staff_user_id = COALESCE(EXCLUDED.staff_user_id, rt_request_notes.staff_user_id),
+              staff_name = EXCLUDED.staff_name,
+              note = EXCLUDED.note,
+              status = 'pending',
+              updated_at = NOW(),
+              resolved_by = NULL,
+              resolved_name = NULL,
+              resolved_at = NULL`,
+      [month, year, item.staffUserId, item.staffLogin, item.staffName, item.note, user.id, user.name]
+    );
+  }
+  return notes.length;
 }
 
 async function loadRtPortalReceptionists(db) {
@@ -4914,6 +5041,28 @@ function mergeRequirementStaffRow(currentData, incomingData, user, requestedStaf
   Object.entries(incomingSchedule).forEach(([key, val]) => {
     if (key.startsWith(prefix) && String(val || '').trim()) merged.schedule[key] = val;
   });
+  const noteKey = rtRequestNoteKey(merged.staff[si], si);
+  if (noteKey) {
+    merged.reqNotes = merged.reqNotes && typeof merged.reqNotes === 'object' ? merged.reqNotes : {};
+    const incomingNotes = incoming.reqNotes && typeof incoming.reqNotes === 'object' ? incoming.reqNotes : {};
+    if (Object.prototype.hasOwnProperty.call(incomingNotes, noteKey)) {
+      const incomingNote = incomingNotes[noteKey];
+      const noteText = typeof incomingNote === 'object'
+        ? String(incomingNote.note || '').trim()
+        : String(incomingNote || '').trim();
+      if (noteText) {
+        merged.reqNotes[noteKey] = {
+          note: noteText,
+          staffIndex: si,
+          staffUserId: merged.staff[si]?.userId || null,
+          staffLogin: String(merged.staff[si]?.login || noteKey).trim().toUpperCase(),
+          staffName: merged.staff[si]?.name || ''
+        };
+      } else {
+        delete merged.reqNotes[noteKey];
+      }
+    }
+  }
 
   const mKey = `${merged.year}-${merged.month}`;
   if (mKey) {
@@ -4924,6 +5073,7 @@ function mergeRequirementStaffRow(currentData, incomingData, user, requestedStaf
     monthData.schedule = JSON.parse(JSON.stringify(merged.schedule));
     monthData.extras = monthData.extras || {};
     monthData.requirements = monthData.requirements || {};
+    monthData.reqNotes = JSON.parse(JSON.stringify(merged.reqNotes || {}));
     monthData.fondHpp = merged.fondHpp || '';
     monthData.fondZpp = merged.fondZpp || '';
     monthData.holidays = merged.holidays || '';
@@ -5257,7 +5407,9 @@ app.post('/api/rt/requirements/send-to-tvorba', requireLogin, requirePermDefault
     monthData.holidays = draftData.holidays || '';
     monthData.reqMeta = JSON.parse(JSON.stringify(draftData.reqMeta || {}));
     monthData.reqXyLocks = JSON.parse(JSON.stringify(draftData.reqXyLocks || {}));
+    monthData.reqNotes = JSON.parse(JSON.stringify(draftData.reqNotes || {}));
     draftData.monthlyData[mKey] = monthData;
+    const requestNotesCount = await saveRequestNotesForTvorba(db, draftData, month, year, req.session.user);
 
     const { rows } = await db.query(
       `INSERT INTO rt_drafts (user_id, month, year, data, saved_at)
@@ -5281,9 +5433,9 @@ app.post('/api/rt/requirements/send-to-tvorba', requireLogin, requirePermDefault
     await db.query(
       `INSERT INTO rt_requirements_log (req_key, user_id, user_name, action, details)
        VALUES ($1,$2,$3,'send_to_tvorba',$4)`,
-      [key, req.session.user.id, req.session.user.name, JSON.stringify({ draftId: rows[0].id, month, year, autoFill: autoFillSummary })]
+      [key, req.session.user.id, req.session.user.name, JSON.stringify({ draftId: rows[0].id, month, year, autoFill: autoFillSummary, requestNotes: requestNotesCount })]
     );
-    res.json({ ok: true, draftId: rows[0].id, month, year, autoFill: autoFillSummary });
+    res.json({ ok: true, draftId: rows[0].id, month, year, autoFill: autoFillSummary, requestNotes: requestNotesCount });
   } catch (err) {
     console.error('POST /api/rt/requirements/send-to-tvorba:', err);
     res.json({ ok: false, msg: 'Chyba serveru.' });
