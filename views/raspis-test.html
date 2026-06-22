@@ -6247,7 +6247,7 @@ function renderScheduleTable(tableId, editable) {
           updateMarkedOnlyButton();
           applyRowFilters();
           historySave();
-        } else if (rowEditable) {
+        } else if (rowEditable && tableId !== 'tvorba-tbl') {
           // Normal mode: hide/show the row
           tr.classList.toggle('row-hidden');
           const btn = document.getElementById('btn-show-hidden');
@@ -8999,6 +8999,7 @@ async function saveRequestNoteModal() {
     if (!s) return closeRequestNoteModal();
     setRequirementNoteEntry(s, si, text);
     renderScheduleTable('pozadavky-tbl', reqEditMode);
+    applyRowFilters();
     closeRequestNoteModal();
     return;
   }
@@ -9030,6 +9031,10 @@ async function saveRequestNoteModal() {
         item.resolved_at = new Date().toISOString();
       }
       renderStaffTable();
+      renderScheduleTable('tvorba-tbl', true);
+      renderScheduleTable('rozpis-tbl', viewEditMode);
+      renderScheduleTable('public-rozpis-tbl', false);
+      applyRowFilters();
       closeRequestNoteModal();
       toast('PR poznámka uložena');
     } catch (e) {
