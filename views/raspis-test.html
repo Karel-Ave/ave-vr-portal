@@ -13524,13 +13524,7 @@ document.addEventListener('DOMContentLoaded', async () => {
 
   // ── Topbar tab buttons ──
   document.querySelectorAll('.tb-tab[data-tab]').forEach(b => {
-    b.addEventListener('click', async () => {
-      const tab = b.dataset.tab;
-      if (tab === 'tvorba' && !isMobileLike()) {
-        await prepareLatestSentDraftForTvorba().catch(e => console.warn('prepareLatestSentDraftForTvorba:', e));
-      }
-      switchTab(tab);
-    });
+    b.addEventListener('click', () => switchTab(b.dataset.tab));
   });
   setTimeout(() => loadLatestSentDraftForTvorba().catch(e => console.warn('loadLatestSentDraftForTvorba:', e)), 0);
 
