@@ -8329,6 +8329,25 @@ async function loadDraft(id) {
 }
 
 let latestSentDraftLoadInFlight = false;
+let latestSentDraftInfo = null;
+
+async function fetchLatestSentDraftInfo() {
+  try {
+    const r = await fetch('/api/rt/requirements/latest-sent-draft', { credentials: 'include' });
+    if (!r.ok) return null;
+    const d = await r.json();
+    if (!d.ok || !d.draftId) return null;
+    latestSentDraftInfo = {
+      draftId: String(d.draftId),
+      month: d.month,
+      year: d.year
+    };
+    return latestSentDraftInfo;
+  } catch (e) {
+    console.warn('fetchLatestSentDraftInfo:', e);
+    return null;
+  }
+}
 
 async function loadLatestSentDraftForTvorba() {
   if (latestSentDraftLoadInFlight) return false;
@@ -8336,12 +8355,10 @@ async function loadLatestSentDraftForTvorba() {
   if (dirtyFlag && activeScheduleSource === 'draft') return false;
   latestSentDraftLoadInFlight = true;
   try {
-    const r = await fetch('/api/rt/requirements/latest-sent-draft', { credentials: 'include' });
-    if (!r.ok) return false;
-    const d = await r.json();
-    if (!d.ok || !d.draftId) return false;
+    const info = latestSentDraftInfo || await fetchLatestSentDraftInfo();
+    if (!info?.draftId) return false;
     if (document.body.dataset.activeTab !== 'tvorba') return false;
-    const id = String(d.draftId);
+    const id = String(info.draftId);
     if (String(currentDraftId || '') === id && activeScheduleSource === 'draft') return false;
     const loaded = await loadDraft(id);
     if (loaded) {
@@ -8356,6 +8373,21 @@ async function loadLatestSentDraftForTvorba() {
   } finally {
     latestSentDraftLoadInFlight = false;
   }
+}
+
+async function prepareLatestSentDraftForTvorba() {
+  if (dirtyFlag && activeScheduleSource === 'draft') return false;
+  const info = latestSentDraftInfo || await fetchLatestSentDraftInfo();
+  if (!info?.draftId) return false;
+  const id = String(info.draftId);
+  if (String(currentDraftId || '') === id && activeScheduleSource === 'draft') return false;
+  const loaded = await loadDraft(id);
+  if (loaded) {
+    await loadDraftList();
+    const sel = document.getElementById('rt-draft-sel');
+    if (sel) sel.value = id;
+  }
+  return loaded;
 }
 
 async function restoreTvorbaDraftAfterRequirements() {
@@ -13391,7 +13423,10 @@ document.addEventListener('DOMContentLoaded', async () => {
   // Load draft list a načti nejnovější koncept (typicky poslední měsíc odeslaný z Požadavků do Tvorby)
   await loadDraftList();
   {
-    const preferred = draftListCache[0];
+    const latestSent = await fetchLatestSentDraftInfo();
+    const preferred = (latestSent?.draftId && Array.isArray(draftListCache))
+      ? (draftListCache.find(d => String(d.id || d._id) === String(latestSent.draftId)) || draftListCache[0])
+      : draftListCache[0];
     if (preferred) {
       const id = preferred.id || preferred._id;
       document.getElementById('rt-draft-sel').value = id;
@@ -13489,7 +13524,13 @@ document.addEventListener('DOMContentLoaded', async () => {
 
   // ── Topbar tab buttons ──
   document.querySelectorAll('.tb-tab[data-tab]').forEach(b => {
-    b.addEventListener('click', () => switchTab(b.dataset.tab));
+    b.addEventListener('click', async () => {
+      const tab = b.dataset.tab;
+      if (tab === 'tvorba' && !isMobileLike()) {
+        await prepareLatestSentDraftForTvorba().catch(e => console.warn('prepareLatestSentDraftForTvorba:', e));
+      }
+      switchTab(tab);
+    });
   });
   setTimeout(() => loadLatestSentDraftForTvorba().catch(e => console.warn('loadLatestSentDraftForTvorba:', e)), 0);
 
