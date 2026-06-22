@@ -12635,6 +12635,9 @@ async function saveViewEdits(options = {}) {
   if (!currentPubKey || !viewEditMode) return;
   const auto = !!options.auto;
   if (!auto && !confirm('Uložit změny do publikovaného rozpisu?')) return;
+  const wrap = document.getElementById('rozpis-wrap');
+  const scrollLeft = wrap ? wrap.scrollLeft : 0;
+  const scrollTop = wrap ? wrap.scrollTop : 0;
   try {
     const savedData = buildSaveData();
     const r = await fetch('/api/rt/schedules/save-edits', {
@@ -12648,6 +12651,7 @@ async function saveViewEdits(options = {}) {
       viewEditMode = false; viewEditSnapshot = null;
       stopViewEditIdleWatch();
       renderScheduleTable('rozpis-tbl', false);
+      restoreScheduleWrapScroll('rozpis-wrap', scrollLeft, scrollTop);
       renderScheduleTable('public-rozpis-tbl', false);
       await releaseLock();
       updateLockUI();
@@ -12662,11 +12666,15 @@ async function saveViewEdits(options = {}) {
 
 async function cancelViewEdit() {
   if (!viewEditMode) return;
+  const wrap = document.getElementById('rozpis-wrap');
+  const scrollLeft = wrap ? wrap.scrollLeft : 0;
+  const scrollTop = wrap ? wrap.scrollTop : 0;
   if (viewEditSnapshot) applyData(JSON.parse(JSON.stringify(viewEditSnapshot)));
   viewEditMode = false;
   viewEditSnapshot = null;
   stopViewEditIdleWatch();
   renderScheduleTable('rozpis-tbl', false);
+  restoreScheduleWrapScroll('rozpis-wrap', scrollLeft, scrollTop);
   renderScheduleTable('public-rozpis-tbl', false);
   await releaseLock();
   updateLockUI();
