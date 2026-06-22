@@ -8350,6 +8350,7 @@ async function fetchLatestSentDraftInfo() {
 }
 
 async function loadLatestSentDraftForTvorba() {
+  if (isMobileLike()) return false;
   if (latestSentDraftLoadInFlight) return false;
   if (document.body.dataset.activeTab !== 'tvorba') return false;
   if (dirtyFlag && activeScheduleSource === 'draft') return false;
@@ -8376,6 +8377,7 @@ async function loadLatestSentDraftForTvorba() {
 }
 
 async function prepareLatestSentDraftForTvorba() {
+  if (isMobileLike()) return false;
   if (dirtyFlag && activeScheduleSource === 'draft') return false;
   const info = latestSentDraftInfo || await fetchLatestSentDraftInfo();
   if (!info?.draftId) return false;
@@ -13423,7 +13425,7 @@ document.addEventListener('DOMContentLoaded', async () => {
   // Load draft list a načti nejnovější koncept (typicky poslední měsíc odeslaný z Požadavků do Tvorby)
   await loadDraftList();
   {
-    const latestSent = await fetchLatestSentDraftInfo();
+    const latestSent = isMobileLike() ? null : await fetchLatestSentDraftInfo();
     const preferred = (latestSent?.draftId && Array.isArray(draftListCache))
       ? (draftListCache.find(d => String(d.id || d._id) === String(latestSent.draftId)) || draftListCache[0])
       : draftListCache[0];
@@ -13524,12 +13526,15 @@ document.addEventListener('DOMContentLoaded', async () => {
 
   // ── Topbar tab buttons ──
   document.querySelectorAll('.tb-tab[data-tab]').forEach(b => {
-    b.addEventListener('click', async () => {
+    b.addEventListener('click', () => {
       const tab = b.dataset.tab;
-      if (tab === 'tvorba' && !isMobileLike()) {
-        await prepareLatestSentDraftForTvorba().catch(e => console.warn('prepareLatestSentDraftForTvorba:', e));
+      if (tab !== 'tvorba' || isMobileLike()) {
+        switchTab(tab);
+        return;
       }
-      switchTab(tab);
+      prepareLatestSentDraftForTvorba()
+        .catch(e => console.warn('prepareLatestSentDraftForTvorba:', e))
+        .finally(() => switchTab(tab));
     });
   });
   setTimeout(() => loadLatestSentDraftForTvorba().catch(e => console.warn('loadLatestSentDraftForTvorba:', e)), 0);
