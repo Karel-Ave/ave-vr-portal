@@ -6386,7 +6386,7 @@ function getHrsClass(si, hrs) {
   const fond = s.contract === 'HPP' ? parseFloat(state.fondHpp)
              : s.contract === 'ZPP' ? parseFloat(state.fondZpp) : null;
   if (fond === null || isNaN(fond) || fond <= 0) return '';
-  const maxH = parseFloat(getEffectiveForSchedule(s, 'maxHrs'));
+  const maxH = parseFloat(s.maxHrs);
   const upper = (maxH > 0 && !isNaN(maxH)) ? maxH : fond + 12;
   if (hrs < fond)    return 'col-hrs-green';
   if (hrs > upper)   return 'col-hrs-red';
@@ -13524,15 +13524,12 @@ document.addEventListener('DOMContentLoaded', async () => {
 
   // ── Topbar tab buttons ──
   document.querySelectorAll('.tb-tab[data-tab]').forEach(b => {
-    b.addEventListener('click', () => {
+    b.addEventListener('click', async () => {
       const tab = b.dataset.tab;
-      if (tab !== 'tvorba' || isMobileLike()) {
-        switchTab(tab);
-        return;
+      if (tab === 'tvorba' && !isMobileLike()) {
+        await prepareLatestSentDraftForTvorba().catch(e => console.warn('prepareLatestSentDraftForTvorba:', e));
       }
-      prepareLatestSentDraftForTvorba()
-        .catch(e => console.warn('prepareLatestSentDraftForTvorba:', e))
-        .finally(() => switchTab(tab));
+      switchTab(tab);
     });
   });
   setTimeout(() => loadLatestSentDraftForTvorba().catch(e => console.warn('loadLatestSentDraftForTvorba:', e)), 0);
