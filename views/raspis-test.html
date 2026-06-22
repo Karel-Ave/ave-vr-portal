@@ -8301,22 +8301,6 @@ async function loadDraftList() {
   }
 }
 
-async function loadPreferredTvorbaDraftIfNeeded(options = {}) {
-  if (dirtyFlag && activeScheduleSource === 'draft') return false;
-  const force = !!options.force;
-  await loadDraftList();
-  const preferred = Array.isArray(draftListCache) ? draftListCache.find(d => d.preferred) : null;
-  if (!preferred) return false;
-  const id = preferred.id || preferred._id;
-  if (!id || (!force && String(currentDraftId || '') === String(id))) return false;
-  const loaded = await loadDraft(id);
-  if (loaded) {
-    const sel = document.getElementById('rt-draft-sel');
-    if (sel) sel.value = id;
-  }
-  return loaded;
-}
-
 async function loadDraft(id) {
   if (!id) return false;
   try {
@@ -13228,12 +13212,9 @@ function switchTab(name) {
 
   if (name === 'tvorba') {
     if (activeScheduleSource !== 'draft') {
-      loadPreferredTvorbaDraftIfNeeded({ force: true }).then(loaded => {
-        if (!loaded && !restoreTvorbaDraftSnapshot()) restoreTvorbaDraftAfterRequirements();
-      });
+      if (!restoreTvorbaDraftSnapshot()) restoreTvorbaDraftAfterRequirements();
       return;
     }
-    if (!window._initRendering) loadPreferredTvorbaDraftIfNeeded();
     const tbl = document.getElementById('tvorba-tbl');
     const spinner = document.getElementById('tvorba-spinner');
     // Skip the lazy render during DOMContentLoaded init — loadDraft() renders authoritatively
