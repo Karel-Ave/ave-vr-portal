@@ -13163,6 +13163,14 @@ function mobileTabFallback() {
   }) || 'denni';
 }
 
+function bindTopbarTabButtons() {
+  if (window._rtTopbarTabsBound) return;
+  window._rtTopbarTabsBound = true;
+  document.querySelectorAll('.tb-tab[data-tab]').forEach(b => {
+    b.addEventListener('click', () => switchTab(b.dataset.tab));
+  });
+}
+
 function switchTab(name) {
   closeMobileKeypad();
   if (name === 'tvorba' && isMobileLike()) name = mobileTabFallback();
@@ -13331,6 +13339,7 @@ document.addEventListener('DOMContentLoaded', async () => {
     if (initialTab === 'tvorba' && isMobileLike()) initialTab = mobileTabFallback();
     switchTab(initialTab);
   }
+  bindTopbarTabButtons();
 
   // Load & apply color profile from localStorage first (before any render)
   loadColorProfile();
@@ -13354,19 +13363,24 @@ document.addEventListener('DOMContentLoaded', async () => {
   // Render staff table (empty)
   renderStaffTable();
 
-  // Load draft list a načti nejnovější koncept (typicky poslední měsíc odeslaný z Požadavků do Tvorby)
-  await loadDraftList();
-  {
-    const preferred = draftListCache[0];
-    if (preferred) {
-      const id = preferred.id || preferred._id;
-      document.getElementById('rt-draft-sel').value = id;
-      await loadDraft(id);
+  try {
+    // Load draft list a načti nejnovější koncept (typicky poslední měsíc odeslaný z Požadavků do Tvorby)
+    await loadDraftList();
+    {
+      const preferred = draftListCache[0];
+      if (preferred) {
+        const id = preferred.id || preferred._id;
+        document.getElementById('rt-draft-sel').value = id;
+        await loadDraft(id);
+      }
     }
-  }
 
-  // Sync pracovníků ze Správy uživatelů (po načtení draftu, aby se zachovala lokální data)
-  await syncRaspisStaff();
+    // Sync pracovníků ze Správy uživatelů (po načtení draftu, aby se zachovala lokální data)
+    await syncRaspisStaff();
+  } catch (e) {
+    console.error('Initial draft load failed:', e);
+    toast('Chyba načtení konceptu Tvorby. Záložky zůstávají dostupné.', true);
+  }
 
   // Set correct month label in nastaveni mode bar
   updateModeMonthLabel();
@@ -13454,9 +13468,7 @@ document.addEventListener('DOMContentLoaded', async () => {
   });
 
   // ── Topbar tab buttons ──
-  document.querySelectorAll('.tb-tab[data-tab]').forEach(b => {
-    b.addEventListener('click', () => switchTab(b.dataset.tab));
-  });
+  bindTopbarTabButtons();
 
   // ── Sub-toolbar ──
   document.getElementById('stb-mobile-toggle')?.addEventListener('click', () => setMobileControlsOpen(true));
