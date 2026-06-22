@@ -817,7 +817,6 @@
       <div class="settings-choice-row" id="default-rt-desktop"></div>
       <label>V&yacute;choz&iacute; list v Rozpis a po&zcaron;adavky - mobil</label>
       <div class="settings-choice-row" id="default-rt-mobile"></div>
-      <div class="settings-choice-row" id="mobile-tvorba-toggle"></div>
       <label>Automatick&eacute; odhl&aacute;&scaron;en&iacute; p&rcaron;i ne&ccaron;innosti</label>
       <div class="settings-choice-row" id="auto-logout-choices"></div>
     </div>
@@ -930,7 +929,7 @@
       : {};
     return {
       desktop: { app: raw.desktop?.app || null, raspisTab: raw.desktop?.raspisTab || null },
-      mobile: { app: raw.mobile?.app || null, raspisTab: raw.mobile?.raspisTab || null, showTvorba: raw.mobile?.showTvorba === true }
+      mobile: { app: raw.mobile?.app || null, raspisTab: raw.mobile?.raspisTab || null }
     };
   }
 
@@ -966,8 +965,7 @@
   };
 
   function canOpenRaspisTab(tab, device = portalDeviceKey()) {
-    const views = normalizedDefaultViews();
-    if (device === 'mobile' && tab === 'tvorba' && views.mobile?.showTvorba !== true) return false;
+    if (device === 'mobile' && tab === 'tvorba') return false;
     const key = RASPIS_TAB_BTN_KEYS[tab];
     if (!key) return false;
     const val = portalPerms?.raspis?.buttons?.[key];
@@ -1266,18 +1264,6 @@
       ).join('');
     });
 
-    const mobileTvorbaToggle = document.getElementById('mobile-tvorba-toggle');
-    if (mobileTvorbaToggle) {
-      const canUseTvorba = (() => {
-        const val = portalPerms?.raspis?.buttons?.tab_tvorba;
-        return val == null ? true : val !== false;
-      })();
-      mobileTvorbaToggle.style.display = canUseTvorba ? '' : 'none';
-      mobileTvorbaToggle.innerHTML = canUseTvorba
-        ? `<button type="button" class="settings-choice${views.mobile.showTvorba ? ' active' : ''}" onclick="saveDefaultView('mobile','showTvorba',${views.mobile.showTvorba ? 'false' : 'true'})">Tvorba v mobilu</button>`
-        : '';
-    }
-
     const tabOrder = ['nastaveni', 'tvorba', 'denni', 'rozpis', 'public', 'pozadavky'];
     const tabTargets = [
       ['desktop', 'default-rt-desktop'],
@@ -1375,9 +1361,6 @@
     } else if (field === 'raspisTab') {
       if (!canOpenRaspisTab(value, device)) return;
       views[device].raspisTab = value;
-    } else if (field === 'showTvorba' && device === 'mobile') {
-      views.mobile.showTvorba = value === true || value === 'true';
-      if (!views.mobile.showTvorba && views.mobile.raspisTab === 'tvorba') views.mobile.raspisTab = null;
     } else {
       return;
     }

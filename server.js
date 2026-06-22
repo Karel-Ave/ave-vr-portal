@@ -1437,8 +1437,7 @@ app.post('/api/user-prefs/default-views', requireLogin, async (req, res) => {
     },
     mobile: {
       app: allowedApps.has(raw.mobile?.app) ? raw.mobile.app : 'raspis',
-      raspisTab: allowedTabs.has(raw.mobile?.raspisTab) ? raw.mobile.raspisTab : 'public',
-      showTvorba: raw.mobile?.showTvorba === true
+      raspisTab: allowedTabs.has(raw.mobile?.raspisTab) ? raw.mobile.raspisTab : 'public'
     }
   };
   try {
@@ -5032,34 +5031,6 @@ app.get('/api/rt/requirements/archive', requireLogin, requirePermDefault('raspis
   } catch (err) {
     console.error('GET /api/rt/requirements/archive:', err);
     res.status(500).json({ ok: false, items: [] });
-  }
-});
-
-app.get('/api/rt/requirements/latest-sent-draft', requireLogin, async (req, res) => {
-  try {
-    const db = getPool();
-    const { rows } = await db.query(
-      `SELECT r.month, r.year, d.id AS draft_id
-       FROM rt_requirements r
-       JOIN rt_drafts d
-         ON d.user_id = $1
-        AND d.month = r.month
-        AND d.year = r.year
-       WHERE r.sent_to_tvorba_at IS NOT NULL
-       ORDER BY r.sent_to_tvorba_at DESC
-       LIMIT 1`,
-      [req.session.user.id]
-    );
-    if (!rows.length) return res.json({ ok: true, draftId: null });
-    res.json({
-      ok: true,
-      draftId: rows[0].draft_id,
-      month: rows[0].month,
-      year: rows[0].year
-    });
-  } catch (err) {
-    console.error('GET /api/rt/requirements/latest-sent-draft:', err);
-    res.json({ ok: false, draftId: null });
   }
 });
 
