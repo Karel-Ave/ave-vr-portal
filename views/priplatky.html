@@ -92,6 +92,7 @@ body { min-height: 100vh; background: var(--bg); font-family: 'Segoe UI', system
 /* Záhlaví tabulky — zkrácené/plné verze */
 .stbl th .col-short { display: none; }
 .stbl th .col-full  { display: inline; }
+.mobile-priplatky-legend { display: none; }
 
 /* Portrait: tabulka bez horizontálního scrollu */
 @media (max-width: 600px) {
@@ -106,6 +107,20 @@ body { min-height: 100vh; background: var(--bg); font-family: 'Segoe UI', system
   .stbl td { padding: 7px 2px; font-size: 11px; }
   .stbl th:first-child, .stbl td:first-child { width: 82px; }
   .stbl td:first-child small { font-size: 9px; }
+  .mobile-priplatky-legend {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 4px 10px;
+    margin: 10px 0 2px;
+    padding: 8px 10px;
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    background: var(--surface);
+    color: var(--text-muted);
+    font-size: 10px;
+    line-height: 1.25;
+  }
+  .mobile-priplatky-legend strong { color: var(--text); }
 }
 
 /* Landscape: kompaktnější controls */
@@ -277,6 +292,24 @@ table.dtbl { width: 100%; border-collapse: collapse; table-layout: fixed; font-s
 .dtbl tr:last-child td { border-bottom: none; }
 .dtbl .sekce-header td { background: var(--surface-alt); font-weight: 700; font-size: 12px; text-transform: uppercase; color: var(--text-muted); letter-spacing: .05em; padding: 5px 8px; }
 .audit-info { font-size: 11px; color: var(--text-muted); margin-top: 2px; }
+
+@media (max-width: 600px) {
+  table.dtbl { font-size: 12px; }
+  .dtbl col.col-date { width: 82px !important; }
+  .dtbl col.col-hotel { width: 42px !important; }
+  .dtbl col.col-amount { width: 78px !important; }
+  .dtbl col.col-actions { width: 42px !important; }
+  .dtbl th, .dtbl td { padding: 7px 4px; }
+  .dtbl th { font-size: 10px; }
+  .dtbl td:nth-child(4) {
+    white-space: normal;
+    overflow-wrap: anywhere;
+  }
+  .dtbl .icon-btn {
+    padding: 4px 6px;
+    min-width: 28px;
+  }
+}
 
 /* Settings */
 .settings-section { background: var(--surface); border: 1px solid var(--border); border-radius: 12px; padding: 18px; margin-bottom: 16px; }
@@ -945,10 +978,24 @@ function renderPrehled(data) {
         <tbody>${tableRows(unknown,'unknown-login')}</tbody>
       </table></div>`;
   }
+  html += `<div class="mobile-priplatky-legend" aria-label="Legenda sloupců">
+    <span><strong>BS</strong> Braní směn</span>
+    <span><strong>RE</strong> Recenze</span>
+    <span><strong>SK</strong> Školení</span>
+    <span><strong>OS</strong> Ostatní</span>
+    <span><strong>PO</strong> Pokuty</span>
+    <span><strong>∑</strong> Součet</span>
+  </div>`;
   wrap.innerHTML = html;
 }
 
 // ═══ Detail (záznamy jednoho loginu) ═════════════════════════════════════════
+function fmtDateCz(value) {
+  const iso = String(value || '').slice(0, 10);
+  const m = iso.match(/^(\d{4})-(\d{2})-(\d{2})$/);
+  return m ? `${m[3]}.${m[2]}.${m[1]}` : iso;
+}
+
 function openDetail(login) {
   const rows = cachedData.filter(z => z.login === login);
   const name = recepniName(login) || (rows[0]?.full_name) || login;
@@ -960,7 +1007,7 @@ function openDetail(login) {
   });
 
   let html = `<table class="dtbl"><colgroup>
-    <col style="width:150px"><col style="width:90px"><col style="width:120px"><col><col style="width:72px">
+    <col class="col-date" style="width:108px"><col class="col-hotel" style="width:58px"><col class="col-amount" style="width:96px"><col><col class="col-actions" style="width:56px">
   </colgroup><thead><tr>
     <th>Datum</th><th>Hotel</th><th>Částka</th><th>Poznámka</th><th></th>
   </tr></thead><tbody>`;
@@ -972,7 +1019,7 @@ function openDetail(login) {
       html += `<tr class="sekce-header"><td colspan="5">${esc(label)}</td></tr>`;
       lastSekce = z.sekce;
     }
-    const dat   = z.datum ? z.datum.slice(0,10) : '';
+    const dat   = fmtDateCz(z.datum);
     const extra = z.partner ? ` | ${z.partner}${z.klient?' / '+z.klient:''}` :
                   z.koho_skolil ? ` | Školil: ${z.koho_skolil}` : '';
     const rowActions = `${priplatkyCan('edit', true) ? `<button class="icon-btn btn-sm" onclick="editZaznam(${z.id})">✏️</button>` : ''}
