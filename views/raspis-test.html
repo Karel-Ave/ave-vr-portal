@@ -2200,7 +2200,6 @@ body.hide-req-changes .sched-cell[data-req-tip]:hover::after {
     font-weight: 800;
   }
   .tb-tab[data-tab="nastaveni"]::after { content: "Nast."; }
-  .tb-tab[data-tab="tvorba"] { display: none !important; }
   .tb-tab[data-tab="denni"]::after { content: "DR"; }
   .tb-tab[data-tab="rozpis"]::after { content: "Rozpis"; }
   .tb-tab[data-tab="public"]::after { content: "Rozpis"; }
@@ -6376,7 +6375,7 @@ function getHrsClass(si, hrs) {
   const fond = s.contract === 'HPP' ? parseFloat(state.fondHpp)
              : s.contract === 'ZPP' ? parseFloat(state.fondZpp) : null;
   if (fond === null || isNaN(fond) || fond <= 0) return '';
-  const maxH = parseFloat(s.maxHrs);
+  const maxH = parseFloat(getEffectiveForSchedule(s, 'maxHrs'));
   const upper = (maxH > 0 && !isNaN(maxH)) ? maxH : fond + 12;
   if (hrs < fond)    return 'col-hrs-green';
   if (hrs > upper)   return 'col-hrs-red';
@@ -8315,6 +8314,26 @@ async function loadDraft(id) {
   } catch(e) {
     toast('Chyba načtení konceptu', true);
     return false;
+  }
+}
+
+let latestSentDraftInfo = null;
+
+async function fetchLatestSentDraftInfo() {
+  try {
+    const r = await fetch('/api/rt/requirements/latest-sent-draft', { credentials: 'include' });
+    if (!r.ok) return null;
+    const d = await r.json();
+    if (!d.ok || !d.draftId) return null;
+    latestSentDraftInfo = {
+      draftId: String(d.draftId),
+      month: d.month,
+      year: d.year
+    };
+    return latestSentDraftInfo;
+  } catch (e) {
+    console.warn('fetchLatestSentDraftInfo:', e);
+    return null;
   }
 }
 
@@ -13157,7 +13176,6 @@ function mobileTabFallback() {
 
 function switchTab(name) {
   closeMobileKeypad();
-  if (name === 'tvorba' && isMobileLike()) name = mobileTabFallback();
   if (isMobileLike()) mobileControlsOpen = false;
   const previousTab = document.body.dataset.activeTab;
   if (previousTab === 'tvorba' && activeScheduleSource === 'draft') {
@@ -13320,7 +13338,6 @@ document.addEventListener('DOMContentLoaded', async () => {
     const urlTab = new URLSearchParams(location.search).get('tab');
     const allowedTabs = new Set(['nastaveni', 'tvorba', 'rozpis', 'public', 'denni', 'pozadavky']);
     let initialTab = allowedTabs.has(urlTab) ? urlTab : (sessionStorage.getItem('rt-active-tab') || 'rozpis');
-    if (initialTab === 'tvorba' && isMobileLike()) initialTab = mobileTabFallback();
     switchTab(initialTab);
   }
 
@@ -13349,7 +13366,10 @@ document.addEventListener('DOMContentLoaded', async () => {
   // Load draft list a načti nejnovější koncept (typicky poslední měsíc odeslaný z Požadavků do Tvorby)
   await loadDraftList();
   {
-    const preferred = draftListCache[0];
+    const latestSent = await fetchLatestSentDraftInfo();
+    const preferred = (latestSent?.draftId && Array.isArray(draftListCache))
+      ? (draftListCache.find(d => String(d.id || d._id) === String(latestSent.draftId)) || draftListCache[0])
+      : draftListCache[0];
     if (preferred) {
       const id = preferred.id || preferred._id;
       document.getElementById('rt-draft-sel').value = id;
@@ -13428,10 +13448,7 @@ document.addEventListener('DOMContentLoaded', async () => {
     updateChromeHeights();
     if (document.body.dataset.activeTab === 'nastaveni') requestAnimationFrame(updateSettingsHeaderStickyTop);
     updateRequirementsFundsInfo();
-    if (isMobileLike() && document.body.dataset.activeTab === 'tvorba') {
-      switchTab(mobileTabFallback());
-      return;
-    }
+
     fitScheduleToViewport();
     const tbl = document.querySelector('.tab-panel.active .sched-tbl');
     if (tbl) fineTuneScheduleFit(tbl);
