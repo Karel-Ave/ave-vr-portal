@@ -950,10 +950,12 @@ app.get('/api/widget-today', requireLogin, async (req, res) => {
     staff.forEach((s, si) => {
       const name = cleanWidgetName(s.name);
       if (!name) return;
+      const isStandbyPlaceholder = String(s.name || '').trim().toLowerCase() === 'pohotovost'
+        || String(s.type || '').trim().toLowerCase() === 'pohotovost';
       const dayVal = String(schedule[`${si}_${dayCol}`] || '').trim().toUpperCase();
       const nightVal = String(schedule[`${si}_${nightCol}`] || '').trim().toUpperCase();
-      if (hotelMap[dayVal] && !hotelMap[dayVal].day) hotelMap[dayVal].day = name;
-      if (hotelMap[nightVal] && !hotelMap[nightVal].night) hotelMap[nightVal].night = name;
+      if (hotelMap[dayVal] && !hotelMap[dayVal].day && !(dayVal === 'P' && isStandbyPlaceholder)) hotelMap[dayVal].day = name;
+      if (hotelMap[nightVal] && !hotelMap[nightVal].night && !(nightVal === 'P' && isStandbyPlaceholder)) hotelMap[nightVal].night = name;
     });
 
     res.json({
@@ -3575,6 +3577,7 @@ app.get('/api/raspis-staff', requireLogin, async (req, res) => {
     const db = getPool();
 
     // 1. Uživatelé s raspis_staff.active = true v perm_overrides
+    const settingsMap = await loadRtStaffSettingsMap(db);
     const { rows: users } = await db.query(
       'SELECT id, name, phone, perm_overrides FROM users WHERE perm_overrides IS NOT NULL'
     );
@@ -3589,7 +3592,7 @@ app.get('/api/raspis-staff', requireLogin, async (req, res) => {
       } catch (e) { continue; }
       const rs = overrides?.raspis_staff;
       if (rs && rs.active) {
-        raspisUsers.push({
+        const entry = {
           userId:      u.id,
           displayName: rs.displayName || u.name,
           phone:       u.phone || '',
@@ -3602,7 +3605,13 @@ app.get('/api/raspis-staff', requireLogin, async (req, res) => {
           reqYLimit:   rtReqLimit(rs.reqYLimit, 0),
           activeFrom:  rs.activeFrom  || null,
           activeUntil: rs.activeUntil || null
-        });
+        };
+        const storedSettings = settingsMap.get(String(u.id));
+        if (storedSettings) {
+          applyRtStaffSettings(entry, storedSettings);
+          entry.rtStaffSettingsStored = true;
+        }
+        raspisUsers.push(entry);
       }
     }
 
@@ -3628,6 +3637,26 @@ app.get('/api/raspis-staff', requireLogin, async (req, res) => {
 // ═════════════════════════════════════════════════════════════════════════════
 
 // ── Drafts ───────────────────────────────────────────────────────────────────
+
+app.post('/api/rt/staff-settings', requireLogin, requirePermDefault('raspis', 'edit', false), async (req, res) => {
+  try {
+    const userId = parseInt(req.body?.userId, 10);
+    if (!userId) return res.status(400).json({ ok: false, msg: 'Chybí userId.' });
+    const data = normalizeRtStaffSettings(req.body?.data || {});
+    const db = getPool();
+    await db.query(
+      `INSERT INTO rt_staff_settings (user_id, data, updated_at, updated_by)
+       VALUES ($1, $2, NOW(), $3)
+       ON CONFLICT (user_id) DO UPDATE
+       SET data = EXCLUDED.data, updated_at = NOW(), updated_by = EXCLUDED.updated_by`,
+      [userId, JSON.stringify(data), req.session.user.id]
+    );
+    res.json({ ok: true });
+  } catch (err) {
+    console.error('Chyba /api/rt/staff-settings:', err);
+    res.status(500).json({ ok: false, msg: 'Chyba uložení nastavení.' });
+  }
+});
 
 app.get('/api/rt/drafts', requireLogin, async (req, res) => {
   try {
@@ -3976,7 +4005,54 @@ function rtReqLimit(value, fallback) {
   return Number.isFinite(n) && n >= 0 ? n : fallback;
 }
 
+const RT_STAFF_SETTINGS_FIELDS = [
+  'maxHrs', 'noteM', 'noteP', 'x', 'xa', 'dates', 'regular', 'hotel',
+  'monthlyOverrides'
+];
+
+function normalizeRtStaffSettings(input = {}) {
+  const data = input && typeof input === 'object' ? input : {};
+  const out = {};
+  for (const field of RT_STAFF_SETTINGS_FIELDS) {
+    if (field === 'monthlyOverrides') {
+      out.monthlyOverrides = data.monthlyOverrides && typeof data.monthlyOverrides === 'object'
+        ? data.monthlyOverrides
+        : {};
+    } else {
+      out[field] = data[field] == null ? '' : String(data[field]);
+    }
+  }
+  return out;
+}
+
+async function loadRtStaffSettingsMap(db) {
+  const { rows } = await db.query('SELECT user_id, data FROM rt_staff_settings');
+  const map = new Map();
+  for (const row of rows) {
+    const raw = typeof row.data === 'string' ? JSON.parse(row.data || '{}') : (row.data || {});
+    map.set(String(row.user_id), normalizeRtStaffSettings(raw));
+  }
+  return map;
+}
+
+function applyRtStaffSettings(target, settings) {
+  if (!target || !settings) return target;
+  target.maxHrs = settings.maxHrs || '';
+  target.noteM = settings.noteM || '';
+  target.noteP = settings.noteP || '';
+  target.x = settings.x || '';
+  target.xa = settings.xa || '';
+  target.dates = settings.dates || '';
+  target.regular = settings.regular || '';
+  target.hotel = settings.hotel || '';
+  target.monthlyOverrides = settings.monthlyOverrides && typeof settings.monthlyOverrides === 'object'
+    ? JSON.parse(JSON.stringify(settings.monthlyOverrides))
+    : {};
+  return target;
+}
+
 async function loadRtPortalReceptionists(db) {
+  const settingsMap = await loadRtStaffSettingsMap(db);
   const { rows } = await db.query(
     'SELECT id, name, username, phone, perm_overrides FROM users WHERE perm_overrides IS NOT NULL'
   );
@@ -3990,7 +4066,7 @@ async function loadRtPortalReceptionists(db) {
     } catch (e) { continue; }
     const rs = overrides?.raspis_staff;
     if (!rs || !rs.active || !rtIsReceptionistType(rs.type)) continue;
-    out.push({
+    const entry = {
       userId: u.id,
       name: rs.displayName || u.name || '',
       phone: u.phone || '',
@@ -4004,7 +4080,13 @@ async function loadRtPortalReceptionists(db) {
       activeFrom: rtStaffMonthValue(rs.activeFrom) || rs.activeFrom || null,
       activeUntil: rtStaffMonthValue(rs.activeUntil) || rs.activeUntil || null,
       inactive: false
-    });
+    };
+    const storedSettings = settingsMap.get(String(u.id));
+    if (storedSettings) {
+      applyRtStaffSettings(entry, storedSettings);
+      entry.rtStaffSettingsStored = true;
+    }
+    out.push(entry);
   }
   return out;
 }
@@ -4190,10 +4272,27 @@ async function augmentRtDataWithActiveReceptionists(data, db = getPool()) {
   const active = (await loadRtPortalReceptionists(db))
     .filter(s => rtIsStaffActiveForMonth(s, month, year));
   if (!active.length) return data;
+  data.portalCustomData = data.portalCustomData && typeof data.portalCustomData === 'object'
+    ? data.portalCustomData
+    : {};
 
   let changed = false;
   let added = false;
   for (const s of active) {
+    if (s.userId) {
+      data.portalCustomData[s.userId] = normalizeRtStaffSettings({
+        ...(data.portalCustomData[s.userId] || {}),
+        maxHrs: s.maxHrs,
+        noteM: s.noteM,
+        noteP: s.noteP,
+        x: s.x,
+        xa: s.xa,
+        dates: s.dates,
+        regular: s.regular,
+        hotel: s.hotel,
+        monthlyOverrides: s.monthlyOverrides
+      });
+    }
     const idKey = s.userId ? String(s.userId) : '';
     const nameKey = rtNormalizeStaffName(s.name);
     const existingIdx = data.staff.findIndex(row => {
@@ -4210,10 +4309,21 @@ async function augmentRtDataWithActiveReceptionists(data, db = getPool()) {
         login: s.login || current.login || '',
         type: s.type || current.type || '',
         contract: s.contract || current.contract || '',
+        maxHrs: s.maxHrs || '',
+        noteM: s.noteM || '',
+        noteP: s.noteP || '',
+        x: s.x || '',
+        xa: s.xa || '',
+        dates: s.dates || '',
+        regular: s.regular || '',
+        hotel: s.hotel || '',
         hotelSkills: Array.isArray(s.hotelSkills) ? s.hotelSkills : (Array.isArray(current.hotelSkills) ? current.hotelSkills : []),
         noStandby: !!s.noStandby,
         reqXLimit: rtReqLimit(s.reqXLimit, rtReqLimit(current.reqXLimit, 7)),
         reqYLimit: rtReqLimit(s.reqYLimit, rtReqLimit(current.reqYLimit, 0)),
+        monthlyOverrides: s.monthlyOverrides && typeof s.monthlyOverrides === 'object'
+          ? JSON.parse(JSON.stringify(s.monthlyOverrides))
+          : {},
         activeFrom: s.activeFrom || current.activeFrom || null,
         activeUntil: s.activeUntil || current.activeUntil || null,
         inactive: false

@@ -7978,17 +7978,18 @@ async function confirmAddWebUser() {
         // Aktualizuj allPortalUsers (pro Nastavení)
         state.allPortalUsers = allApiStaff.map(as => {
           const custom = state.portalCustomData?.[as.userId] || {};
+          const skills = Array.isArray(as.hotelSkills) ? as.hotelSkills : as.hotels;
           return {
             userId: as.userId, name: as.displayName || '', login: as.login || '',
             type: as.type || '', contract: as.contract || '',
-            maxHrs: custom.maxHrs || '', noteM: custom.noteM || '', noteP: custom.noteP || '',
-            x: custom.x || '', xa: custom.xa || '', dates: custom.dates || '',
-            regular: custom.regular || '', hotel: custom.hotel || '',
-            hotelSkills: Array.isArray(as.hotels) ? [...as.hotels] : (Array.isArray(custom.hotelSkills) ? [...custom.hotelSkills] : []),
-            noStandby: !!as.noStandby || !!custom.noStandby,
+            maxHrs: as.maxHrs ?? custom.maxHrs ?? '', noteM: as.noteM ?? custom.noteM ?? '', noteP: as.noteP ?? custom.noteP ?? '',
+            x: as.x ?? custom.x ?? '', xa: as.xa ?? custom.xa ?? '', dates: as.dates ?? custom.dates ?? '',
+            regular: as.regular ?? custom.regular ?? '', hotel: as.hotel ?? custom.hotel ?? '',
+            hotelSkills: Array.isArray(skills) ? [...skills] : (Array.isArray(custom.hotelSkills) ? [...custom.hotelSkills] : []),
+            noStandby: !!as.noStandby,
             reqXLimit: Number.isFinite(Number(as.reqXLimit ?? custom.reqXLimit)) ? Number(as.reqXLimit ?? custom.reqXLimit) : 7,
             reqYLimit: Number.isFinite(Number(as.reqYLimit ?? custom.reqYLimit)) ? Number(as.reqYLimit ?? custom.reqYLimit) : 0,
-            monthlyOverrides: custom.monthlyOverrides ? JSON.parse(JSON.stringify(custom.monthlyOverrides)) : {},
+            monthlyOverrides: as.monthlyOverrides ? JSON.parse(JSON.stringify(as.monthlyOverrides)) : (custom.monthlyOverrides ? JSON.parse(JSON.stringify(custom.monthlyOverrides)) : {}),
             activeFrom: staffMonthValue(as.activeFrom) || as.activeFrom || null,
             activeUntil: staffMonthValue(as.activeUntil) || as.activeUntil || null,
             inactive: false
@@ -8000,20 +8001,21 @@ async function confirmAddWebUser() {
           const newApiEntry = allApiStaff.find(s => s.userId === newUserId);
           if (newApiEntry) {
             const custom = state.portalCustomData?.[newUserId] || {};
+            const skills = Array.isArray(newApiEntry.hotelSkills) ? newApiEntry.hotelSkills : newApiEntry.hotels;
             const newStaffEntry = {
               userId: newApiEntry.userId, name: newApiEntry.displayName || '',
               login: newApiEntry.login || '', type: newApiEntry.type || '',
               contract: newApiEntry.contract || '',
-              maxHrs: custom.maxHrs || '', noteM: custom.noteM || '', noteP: custom.noteP || '',
-              x: custom.x || '', xa: custom.xa || '', dates: custom.dates || '',
-              regular: custom.regular || '', hotel: custom.hotel || '',
-              hotelSkills: Array.isArray(newApiEntry.hotels) ? [...newApiEntry.hotels] : (Array.isArray(custom.hotelSkills) ? [...custom.hotelSkills] : []),
-              noStandby: !!newApiEntry.noStandby || !!custom.noStandby,
+              maxHrs: newApiEntry.maxHrs ?? custom.maxHrs ?? '', noteM: newApiEntry.noteM ?? custom.noteM ?? '', noteP: newApiEntry.noteP ?? custom.noteP ?? '',
+              x: newApiEntry.x ?? custom.x ?? '', xa: newApiEntry.xa ?? custom.xa ?? '', dates: newApiEntry.dates ?? custom.dates ?? '',
+              regular: newApiEntry.regular ?? custom.regular ?? '', hotel: newApiEntry.hotel ?? custom.hotel ?? '',
+              hotelSkills: Array.isArray(skills) ? [...skills] : (Array.isArray(custom.hotelSkills) ? [...custom.hotelSkills] : []),
+              noStandby: !!newApiEntry.noStandby,
               reqXLimit: Number.isFinite(Number(newApiEntry.reqXLimit ?? custom.reqXLimit)) ? Number(newApiEntry.reqXLimit ?? custom.reqXLimit) : 7,
               reqYLimit: Number.isFinite(Number(newApiEntry.reqYLimit ?? custom.reqYLimit)) ? Number(newApiEntry.reqYLimit ?? custom.reqYLimit) : 0,
               activeFrom: staffMonthValue(newApiEntry.activeFrom) || newApiEntry.activeFrom || null,
               activeUntil: staffMonthValue(newApiEntry.activeUntil) || newApiEntry.activeUntil || null,
-              monthlyOverrides: {}, inactive: false
+              monthlyOverrides: newApiEntry.monthlyOverrides ? JSON.parse(JSON.stringify(newApiEntry.monthlyOverrides)) : {}, inactive: false
             };
             const existingSi = state.staff.findIndex(s =>
               (s.name || '').trim().toLowerCase() === (entry.name || '').trim().toLowerCase()
@@ -8093,6 +8095,7 @@ async function syncRaspisStaff() {
 
     const _makeEntry = as => {
       const custom = state.portalCustomData?.[as.userId] || {};
+      const skills = Array.isArray(as.hotelSkills) ? as.hotelSkills : as.hotels;
       return {
         userId:   as.userId,
         name:     as.displayName || '',
@@ -8100,20 +8103,21 @@ async function syncRaspisStaff() {
         login:    as.login       || '',
         type:     as.type        || '',
         contract: as.contract    || '',
-        maxHrs:   custom.maxHrs  || '',
-        noteM:    custom.noteM   || '',
-        noteP:    custom.noteP   || '',
-        x:        custom.x       || '',
-        xa:       custom.xa      || '',
-        dates:    custom.dates   || '',
-        regular:  custom.regular || '',
-        hotel:    custom.hotel   || '',
-        hotelSkills: Array.isArray(as.hotels) ? [...as.hotels] : (Array.isArray(custom.hotelSkills) ? [...custom.hotelSkills] : []),
-        noStandby: !!as.noStandby || !!custom.noStandby,
+        maxHrs:   as.maxHrs ?? custom.maxHrs ?? '',
+        noteM:    as.noteM  ?? custom.noteM  ?? '',
+        noteP:    as.noteP  ?? custom.noteP  ?? '',
+        x:        as.x      ?? custom.x      ?? '',
+        xa:       as.xa     ?? custom.xa     ?? '',
+        dates:    as.dates  ?? custom.dates  ?? '',
+        regular:  as.regular ?? custom.regular ?? '',
+        hotel:    as.hotel  ?? custom.hotel  ?? '',
+        hotelSkills: Array.isArray(skills) ? [...skills] : (Array.isArray(custom.hotelSkills) ? [...custom.hotelSkills] : []),
+        noStandby: !!as.noStandby,
         reqXLimit: Number.isFinite(Number(as.reqXLimit ?? custom.reqXLimit)) ? Number(as.reqXLimit ?? custom.reqXLimit) : 7,
         reqYLimit: Number.isFinite(Number(as.reqYLimit ?? custom.reqYLimit)) ? Number(as.reqYLimit ?? custom.reqYLimit) : 0,
-        monthlyOverrides: custom.monthlyOverrides
-          ? JSON.parse(JSON.stringify(custom.monthlyOverrides)) : {},
+        monthlyOverrides: as.monthlyOverrides
+          ? JSON.parse(JSON.stringify(as.monthlyOverrides))
+          : (custom.monthlyOverrides ? JSON.parse(JSON.stringify(custom.monthlyOverrides)) : {}),
         activeFrom:  staffMonthValue(as.activeFrom)  || as.activeFrom  || null,
         activeUntil: staffMonthValue(as.activeUntil) || as.activeUntil || null,
         inactive: false,
@@ -8124,6 +8128,14 @@ async function syncRaspisStaff() {
     // state.allPortalUsers slouží renderStaffTable — zobrazuje VŠECHNY portálové
     // pracovníky bez ohledu na to, zda jsou v aktuálním XLS draftu.
     state.allPortalUsers = apiStaff.map(as => _makeEntry(as));
+    state.allPortalUsers.forEach(s => {
+      const apiRow = apiStaff.find(as => String(as.userId) === String(s.userId));
+      const custom = state.portalCustomData?.[s.userId];
+      if (!apiRow?.rtStaffSettingsStored && hasPortalStaffSettingsValue(custom)) {
+        syncPortalCustomDataFrom(s);
+        queuePortalStaffSettingsSave(s, { silent: true });
+      }
+    });
     state.allSpecialStaff = _nonPortal;
 
     // Tvorbu nikdy nenaplňujeme automaticky z Nastavení. Jen obohatíme řádky,
@@ -12100,6 +12112,55 @@ function syncPortalCustomDataFrom(source) {
   };
 }
 
+const rtStaffSettingsSaveTimers = new Map();
+
+function portalStaffSettingsPayload(s) {
+  if (!s?.userId) return null;
+  const custom = state.portalCustomData?.[s.userId] || {};
+  return {
+    maxHrs: custom.maxHrs ?? '',
+    noteM: custom.noteM ?? '',
+    noteP: custom.noteP ?? '',
+    x: custom.x ?? '',
+    xa: custom.xa ?? '',
+    dates: custom.dates ?? '',
+    regular: custom.regular ?? '',
+    hotel: custom.hotel ?? '',
+    monthlyOverrides: custom.monthlyOverrides ? JSON.parse(JSON.stringify(custom.monthlyOverrides)) : {}
+  };
+}
+
+function hasPortalStaffSettingsValue(data) {
+  if (!data || typeof data !== 'object') return false;
+  return ['maxHrs','noteM','noteP','x','xa','dates','regular','hotel'].some(k => String(data[k] || '').trim())
+    || (data.monthlyOverrides && Object.keys(data.monthlyOverrides).length > 0);
+}
+
+function queuePortalStaffSettingsSave(s, opts = {}) {
+  if (!s?.userId) return;
+  const userId = s.userId;
+  clearTimeout(rtStaffSettingsSaveTimers.get(userId));
+  rtStaffSettingsSaveTimers.set(userId, setTimeout(async () => {
+    const data = portalStaffSettingsPayload(s);
+    if (!data) return;
+    try {
+      const r = await fetch('/api/rt/staff-settings', {
+        method: 'POST',
+        credentials: 'include',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ userId, data })
+      });
+      const res = await r.json().catch(() => ({}));
+      if (!r.ok || !res.ok) throw new Error(res.msg || r.status);
+    } catch (e) {
+      console.warn('rt staff settings save failed:', e);
+      if (!opts.silent) toast('Chyba uložení nastavení recepčního', true);
+    } finally {
+      rtStaffSettingsSaveTimers.delete(userId);
+    }
+  }, 500));
+}
+
 function syncSettingsWorker(source) {
   if (!source) return;
   const sameWorker = target => {
@@ -12140,6 +12201,7 @@ function setFieldValue(s, field, value) {
     s[field] = value;
   }
   syncSettingsWorker(s);
+  queuePortalStaffSettingsSave(s);
   if (!s.userId) saveSpecialStaff();
   scheduleAutoSave();
 }
@@ -12152,6 +12214,7 @@ function clearMonthlyOverride(s, field) {
       if (!Object.keys(s.monthlyOverrides).length) delete s.monthlyOverrides;
   }
   syncSettingsWorker(s);
+  queuePortalStaffSettingsSave(s);
   if (!s.userId) saveSpecialStaff();
   scheduleAutoSave();
 }
@@ -12161,6 +12224,18 @@ const MONTH_NAMES_LONG = ['','Leden','Únor','Březen','Duben','Květen','Červe
 function updateOverrideInfoLabel() {
   const lbl = document.getElementById('override-info-label');
   if (lbl) lbl.textContent = `${MONTH_NAMES_LONG[overrideModeMonth]} ${overrideModeYear}`;
+}
+
+function syncOverrideMonthToCurrentDraft() {
+  const m = parseInt(state.month, 10) || (new Date().getMonth() + 1);
+  const y = parseInt(state.year, 10) || new Date().getFullYear();
+  overrideModeMonth = m;
+  overrideModeYear = y;
+  const mSel = document.getElementById('override-month-sel');
+  const ySel = document.getElementById('override-year-inp');
+  if (mSel) mSel.value = String(m);
+  if (ySel) ySel.value = String(y);
+  updateOverrideInfoLabel();
 }
 
 function updateSettingsHeaderStickyTop() {
@@ -12177,12 +12252,7 @@ function setNastaveniMode(mode) {
   nastaveniMode = mode;
   if (mode === 'monthly') {
     // Výchozí: nastavit na aktuální měsíc rozpisu
-    overrideModeMonth = state.month;
-    overrideModeYear  = state.year;
-    const mSel = document.getElementById('override-month-sel');
-    const ySel = document.getElementById('override-year-inp');
-    if (mSel) mSel.value = overrideModeMonth;
-    if (ySel) ySel.value = overrideModeYear;
+    syncOverrideMonthToCurrentDraft();
   }
   document.getElementById('mode-default-btn').classList.toggle('active', mode === 'default');
   document.getElementById('mode-monthly-btn').classList.toggle('active', mode === 'monthly');
@@ -12232,6 +12302,7 @@ function clearMonthOverrides() {
       delete s.monthlyOverrides[key];
       if (s.monthlyOverrides && !Object.keys(s.monthlyOverrides).length) delete s.monthlyOverrides;
       syncSettingsWorker(s);
+      queuePortalStaffSettingsSave(s);
     }
   });
   saveSpecialStaff();
@@ -12259,6 +12330,7 @@ function setOverridesAsDefault() {
     delete s.monthlyOverrides[key];
     if (!Object.keys(s.monthlyOverrides).length) delete s.monthlyOverrides;
     syncSettingsWorker(s);
+    queuePortalStaffSettingsSave(s);
   });
   saveSpecialStaff();
   renderStaffTable();

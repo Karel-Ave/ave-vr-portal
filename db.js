@@ -607,6 +607,14 @@ async function init() {
     )
   `);
   await db.query(`
+    CREATE TABLE IF NOT EXISTS rt_staff_settings (
+      user_id    INTEGER PRIMARY KEY REFERENCES users(id) ON DELETE CASCADE,
+      data       JSONB NOT NULL DEFAULT '{}',
+      updated_at TIMESTAMPTZ DEFAULT NOW(),
+      updated_by INTEGER REFERENCES users(id) ON DELETE SET NULL
+    )
+  `);
+  await db.query(`
     CREATE TABLE IF NOT EXISTS rt_requirements (
       key              VARCHAR(20) PRIMARY KEY,
       month            INTEGER NOT NULL,
