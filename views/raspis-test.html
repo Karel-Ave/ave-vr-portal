@@ -5746,6 +5746,7 @@ function regularToString(checks, sv, wk) {
 
 function applyRegularAndReqClasses(td, si, ci, col, val) {
   const isPublicView = !!td.closest('#public-rozpis-tbl');
+  const isRequirementsView = !!td.closest('#pozadavky-tbl');
   const s = state.staff[si];
   const holidaysList = parseHolidays(state.holidays);
   // Regular off
@@ -5759,8 +5760,8 @@ function applyRegularAndReqClasses(td, si, ci, col, val) {
   const reqMissing = !!(req && !val);
   const showReqDiff = isReqDiffVisibleForActiveTab();
 
-  td.classList.toggle('cell-regular-off', !isPublicView && !!(unavailable && !val));
-  td.classList.toggle('cell-unavailable-conflict', !isPublicView && !!(unavailable && val));
+  td.classList.toggle('cell-regular-off', !isPublicView && !isRequirementsView && !!(unavailable && !val));
+  td.classList.toggle('cell-unavailable-conflict', !isPublicView && !isRequirementsView && !!(unavailable && val));
   td.classList.toggle('cell-req-missing', reqMissing && showReqDiff);
   if (reqMissing && showReqDiff) td.dataset.reqTip = `Původně: ${req}`;
   else delete td.dataset.reqTip;
@@ -12534,8 +12535,18 @@ function setFieldValue(s, field, value) {
   if (nastaveniMode === 'monthly') {
     if (!s.monthlyOverrides) s.monthlyOverrides = {};
     const key = getMonthKey();
-    if (!s.monthlyOverrides[key]) s.monthlyOverrides[key] = {};
-    s.monthlyOverrides[key][field] = value;
+    const normalizedValue = String(value ?? '');
+    if (normalizedValue.trim() === '') {
+      if (s.monthlyOverrides[key]) {
+        delete s.monthlyOverrides[key][field];
+        if (!Object.keys(s.monthlyOverrides[key]).length) delete s.monthlyOverrides[key];
+        if (!Object.keys(s.monthlyOverrides).length) delete s.monthlyOverrides;
+      }
+    } else {
+      if (!s.monthlyOverrides) s.monthlyOverrides = {};
+      if (!s.monthlyOverrides[key]) s.monthlyOverrides[key] = {};
+      s.monthlyOverrides[key][field] = value;
+    }
   } else {
     s[field] = value;
   }
