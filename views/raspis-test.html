@@ -5602,14 +5602,16 @@ function parseRegular(regular) {
   return result;
 }
 
-function isRegularOff(col, month, year, regular, holidaysList) {
+function isRegularOff(col, month, year, regular, holidaysList, staff = null) {
   if (!regular) return false;
   const parsed = parseRegular(regular);
   if (!parsed.size) return false;
   const m = col.nextYear ? 1 : month;
   const y = col.nextYear ? year + 1 : year;
   const dow = new Date(y, m - 1, col.day).getDay();
-  if (parsed.has('sv') && isHoliday(col, month, year, holidaysList)) return true;
+  if (parsed.has('sv') && isHoliday(col, month, year, holidaysList)) {
+    return staff ? staffTypeAllowsColumn(staff, col) : true;
+  }
   if (parsed.has('wk') && isWeekend(col, month, year)) return true;
   return parsed.has(`${dow}-${col.dn}`);
 }
@@ -5668,7 +5670,7 @@ function applyRegularAndReqClasses(td, si, ci, col, val) {
   // Regular off
   const regular = getEffectiveForSchedule(s, 'regular');
   const dates = getEffectiveForSchedule(s, 'dates');
-  const regOff = s && isRegularOff(col, state.month, state.year, regular, holidaysList);
+  const regOff = s && isRegularOff(col, state.month, state.year, regular, holidaysList, s);
   const dateOff = s && staffTypeAllowsColumn(s, col) && isDateUnavailable(col, dates);
   const unavailable = !!(regOff || dateOff);
   // Requirements
