@@ -5599,6 +5599,7 @@ function parseRegular(regular) {
 }
 
 function isRegularOff(col, month, year, regular, holidaysList, staff = null) {
+  if (!col || !Number.isFinite(Number(col.day))) return false;
   if (!regular) return false;
   const parsed = parseRegular(regular);
   if (!parsed.size) return false;
@@ -5631,11 +5632,13 @@ function parseUnavailableDates(dates) {
 }
 
 function isDateUnavailable(col, dates) {
+  if (!col || !Number.isFinite(Number(col.day))) return false;
   if (!dates) return false;
   return parseUnavailableDates(dates).has(+col.day);
 }
 
 function staffTypeAllowsColumn(s, col) {
+  if (!col) return false;
   const type = String(s?.type || '').toLowerCase();
   if (type.includes('den')) return col?.dn === 'd';
   if (type.includes('no')) return col?.dn === 'n';
