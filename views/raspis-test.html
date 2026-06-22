@@ -5172,15 +5172,17 @@ function calcSums(si, calCols, st) {
     const val = st.schedule[key] || '';
     if (!val || SKIP_VALS.has(val)) return;
 
-    const weekend = isDayOff(col, st.month, st.year, holidaysList);
-    const isNight = col.dn === 'n';
+    if (String(val).trim().toUpperCase() !== 'P') {
+      const weekend = isDayOff(col, st.month, st.year, holidaysList);
+      const isNight = col.dn === 'n';
 
-    if (weekend) {
-      if (isNight) nk++; else dk++;
-    } else {
-      if (isNight) nw++; else dw++;
+      if (weekend) {
+        if (isNight) nk++; else dk++;
+      } else {
+        if (isNight) nw++; else dw++;
+      }
+      total++;
     }
-    total++;
     totalHrs += getHotelHours(val, st);
   });
 
