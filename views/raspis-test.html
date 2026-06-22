@@ -1918,6 +1918,19 @@ body.hide-req-changes .sched-cell[data-req-tip]:hover::after {
 #snt-phone { color: var(--accent-h); font-weight: 800; opacity: 1 !important; }
 #snt-sums, #snt-prev { color: var(--text); }
 #snt-pref, #snt-notes { color: var(--text-muted); opacity: 1 !important; }
+#snt-notes .snt-current-note { color: var(--text); font-weight: 800; }
+.sched-tbl .col-name-td.has-current-note::after {
+  content: '';
+  position: absolute;
+  right: 7px;
+  top: 50%;
+  width: 9px;
+  height: 9px;
+  border-radius: 50%;
+  transform: translateY(-50%);
+  background: #e53935;
+  box-shadow: 0 0 0 2px color-mix(in srgb, var(--surface) 72%, transparent), 0 0 7px rgba(229,57,53,.7);
+}
 [data-theme="dark"] #sched-name-tip {
   background: color-mix(in srgb, var(--surface) 88%, var(--accent) 12%) !important;
   color: var(--text) !important;
@@ -4083,18 +4096,29 @@ function showSchedTip(si, x, y) {
   if (prevEnd) { prevEl.textContent = `Konec m\u011bs\u00edce: ${prevEnd}`; prevEl.style.display = ''; }
   else prevEl.style.display = 'none';
 
-  const noteParts = [];
   const rawTipDates = s.dates;
   const rawTipNoteM = s.noteM;
   s.dates = getEffectiveForSchedule(s, 'dates');
   s.noteM = getEffectiveForSchedule(s, 'noteM');
-  if (s.dates) noteParts.push(`Nem\u016f\u017ee: ${s.dates}`);
-  if (s.noteM) noteParts.push(s.noteM);
-  if (s.noteP) noteParts.push(s.noteP);
+  const noteLines = [];
+  if (s.dates) noteLines.push({ text: `Nem\u016f\u017ee: ${s.dates}` });
+  if (s.noteM) noteLines.push({ text: s.noteM, current: true });
+  if (s.noteP) noteLines.push({ text: s.noteP });
   s.dates = rawTipDates;
   s.noteM = rawTipNoteM;
-  if (noteParts.length) { noteEl.textContent = noteParts.join('\n'); noteEl.style.display = ''; }
-  else noteEl.style.display = 'none';
+  noteEl.replaceChildren();
+  if (noteLines.length) {
+    noteLines.forEach((line, idx) => {
+      if (idx) noteEl.appendChild(document.createTextNode('\n'));
+      const span = document.createElement('span');
+      if (line.current) span.className = 'snt-current-note';
+      span.textContent = line.text;
+      noteEl.appendChild(span);
+    });
+    noteEl.style.display = '';
+  } else {
+    noteEl.style.display = 'none';
+  }
 
   positionSchedTip(x, y);
 }
@@ -6108,6 +6132,8 @@ function renderScheduleTable(tableId, editable) {
     nameTd.className = 'col-name-td';
     nameTd.dataset.si = si;
     nameTd.textContent = s.name || `(pracovník ${si+1})`;
+    const currentNote = String(getEffectiveForSchedule(s, 'noteM') || '').trim();
+    if (currentNote && (tableId === 'tvorba-tbl' || tableId === 'rozpis-tbl')) nameTd.classList.add('has-current-note');
     const tc = getScheduleTypeColor(s.type, tableId);
     if (tc) { nameTd.style.background = tc; nameTd.style.color = '#222'; }
     if (s.unmatchedXls) {
