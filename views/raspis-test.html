@@ -8328,6 +8328,36 @@ async function loadDraft(id) {
   }
 }
 
+let latestSentDraftLoadInFlight = false;
+
+async function loadLatestSentDraftForTvorba() {
+  if (latestSentDraftLoadInFlight) return false;
+  if (document.body.dataset.activeTab !== 'tvorba') return false;
+  if (dirtyFlag && activeScheduleSource === 'draft') return false;
+  latestSentDraftLoadInFlight = true;
+  try {
+    const r = await fetch('/api/rt/requirements/latest-sent-draft', { credentials: 'include' });
+    if (!r.ok) return false;
+    const d = await r.json();
+    if (!d.ok || !d.draftId) return false;
+    if (document.body.dataset.activeTab !== 'tvorba') return false;
+    const id = String(d.draftId);
+    if (String(currentDraftId || '') === id && activeScheduleSource === 'draft') return false;
+    const loaded = await loadDraft(id);
+    if (loaded) {
+      await loadDraftList();
+      const sel = document.getElementById('rt-draft-sel');
+      if (sel) sel.value = id;
+    }
+    return loaded;
+  } catch (e) {
+    console.warn('loadLatestSentDraftForTvorba:', e);
+    return false;
+  } finally {
+    latestSentDraftLoadInFlight = false;
+  }
+}
+
 async function restoreTvorbaDraftAfterRequirements() {
   const spinner = document.getElementById('tvorba-spinner');
   if (spinner) spinner.style.display = '';
@@ -13213,6 +13243,7 @@ function switchTab(name) {
   if (name === 'tvorba') {
     if (activeScheduleSource !== 'draft') {
       if (!restoreTvorbaDraftSnapshot()) restoreTvorbaDraftAfterRequirements();
+      setTimeout(() => loadLatestSentDraftForTvorba().catch(e => console.warn('loadLatestSentDraftForTvorba:', e)), 0);
       return;
     }
     const tbl = document.getElementById('tvorba-tbl');
@@ -13230,6 +13261,9 @@ function switchTab(name) {
       // Table already rendered — panel just became visible, recalculate with real thead height.
       // (When the panel was hidden, thead.offsetHeight was 0 so positions were wrong.)
       refreshCoverageSticky();
+    }
+    if (!window._initRendering) {
+      setTimeout(() => loadLatestSentDraftForTvorba().catch(e => console.warn('loadLatestSentDraftForTvorba:', e)), 0);
     }
   } else if (name === 'rozpis') {
     if (sumsMode !== 'all') setSumsMode('all');
@@ -13459,6 +13493,7 @@ document.addEventListener('DOMContentLoaded', async () => {
   document.querySelectorAll('.tb-tab[data-tab]').forEach(b => {
     b.addEventListener('click', () => switchTab(b.dataset.tab));
   });
+  setTimeout(() => loadLatestSentDraftForTvorba().catch(e => console.warn('loadLatestSentDraftForTvorba:', e)), 0);
 
   // ── Sub-toolbar ──
   document.getElementById('stb-mobile-toggle')?.addEventListener('click', () => setMobileControlsOpen(true));
