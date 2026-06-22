@@ -394,6 +394,13 @@ body[data-active-tab="pozadavky"] #tb-right-actions { display: none; }
 .tab-panel { display: none; max-width: 100vw; height: calc(100dvh - 48px); overflow-x: hidden; }
 body.with-subtoolbar .tab-panel { height: calc(100dvh - var(--topbar-h,48px) - var(--stb-h,0px)); }
 .tab-panel.active { display: block; }
+body[data-active-tab] .tab-panel { display: none !important; }
+body[data-active-tab="nastaveni"] #tab-nastaveni,
+body[data-active-tab="tvorba"] #tab-tvorba,
+body[data-active-tab="rozpis"] #tab-rozpis,
+body[data-active-tab="public"] #tab-public,
+body[data-active-tab="denni"] #tab-denni,
+body[data-active-tab="pozadavky"] #tab-pozadavky { display: block !important; }
 #tab-nastaveni { overflow: auto; }
 
 /* ── Nastavení tab ── */
