@@ -491,7 +491,7 @@ async function init() {
         ['NGUY','Nguyen Thi Nhung'],['ROMANA','Nováková Romana'],['PAVE','Pavelka Filip'],
         ['PESS','Pešek Stanislav'],['POLA','Polášková Blanka'],['PROA','Prokhorian Anna'],
         ['SKR','Skřivánek Jan'],['SMOK','Smolová Kristýna'],['SMJ','Smrčková Jitka'],
-        ['SEZ','Smutná Petra'],['OLES','Stalchenko Oleksandra'],['STEN','Stéblová Natálie'],
+        ['SEZ','Smutná Petra'],['OLES','Stalchenko Oleksandra'],['STEN','Steblová Natálie'],
         ['IVAS','Stempak Ivan'],['SMEI','Šmejkalová Iva'],['STEO','Štěpánek Ondřej'],
         ['JUN','Štochlová Gabriela'],['TATA','Tatara Juraj'],['THA','Tremlová Hana'],
         ['TSAR','Tsarkov Valentin'],['VALE','Valeyeva Kristina'],['ALEKS','Viktorenkov Aleksei'],
@@ -713,7 +713,7 @@ async function init() {
         ['SMJ',     'Smrčková Jitka',           'Denní', 'ZPP'],
         ['SEZ',     'Smutná Petra',             'Denní', 'HPP'],
         ['OLES',    'Stalchenko Oleksandra',    'Obojí', 'HPP'],
-        ['STEN',    'Stéblová Natálie',          'Denní', 'DPP'],
+        ['STEN',    'Steblová Natálie',          'Denní', 'DPP'],
         ['IVAS',    'Stempak Ivan',             'Noční', 'DPČ'],
         ['SMEI',    'Šmejkalová Iva',           'Noční', 'HPP'],
         ['STEO',    'Štěpánek Ondřej',          'Denní', 'HPP'],
@@ -769,7 +769,6 @@ async function init() {
   {
     const namefixes = [
       ['Baiduk Dmytrii',   'Baidiuk Dmytrii',  'BAID'],
-      ['Steblová Natálie', 'Stéblová Natálie',  'STEN'],
     ];
     for (const [oldName, newName, login] of namefixes) {
       const { rows } = await db.query(
