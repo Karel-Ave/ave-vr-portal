@@ -13533,11 +13533,13 @@ document.addEventListener('DOMContentLoaded', async () => {
   document.querySelectorAll('.tb-tab[data-tab]').forEach(b => {
     b.addEventListener('click', () => {
       const tab = b.dataset.tab;
-      switchTab(tab);
-      if (tab === 'tvorba' && !isMobileLike()) {
-        prepareLatestSentDraftForTvorba()
-          .catch(e => console.warn('prepareLatestSentDraftForTvorba:', e));
+      if (tab !== 'tvorba' || isMobileLike()) {
+        switchTab(tab);
+        return;
       }
+      prepareLatestSentDraftForTvorba()
+        .catch(e => console.warn('prepareLatestSentDraftForTvorba:', e))
+        .finally(() => switchTab(tab));
     });
   });
   setTimeout(() => loadLatestSentDraftForTvorba().catch(e => console.warn('loadLatestSentDraftForTvorba:', e)), 0);
