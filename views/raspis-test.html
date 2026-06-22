@@ -12238,6 +12238,27 @@ function syncOverrideMonthToCurrentDraft() {
   updateOverrideInfoLabel();
 }
 
+async function ensureOverrideMonthFromLatestDraft() {
+  if (currentDraftId) return;
+  try {
+    if (!draftListCache.length) {
+      const r = await fetch('/api/rt/drafts', { credentials: 'include' });
+      if (r.ok) draftListCache = await r.json();
+    }
+    const preferred = Array.isArray(draftListCache) ? draftListCache[0] : null;
+    if (!preferred?.month || !preferred?.year || currentDraftId) return;
+    state.month = preferred.month;
+    state.year = preferred.year;
+    updateModeMonthLabel();
+    if (nastaveniMode === 'monthly') {
+      syncOverrideMonthToCurrentDraft();
+      renderStaffTable();
+    }
+  } catch (e) {
+    console.warn('ensureOverrideMonthFromLatestDraft:', e);
+  }
+}
+
 function updateSettingsHeaderStickyTop() {
   const modeBar = document.getElementById('nastaveni-mode-bar');
   const info = document.getElementById('override-info');
@@ -12253,6 +12274,7 @@ function setNastaveniMode(mode) {
   if (mode === 'monthly') {
     // Výchozí: nastavit na aktuální měsíc rozpisu
     syncOverrideMonthToCurrentDraft();
+    ensureOverrideMonthFromLatestDraft();
   }
   document.getElementById('mode-default-btn').classList.toggle('active', mode === 'default');
   document.getElementById('mode-monthly-btn').classList.toggle('active', mode === 'monthly');

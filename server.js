@@ -239,6 +239,70 @@ async function canTouchPriplatkyRecord(req, db, id) {
 }
 
 // Middleware: vyžaduje oprávnění pro danou aplikaci a tlačítko
+function parsePermOverridesValue(value) {
+  if (!value) return {};
+  if (typeof value === 'string') {
+    try { return JSON.parse(value); } catch (e) { return {}; }
+  }
+  return value || {};
+}
+
+async function loadPortalReceptionistNameMap(db) {
+  const { rows } = await db.query(
+    `SELECT name, username, perm_overrides
+     FROM users
+     WHERE perm_overrides IS NOT NULL`
+  );
+  const out = new Map();
+  for (const u of rows) {
+    const overrides = parsePermOverridesValue(u.perm_overrides);
+    const rs = overrides?.raspis_staff;
+    if (!rs || !rs.active) continue;
+    const login = String(rs.login || u.username || '').trim();
+    if (!login) continue;
+    out.set(login.toLowerCase(), rs.displayName || u.name || login);
+  }
+  return out;
+}
+
+function applyPortalReceptionistNames(rows, nameMap) {
+  (rows || []).forEach(row => {
+    const login = String(row.login || '').trim().toLowerCase();
+    if (login && nameMap.has(login)) row.full_name = nameMap.get(login);
+  });
+  return rows;
+}
+
+async function syncReceptionistLoginFromUser(db, userId, previousLogin = null) {
+  const { rows } = await db.query(
+    'SELECT name, username, perm_overrides FROM users WHERE id = $1',
+    [userId]
+  );
+  if (!rows.length) return;
+  const u = rows[0];
+  const overrides = parsePermOverridesValue(u.perm_overrides);
+  const rs = overrides?.raspis_staff;
+  if (!rs || !rs.active) return;
+  const login = String(rs.login || u.username || '').trim().toUpperCase();
+  const fullName = String(rs.displayName || u.name || login).trim();
+  if (!login || !fullName) return;
+  await db.query(
+    `INSERT INTO receptionist_logins (login, full_name, active)
+     VALUES ($1, $2, TRUE)
+     ON CONFLICT (login) DO UPDATE SET full_name = EXCLUDED.full_name, active = TRUE`,
+    [login, fullName]
+  );
+  const oldLogin = String(previousLogin || '').trim().toUpperCase();
+  if (oldLogin && oldLogin !== login) {
+    await db.query(
+      `INSERT INTO receptionist_logins (login, full_name, active)
+       VALUES ($1, $2, FALSE)
+       ON CONFLICT (login) DO UPDATE SET full_name = EXCLUDED.full_name, active = FALSE`,
+      [oldLogin, fullName]
+    );
+  }
+}
+
 function requirePerm(appKey, btnKey) {
   return async (req, res, next) => {
     const user = req.session.user;
@@ -445,6 +509,8 @@ app.patch('/api/users/:id', requireLogin, requireAdmin, async (req, res) => {
 
   try {
     const db = getPool();
+    const { rows: beforeRows } = await db.query('SELECT username FROM users WHERE id = $1', [id]);
+    const previousLogin = beforeRows[0]?.username || null;
     if (username) {
       // Check username not taken by someone else
       const { rows: taken } = await db.query(
@@ -456,6 +522,7 @@ app.patch('/api/users/:id', requireLogin, requireAdmin, async (req, res) => {
     if (name) await db.query('UPDATE users SET name = $1 WHERE id = $2', [name.trim(), id]);
     if (role) await db.query('UPDATE users SET role = $1 WHERE id = $2', [role, id]);
     if (phone !== undefined) await db.query('UPDATE users SET phone = $1 WHERE id = $2', [formatPhoneForStorage(phone), id]);
+    await syncReceptionistLoginFromUser(db, id, previousLogin);
     if (password) {
       if (password.length < 6) return res.json({ ok: false, msg: 'Heslo musí mít alespoň 6 znaků.' });
       await db.query('UPDATE users SET password_hash = $1 WHERE id = $2',
@@ -535,8 +602,12 @@ app.get('/api/admin/users/:id/overrides', requireLogin, requireAdmin, async (req
 app.put('/api/admin/users/:id/overrides', requireLogin, requireAdmin, async (req, res) => {
   try {
     const db = getPool();
+    const { rows: beforeRows } = await db.query('SELECT username, perm_overrides FROM users WHERE id = $1', [req.params.id]);
+    const beforeOverrides = parsePermOverridesValue(beforeRows[0]?.perm_overrides);
+    const previousLogin = beforeOverrides?.raspis_staff?.login || beforeRows[0]?.username || null;
     const val = req.body.overrides ? JSON.stringify(req.body.overrides) : null;
     await db.query('UPDATE users SET perm_overrides = $1 WHERE id = $2', [val, req.params.id]);
+    await syncReceptionistLoginFromUser(db, req.params.id, previousLogin);
     res.json({ ok: true });
   } catch(err) { res.json({ ok: false, msg: 'Chyba serveru.' }); }
 });
@@ -930,7 +1001,8 @@ app.get('/api/widget-today', requireLogin, async (req, res) => {
     const db = getPool();
     const { rows } = await db.query('SELECT data FROM rt_schedules WHERE key = $1', [key]);
     const rawData = rows.length ? rows[0].data : {};
-    const data = typeof rawData === 'string' ? JSON.parse(rawData || '{}') : (rawData || {});
+    let data = typeof rawData === 'string' ? JSON.parse(rawData || '{}') : (rawData || {});
+    data = await augmentRtDataWithActiveReceptionists(data, db);
     const staff = Array.isArray(data.staff) ? data.staff : [];
     const schedule = data.schedule || {};
     const hotels = widgetHotelOrder(data, month, year);
@@ -2241,6 +2313,7 @@ app.get('/api/priplatky/zaznamy', requireLogin, async (req, res) => {
      ORDER BY z.datum, z.id`,
     params
   );
+  applyPortalReceptionistNames(rows, await loadPortalReceptionistNameMap(db));
   if (!(await canUsePriplatkyInternalNote(req.session.user))) {
     rows.forEach(r => { delete r.internal_note; });
   }
@@ -2395,6 +2468,8 @@ app.get('/api/priplatky/export/xlsx', requireLogin, requirePermDefault('priplatk
      WHERE z.rok=$1 AND z.mesic=$2${ownWhere}`,
     params
   );
+  const portalNameMap = await loadPortalReceptionistNameMap(db);
+  applyPortalReceptionistNames(zaznamy, portalNameMap);
   zaznamy.sort((a,b) => {
     const lc = (a.login||'').localeCompare(b.login||'','cs');
     if (lc) return lc;
@@ -2416,6 +2491,7 @@ app.get('/api/priplatky/export/xlsx', requireLogin, requirePermDefault('priplatk
      GROUP BY z.login, rl.full_name ORDER BY z.login`,
     params
   );
+  applyPortalReceptionistNames(souhrn, portalNameMap);
 
   const XLSX = require('xlsx');
   const wb   = XLSX.utils.book_new();
@@ -2514,6 +2590,7 @@ app.post('/api/priplatky/import-template', requireLogin, requirePermDefault('pri
   );
 
   // CAD / JUN bonus z Raspisu (600 Kč za Sob/Ne/svátek na hotelu N)
+  applyPortalReceptionistNames(souhrn, await loadPortalReceptionistNameMap(db));
   const raspisKey = `${rok}-${String(mesic).padStart(2,'0')}`;
   const { rows: raspisRows } = await db.query('SELECT data FROM rozpisy WHERE key=$1', [raspisKey]);
   const raspisBonuses = {};   // full_name.toLowerCase() → Kč
