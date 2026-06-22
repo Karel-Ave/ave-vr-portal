@@ -12599,6 +12599,18 @@ async function showScheduleLog() {
 let viewEditMode = false;
 let viewEditSnapshot = null;
 
+function restoreScheduleWrapScroll(wrapId, left, top) {
+  const wrap = document.getElementById(wrapId);
+  if (!wrap) return;
+  const apply = () => {
+    wrap.scrollLeft = left || 0;
+    wrap.scrollTop = top || 0;
+  };
+  requestAnimationFrame(() => requestAnimationFrame(apply));
+  setTimeout(apply, 80);
+  setTimeout(apply, 220);
+}
+
 async function toggleViewEdit() {
   if (!currentPubKey) { toast('Žádný rozpis vybrán', true); return; }
   if (viewEditMode) {
@@ -12607,9 +12619,13 @@ async function toggleViewEdit() {
   }
   const locked = await acquireLock();
   if (!locked) return;
+  const wrap = document.getElementById('rozpis-wrap');
+  const scrollLeft = wrap ? wrap.scrollLeft : 0;
+  const scrollTop = wrap ? wrap.scrollTop : 0;
   viewEditMode = true;
   viewEditSnapshot = JSON.parse(JSON.stringify(buildSaveData()));
   renderScheduleTable('rozpis-tbl', true);
+  restoreScheduleWrapScroll('rozpis-wrap', scrollLeft, scrollTop);
   updateLockUI();
   startViewEditIdleWatch();
   toast('Editace aktivována');
