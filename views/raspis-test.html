@@ -8599,6 +8599,11 @@ function publishedOptionExists(key) {
   return !!(sel && [...sel.options].some(opt => opt.value === key));
 }
 
+function publishedTableHasContent(tableId) {
+  const tbl = document.getElementById(tableId);
+  return !!(tbl && tbl.querySelector('tbody tr'));
+}
+
 async function loadScheduleList() {
   const sel = document.getElementById('pub-sel');
   const publicSel = document.getElementById('pub-sel-public');
@@ -13301,7 +13306,7 @@ function switchTab(name) {
     if (sumsMode !== 'all') setSumsMode('all');
     pollLock();
     scheduleLockPoll();
-    if (activeScheduleSource !== 'published') {
+    if (activeScheduleSource !== 'published' || !currentPubKey || !publishedTableHasContent('rozpis-tbl')) {
       const realKey = currentPublishedScheduleKey();
       const cachedKey = publishedScheduleCache.has(realKey)
         ? realKey
@@ -13323,7 +13328,7 @@ function switchTab(name) {
     }
   } else if (name === 'public') {
     if (sumsMode !== 'all') setSumsMode('all');
-    if (activeScheduleSource !== 'published') {
+    if (activeScheduleSource !== 'published' || !currentPubKey || !publishedTableHasContent('public-rozpis-tbl')) {
       const realKey = currentPublishedScheduleKey();
       const cachedKey = publishedScheduleCache.has(realKey)
         ? realKey
