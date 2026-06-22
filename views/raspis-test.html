@@ -12227,9 +12227,26 @@ function updateOverrideInfoLabel() {
   if (lbl) lbl.textContent = `${MONTH_NAMES_LONG[overrideModeMonth]} ${overrideModeYear}`;
 }
 
+function getPreferredDraftMonth() {
+  const list = Array.isArray(draftListCache) ? draftListCache : [];
+  const currentId = currentDraftId != null ? String(currentDraftId) : '';
+  const current = currentId
+    ? list.find(d => String(d.id || d._id) === currentId)
+    : null;
+  const preferred = current || list[0];
+  if (preferred?.month && preferred?.year) {
+    return { month: Number(preferred.month), year: Number(preferred.year) };
+  }
+  return {
+    month: parseInt(state.month, 10) || (new Date().getMonth() + 1),
+    year: parseInt(state.year, 10) || new Date().getFullYear()
+  };
+}
+
 function syncOverrideMonthToCurrentDraft() {
-  const m = parseInt(state.month, 10) || (new Date().getMonth() + 1);
-  const y = parseInt(state.year, 10) || new Date().getFullYear();
+  const target = getPreferredDraftMonth();
+  const m = target.month;
+  const y = target.year;
   overrideModeMonth = m;
   overrideModeYear = y;
   const mSel = document.getElementById('override-month-sel');
@@ -12240,17 +12257,11 @@ function syncOverrideMonthToCurrentDraft() {
 }
 
 async function ensureOverrideMonthFromLatestDraft() {
-  if (currentDraftId) return;
   try {
     if (!draftListCache.length) {
       const r = await fetch('/api/rt/drafts', { credentials: 'include' });
       if (r.ok) draftListCache = await r.json();
     }
-    const preferred = Array.isArray(draftListCache) ? draftListCache[0] : null;
-    if (!preferred?.month || !preferred?.year || currentDraftId) return;
-    state.month = preferred.month;
-    state.year = preferred.year;
-    updateModeMonthLabel();
     if (nastaveniMode === 'monthly') {
       syncOverrideMonthToCurrentDraft();
       renderStaffTable();
