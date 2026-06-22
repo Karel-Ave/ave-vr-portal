@@ -152,7 +152,10 @@ async function init() {
   await db.query(`ALTER TABLE user_preferences ADD COLUMN IF NOT EXISTS app_order TEXT DEFAULT NULL`);
   await db.query(`ALTER TABLE user_preferences ADD COLUMN IF NOT EXISTS default_public_hotel VARCHAR(80) DEFAULT NULL`);
   await db.query(`ALTER TABLE user_preferences ALTER COLUMN default_public_hotel TYPE VARCHAR(80)`);
-  await db.query(`ALTER TABLE user_preferences ADD COLUMN IF NOT EXISTS auto_logout_minutes INTEGER DEFAULT 30`);
+  await db.query(`ALTER TABLE user_preferences ADD COLUMN IF NOT EXISTS auto_logout_minutes INTEGER DEFAULT 60`);
+  await db.query(`ALTER TABLE user_preferences ALTER COLUMN auto_logout_minutes SET DEFAULT 60`);
+  await db.query(`ALTER TABLE user_preferences ADD COLUMN IF NOT EXISTS auto_logout_set BOOLEAN NOT NULL DEFAULT FALSE`);
+  await db.query(`UPDATE user_preferences SET auto_logout_minutes = 60 WHERE auto_logout_set = FALSE AND (auto_logout_minutes IS NULL OR auto_logout_minutes = 30)`);
   await db.query(`ALTER TABLE user_preferences ADD COLUMN IF NOT EXISTS default_views TEXT DEFAULT NULL`);
 
   // ── Blacklist ─────────────────────────────────────────────────────────────

@@ -108,6 +108,7 @@ function setLockTimer(key) {
 // ── Logging helper ────────────────────────────────────────────────────────────
 
 async function logEvent(userId, userName, action, details = {}) {
+  if (action !== 'login') return;
   try {
     const db = getPool();
     await db.query(
@@ -359,6 +360,11 @@ app.get('/widget', requireLogin, (req, res) => res.redirect('/portal'));
 // ── API: Auth ─────────────────────────────────────────────────────────────────
 
 app.get('/api/me', requireLogin, (req, res) => res.json(req.session.user));
+
+app.get('/api/session/status', (req, res) => {
+  if (!req.session.user) return res.status(401).json({ ok: false });
+  res.json({ ok: true });
+});
 
 // Save theme preference for the current user
 app.patch('/api/me/theme', requireLogin, async (req, res) => {
@@ -617,7 +623,7 @@ app.get('/api/admin/logs', requireLogin, requireAdmin, async (req, res) => {
     const db = getPool();
     const { rows } = await db.query(
       `SELECT id, timestamp, user_id, user_name, action, details
-       FROM logs ORDER BY timestamp DESC LIMIT 500`
+       FROM logs WHERE action = 'login' ORDER BY timestamp DESC LIMIT 500`
     );
     res.json(rows);
   } catch (err) {
@@ -1332,18 +1338,22 @@ app.get('/api/user-prefs', requireLogin, async (req, res) => {
   try {
     const db = getPool();
     const { rows } = await db.query(
-      'SELECT default_raspis_key, default_public_hotel, default_views FROM user_preferences WHERE user_id = $1',
+      'SELECT default_raspis_key, default_public_hotel, default_views, auto_logout_minutes FROM user_preferences WHERE user_id = $1',
       [req.session.user.id]
     );
     let defaultViews = {};
     try { defaultViews = rows[0]?.default_views ? JSON.parse(rows[0].default_views) : {}; } catch { defaultViews = {}; }
+    const autoLogoutMinutes = [0, 30, 60, 720].includes(Number(rows[0]?.auto_logout_minutes))
+      ? Number(rows[0].auto_logout_minutes)
+      : 60;
     res.json({
       default_raspis_key: rows[0]?.default_raspis_key || null,
       default_public_hotel: rows[0]?.default_public_hotel || 'ALL',
-      default_views: defaultViews
+      default_views: defaultViews,
+      auto_logout_minutes: autoLogoutMinutes
     });
   } catch (err) {
-    res.json({ default_raspis_key: null, default_public_hotel: 'ALL', default_views: {} });
+    res.json({ default_raspis_key: null, default_public_hotel: 'ALL', default_views: {}, auto_logout_minutes: 60 });
   }
 });
 
@@ -1445,8 +1455,21 @@ app.post('/api/user-prefs/default-views', requireLogin, async (req, res) => {
 });
 
 app.post('/api/user-prefs/auto-logout', requireLogin, async (req, res) => {
-  req.session.cookie.maxAge = SESSION_MAX_AGE;
-  req.session.save(() => res.json({ ok: true, disabled: true }));
+  const minutes = Number(req.body?.minutes);
+  const allowed = new Set([0, 30, 60, 720]);
+  if (!allowed.has(minutes)) return res.status(400).json({ ok: false, msg: 'Neplatná hodnota.' });
+  try {
+    const db = getPool();
+    await db.query(
+      `INSERT INTO user_preferences (user_id, auto_logout_minutes, auto_logout_set, updated_at)
+       VALUES ($1, $2, TRUE, NOW())
+       ON CONFLICT (user_id) DO UPDATE SET auto_logout_minutes = $2, auto_logout_set = TRUE, updated_at = NOW()`,
+      [req.session.user.id, minutes]
+    );
+    res.json({ ok: true, auto_logout_minutes: minutes });
+  } catch (err) {
+    res.status(500).json({ ok: false, msg: 'Chyba serveru.' });
+  }
 });
 
 // ── Zprávy (Messages) ────────────────────────────────────────────────────────

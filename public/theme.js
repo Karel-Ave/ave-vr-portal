@@ -34,6 +34,13 @@
   var lastThemeEventAt = 0;
   var lastLocalThemeChange = 0;
   var bootStartedAt = Date.now();
+  var AUTO_LOGOUT_ACTIVITY_KEY = 'ave-portal-last-activity';
+  var AUTO_LOGOUT_FORCE_KEY = 'ave-portal-force-logout';
+  var autoLogoutMinutes = 60;
+  var autoLogoutTimer = null;
+  var autoLogoutSessionTimer = null;
+  var autoLogoutLastPing = 0;
+  var autoLogoutStarted = false;
 
   function normalizeSkin(skin, fallback) {
     fallback = fallback || DEFAULT_LIGHT_SKIN;
@@ -168,6 +175,101 @@
     skins: SKINS
   };
 
+  function normalizeAutoLogoutMinutes(value) {
+    var n = Number(value);
+    return [0, 30, 60, 720].indexOf(n) >= 0 ? n : 60;
+  }
+
+  function markAutoLogoutActivity() {
+    if (!autoLogoutStarted || !autoLogoutMinutes) return;
+    var now = Date.now();
+    try { localStorage.setItem(AUTO_LOGOUT_ACTIVITY_KEY, String(now)); } catch (e) {}
+    if (now - autoLogoutLastPing > 60000) {
+      autoLogoutLastPing = now;
+      try {
+        checkSessionAlive();
+      } catch (e) {}
+    }
+    scheduleAutoLogoutCheck();
+  }
+
+  function latestAutoLogoutActivity() {
+    var stored = 0;
+    try { stored = parseInt(localStorage.getItem(AUTO_LOGOUT_ACTIVITY_KEY) || '0', 10) || 0; } catch (e) {}
+    return Math.max(stored, bootStartedAt);
+  }
+
+  function performAutoLogout() {
+    try { localStorage.setItem(AUTO_LOGOUT_FORCE_KEY, String(Date.now())); } catch (e) {}
+    try {
+      if (window.top && window.top !== window) window.top.location.href = '/logout';
+      else window.location.href = '/logout';
+    } catch (e) {
+      window.location.href = '/logout';
+    }
+  }
+
+  function scheduleAutoLogoutCheck() {
+    if (autoLogoutTimer) clearTimeout(autoLogoutTimer);
+    if (!autoLogoutStarted || !autoLogoutMinutes) return;
+    var limitMs = autoLogoutMinutes * 60 * 1000;
+    var elapsed = Date.now() - latestAutoLogoutActivity();
+    var delay = Math.max(1000, limitMs - elapsed);
+    autoLogoutTimer = setTimeout(function () {
+      if (Date.now() - latestAutoLogoutActivity() >= limitMs) performAutoLogout();
+      else scheduleAutoLogoutCheck();
+    }, delay);
+  }
+
+  function setAutoLogoutMinutes(minutes) {
+    autoLogoutMinutes = normalizeAutoLogoutMinutes(minutes);
+    if (autoLogoutTimer) clearTimeout(autoLogoutTimer);
+    if (!autoLogoutMinutes) return;
+    markAutoLogoutActivity();
+    scheduleAutoLogoutCheck();
+  }
+
+  function checkSessionAlive() {
+    return fetch('/api/session/status', { credentials: 'include', cache: 'no-store' }).then(function (r) {
+      if (r.status === 401) {
+        window.location.href = '/';
+        return null;
+      }
+      if (!r.ok) return null;
+      return r.json();
+    }).then(function (data) {
+      if (data && data.ok === false) window.location.href = '/';
+    }).catch(function () {});
+  }
+
+  function startAutoLogout(minutes) {
+    autoLogoutMinutes = normalizeAutoLogoutMinutes(minutes);
+    autoLogoutStarted = true;
+    ['pointerdown','mousemove','keydown','scroll','touchstart','click'].forEach(function (ev) {
+      window.addEventListener(ev, markAutoLogoutActivity, { passive: true, capture: true });
+    });
+    markAutoLogoutActivity();
+    scheduleAutoLogoutCheck();
+    if (!autoLogoutSessionTimer) {
+      autoLogoutSessionTimer = setInterval(checkSessionAlive, 60000);
+    }
+  }
+
+  window.AVE_AUTO_LOGOUT = {
+    setMinutes: setAutoLogoutMinutes,
+    markActivity: markAutoLogoutActivity
+  };
+
+  function loadAutoLogoutPrefs() {
+    fetch('/api/user-prefs', { credentials: 'include', cache: 'no-store' }).then(function (r) {
+      return r.ok ? r.json() : null;
+    }).then(function (prefs) {
+      startAutoLogout(prefs && prefs.auto_logout_minutes);
+    }).catch(function () {
+      startAutoLogout(60);
+    });
+  }
+
   function setup() {
     var btn = document.getElementById('btn-theme');
     if (btn && !btn.dataset.themeBound) {
@@ -192,6 +294,7 @@
       var darkSkin = normalizeSkin(user.theme_skin_dark || (serverDark && user.theme_skin) || DEFAULT_DARK_SKIN, DEFAULT_DARK_SKIN);
       var userKey = String(user.id || user.username || '');
 
+      loadAutoLogoutPrefs();
       if (lastLocalThemeChange >= bootStartedAt) return;
       localStorage.setItem(USER_KEY, userKey);
       localStorage.setItem(THEME_KEY, serverDark ? 'dark' : 'light');
@@ -207,6 +310,15 @@
       var dark = localStorage.getItem(THEME_KEY) === 'dark';
       applyTheme(dark, getSkinForMode(dark));
       postThemeMessage(isDark(), getSkin());
+    }
+    if (e.key === AUTO_LOGOUT_ACTIVITY_KEY) scheduleAutoLogoutCheck();
+    if (e.key === AUTO_LOGOUT_FORCE_KEY && e.newValue) {
+      try {
+        if (window.top && window.top !== window) window.top.location.href = '/logout';
+        else window.location.href = '/logout';
+      } catch (err) {
+        window.location.href = '/logout';
+      }
     }
   });
 
