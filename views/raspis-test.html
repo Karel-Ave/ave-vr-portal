@@ -2012,6 +2012,17 @@ body.hide-req-changes .sched-cell[data-req-tip]:hover::after {
     position: relative;
     overflow: hidden;
   }
+  body[data-active-tab] .tab-panel {
+    display: none !important;
+  }
+  body[data-active-tab="nastaveni"] #tab-nastaveni,
+  body[data-active-tab="tvorba"] #tab-tvorba,
+  body[data-active-tab="rozpis"] #tab-rozpis,
+  body[data-active-tab="public"] #tab-public,
+  body[data-active-tab="denni"] #tab-denni,
+  body[data-active-tab="pozadavky"] #tab-pozadavky {
+    display: block !important;
+  }
   body {
     padding-bottom: env(safe-area-inset-bottom,0px);
   }
