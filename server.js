@@ -3763,23 +3763,11 @@ app.get('/api/rt/drafts', requireLogin, async (req, res) => {
     const db = getPool();
     // month = 0 je rezervováno pro special-staff (přežívající záznamy) — nezobrazovat v seznamu konceptů
     const { rows } = await db.query(
-      `WITH latest_sent AS (
-         SELECT month, year
-         FROM rt_requirements
-         WHERE sent_to_tvorba_at IS NOT NULL
-         ORDER BY sent_to_tvorba_at DESC
-         LIMIT 1
-       )
-       SELECT d.id, d.month, d.year, d.saved_at,
-              (ls.month = d.month AND ls.year = d.year) AS preferred
-       FROM rt_drafts d
-       LEFT JOIN latest_sent ls ON TRUE
-       WHERE d.user_id = $1 AND d.month > 0
-       ORDER BY d.saved_at DESC, d.id DESC`,
+      'SELECT id, month, year, saved_at FROM rt_drafts WHERE user_id = $1 AND month > 0 ORDER BY saved_at DESC, id DESC',
       [req.session.user.id]
     );
     res.json(rows.map(r => ({
-      id: r.id, month: r.month, year: r.year, saved_at: r.saved_at, preferred: !!r.preferred,
+      id: r.id, month: r.month, year: r.year, saved_at: r.saved_at,
       label: `Koncept ${String(r.month).padStart(2,'0')}/${r.year}`
     })));
   } catch (err) { console.error(err); res.json([]); }

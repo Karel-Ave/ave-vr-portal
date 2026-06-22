@@ -8301,11 +8301,6 @@ async function loadDraftList() {
   }
 }
 
-function preferredDraftEntry() {
-  if (!Array.isArray(draftListCache) || !draftListCache.length) return null;
-  return draftListCache.find(d => d.preferred) || draftListCache[0];
-}
-
 async function loadDraft(id) {
   if (!id) return false;
   try {
@@ -8342,9 +8337,9 @@ async function restoreTvorbaDraftAfterRequirements() {
       currentDraftId = null;
     }
     await loadDraftList();
-    const preferred = preferredDraftEntry();
-    if (preferred) {
-      await loadDraft(preferred.id || preferred._id);
+    const first = Array.isArray(draftListCache) ? draftListCache[0] : null;
+    if (first) {
+      await loadDraft(first.id || first._id);
       return true;
     }
     state.staff = [];
@@ -12250,7 +12245,7 @@ async function ensureOverrideMonthFromLatestDraft() {
       const r = await fetch('/api/rt/drafts', { credentials: 'include' });
       if (r.ok) draftListCache = await r.json();
     }
-    const preferred = preferredDraftEntry();
+    const preferred = Array.isArray(draftListCache) ? draftListCache[0] : null;
     if (!preferred?.month || !preferred?.year || currentDraftId) return;
     state.month = preferred.month;
     state.year = preferred.year;
@@ -13364,7 +13359,7 @@ document.addEventListener('DOMContentLoaded', async () => {
   // Load draft list a načti nejnovější koncept (typicky poslední měsíc odeslaný z Požadavků do Tvorby)
   await loadDraftList();
   {
-    const preferred = preferredDraftEntry();
+    const preferred = draftListCache[0];
     if (preferred) {
       const id = preferred.id || preferred._id;
       document.getElementById('rt-draft-sel').value = id;
