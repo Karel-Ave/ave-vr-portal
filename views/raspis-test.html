@@ -10743,6 +10743,7 @@ function applyRowFilters() {
         hide = !isReceptionStaffType(s) || !!(slotVal && slotVal !== 'P');
       }
       if ((isPublicTbl || isReqTbl) && isCurrentUserStaff(s)) hide = false;
+      if (isPublicTbl && !isReceptionStaffType(s) && !isPublicHiddenStaff(s)) hide = false;
       tr.classList.toggle('row-filtered', hide);
     });
     // Coverage rows: toggle class on table — CSS handles display:none on covTbody
