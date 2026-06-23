@@ -4496,7 +4496,7 @@ function normalizeRtSpecialStaffList(parsed) {
   })).filter(s => s.name);
 }
 
-async function loadRtAllSpecialStaff(db) {
+async function loadRtAllSpecialStaff(db, month = null, year = null) {
   const { rows } = await db.query(
     'SELECT data FROM rt_drafts WHERE month = 0 AND year = 0 ORDER BY saved_at DESC NULLS LAST, id DESC'
   );
@@ -4505,6 +4505,7 @@ async function loadRtAllSpecialStaff(db) {
     let parsed;
     try { parsed = typeof row.data === 'string' ? JSON.parse(row.data) : row.data; } catch(e) { parsed = null; }
     for (const s of normalizeRtSpecialStaffList(parsed)) {
+      if (month && year && !rtIsStaffActiveForMonth(s, month, year)) continue;
       const key = rtNormalizeStaffName(s.name);
       if (key && !byName.has(key)) byName.set(key, s);
     }
@@ -4669,7 +4670,7 @@ async function augmentRtDataWithSharedSpecialStaff(data, db = getPool()) {
   const year = parseInt(data.year, 10);
   if (!month || !year || !Array.isArray(data.staff) || !data.staff.length) return data;
 
-  const special = (await loadRtAllSpecialStaff(db))
+  const special = (await loadRtAllSpecialStaff(db, month, year))
     .filter(s => rtIsStaffActiveForMonth(s, month, year));
   if (!special.length) return data;
 
