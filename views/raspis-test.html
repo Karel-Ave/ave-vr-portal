@@ -10000,6 +10000,7 @@ function saveStbState() {
 }
 
 function applyStbStateUi() {
+  normalizeHotelFilterSelection();
   scheduleTableIds().forEach(tblId => {
     const tbl = document.getElementById(tblId);
     if (!tbl) return;
@@ -10080,6 +10081,7 @@ function restoreStbStateForTab(tab = null) {
       const letters = JSON.parse(fh);
       if (letters.length > 0) filterHotels = new Set(letters);
     }
+    normalizeHotelFilterSelection();
     clearAvailableSlotFilter();
     applyStbStateUi();
   } catch(e) {}
@@ -10424,6 +10426,7 @@ function updateShiftContextBorders() {
 function buildHotelFilterButtons() {
   const container = document.getElementById('stb-hotel-btns');
   container.innerHTML = '';
+  normalizeHotelFilterSelection();
   getUsedHotelLetters().forEach(letter => {
     const hd = getHotelByLetter(letter);
     if (!hd || !isHotelActiveForMonth(hd, state.month, state.year)) return;
@@ -10436,6 +10439,25 @@ function buildHotelFilterButtons() {
     btn.addEventListener('click', () => filterByHotel(letter));
     container.appendChild(btn);
   });
+}
+
+function getFilterableHotelLetters() {
+  return getUsedHotelLetters().filter(letter => {
+    const hd = getHotelByLetter(letter);
+    if (!hd || !isHotelActiveForMonth(hd, state.month, state.year)) return false;
+    return getHotelsForMonth(state.month, state.year, { panel: true }).some(h => h.letter === letter);
+  });
+}
+
+function normalizeHotelFilterSelection() {
+  if (!filterHotels.size) return false;
+  const letters = getFilterableHotelLetters();
+  if (!letters.length) return false;
+  const selected = new Set(Array.from(filterHotels).map(h => String(h).toUpperCase()));
+  const hasAllVisibleHotels = letters.every(letter => selected.has(String(letter).toUpperCase()));
+  if (!hasAllVisibleHotels) return false;
+  filterHotels.clear();
+  return true;
 }
 
 function applyPublicDefaultHotel(force = false) {
@@ -10451,6 +10473,7 @@ function applyPublicDefaultHotel(force = false) {
   } else {
     filterHotels = new Set(wanted.split(',').map(x => x.trim()).filter(Boolean));
   }
+  normalizeHotelFilterSelection();
   document.getElementById('stb-vse')?.classList.toggle('active', filterHotels.size === 0);
   document.querySelectorAll('#stb-hotel-btns .stb-btn').forEach(b => {
     b.classList.toggle('active', filterHotels.has(b.dataset.hotel));
@@ -10461,10 +10484,11 @@ function applyPublicDefaultHotel(force = false) {
 }
 
 async function filterByHotel(letter) {
-  if (document.querySelector('.tb-tab.active')?.dataset.tab === 'public') {
+  const activeTab = document.querySelector('.tb-tab.active')?.dataset.tab;
+  if (activeTab === 'public') {
     publicHotelFilterTouched = true;
   }
-  await syncRaspisStaff();
+  if (activeTab === 'tvorba' || activeTab === 'pozadavky') await syncRaspisStaff();
   showMarkedOnly = false;
   const wasEmpty = filterHotels.size === 0;
   if (filterHotels.has(letter)) {
@@ -10472,6 +10496,7 @@ async function filterByHotel(letter) {
   } else {
     filterHotels.add(letter);
   }
+  normalizeHotelFilterSelection();
   if (wasEmpty && filterHotels.size > 0) showQualifiedWorkers = false;
   document.getElementById('stb-vse').classList.toggle('active', filterHotels.size === 0);
   document.querySelectorAll('#stb-hotel-btns .stb-btn').forEach(b => {
