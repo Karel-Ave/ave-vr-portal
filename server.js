@@ -4026,7 +4026,7 @@ app.get('/api/rt/schedules/:key', requireLogin, async (req, res) => {
     let parsed;
     try { parsed = typeof entry.data === 'string' ? JSON.parse(entry.data) : entry.data; } catch(e) { parsed = entry.data; }
     entry.data = await augmentRtDataWithActiveReceptionists(parsed, db);
-    entry.data = await augmentRtDataWithSpecialStaff(entry.data, req.session.user.id, db);
+    entry.data = await augmentRtDataWithSharedSpecialStaff(entry.data, db);
     entry.data.coverageCounts = buildRtCoverageCounts(entry.data);
     res.json({ ok: true, entry });
   } catch (err) { console.error(err); res.status(500).json({ ok: false }); }
@@ -4041,6 +4041,7 @@ app.post('/api/rt/schedules/publish', requireLogin, requirePermDefault('raspis',
     const db = getPool();
     data = await augmentRtDataWithActiveReceptionists(data, db);
     data = await augmentRtDataWithSpecialStaff(data, req.session.user.id, db);
+    data = await augmentRtDataWithSharedSpecialStaff(data, db);
     const knownHotelSync = await syncRtKnownHotelsFromSchedule(data, db);
     await db.query(
       `INSERT INTO rt_schedules (key, month, year, label, data, published_at, published_by)
@@ -4472,6 +4473,45 @@ async function loadRtSpecialStaffForUser(db, userId) {
   })).filter(s => s.name);
 }
 
+function normalizeRtSpecialStaffList(parsed) {
+  const staff = Array.isArray(parsed?.staff) ? parsed.staff : [];
+  return staff.map(s => ({
+    name: s.name || '',
+    login: s.login || '',
+    type: s.type || '',
+    contract: s.contract || '',
+    maxHrs: s.maxHrs || '',
+    regular: s.regular || '',
+    dates: s.dates || '',
+    noteM: s.noteM || '',
+    noteP: s.noteP || '',
+    hotelSkills: Array.isArray(s.hotelSkills) ? s.hotelSkills : (Array.isArray(s.hotels) ? s.hotels : []),
+    noStandby: !!s.noStandby,
+    reqXLimit: rtReqLimit(s.reqXLimit, 7),
+    reqYLimit: rtReqLimit(s.reqYLimit, 0),
+    monthlyOverrides: s.monthlyOverrides || undefined,
+    activeFrom: rtStaffMonthValue(s.activeFrom) || s.activeFrom || null,
+    activeUntil: rtStaffMonthValue(s.activeUntil) || s.activeUntil || null,
+    inactive: !!s.inactive
+  })).filter(s => s.name);
+}
+
+async function loadRtAllSpecialStaff(db) {
+  const { rows } = await db.query(
+    'SELECT data FROM rt_drafts WHERE month = 0 AND year = 0 ORDER BY saved_at DESC NULLS LAST, id DESC'
+  );
+  const byName = new Map();
+  for (const row of rows) {
+    let parsed;
+    try { parsed = typeof row.data === 'string' ? JSON.parse(row.data) : row.data; } catch(e) { parsed = null; }
+    for (const s of normalizeRtSpecialStaffList(parsed)) {
+      const key = rtNormalizeStaffName(s.name);
+      if (key && !byName.has(key)) byName.set(key, s);
+    }
+  }
+  return Array.from(byName.values());
+}
+
 function rtRemapStaffIndexedMap(obj, oldToNew, cellKeys = true) {
   const out = {};
   Object.entries(obj || {}).forEach(([key, val]) => {
@@ -4599,6 +4639,37 @@ async function augmentRtDataWithSpecialStaff(data, userId, db = getPool()) {
   if (!month || !year || !Array.isArray(data.staff) || !data.staff.length) return data;
 
   const special = (await loadRtSpecialStaffForUser(db, userId))
+    .filter(s => rtIsStaffActiveForMonth(s, month, year));
+  if (!special.length) return data;
+
+  let added = false;
+  const byName = new Set(data.staff.map(s => rtNormalizeStaffName(s && s.name)).filter(Boolean));
+  for (const s of special) {
+    const nameKey = rtNormalizeStaffName(s.name);
+    if (!nameKey || byName.has(nameKey)) continue;
+    data.staff.push(JSON.parse(JSON.stringify(s)));
+    byName.add(nameKey);
+    added = true;
+  }
+  if (!added) return data;
+
+  const indexed = data.staff.map((s, oldIdx) => ({ s, oldIdx }));
+  indexed.sort((a, b) => String(a.s.name || '').localeCompare(String(b.s.name || ''), 'cs', { sensitivity: 'base' }));
+  const oldToNew = {};
+  indexed.forEach((item, newIdx) => { oldToNew[item.oldIdx] = newIdx; });
+  data.staff = indexed.map(item => item.s);
+  data.staffOrder = data.staff.map(s => s.userId || null);
+  rtRemapDataStaffIndexes(data, oldToNew);
+  return data;
+}
+
+async function augmentRtDataWithSharedSpecialStaff(data, db = getPool()) {
+  if (!data || typeof data !== 'object') return data;
+  const month = parseInt(data.month, 10);
+  const year = parseInt(data.year, 10);
+  if (!month || !year || !Array.isArray(data.staff) || !data.staff.length) return data;
+
+  const special = (await loadRtAllSpecialStaff(db))
     .filter(s => rtIsStaffActiveForMonth(s, month, year));
   if (!special.length) return data;
 

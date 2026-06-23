@@ -3,8 +3,12 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, viewport-fit=cover">
+<meta name="application-name" content="Směny AVE">
+<meta name="apple-mobile-web-app-title" content="Směny AVE">
+<link rel="manifest" href="/static/manifest.json">
 <title>Rozpis a požadavky – VR AVE</title>
 <link rel="icon" type="image/png" href="/static/logo.png">
+<link rel="apple-touch-icon" href="/apple-touch-icon.png">
 <script src="/static/theme.js"></script>
 <link rel="stylesheet" href="/static/theme.css">
 <script src="https://cdn.sheetjs.com/xlsx-0.20.3/package/dist/xlsx.full.min.js"></script>
@@ -1042,6 +1046,10 @@ table.sched-tbl {
 .cov-3plus      { background: var(--col-cov3-bg,#ff8a65)  !important; color: var(--col-cov3-tx,#5d1a00) !important; font-weight: 700; }
 .cov-dayonly-night { background: var(--col-covdn-bg,#e8e8e8) !important; color: var(--col-covdn-tx,#999) !important; }
 /* Row/column hover highlight */
+.sched-tbl .staff-tbody tr.special-staff-row td.col-name-td {
+  filter: brightness(0.92);
+  font-weight: 700;
+}
 .staff-tbody tr:hover td.col-name-td {
   filter: none;
   box-shadow: inset 4px 0 0 var(--accent), inset 0 0 0 9999px color-mix(in srgb, var(--accent) 24%, transparent);
@@ -1601,6 +1609,11 @@ body[data-active-tab="pozadavky"] #schedule-legend .legend-item.schedule-dynamic
     font-weight: 600 !important;
     overflow: hidden !important;
     text-overflow: clip !important;
+  }
+  body.print-schedule #print-root .sched-tbl tr.special-staff-row .col-name-td {
+    background: #d5d9e2 !important;
+    color: #000 !important;
+    font-weight: 700 !important;
   }
   body.print-schedule #print-root .sched-tbl .th-day {
     min-width: calc(var(--print-col-w, 10px) * 2) !important;
@@ -5469,6 +5482,13 @@ function printScheduleTab(tab) {
   root.append(title, wrap);
   document.body.appendChild(root);
 
+  const isReqPrint = tab === 'pozadavky';
+  if (isReqPrint) {
+    clone.querySelectorAll('tr.row-filtered, tr.hidden-row').forEach(tr => {
+      tr.classList.remove('row-filtered', 'hidden-row');
+      tr.style.display = '';
+    });
+  }
   const visibleRows = Array.from(clone.querySelectorAll('tbody tr')).filter(tr => {
     return !tr.classList.contains('row-filtered')
       && !tr.classList.contains('hidden-row')
@@ -5479,7 +5499,7 @@ function printScheduleTab(tab) {
   }).length;
   const dayCols = clone.querySelectorAll('thead th.th-dn').length;
   const sumCols = clone.querySelectorAll('thead th.th-sum').length;
-  const page = { w: 740, h: 1068 }; // A4 portrait printable area at 7mm margins, CSS px approximation
+  const page = { w: 740, h: isReqPrint ? 1010 : 1068 }; // A4 portrait printable area approximation
   let nameW = filterHotels.size ? 86 : 88;
   let sumW = filterHotels.size ? 10 : 10;
   let colW = (page.w - nameW - sumCols * sumW - 4) / Math.max(1, dayCols);
@@ -5508,8 +5528,10 @@ function printScheduleTab(tab) {
   const dayHeadH = 17;
   const dnHeadH = 11;
   const rows = Math.max(1, visibleRows);
-  const rowH = Math.max(8, Math.min(filterHotels.size ? 17 : 12, Math.floor((page.h - titleH - headerH - 4) / (rows + 5))));
-  const font = Math.max(5, Math.min(filterHotels.size ? 8.4 : 7, +(rowH * .56).toFixed(2)));
+  const rowMin = isReqPrint ? 6.4 : 8;
+  const rowMax = isReqPrint ? 10.5 : (filterHotels.size ? 17 : 12);
+  const rowH = Math.max(rowMin, Math.min(rowMax, Math.floor((page.h - titleH - headerH - 4) / (rows + 5))));
+  const font = Math.max(isReqPrint ? 4.6 : 5, Math.min(filterHotels.size ? 8.4 : 7, +(rowH * .56).toFixed(2)));
   document.documentElement.style.setProperty('--print-root-w', Math.ceil(page.w) + 'px');
   document.documentElement.style.setProperty('--print-name-w', nameW + 'px');
   document.documentElement.style.setProperty('--print-col-w', colW + 'px');
@@ -6185,6 +6207,7 @@ function renderScheduleTable(tableId, editable) {
 
     const tr = document.createElement('tr');
     tr.dataset.si = si;
+    if (!isReceptionStaffType(s)) tr.classList.add('special-staff-row');
     if ((isPublicView || isRequirementsView) && isCurrentUserStaff(s)) tr.classList.add('public-own-row');
     const rowEditable = editable && (!isRequirementsView || canEditRequirementStaff(s));
 
@@ -8690,7 +8713,7 @@ async function loadScheduleList() {
       const opt = document.createElement('option');
       opt.value = it.key;
       const mn = MONTH_NAMES[(it.month||1)-1];
-      opt.textContent = (it.key === currentKey ? '★ ' : '') + (it.label || `${mn} ${it.year}`);
+      opt.textContent = it.label || `${mn} ${it.year}`;
       sel.appendChild(opt);
       if (publicSel) publicSel.appendChild(opt.cloneNode(true));
     });
@@ -9121,6 +9144,7 @@ function getRequirementDuplicateTip(si, ci) {
     if (!otherVal || SKIP_VALS.has(otherVal)) return;
     if (otherVal.toUpperCase() !== val.toUpperCase()) return;
     const meta = state.reqMeta?.[key];
+    if (!meta?.timestamp) return;
     const who = meta?.userName || meta?.username || '';
     const ts = meta?.timestamp ? Date.parse(meta.timestamp) : NaN;
     const when = Number.isFinite(ts) ? new Date(ts).toLocaleString('cs-CZ') : '';
@@ -9134,6 +9158,19 @@ function getRequirementDuplicateTip(si, ci) {
     return `${idx + 1}. ${item.person}${details ? ` - ${details}` : ''}`;
   });
   return [`Duplicitní směna: ${val}`, ...lines].join('\n');
+}
+
+function isRequirementDuplicateWithFullMeta(si, ci) {
+  const val = String(state.schedule?.[`${si}_${ci}`] || '').trim().toUpperCase();
+  if (!val || SKIP_VALS.has(val)) return false;
+  let metaCount = 0;
+  state.staff.forEach((_, otherSi) => {
+    const key = `${otherSi}_${ci}`;
+    const otherVal = String(state.schedule?.[key] || '').trim().toUpperCase();
+    if (otherVal !== val) return;
+    if (state.reqMeta?.[key]?.timestamp) metaCount++;
+  });
+  return metaCount >= 2;
 }
 
 function updateRequirementsStatus(entry) {
@@ -9927,15 +9964,54 @@ let showHotels   = false;
 let _copyMode    = false;
 
 // ── Subtoolbar state persistence (sessionStorage) ────────────────────────
+function currentStbStateTab(tab = null) {
+  const name = tab || document.body.dataset.activeTab || 'tvorba';
+  return ['tvorba', 'rozpis', 'public', 'pozadavky'].includes(name) ? name : 'global';
+}
+
 function saveStbState() {
+  const prefix = `rt-stb-${currentStbStateTab()}-`;
   try {
-    sessionStorage.setItem('rt-stb-sumsMode',      sumsMode);
-    sessionStorage.setItem('rt-stb-colShiftMode',  colShiftMode);
-    sessionStorage.setItem('rt-stb-showHotels',    String(showHotels));
-    sessionStorage.setItem('rt-stb-filterShift',   filterShift || '');
-    sessionStorage.setItem('rt-stb-filterHotels',  JSON.stringify(Array.from(filterHotels)));
-    sessionStorage.setItem('rt-stb-showQualifiedWorkers', showQualifiedWorkers ? '1' : '0');
+    sessionStorage.setItem(`${prefix}sumsMode`,      sumsMode);
+    sessionStorage.setItem(`${prefix}colShiftMode`,  colShiftMode);
+    sessionStorage.setItem(`${prefix}showHotels`,    String(showHotels));
+    sessionStorage.setItem(`${prefix}filterShift`,   filterShift || '');
+    sessionStorage.setItem(`${prefix}filterHotels`,  JSON.stringify(Array.from(filterHotels)));
+    sessionStorage.setItem(`${prefix}showQualifiedWorkers`, showQualifiedWorkers ? '1' : '0');
+    sessionStorage.setItem(`${prefix}showMarkedOnly`, showMarkedOnly ? '1' : '0');
   } catch(e) {}
+}
+
+function applyStbStateUi() {
+  scheduleTableIds().forEach(tblId => {
+    const tbl = document.getElementById(tblId);
+    if (!tbl) return;
+    tbl.classList.toggle('hide-sums', sumsMode === 'hidden');
+    tbl.classList.toggle('hours-only', sumsMode === 'hoursonly');
+    tbl.classList.toggle('hide-night', colShiftMode === 'day');
+    tbl.classList.toggle('hide-day', colShiftMode === 'night');
+  });
+  document.getElementById('stb-hide-sums')?.classList.toggle('active', sumsMode === 'hidden');
+  document.getElementById('stb-hours-only')?.classList.toggle('active', sumsMode === 'hoursonly');
+  document.getElementById('stb-cols-day')?.classList.toggle('active', colShiftMode === 'day');
+  document.getElementById('stb-cols-night')?.classList.toggle('active', colShiftMode === 'night');
+  document.getElementById('stb-day-only')?.classList.toggle('active', filterShift === 'day');
+  document.getElementById('stb-night-only')?.classList.toggle('active', filterShift === 'night');
+  const hideBtn = document.getElementById('stb-hide-hotels');
+  if (hideBtn) {
+    hideBtn.textContent = showHotels ? 'Skrýt hotely' : 'Zobrazit hotely';
+    hideBtn.classList.toggle('active', !showHotels);
+  }
+  document.getElementById('stb-vse')?.classList.toggle('active', filterHotels.size === 0);
+  document.querySelectorAll('#stb-hotel-btns .stb-btn').forEach(b => {
+    b.classList.toggle('active', filterHotels.has(b.dataset.hotel));
+  });
+  updateQualifiedButton();
+  updateMarkedOnlyButton();
+  updateShiftContextBorders();
+  updateCellSelection();
+  updateAvailableSlotHeaders();
+  applyRowFilters();
 }
 function restoreStbState() {
   try {
@@ -9967,6 +10043,28 @@ function restoreStbState() {
         applyRowFilters();
       }
     }
+  } catch(e) {}
+}
+function restoreStbStateForTab(tab = null) {
+  const prefix = `rt-stb-${currentStbStateTab(tab)}-`;
+  try {
+    const sm = sessionStorage.getItem(`${prefix}sumsMode`);
+    sumsMode = ['hidden', 'hoursonly'].includes(sm) ? sm : 'all';
+    const csm = sessionStorage.getItem(`${prefix}colShiftMode`);
+    colShiftMode = ['day', 'night'].includes(csm) ? csm : 'all';
+    const fs = sessionStorage.getItem(`${prefix}filterShift`);
+    filterShift = ['day', 'night'].includes(fs) ? fs : null;
+    showHotels = sessionStorage.getItem(`${prefix}showHotels`) === 'true';
+    showQualifiedWorkers = sessionStorage.getItem(`${prefix}showQualifiedWorkers`) === '1';
+    showMarkedOnly = sessionStorage.getItem(`${prefix}showMarkedOnly`) === '1' && markedWorkers.size > 0;
+    filterHotels = new Set();
+    const fh = sessionStorage.getItem(`${prefix}filterHotels`);
+    if (fh) {
+      const letters = JSON.parse(fh);
+      if (letters.length > 0) filterHotels = new Set(letters);
+    }
+    clearAvailableSlotFilter();
+    applyStbStateUi();
   } catch(e) {}
 }
 let _copySelSi1  = null, _copySelCi1 = null;
@@ -10259,7 +10357,7 @@ function updateDuplicateClasses() {
       const key = `${si}_${ci}`;
       const isDupe = tblId !== 'public-rozpis-tbl' && dupeKeys.has(key);
       td.classList.toggle('cell-duplicate', isDupe);
-      if (isDupe && canManageRequirements()) {
+      if (isDupe && canManageRequirements() && isRequirementDuplicateWithFullMeta(si, ci)) {
         const tip = getRequirementDuplicateTip(si, ci);
         if (tip) td.dataset.dupTip = tip;
         else delete td.dataset.dupTip;
@@ -13544,6 +13642,7 @@ function switchTab(name) {
   if (name === 'tvorba' && isMobileLike()) name = mobileTabFallback();
   if (isMobileLike()) mobileControlsOpen = false;
   const previousTab = document.body.dataset.activeTab;
+  if (previousTab && ['tvorba', 'rozpis', 'public', 'pozadavky'].includes(previousTab)) saveStbState();
   if (previousTab === 'tvorba' && activeScheduleSource === 'draft') {
     captureTvorbaDraftSnapshot();
   }
@@ -13572,6 +13671,7 @@ function switchTab(name) {
   fitScheduleToViewport();
   if (name === 'tvorba' || name === 'rozpis' || name === 'public' || name === 'pozadavky') {
     buildHotelFilterButtons();
+    restoreStbStateForTab(name);
     // Re-apply active sums mode to tables
     scheduleTableIds().forEach(tblId => {
       const tbl = document.getElementById(tblId);
@@ -13761,7 +13861,7 @@ document.addEventListener('DOMContentLoaded', async () => {
   // so toggleHotelRows() inside restoreStbState can correctly flip it if sessionStorage differs.
   { const _btn = document.getElementById('stb-hide-hotels'); _btn.textContent = 'Zobrazit hotely'; _btn.classList.add('active'); }
   // Restore subtoolbar button states (after draft loaded → hotel buttons exist, tables rendered)
-  restoreStbState();
+  restoreStbStateForTab();
   normalizeScheduleControlLabels();
   ensureScheduleCenterSlot();
   relocateScheduleEditButtons();
