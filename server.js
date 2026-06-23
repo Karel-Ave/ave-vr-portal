@@ -4579,6 +4579,37 @@ async function restoreRtLeadRowsFromMonthData(data, db, month, year) {
   return changed;
 }
 
+function ensureRtLeadRowsWithAutoQ(data) {
+  if (!data || typeof data !== 'object' || !Array.isArray(data.staff)) return false;
+  let changed = false;
+  for (const name of RT_AUTO_Q_ORDER) {
+    if (rtFindStaffIndexByAnyName(data.staff, [name]) >= 0) continue;
+    data.staff.push({
+      name,
+      login: '',
+      type: 'Vedoucí',
+      contract: '',
+      maxHrs: '',
+      regular: '',
+      dates: '',
+      noteM: '',
+      noteP: '',
+      hotelSkills: [],
+      noStandby: false,
+      reqXLimit: 7,
+      reqYLimit: 0,
+      monthlyOverrides: {},
+      activeFrom: null,
+      activeUntil: null,
+      inactive: false
+    });
+    changed = true;
+  }
+  const filled = rtAutoFillQ(data, null, true);
+  if (changed || filled) data.staffOrder = data.staff.map(s => s.userId || null);
+  return changed || !!filled;
+}
+
 function rtRemapStaffIndexedMap(obj, oldToNew, cellKeys = true) {
   const out = {};
   Object.entries(obj || {}).forEach(([key, val]) => {
@@ -4740,6 +4771,7 @@ async function augmentRtDataWithSharedSpecialStaff(data, db = getPool()) {
     .filter(s => rtIsStaffActiveForMonth(s, month, year));
   if (!special.length) {
     await restoreRtLeadRowsFromMonthData(data, db, month, year);
+    ensureRtLeadRowsWithAutoQ(data);
     return data;
   }
 
@@ -4754,6 +4786,7 @@ async function augmentRtDataWithSharedSpecialStaff(data, db = getPool()) {
   }
   if (!added) {
     await restoreRtLeadRowsFromMonthData(data, db, month, year);
+    ensureRtLeadRowsWithAutoQ(data);
     return data;
   }
 
@@ -4765,6 +4798,7 @@ async function augmentRtDataWithSharedSpecialStaff(data, db = getPool()) {
   data.staffOrder = data.staff.map(s => s.userId || null);
   rtRemapDataStaffIndexes(data, oldToNew);
   await restoreRtLeadRowsFromMonthData(data, db, month, year);
+  ensureRtLeadRowsWithAutoQ(data);
   return data;
 }
 
