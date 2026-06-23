@@ -4266,14 +4266,14 @@ function renderExtraAdjList(si) {
   el.innerHTML = '';
   const hdr = document.createElement('div');
   hdr.style.cssText = 'font-size:10px;font-weight:700;margin-bottom:4px;color:var(--text-muted)';
-  hdr.textContent = 'Záznamy — celkem: ' + (total > 0 ? '+' : '') + total + ' hod';
+  hdr.textContent = 'Záznamy — celkem: ' + total + ' hod';
   el.appendChild(hdr);
   adjs.forEach((a, idx) => {
     const row = document.createElement('div');
     row.style.cssText = 'display:flex;align-items:center;gap:4px;margin-bottom:3px;font-size:10px;border:1px solid var(--border);border-radius:4px;padding:2px 5px;';
     const lbl = document.createElement('span');
     lbl.style.cssText = 'flex:1;';
-    let txt = (a.val > 0 ? '+' : '') + a.val + ' hod';
+    let txt = a.val + ' hod';
     if (a.date) txt = _fmtAdjDate(a.date) + ' ' + txt;
     if (a.note) txt += ' — ' + a.note;
     if (a.login) txt += ' (' + a.login + ')';
@@ -4318,18 +4318,20 @@ function deleteExtraAdj(si, idx) {
   renderExtraAdjList(si);
   updateSumRow(si);
   scheduleAutoSave();
+  document.getElementById('extra-popup').style.display = 'none';
 }
 
 function showExtraPopup(si) {
   _extraPopSi = si;
   _extraPopEditIdx = null;
+  const staffName = state.staff?.[si]?.name || '';
   const pop = document.getElementById('extra-popup');
   pop.style.display = 'block';
   const valInp = document.getElementById('extra-pop-val');
   valInp.value = '';
   document.getElementById('extra-pop-note').value = '';
   document.getElementById('extra-pop-apply').textContent = 'Přidat';
-  document.getElementById('extra-pop-title').textContent = '± Hodiny — přidat záznam';
+  document.getElementById('extra-pop-title').textContent = `± Hodiny — ${staffName || 'pracovník'}`;
   // Default date = today
   const today = new Date();
   const pad = n => String(n).padStart(2,'0');
@@ -4377,15 +4379,16 @@ function applyExtraAdj() {
   }
   updateSumRow(si);
   scheduleAutoSave();
+  document.getElementById('extra-popup').style.display = 'none';
 }
 function showExtraTip(si, x, y) {
   const adjs = getExtraAdjustments(si);
   if (!adjs.length) return;
   const total = getExtraTotal(si);
   const tip = document.getElementById('extra-tip');
-  tip.textContent = 'Celkem: ' + (total > 0 ? '+' : '') + total + ' hod\n' +
+  tip.textContent = 'Celkem: ' + total + ' hod\n' +
     adjs.map(a => {
-      let line = (a.val > 0 ? '+' : '') + a.val + ' hod';
+      let line = a.val + ' hod';
       if (a.date) line = _fmtAdjDate(a.date) + ' ' + line;
       if (a.note) line += ' — ' + a.note;
       if (a.login) line += ' (' + a.login + ')';
@@ -5200,7 +5203,7 @@ function calcSums(si, calCols, st) {
   });
 
   const extraNum = getExtraTotal(si);
-  const extraText = extraNum !== 0 ? (extraNum > 0 ? '+' + extraNum : String(extraNum)) : '';
+  const extraText = extraNum !== 0 ? String(extraNum) : '';
   const finalHrs = totalHrs + extraNum;
 
   return {dw, nw, dk, nk, total, extraText, totalHrs: finalHrs};
@@ -5456,6 +5459,7 @@ function printScheduleTab(tab) {
   const clone = srcTbl.cloneNode(true);
   clone.id = `${tblId}-print`;
   restorePrintStaffAlphaOrder(clone);
+  if (tab === 'pozadavky') clone.querySelectorAll('.req-note-btn').forEach(btn => btn.remove());
   clone.querySelectorAll('input').forEach(inp => {
     const span = document.createElement('span');
     span.className = 'cell-val';
@@ -5771,6 +5775,9 @@ function regularToString(checks, sv, wk) {
 function applyRegularAndReqClasses(td, si, ci, col, val) {
   const isPublicView = !!td.closest('#public-rozpis-tbl');
   const isRequirementsView = !!td.closest('#pozadavky-tbl');
+  if (isRequirementsView) {
+    td.classList.remove('cell-regular-off', 'cell-unavailable-conflict');
+  }
   const s = state.staff[si];
   const holidaysList = parseHolidays(state.holidays);
   // Regular off
@@ -6340,8 +6347,9 @@ function renderScheduleTable(tableId, editable) {
       if (idx === 5) {
         td.classList.add('sum-extra');
         const total = getExtraTotal(si);
-        td.textContent = total !== 0 ? (total > 0 ? '+' + total : String(total)) : '';
-        if (!isPublicView && !isRequirementsView) {
+        td.textContent = total !== 0 ? String(total) : '';
+        const canEditExtra = tableId === 'tvorba-tbl' || (tableId === 'rozpis-tbl' && viewEditMode);
+        if (canEditExtra && !isPublicView && !isRequirementsView) {
           td.style.cursor = 'pointer';
           td.addEventListener('click', () => {
             showExtraPopup(si);
@@ -6565,7 +6573,7 @@ function updateSumRow(si) {
     const extraCell = row.querySelector(`.sum-cell[data-sum-idx="5"]`);
     if (extraCell) {
       const et = getExtraTotal(si);
-      extraCell.textContent = et !== 0 ? (et > 0 ? '+' + et : String(et)) : '';
+      extraCell.textContent = et !== 0 ? String(et) : '';
     }
   });
 }
@@ -6625,8 +6633,7 @@ function isPublicScheduleTable(tableId) {
 }
 
 function isPublicHiddenStaff(s) {
-  const type = String((s && s.type) || '').toLowerCase();
-  return type.includes('pohotovost') || type.includes('speci');
+  return false;
 }
 
 function currentUserStaffKey() {
