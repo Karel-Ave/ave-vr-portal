@@ -5798,6 +5798,12 @@ function applyRegularAndReqClasses(td, si, ci, col, val) {
   else delete td.dataset.reqTip;
 }
 
+function clearRequirementsUnavailableClasses(root = document) {
+  root
+    .querySelectorAll('#pozadavky-tbl .cell-regular-off, #pozadavky-tbl .cell-unavailable-conflict')
+    .forEach(td => td.classList.remove('cell-regular-off', 'cell-unavailable-conflict'));
+}
+
 function updateRequirementClasses() {
   scheduleTableIds().forEach(tblId => {
     const tbl = document.getElementById(tblId);
@@ -5811,6 +5817,7 @@ function updateRequirementClasses() {
       applyRegularAndReqClasses(td, si, ci, col, val);
     });
   });
+  clearRequirementsUnavailableClasses();
   updateRememberRequirementsButton();
 }
 
@@ -6345,11 +6352,11 @@ function renderScheduleTable(tableId, editable) {
       if (idx === 5) td.classList.add('sum-pm');
       if (idx === 0 || idx === 6) td.classList.add('sum-bold');
       if (idx === 5) {
-        td.classList.add('sum-extra');
         const total = getExtraTotal(si);
         td.textContent = total !== 0 ? String(total) : '';
         const canEditExtra = tableId === 'tvorba-tbl' || (tableId === 'rozpis-tbl' && viewEditMode);
         if (canEditExtra && !isPublicView && !isRequirementsView) {
+          td.classList.add('sum-extra');
           td.style.cursor = 'pointer';
           td.addEventListener('click', () => {
             showExtraPopup(si);
@@ -6488,6 +6495,7 @@ function renderScheduleTable(tableId, editable) {
   setupScheduleColumnHover(tbl);
   bindMobileAxisScroll();
   maybeAutoScrollCurrentDay(tableId);
+  if (isRequirementsView) clearRequirementsUnavailableClasses(tbl);
 
   if (editable) {
     setupKeyboardNav(tbl);
@@ -6604,6 +6612,7 @@ function renderCells(tableId, editable) {
       applyRegularAndReqClasses(td, si, ci, col, val);
     }
   });
+  if (tableId === 'pozadavky-tbl') clearRequirementsUnavailableClasses(tbl);
   updatePManyCells();
 }
 
@@ -6633,7 +6642,8 @@ function isPublicScheduleTable(tableId) {
 }
 
 function isPublicHiddenStaff(s) {
-  return false;
+  const type = String((s && s.type) || '').toLowerCase();
+  return type.includes('pohotovost') || type.includes('speci');
 }
 
 function currentUserStaffKey() {
