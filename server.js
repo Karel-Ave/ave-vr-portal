@@ -4513,6 +4513,72 @@ async function loadRtAllSpecialStaff(db, month = null, year = null) {
   return Array.from(byName.values());
 }
 
+function rtIsLeadStaffRow(s) {
+  const type = rtNormalizeStaffName(s && s.type);
+  const name = rtNormalizeStaffName(s && s.name);
+  return type === 'vedouci' || name.startsWith('z ');
+}
+
+function copyRtStaffIndexedValues(sourceObj, oldIdx, targetObj, newIdx) {
+  if (!sourceObj || typeof sourceObj !== 'object') return;
+  Object.entries(sourceObj).forEach(([key, val]) => {
+    const parts = String(key).split('_');
+    if (parts.length !== 2 || Number(parts[0]) !== oldIdx) return;
+    targetObj[`${newIdx}_${parts[1]}`] = val;
+  });
+}
+
+function copyRtStaffIndexedSingleValues(sourceObj, oldIdx, targetObj, newIdx) {
+  if (!sourceObj || typeof sourceObj !== 'object') return;
+  const val = sourceObj[String(oldIdx)];
+  if (val !== undefined) targetObj[String(newIdx)] = val;
+}
+
+async function restoreRtLeadRowsFromMonthData(data, db, month, year) {
+  if (!data || typeof data !== 'object' || !Array.isArray(data.staff)) return false;
+  const byName = new Set(data.staff.map(s => rtNormalizeStaffName(s && s.name)).filter(Boolean));
+  const { rows } = await db.query(
+    `SELECT data, COALESCE(saved_at, published_at) AS ts
+       FROM (
+         SELECT data, NULL::timestamptz AS saved_at, published_at FROM rt_schedules WHERE month = $1 AND year = $2
+         UNION ALL
+         SELECT data, saved_at, NULL::timestamptz AS published_at FROM rt_drafts WHERE month = $1 AND year = $2
+       ) src
+      ORDER BY ts DESC NULLS LAST`,
+    [month, year]
+  );
+  let changed = false;
+  data.schedule = data.schedule || {};
+  data.extras = data.extras || {};
+  data.requirements = data.requirements || {};
+  data.reqMeta = data.reqMeta || {};
+  data.hrsColorOverride = data.hrsColorOverride || {};
+  for (const row of rows) {
+    let parsed;
+    try { parsed = typeof row.data === 'string' ? JSON.parse(row.data) : row.data; } catch(e) { parsed = null; }
+    const sourceStaff = Array.isArray(parsed && parsed.staff) ? parsed.staff : [];
+    sourceStaff.forEach((s, oldIdx) => {
+      if (!rtIsLeadStaffRow(s) || !rtIsStaffActiveForMonth(s, month, year)) return;
+      const nameKey = rtNormalizeStaffName(s.name);
+      if (!nameKey) return;
+      let targetIdx = data.staff.findIndex(row => rtNormalizeStaffName(row && row.name) === nameKey);
+      if (targetIdx < 0) {
+        targetIdx = data.staff.length;
+        data.staff.push(JSON.parse(JSON.stringify(s)));
+        byName.add(nameKey);
+      }
+      copyRtStaffIndexedValues(parsed.schedule, oldIdx, data.schedule, targetIdx);
+      copyRtStaffIndexedValues(parsed.requirements, oldIdx, data.requirements, targetIdx);
+      copyRtStaffIndexedValues(parsed.reqMeta, oldIdx, data.reqMeta, targetIdx);
+      copyRtStaffIndexedSingleValues(parsed.extras, oldIdx, data.extras, targetIdx);
+      copyRtStaffIndexedSingleValues(parsed.hrsColorOverride, oldIdx, data.hrsColorOverride, targetIdx);
+      changed = true;
+    });
+  }
+  if (changed) data.staffOrder = data.staff.map(s => s.userId || null);
+  return changed;
+}
+
 function rtRemapStaffIndexedMap(obj, oldToNew, cellKeys = true) {
   const out = {};
   Object.entries(obj || {}).forEach(([key, val]) => {
@@ -4672,7 +4738,10 @@ async function augmentRtDataWithSharedSpecialStaff(data, db = getPool()) {
 
   const special = (await loadRtAllSpecialStaff(db, month, year))
     .filter(s => rtIsStaffActiveForMonth(s, month, year));
-  if (!special.length) return data;
+  if (!special.length) {
+    await restoreRtLeadRowsFromMonthData(data, db, month, year);
+    return data;
+  }
 
   let added = false;
   const byName = new Set(data.staff.map(s => rtNormalizeStaffName(s && s.name)).filter(Boolean));
@@ -4683,7 +4752,10 @@ async function augmentRtDataWithSharedSpecialStaff(data, db = getPool()) {
     byName.add(nameKey);
     added = true;
   }
-  if (!added) return data;
+  if (!added) {
+    await restoreRtLeadRowsFromMonthData(data, db, month, year);
+    return data;
+  }
 
   const indexed = data.staff.map((s, oldIdx) => ({ s, oldIdx }));
   indexed.sort((a, b) => String(a.s.name || '').localeCompare(String(b.s.name || ''), 'cs', { sensitivity: 'base' }));
@@ -4692,6 +4764,7 @@ async function augmentRtDataWithSharedSpecialStaff(data, db = getPool()) {
   data.staff = indexed.map(item => item.s);
   data.staffOrder = data.staff.map(s => s.userId || null);
   rtRemapDataStaffIndexes(data, oldToNew);
+  await restoreRtLeadRowsFromMonthData(data, db, month, year);
   return data;
 }
 
