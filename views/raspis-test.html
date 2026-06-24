@@ -3541,7 +3541,7 @@ body.hide-req-changes .sched-cell[data-req-tip]:hover::after {
       <div class="fields-2">
         <div class="field" style="grid-column:1/-1"><label>Celé jméno</label><input type="text" id="wu-name" placeholder="Jméno Příjmení"></div>
         <div class="field"><label>Login (uživatelské jméno)</label><input type="text" id="wu-username" placeholder="login..."></div>
-        <div class="field"><label>Heslo</label><input type="password" id="wu-password" placeholder="min. 6 znaků"></div>
+        <div class="field"><label>Heslo</label><input type="password" id="wu-password" placeholder="min. 5 znaků"></div>
         <div class="field" style="grid-column:1/-1"><label>Skupina (oprávnění)</label>
           <select id="wu-role"><option value="">Načítám...</option></select>
         </div>
@@ -4184,7 +4184,6 @@ function showSchedTip(si, x, y) {
   s.dates = getEffectiveForSchedule(s, 'dates');
   s.noteM = getEffectiveForSchedule(s, 'noteM');
   const noteLines = [];
-  if (s.dates) noteLines.push({ text: `Nem\u016f\u017ee: ${s.dates}` });
   if (s.noteM) noteLines.push({ text: s.noteM, current: true });
   if (s.noteP) noteLines.push({ text: s.noteP });
   s.dates = rawTipDates;

@@ -515,8 +515,8 @@ app.get('/logout', async (req, res) => {
 
 app.post('/api/change-password', requireLogin, async (req, res) => {
   const { oldPassword, newPassword } = req.body;
-  if (!newPassword || newPassword.length < 6) {
-    return res.json({ ok: false, msg: 'Nové heslo musí mít alespoň 6 znaků.' });
+  if (!newPassword || newPassword.length < 5) {
+    return res.json({ ok: false, msg: 'Nové heslo musí mít alespoň 5 znaků.' });
   }
   try {
     const db = getPool();
@@ -554,8 +554,8 @@ app.post('/api/users', requireLogin, requireAdmin, async (req, res) => {
   if (!name?.trim() || !username?.trim() || !password || !role) {
     return res.json({ ok: false, msg: 'Vyplňte všechna pole.' });
   }
-  if (password.length < 6) {
-    return res.json({ ok: false, msg: 'Heslo musí mít alespoň 6 znaků.' });
+  if (password.length < 5) {
+    return res.json({ ok: false, msg: 'Heslo musí mít alespoň 5 znaků.' });
   }
   try {
     const db = getPool();
@@ -600,7 +600,7 @@ app.patch('/api/users/:id', requireLogin, requireAdmin, async (req, res) => {
     if (phone !== undefined) await db.query('UPDATE users SET phone = $1 WHERE id = $2', [formatPhoneForStorage(phone), id]);
     await syncReceptionistLoginFromUser(db, id, previousLogin);
     if (password) {
-      if (password.length < 6) return res.json({ ok: false, msg: 'Heslo musí mít alespoň 6 znaků.' });
+      if (password.length < 5) return res.json({ ok: false, msg: 'Heslo musí mít alespoň 5 znaků.' });
       await db.query('UPDATE users SET password_hash = $1 WHERE id = $2',
         [bcrypt.hashSync(password, 10), id]);
     }
