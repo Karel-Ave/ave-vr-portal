@@ -6344,6 +6344,12 @@ function renderScheduleTable(tableId, editable) {
           e.preventDefault();
           focusCell(si, ci, tableId);
         });
+        inp.addEventListener('input', () => {
+          if (setCellValue(si, ci, inp.value) === false) inp.value = state.schedule[`${si}_${ci}`] || '';
+        });
+        inp.addEventListener('change', () => {
+          if (setCellValue(si, ci, inp.value) === false) inp.value = state.schedule[`${si}_${ci}`] || '';
+        });
         td.appendChild(inp);
       } else {
         const span = document.createElement('span');
@@ -9666,11 +9672,41 @@ function scheduleRequirementsAutoSave() {
   reqSaveTimer = setTimeout(() => saveCurrentRequirementData({ silent: true }), 900);
 }
 
+function syncScheduleInputsToState(tableId = getActiveScheduleTableId()) {
+  const tbl = document.getElementById(tableId);
+  if (!tbl) return true;
+  let ok = true;
+  tbl.querySelectorAll('.sched-cell input[data-si][data-ci]').forEach(inp => {
+    const si = Number(inp.dataset.si);
+    const ci = Number(inp.dataset.ci);
+    if (!Number.isFinite(si) || !Number.isFinite(ci)) return;
+    if (!canEditCellInTable(si, tableId)) return;
+    const key = `${si}_${ci}`;
+    const current = state.schedule[key] || '';
+    const raw = String(inp.value || '').trim();
+    const normalized = normalizeScheduleCellValue(raw);
+    if (normalized === null) {
+      inp.value = current;
+      ok = false;
+      toastDisallowedScheduleValue(raw);
+      return;
+    }
+    if ((normalized || '') !== current) {
+      if (setCellValue(si, ci, normalized) === false) {
+        inp.value = current;
+        ok = false;
+      }
+    }
+  });
+  return ok;
+}
+
 async function saveCurrentRequirementData(options = {}) {
   if (!currentReqKey) return;
   clearTimeout(reqSaveTimer);
   const silent = !!options.silent;
   const confirmDuplicates = !!options.confirmDuplicates;
+  if (!syncScheduleInputsToState('pozadavky-tbl')) return false;
   const limitMessage = validateRequirementLimitsBeforeSave();
   if (limitMessage) {
     if (!silent) {
@@ -9740,6 +9776,7 @@ function toggleRequirementsEditWindow() {
   }
   if (reqEditMode) {
     clearTimeout(reqSaveTimer);
+    if (!syncScheduleInputsToState('pozadavky-tbl')) return;
     const limitMessage = validateRequirementLimitsBeforeSave();
     if (limitMessage) {
       toast(limitMessage, true);
