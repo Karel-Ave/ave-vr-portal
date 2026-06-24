@@ -4789,9 +4789,21 @@ function normalizeMobileKeypadConfig(config) {
   const h = parseInt(src.buttonHeight, 10);
   return {
     buttonHeight: Number.isFinite(h) ? Math.max(28, Math.min(64, h)) : def.buttonHeight,
-    receptionist: cloneMobileKeypadRows(src.receptionist || def.receptionist),
+    receptionist: ensureReceptionistMobileKeypadKeys(cloneMobileKeypadRows(src.receptionist || def.receptionist)),
     manager: cloneMobileKeypadRows(src.manager || def.manager)
   };
+}
+
+function ensureReceptionistMobileKeypadKeys(rows) {
+  const normalized = cloneMobileKeypadRows(rows);
+  const hasKey = key => normalized.some(row => row.some(item => parseMobileKeyToken(item).key.toLowerCase() === key));
+  if (hasKey('x') && hasKey('y')) return normalized;
+  const withoutBottomKeys = normalized.map(row => row.filter(item => {
+    const key = parseMobileKeyToken(item).key.toLowerCase();
+    return !['p', 'x', 'y', 'del', 'smazat'].includes(key);
+  })).filter(row => row.length);
+  withoutBottomKeys.push(['P','x','y','DEL']);
+  return withoutBottomKeys;
 }
 
 function getMobileKeypadConfig() {
@@ -4829,6 +4841,7 @@ function canUseMobileKey(key, si, tableId) {
   if (tableId === 'pozadavky-tbl' && !canManageRequirements()) {
     const staff = state.staff[si] || {};
     if (up === 'Z' || up === 'Ž') return false;
+    if (up === 'X') return true;
     if (up === 'Y') return getRequirementLimitForStaff(staff, 'reqYLimit', 0) > 0;
     if (/^[A-Z]$/.test(up)) {
       const allowed = getRequirementHotelLetterSet();
