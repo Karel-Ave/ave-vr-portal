@@ -1298,7 +1298,7 @@ tbody tr.row-hidden { display: none !important; }
 #stb-toggle-public-leads {
   display: none;
 }
-#subtoolbar.tab-public #stb-toggle-public-leads {
+#subtoolbar.tab-public.public-leads-toggle-visible #stb-toggle-public-leads {
   display: inline-flex;
 }
 .stb-sep { width: 1px; height: 20px; background: var(--btn-top-border,#3E3E3E); flex-shrink: 0; margin: 0 2px; }
@@ -2518,9 +2518,10 @@ body.hide-req-changes .sched-cell[data-req-tip]:hover::after {
     order: 2;
   }
   #stb-toggle-req-diff,
-  #btn-copy-xls,
-  #btn-public-print,
-  #btn-req-print {
+  #btn-copy-xls {
+    display: none !important;
+  }
+  #stb-toggle-public-leads {
     display: none !important;
   }
   #stb-hotels-right {
@@ -10043,8 +10044,11 @@ function applyStbStateUi() {
 
 function updatePublicLeadToggleButton() {
   const btn = document.getElementById('stb-toggle-public-leads');
+  const stb = document.getElementById('subtoolbar');
   if (!btn) return;
   if (filterHotels.size === 0) publicShowLeadRowsWithFilter = false;
+  const visible = document.body.dataset.activeTab === 'public' && !isMobileLike() && filterHotels.size > 0;
+  stb?.classList.toggle('public-leads-toggle-visible', visible);
   btn.textContent = publicShowLeadRowsWithFilter ? 'Skrýt vedoucí' : 'Zobrazit vedoucí';
   btn.classList.toggle('active', publicShowLeadRowsWithFilter);
 }
