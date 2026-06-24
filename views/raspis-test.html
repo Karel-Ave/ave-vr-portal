@@ -465,7 +465,7 @@ table.staff-tbl {
   font-size: 10px; font-weight: 800; line-height: 1; cursor: pointer;
 }
 .req-note-btn { min-width: 20px; height: 16px; padding: 0 4px; font-size: 9px; }
-.req-note-btn:disabled { opacity: .45; cursor: default; filter: grayscale(.25); }
+.req-note-btn:disabled { opacity: .45; cursor: default; filter: grayscale(.25); pointer-events: none; }
 .pr-note-btn.pending, .req-note-btn.pending {
   background: #d93025; border-color: #d93025; color: #fff;
 }
@@ -6271,9 +6271,17 @@ function renderScheduleTable(tableId, editable) {
       noteBtn.className = 'req-note-btn' + (noteEntry?.note ? ' pending' : '');
       noteBtn.textContent = 'PR';
       noteBtn.disabled = !rowEditable;
+      const reqNotePreview = String(noteEntry?.note || '').trim();
+      const managerNotePreview = canManageRequirements() && reqNotePreview
+        ? `PR:\n${reqNotePreview}`
+        : '';
       noteBtn.title = rowEditable
         ? (noteEntry?.note ? 'Poznámka k požadavkům' : 'Přidat poznámku k požadavkům')
         : 'Poznámku lze upravit až po kliknutí na Editovat';
+      if (managerNotePreview) {
+        noteBtn.title = managerNotePreview;
+        wrap.title = managerNotePreview;
+      }
       noteBtn.addEventListener('click', e => {
         e.preventDefault();
         e.stopPropagation();
