@@ -1,6 +1,6 @@
 {
-  "name": "Směny AVE",
-  "short_name": "Směny AVE",
+  "name": "AVE SMĚNY",
+  "short_name": "AVE SMĚNY",
   "description": "Rozpis směn AVE",
   "start_url": "/portal",
   "scope": "/",

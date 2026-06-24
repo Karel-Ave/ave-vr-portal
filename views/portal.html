@@ -4,10 +4,11 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, viewport-fit=cover">
 <meta name="apple-mobile-web-app-capable" content="yes">
-<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
-<meta name="application-name" content="Směny AVE">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="default">
+<meta name="application-name" content="AVE SMĚNY">
 <title>VR AVE</title>
-<meta name="apple-mobile-web-app-title" content="Směny AVE">
+<meta name="apple-mobile-web-app-title" content="AVE SMĚNY">
 <link rel="manifest" href="/static/manifest.json">
 <link rel="icon" type="image/png" href="/static/logo.png">
 <link rel="apple-touch-icon" href="/apple-touch-icon.png">
@@ -1519,12 +1520,101 @@
     }
   });
 
-  // ── Auto-logout after 10 min inactivity ──────────────────────────────────
-  // Activity is shared across ALL browser windows/tabs via localStorage,
-  // so moving the mouse on another monitor (another window of the same
-  // browser) also counts as activity and resets the timer here.
-  function bindIdleEventsInFrame() {}
-  function setupIdleLogout() {}
+  // Auto-logout: aktivita na portálu i v iframe obnovuje serverovou session.
+  const AVE_IDLE_KEY = 'ave-last-activity';
+  const AVE_IDLE_EVENTS = ['pointerdown', 'pointermove', 'keydown', 'touchstart', 'scroll', 'focus'];
+  const aveIdle = { minutes: 60, timer: null, poll: null, lastPing: 0, frameWin: null };
+
+  function currentIdleMinutes() {
+    const minutes = Number(portalPrefs.auto_logout_minutes);
+    return [0, 30, 60, 720].includes(minutes) ? minutes : 60;
+  }
+
+  function idleLogoutNow() {
+    window.location.href = '/logout';
+  }
+
+  function scheduleIdleTimer() {
+    clearTimeout(aveIdle.timer);
+    aveIdle.minutes = currentIdleMinutes();
+    if (aveIdle.minutes === 0) return;
+    aveIdle.timer = setTimeout(idleLogoutNow, aveIdle.minutes * 60 * 1000 + 1000);
+  }
+
+  async function pingSessionActivity(force = false) {
+    aveIdle.minutes = currentIdleMinutes();
+    if (aveIdle.minutes === 0) {
+      clearTimeout(aveIdle.timer);
+      return;
+    }
+    const now = Date.now();
+    if (!force && now - aveIdle.lastPing < 30000) {
+      scheduleIdleTimer();
+      return;
+    }
+    aveIdle.lastPing = now;
+    try { localStorage.setItem(AVE_IDLE_KEY, String(now)); } catch(e) {}
+    scheduleIdleTimer();
+    try {
+      const r = await fetch('/api/session/activity', {
+        method: 'POST',
+        credentials: 'include',
+        headers: { 'Content-Type': 'application/json' },
+        body: '{}'
+      });
+      if (r.status === 401) window.location.href = '/';
+    } catch(e) {}
+  }
+
+  function markPortalActivity() {
+    pingSessionActivity(false);
+  }
+
+  function bindIdleEventsInFrame() {
+    const frame = document.getElementById('app-frame');
+    if (!frame) return;
+    let win = null;
+    try { win = frame.contentWindow; } catch(e) { win = null; }
+    if (!win || win === aveIdle.frameWin) return;
+    aveIdle.frameWin = win;
+    AVE_IDLE_EVENTS.forEach(ev => {
+      try { win.addEventListener(ev, markPortalActivity, { passive: true }); } catch(e) {}
+    });
+  }
+
+  function setupIdleLogout() {
+    AVE_IDLE_EVENTS.forEach(ev => {
+      window.addEventListener(ev, markPortalActivity, { passive: true });
+      document.addEventListener(ev, markPortalActivity, { passive: true });
+    });
+    window.addEventListener('storage', e => {
+      if (e.key === AVE_IDLE_KEY) scheduleIdleTimer();
+    });
+    const frame = document.getElementById('app-frame');
+    if (frame) frame.addEventListener('load', () => {
+      bindIdleEventsInFrame();
+      markPortalActivity();
+    });
+    bindIdleEventsInFrame();
+    pingSessionActivity(true);
+    clearInterval(aveIdle.poll);
+    aveIdle.poll = setInterval(async () => {
+      try {
+        const r = await fetch('/api/session/status', { credentials: 'include', cache: 'no-store' });
+        if (r.status === 401) window.location.href = '/';
+      } catch(e) {}
+    }, 60000);
+  }
+
+  window.AVE_AUTO_LOGOUT = {
+    setMinutes(minutes) {
+      portalPrefs.auto_logout_minutes = Number(minutes);
+      if (currentIdleMinutes() === 0) clearTimeout(aveIdle.timer);
+      else pingSessionActivity(true);
+    }
+  };
+
+  setupIdleLogout();
 
   function esc(s) { const d = document.createElement('div'); d.textContent = s || ''; return d.innerHTML; }
 </script>

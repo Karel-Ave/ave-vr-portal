@@ -11,6 +11,7 @@ const SESSION_MAX_AGE = 10 * 365 * 24 * 60 * 60 * 1000;
 const DEFAULT_LIGHT_SKIN = 'indigo';
 const DEFAULT_DARK_SKIN = 'green';
 const THEME_SKINS = new Set(['default','mono','graphite','slate','blue','teal','green','olive','amber','rose','violet','indigo','cyan','mint','lime','yellow','orange','red','pink','plum','coffee','navy']);
+const AUTO_LOGOUT_ALLOWED_MINUTES = new Set([0, 30, 60, 720]);
 
 function normalizeThemeSkin(skin, fallback = 'default') {
   const raw = String(skin || fallback || 'default').toLowerCase();
@@ -85,6 +86,68 @@ const requirePortalAccess = (req, res, next) => {
 };
 
 // ── In-memory zámky (zabrání dvěma uživatelům editovat zároveň) ──────────────
+
+function releaseUserLocks(userId) {
+  Object.keys(locks).forEach(k => {
+    if (locks[k]?.userId === userId) {
+      delete locks[k];
+      if (lockTimers[k]) {
+        clearTimeout(lockTimers[k]);
+        delete lockTimers[k];
+      }
+    }
+  });
+}
+
+function sessionExpiredResponse(req, res) {
+  if (req.path.startsWith('/api/')) return res.status(401).json({ ok: false, expired: true });
+  return res.redirect('/?expired=1');
+}
+
+async function getAutoLogoutMinutes(userId) {
+  const db = getPool();
+  const { rows } = await db.query(
+    'SELECT auto_logout_minutes FROM user_preferences WHERE user_id = $1',
+    [userId]
+  );
+  const minutes = Number(rows[0]?.auto_logout_minutes);
+  return AUTO_LOGOUT_ALLOWED_MINUTES.has(minutes) ? minutes : 60;
+}
+
+async function destroyAllSessionsForUser(userId) {
+  const db = getPool();
+  await db.query(
+    `DELETE FROM session WHERE sess::json->'user'->>'id' = $1`,
+    [String(userId)]
+  );
+}
+
+app.use(async (req, res, next) => {
+  const user = req.session.user;
+  if (!user?.id) return next();
+  if (req.path === '/logout') return next();
+
+  try {
+    const minutes = await getAutoLogoutMinutes(user.id);
+    if (minutes === 0) return next();
+
+    const now = Date.now();
+    const lastActivity = Number(req.session.lastActivityAt || req.session.loginAt || now);
+    if (now - lastActivity > minutes * 60 * 1000) {
+      releaseUserLocks(user.id);
+      await destroyAllSessionsForUser(user.id);
+      return req.session.destroy(() => sessionExpiredResponse(req, res));
+    }
+
+    const methodTouches = ['POST', 'PUT', 'PATCH', 'DELETE'].includes(req.method);
+    const pathTouches = req.path === '/api/session/activity' || (!req.path.startsWith('/api/') && req.method === 'GET');
+    if (methodTouches || pathTouches) req.session.lastActivityAt = now;
+    return next();
+  } catch (err) {
+    console.error('Auto logout check error:', err.message);
+    return next();
+  }
+});
 
 const locks = {};
 const lockTimers = {};
@@ -366,6 +429,11 @@ app.get('/api/session/status', (req, res) => {
   res.json({ ok: true });
 });
 
+app.post('/api/session/activity', requireLogin, (req, res) => {
+  req.session.lastActivityAt = Date.now();
+  res.json({ ok: true });
+});
+
 // Save theme preference for the current user
 app.patch('/api/me/theme', requireLogin, async (req, res) => {
   const theme = req.body.theme === 'dark' ? 'dark' : 'light';
@@ -405,6 +473,8 @@ app.post('/login', async (req, res) => {
       return res.redirect('/?error=1');
     }
     req.session.user = sessionUserFromDbUser(user);
+    req.session.loginAt = Date.now();
+    req.session.lastActivityAt = req.session.loginAt;
     req.session.cookie.maxAge = SESSION_MAX_AGE;
     logEvent(user.id, user.username, 'login', { role: user.role });
     const next = req.body.next || '';
