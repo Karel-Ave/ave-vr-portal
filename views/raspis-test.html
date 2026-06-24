@@ -11489,6 +11489,13 @@ function applyStaffIndexRemap(indexed) {
   return oldToNew;
 }
 
+const SYSTEM_LEAD_NAMES = ['z Dvořák Karel', 'z Pětivlas Matěj', 'z Schubert Adam'];
+function isSystemLeadStaff(row) {
+  const name = normalizeStaffName(row && row.name);
+  const type = normalizeStaffName(row && row.type);
+  return type === 'vedouci' || SYSTEM_LEAD_NAMES.some(n => normalizeStaffName(n) === name);
+}
+
 function removeStaleUnmatchedRows(settingsByName) {
   const unmatchedNames = new Set((state.unmatchedXls || []).map(u => normalizeStaffName(u.name)));
   const indexed = [];
@@ -11496,7 +11503,7 @@ function removeStaleUnmatchedRows(settingsByName) {
 
   (state.staff || []).forEach((row, oldIdx) => {
     const nameKey = normalizeStaffName(row.name);
-    const isStaleImportedRow = row.unmatchedXls && nameKey && !settingsByName.has(nameKey) && !unmatchedNames.has(nameKey);
+    const isStaleImportedRow = !isSystemLeadStaff(row) && row.unmatchedXls && nameKey && !settingsByName.has(nameKey) && !unmatchedNames.has(nameKey);
     if (isStaleImportedRow) {
       changed = true;
       return;
@@ -11541,6 +11548,7 @@ function reconcileLoadedStaffWithSettings() {
     const byName = settingsByName.get(normalizeStaffName(row.name));
     const matched = byId || byName;
     if (!matched) {
+      if (isSystemLeadStaff(row)) return { ...row, unmatchedXls: false };
       if (!row.unmatchedXls) changed = true;
       return { ...row, unmatchedXls: true };
     }
@@ -11691,13 +11699,21 @@ async function copyScheduleForXls() {
 
   try {
     const calCols = getCalCols(state.month, state.year);
-    const lines = state.staff.map((s, si) => {
+    const copyTab = document.querySelector('.tb-tab.active')?.dataset.tab;
+    const activeTableId = copyTab === 'public' ? 'public-rozpis-tbl' : 'rozpis-tbl';
+    const visibleRows = Array.from(document.querySelectorAll(`#${activeTableId} tbody.staff-tbody tr[data-si]`))
+      .filter(tr => !tr.classList.contains('row-filtered') && !tr.classList.contains('hidden-row'))
+      .map(tr => Number(tr.dataset.si))
+      .filter(si => Number.isInteger(si) && state.staff[si]);
+    const rowIndexes = visibleRows.length ? visibleRows : state.staff.map((_, si) => si);
+    const lines = rowIndexes.map(si => {
+      const s = state.staff[si];
       const cells = [s.name || ''];
       calCols.forEach((_, ci) => cells.push(state.schedule[`${si}_${ci}`] || ''));
       return cells.join('\t');
     });
     await navigator.clipboard.writeText(lines.join('\n'));
-    toast(`Zkopírováno do schránky (${state.staff.length} řádků)`);
+    toast(`Zkopírováno do schránky (${rowIndexes.length} řádků)`);
   } catch(e) {
     console.warn('copyScheduleForXls:', e);
     toast('Kopírování do schránky selhalo', true);

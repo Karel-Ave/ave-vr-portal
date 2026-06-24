@@ -365,7 +365,8 @@ async function init() {
   await mergeGroupPermDefaults('vedoucí', JSON.parse(vedPerms));
   await mergeGroupPermDefaults('recepční', JSON.parse(recepPerms));
   await mergeGroupPermDefaults('hotely', JSON.parse(hotelPerms));
-  await db.query(`UPDATE permission_groups SET display_name='PB6', perms=$1, sublist='PB6' WHERE name='pb6'`, [pb6Perms]);
+  await mergeGroupPermDefaults('pb6', JSON.parse(pb6Perms));
+  await db.query(`UPDATE permission_groups SET display_name='PB6', sublist='PB6' WHERE name='pb6'`);
   // Nastav sublists pro existující skupiny (pokud ještě mají DEFAULT hodnotu nebo NULL)
   await db.query(`UPDATE permission_groups SET sublist='VR'        WHERE name IN ('admin','vedoucí') AND (sublist IS NULL OR sublist='VR')`);
   await db.query(`UPDATE permission_groups SET sublist='PB6'       WHERE name='pb6'      AND (sublist IS NULL OR sublist='VR')`);
