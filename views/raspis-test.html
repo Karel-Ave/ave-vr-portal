@@ -1295,6 +1295,12 @@ tbody tr.row-hidden { display: none !important; }
 #subtoolbar.tab-rozpis #btn-copy-xls {
   display: inline-flex;
 }
+#stb-toggle-public-leads {
+  display: none;
+}
+#subtoolbar.tab-public #stb-toggle-public-leads {
+  display: inline-flex;
+}
 .stb-sep { width: 1px; height: 20px; background: var(--btn-top-border,#3E3E3E); flex-shrink: 0; margin: 0 2px; }
 .stb-spacer { flex: 1; }
 .stb-btn {
@@ -3369,6 +3375,7 @@ body.hide-req-changes .sched-cell[data-req-tip]:hover::after {
     <button class="stb-btn" id="stb-hide-sums">Skrýt součty</button>
     <button class="stb-btn" id="stb-save-req">Zapamatuj požadavky</button>
     <button class="stb-btn" id="stb-toggle-req-diff" type="button">Zobrazit změny</button>
+    <button class="stb-btn" id="stb-toggle-public-leads" type="button">Zobrazit vedoucí</button>
     <button class="stb-btn" id="btn-copy-xls" type="button">Kopírovat do Excelu</button>
   </div>
   <div class="stb-row stb-row-tools">
@@ -5317,7 +5324,7 @@ function applyRaspisPermissions() {
   setPermVisibleById('btn-clear-month-overrides', 'settings_clear_overrides', false);
   setPermVisibleById('btn-add-staff', 'settings_add_staff', canManageRequirements());
 
-  ['stb-vse','stb-hide-hotels','stb-day-only','stb-night-only','stb-cols-day','stb-cols-night','btn-show-hidden'].forEach(id => setPermVisibleById(id, 'filters', true));
+  ['stb-vse','stb-hide-hotels','stb-day-only','stb-night-only','stb-cols-day','stb-cols-night','stb-toggle-public-leads','btn-show-hidden'].forEach(id => setPermVisibleById(id, 'filters', true));
   setPermVisibleById('stb-show-qualified', 'show_qualified', canManageRequirements());
   setPermVisibleById('stb-mark-sel', 'mark', canManageRequirements());
   setPermVisibleById('stb-show-selected', 'mark', canManageRequirements());
@@ -5996,7 +6003,7 @@ function renderScheduleTable(tableId, editable) {
   if (!tbl) return;
   const isPublicView = isPublicScheduleTable(tableId);
   const isRequirementsView = tableId === 'pozadavky-tbl';
-  const hideNonReceptionStaffForRequirements = isRequirementsView && isRequirementsReceptionistView();
+  const hideNonReceptionStaffForRequirements = isRequirementsView;
   tbl.innerHTML = '';
   tbl.style.display = '';
   // Reset hidden-row button when re-rendering
@@ -9977,6 +9984,7 @@ let availableSlotFilter = null; // {ci, month, year, dn, day}
 let filterShift  = null;  // null | 'day' | 'night'
 let colShiftMode = 'all'; // 'all' | 'day' | 'night'
 let showHotels   = false;
+let publicShowLeadRowsWithFilter = false;
 // ── Copy/paste mode ──
 let _copyMode    = false;
 
@@ -10029,7 +10037,16 @@ function applyStbStateUi() {
   updateShiftContextBorders();
   updateCellSelection();
   updateAvailableSlotHeaders();
+  updatePublicLeadToggleButton();
   applyRowFilters();
+}
+
+function updatePublicLeadToggleButton() {
+  const btn = document.getElementById('stb-toggle-public-leads');
+  if (!btn) return;
+  if (filterHotels.size === 0) publicShowLeadRowsWithFilter = false;
+  btn.textContent = publicShowLeadRowsWithFilter ? 'Skrýt vedoucí' : 'Zobrazit vedoucí';
+  btn.classList.toggle('active', publicShowLeadRowsWithFilter);
 }
 function restoreStbState() {
   try {
@@ -10767,6 +10784,7 @@ function applyRowFilters() {
         const slotVal = String(state.schedule[`${si}_${availableSlotFilter.ci}`] || '').trim().toUpperCase();
         hide = !isReceptionStaffType(s) || !!(slotVal && slotVal !== 'P');
       }
+      if (isPublicTbl && filterHotels.size > 0 && publicShowLeadRowsWithFilter && isSystemLeadStaff(s)) hide = false;
       if ((isPublicTbl || isReqTbl) && isCurrentUserStaff(s)) hide = false;
       tr.classList.toggle('row-filtered', hide);
     });
@@ -10782,6 +10800,7 @@ function applyRowFilters() {
       }
     }
   });
+  updatePublicLeadToggleButton();
   refreshCoverageSticky();
   updateDnCoverageColors();
   // When mark mode + hotel filter active: float marked (visible) workers to top of staff tbody
@@ -14009,6 +14028,7 @@ document.addEventListener('DOMContentLoaded', async () => {
     markedWorkers.clear();
     showQualifiedWorkers = false;
     showMarkedOnly = false;
+    publicShowLeadRowsWithFilter = false;
     clearAvailableSlotFilter();
     if (_markMode) {
       _markMode = false;
@@ -14026,6 +14046,11 @@ document.addEventListener('DOMContentLoaded', async () => {
     settleMobileScheduleHeader();
   });
   document.getElementById('stb-hide-hotels').addEventListener('click', toggleHotelRows);
+  document.getElementById('stb-toggle-public-leads')?.addEventListener('click', () => {
+    publicShowLeadRowsWithFilter = !publicShowLeadRowsWithFilter;
+    updatePublicLeadToggleButton();
+    applyRowFilters();
+  });
   document.getElementById('stb-copy-mode').addEventListener('click', toggleCopyMode);
   document.getElementById('stb-day-only').addEventListener('click', () => filterByShift('day'));
   document.getElementById('stb-night-only').addEventListener('click', () => filterByShift('night'));
