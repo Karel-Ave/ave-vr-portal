@@ -4163,7 +4163,10 @@ function showSchedTip(si, x, y) {
   }
 
   if (activeTab === 'public' || activeTab === 'pozadavky') {
-    sumsEl.style.display = 'none';
+    const calCols = getCalCols(state.month, state.year);
+    const sums = calcSums(si, calCols, state);
+    sumsEl.textContent = `Sm\u011bn: ${sums.total}   Hodin: ${sums.totalHrs % 1 === 0 ? sums.totalHrs : sums.totalHrs.toFixed(1)}`;
+    sumsEl.style.display = '';
     prevEl.style.display = 'none';
     noteEl.style.display = 'none';
     positionSchedTip(x, y);
@@ -14607,7 +14610,7 @@ document.addEventListener('DOMContentLoaded', async () => {
   });
 
   // Tooltip delegation for schedule tables
-  ['tvorba-tbl','rozpis-tbl'].forEach(tblId => {
+  ['tvorba-tbl','rozpis-tbl','public-rozpis-tbl','pozadavky-tbl'].forEach(tblId => {
     const tbl = document.getElementById(tblId);
     if (!tbl) return;
     tbl.addEventListener('mouseover', e => {
