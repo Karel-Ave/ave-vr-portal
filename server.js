@@ -5239,10 +5239,10 @@ function rtRefreshRequirementStaffRow(row, live) {
   };
 }
 
-function validateRequirementStaffRowValues(currentData, incomingSchedule, si) {
+function validateRequirementStaffRowValues(currentData, incomingSchedule, si, sourceSi = si) {
   const staff = Array.isArray(currentData.staff) ? currentData.staff : [];
   const row = staff[si] || {};
-  const prefix = `${si}_`;
+  const prefix = `${sourceSi}_`;
   const hotelLetters = getRequirementHotelLetters(currentData);
   const xLimit = rtReqLimit(row.reqXLimit, 7);
   const yLimit = rtReqLimit(row.reqYLimit, 0);
@@ -5277,9 +5277,10 @@ function mergeRequirementStaffRow(currentData, incomingData, user, requestedStaf
   const incoming = incomingData && typeof incomingData === 'object' ? incomingData : {};
   const staff = Array.isArray(current.staff) ? current.staff : [];
   const ownSi = staff.findIndex(s => isSessionUserRequirementStaff(s, user));
-  const si = requestedStaffIndex !== null ? requestedStaffIndex : ownSi;
+  const si = ownSi;
+  let sourceSi = requestedStaffIndex !== null ? requestedStaffIndex : ownSi;
   if (si < 0) return { error: 'V požadavcích nemám přiřazený váš řádek.' };
-  if (!staff[si] || (requestedStaffIndex !== null && ownSi !== si)) {
+  if (!staff[si] || sourceSi < 0) {
     return { error: 'Tento radek pozadavku nemuzete ulozit.' };
   }
 
@@ -5289,10 +5290,15 @@ function mergeRequirementStaffRow(currentData, incomingData, user, requestedStaf
   merged.schedule = merged.schedule && typeof merged.schedule === 'object' ? merged.schedule : {};
   const incomingSchedule = incoming.schedule && typeof incoming.schedule === 'object' ? incoming.schedule : {};
   const prefix = `${si}_`;
-  const validationError = validateRequirementStaffRowValues(merged, incomingSchedule, si);
+  let sourcePrefix = `${sourceSi}_`;
+  if (sourceSi !== si && !Object.keys(incomingSchedule).some(key => key.startsWith(sourcePrefix))) {
+    sourceSi = si;
+    sourcePrefix = prefix;
+  }
+  const validationError = validateRequirementStaffRowValues(merged, incomingSchedule, si, sourceSi);
   if (validationError) return { error: validationError };
   for (const [key, val] of Object.entries(incomingSchedule)) {
-    if (!key.startsWith(prefix)) continue;
+    if (!key.startsWith(sourcePrefix)) continue;
     const ci = parseInt(key.split('_')[1], 10);
     if (Number.isFinite(ci) && /^[xy]$/i.test(String(val || '').trim()) && isReqXyLocked(current, ci)) {
       return { error: 'V tomto dni/noci není možné psát x ani y.' };
@@ -5302,14 +5308,20 @@ function mergeRequirementStaffRow(currentData, incomingData, user, requestedStaf
     if (key.startsWith(prefix)) delete merged.schedule[key];
   });
   Object.entries(incomingSchedule).forEach(([key, val]) => {
-    if (key.startsWith(prefix) && String(val || '').trim()) merged.schedule[key] = val;
+    if (!key.startsWith(sourcePrefix) || !String(val || '').trim()) return;
+    const ci = key.split('_')[1];
+    if (ci !== undefined) merged.schedule[`${si}_${ci}`] = val;
   });
   const noteKey = rtRequestNoteKey(merged.staff[si], si);
   if (noteKey) {
     merged.reqNotes = merged.reqNotes && typeof merged.reqNotes === 'object' ? merged.reqNotes : {};
     const incomingNotes = incoming.reqNotes && typeof incoming.reqNotes === 'object' ? incoming.reqNotes : {};
-    if (Object.prototype.hasOwnProperty.call(incomingNotes, noteKey)) {
-      const incomingNote = incomingNotes[noteKey];
+    const sourceNoteKey = rtRequestNoteKey(incoming.staff?.[sourceSi], sourceSi);
+    const noteSourceKey = Object.prototype.hasOwnProperty.call(incomingNotes, noteKey)
+      ? noteKey
+      : (sourceNoteKey && Object.prototype.hasOwnProperty.call(incomingNotes, sourceNoteKey) ? sourceNoteKey : '');
+    if (noteSourceKey) {
+      const incomingNote = incomingNotes[noteSourceKey];
       const noteText = typeof incomingNote === 'object'
         ? String(incomingNote.note || '').trim()
         : String(incomingNote || '').trim();
