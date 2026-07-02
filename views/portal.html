@@ -12,6 +12,11 @@
 <link rel="manifest" href="/static/manifest.json">
 <link rel="icon" type="image/png" href="/static/logo.png">
 <link rel="apple-touch-icon" href="/apple-touch-icon.png">
+<script>
+  try {
+    document.documentElement.setAttribute('data-device-view-mode', localStorage.getItem('ave-device-view-mode') || 'auto');
+  } catch(e) {}
+</script>
 <script src="/static/theme.js"></script>
 <link rel="stylesheet" href="/static/theme.css">
 <script src="https://cdn.jsdelivr.net/npm/sortablejs@1.15.2/Sortable.min.js"></script>
@@ -820,6 +825,8 @@
       <div class="settings-choice-row" id="default-rt-desktop"></div>
       <label>V&yacute;choz&iacute; list v Rozpis a po&zcaron;adavky - mobil</label>
       <div class="settings-choice-row" id="default-rt-mobile"></div>
+      <label>Zobrazen&iacute; na tomto za&rcaron;&iacute;zen&iacute;</label>
+      <div class="settings-choice-row" id="device-view-mode-choices"></div>
       <label>Automatick&eacute; odhl&aacute;&scaron;en&iacute; p&rcaron;i ne&ccaron;innosti</label>
       <div class="settings-choice-row" id="auto-logout-choices"></div>
     </div>
@@ -918,8 +925,24 @@
     });
   }
 
+  const DEVICE_VIEW_MODE_KEY = 'ave-device-view-mode';
+  const DEVICE_VIEW_MODES = ['auto', 'desktop', 'mobile'];
+
+  function getDeviceViewMode() {
+    let mode = 'auto';
+    try { mode = localStorage.getItem(DEVICE_VIEW_MODE_KEY) || 'auto'; } catch(e) {}
+    return DEVICE_VIEW_MODES.includes(mode) ? mode : 'auto';
+  }
+
+  function setDeviceViewModeAttr(mode = getDeviceViewMode()) {
+    document.documentElement.setAttribute('data-device-view-mode', DEVICE_VIEW_MODES.includes(mode) ? mode : 'auto');
+  }
+
   function isMobilePortal() {
-    return !!(window.matchMedia && window.matchMedia('(max-width: 700px), (pointer: coarse)').matches);
+    const mode = getDeviceViewMode();
+    if (mode === 'mobile') return true;
+    if (mode === 'desktop') return false;
+    return !!(window.matchMedia && window.matchMedia('(max-width: 700px)').matches);
   }
 
   function portalDeviceKey() {
@@ -1203,6 +1226,7 @@
     renderSkinGrid();
     refreshPublicRaspisPref();
     refreshDefaultViewsPref();
+    refreshDeviceViewModePref();
     refreshAutoLogoutPref();
   }
 
@@ -1302,6 +1326,20 @@
     ).join('');
   }
 
+  function refreshDeviceViewModePref() {
+    const wrap = document.getElementById('device-view-mode-choices');
+    if (!wrap) return;
+    const current = getDeviceViewMode();
+    const choices = [
+      ['auto', 'Automaticky'],
+      ['desktop', 'PC'],
+      ['mobile', 'Mobil']
+    ];
+    wrap.innerHTML = choices.map(([mode, label]) =>
+      `<button type="button" class="settings-choice${mode === current ? ' active' : ''}" onclick="saveDeviceViewMode('${mode}')">${label}</button>`
+    ).join('');
+  }
+
   function openUserSettings() {
     closeMobileMenu();
     refreshThemeSettingsState();
@@ -1321,6 +1359,14 @@
   function selectPortalSkin(skin) {
     window.AVE_THEME?.setSkin?.(skin, true);
     refreshThemeSettingsState();
+  }
+
+  function saveDeviceViewMode(mode) {
+    mode = DEVICE_VIEW_MODES.includes(mode) ? mode : 'auto';
+    try { localStorage.setItem(DEVICE_VIEW_MODE_KEY, mode); } catch(e) {}
+    setDeviceViewModeAttr(mode);
+    refreshDeviceViewModePref();
+    document.getElementById('app-frame')?.contentWindow?.postMessage({ type: 'ave-device-view-mode', mode }, '*');
   }
 
   function toggleDefaultPublicHotel(hotel) {
