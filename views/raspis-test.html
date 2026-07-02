@@ -500,7 +500,7 @@ table.staff-tbl {
 }
 .staff-tbl .col-save { width: 90px; text-align: center; }
 
-@media (max-width: 700px), (max-width: 900px) and (max-height: 520px) {
+@media (max-width: 700px), (pointer: coarse) and (max-height: 520px) {
   #staff-tbl .col-name,
   #staff-tbl .col-type,
   #staff-tbl .col-contract,
@@ -995,7 +995,7 @@ table.sched-tbl {
 .cov-row .col-name-td { font-size: 10px; font-weight: 700; background: var(--surface);
   padding: 0; overflow: visible; height: var(--sched-row-h); }
 .cov-tbody .col-name-td { position: sticky; left: auto !important; /* Override .sched-tbl .col-name-td left:0 — Chrome ignores top when left is set (bi-directional sticky bug) */ z-index: 62 !important; /* Must be > date-cell z-index so name cell stacks on top; CSS !important beats inline style */ background: var(--surface) !important; overflow: visible !important; }
-@media (max-width: 900px) {
+@media (pointer: coarse), (max-width: 900px) {
   .cov-tbody .col-name-td { left: 0 !important; z-index: 64 !important; }
   .cov-name-inner { position: relative; left: auto; }
 }
@@ -1485,7 +1485,7 @@ body[data-active-tab="pozadavky"] #schedule-legend .legend-item.schedule-dynamic
   #schedule-legend { font-size: 9px; gap: 7px; padding-inline: 6px; }
   .legend-swatch { width: 15px; height: 9px; }
 }
-@media (max-width: 700px), (max-width: 900px) and (max-height: 520px) {
+@media (max-width: 700px), (pointer: coarse) and (max-height: 520px) {
   #schedule-legend.show { display: none !important; }
 }
 @media print {
@@ -2077,7 +2077,7 @@ body.hide-req-changes .sched-cell[data-req-tip]:hover::after {
   font-size: 22px; font-weight: 800;
 }
 
-@media (max-width: 900px) {
+@media (max-width: 900px), (pointer: coarse) {
   html, body {
     position: relative;
     overflow: hidden;
@@ -2212,7 +2212,7 @@ body.hide-req-changes .sched-cell[data-req-tip]:hover::after {
   }
 }
 
-@media (max-width: 900px) and (orientation: landscape) and (max-height: 520px) {
+@media (pointer: coarse) and (orientation: landscape) and (max-height: 520px) {
   #mobile-cell-keypad {
     left: auto;
     width: min(360px, 42vw);
@@ -2228,7 +2228,7 @@ body.hide-req-changes .sched-cell[data-req-tip]:hover::after {
   .mck-btn { min-height: max(32px, calc(var(--mobile-keypad-btn-h, 34px) * .86)); }
 }
 
-@media (max-width: 700px), (max-width: 900px) and (max-height: 520px) {
+@media (max-width: 700px), (pointer: coarse) and (max-height: 520px) {
   body.with-subtoolbar:has(#schedule-legend.show) { padding-bottom: 0; }
   .sched-tbl td.sched-cell,
   .sched-tbl td.sched-cell input,
@@ -3016,7 +3016,7 @@ body.hide-req-changes .sched-cell[data-req-tip]:hover::after {
   #daily-updated,
   #daily-updated-panel { display: none; }
 }
-@media (max-width: 900px) {
+@media (max-width: 900px), (pointer: coarse) {
   #topbar .tb-actions:not(.hidden) {
     margin-top: 6px;
   }
@@ -4753,28 +4753,12 @@ function smartCase(val) {
 ══════════════════════════════════════════════════════════════════════════════ */
 
 /* Mobile helpers */
-const DEVICE_VIEW_MODE_KEY = 'ave-device-view-mode';
-const DEVICE_VIEW_MODES = ['auto', 'desktop', 'mobile'];
-const MOBILE_POINTER_QUERY = '(max-width: 900px)';
+const MOBILE_POINTER_QUERY = '(pointer: coarse), (max-width: 900px)';
 let mobileKeypadTarget = null;
 let mobileNumberValue = '';
 const mobileAutoScrolled = {};
 
-function getDeviceViewMode() {
-  let mode = 'auto';
-  try { mode = localStorage.getItem(DEVICE_VIEW_MODE_KEY) || 'auto'; } catch(e) {}
-  return DEVICE_VIEW_MODES.includes(mode) ? mode : 'auto';
-}
-
-function setDeviceViewModeAttr(mode = getDeviceViewMode()) {
-  document.documentElement.setAttribute('data-device-view-mode', DEVICE_VIEW_MODES.includes(mode) ? mode : 'auto');
-}
-setDeviceViewModeAttr();
-
 function isMobileLike() {
-  const mode = getDeviceViewMode();
-  if (mode === 'mobile') return true;
-  if (mode === 'desktop') return false;
   return !!(window.matchMedia && window.matchMedia(MOBILE_POINTER_QUERY).matches);
 }
 
@@ -13943,12 +13927,6 @@ window.addEventListener('message', e => {
     publicDefaultHotel = String(e.data.hotel || 'ALL').toUpperCase();
     publicHotelFilterTouched = false;
     applyPublicDefaultHotel(true);
-    return;
-  }
-  if (e.data && e.data.type === 'ave-device-view-mode') {
-    const mode = DEVICE_VIEW_MODES.includes(e.data.mode) ? e.data.mode : 'auto';
-    try { localStorage.setItem(DEVICE_VIEW_MODE_KEY, mode); } catch(err) {}
-    setDeviceViewModeAttr(mode);
     return;
   }
   if (!e.data || e.data.type !== 'ave-theme') return;
