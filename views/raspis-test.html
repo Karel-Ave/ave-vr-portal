@@ -6323,7 +6323,7 @@ function renderScheduleTable(tableId, editable) {
           updateMarkedOnlyButton();
           applyRowFilters();
           historySave();
-        } else if (rowEditable && tableId !== 'tvorba-tbl') {
+        } else if (rowEditable && tableId !== 'tvorba-tbl' && tableId !== 'rozpis-tbl') {
           // Normal mode: hide/show the row
           tr.classList.toggle('row-hidden');
           const btn = document.getElementById('btn-show-hidden');
@@ -6397,12 +6397,15 @@ function renderScheduleTable(tableId, editable) {
         const total = getExtraTotal(si);
         td.textContent = total !== 0 ? String(total) : '';
         const canEditExtra = tableId === 'tvorba-tbl' || (tableId === 'rozpis-tbl' && viewEditMode);
+        const canShowExtraTip = tableId === 'tvorba-tbl' || tableId === 'rozpis-tbl';
         if (canEditExtra && !isPublicView && !isRequirementsView) {
           td.classList.add('sum-extra');
           td.style.cursor = 'pointer';
           td.addEventListener('click', () => {
             showExtraPopup(si);
           });
+        }
+        if (canShowExtraTip && !isPublicView && !isRequirementsView && total !== 0) {
           td.addEventListener('mouseenter', e => showExtraTip(si, e.clientX, e.clientY));
           td.addEventListener('mouseleave', hideExtraTip);
         }
