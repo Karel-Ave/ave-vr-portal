@@ -995,7 +995,7 @@ table.sched-tbl {
 .cov-row .col-name-td { font-size: 10px; font-weight: 700; background: var(--surface);
   padding: 0; overflow: visible; height: var(--sched-row-h); }
 .cov-tbody .col-name-td { position: sticky; left: auto !important; /* Override .sched-tbl .col-name-td left:0 — Chrome ignores top when left is set (bi-directional sticky bug) */ z-index: 62 !important; /* Must be > date-cell z-index so name cell stacks on top; CSS !important beats inline style */ background: var(--surface) !important; overflow: visible !important; }
-@media (pointer: coarse), (max-width: 900px) {
+@media (max-width: 900px) {
   .cov-tbody .col-name-td { left: 0 !important; z-index: 64 !important; }
   .cov-name-inner { position: relative; left: auto; }
 }
@@ -2077,7 +2077,7 @@ body.hide-req-changes .sched-cell[data-req-tip]:hover::after {
   font-size: 22px; font-weight: 800;
 }
 
-@media (max-width: 900px), (pointer: coarse) {
+@media (max-width: 900px) {
   html, body {
     position: relative;
     overflow: hidden;
@@ -3016,7 +3016,7 @@ body.hide-req-changes .sched-cell[data-req-tip]:hover::after {
   #daily-updated,
   #daily-updated-panel { display: none; }
 }
-@media (max-width: 900px), (pointer: coarse) {
+@media (max-width: 900px) {
   #topbar .tb-actions:not(.hidden) {
     margin-top: 6px;
   }
@@ -4753,7 +4753,7 @@ function smartCase(val) {
 ══════════════════════════════════════════════════════════════════════════════ */
 
 /* Mobile helpers */
-const MOBILE_POINTER_QUERY = '(pointer: coarse), (max-width: 900px)';
+const MOBILE_POINTER_QUERY = '(max-width: 900px)';
 let mobileKeypadTarget = null;
 let mobileNumberValue = '';
 const mobileAutoScrolled = {};
