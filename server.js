@@ -4884,6 +4884,7 @@ function buildInitialRequirementsData(sourceData, month, year, reqSettings = {})
   clone.holidays = reqSettings.holidays || '';
   clone.reqXyLocks = reqSettings.xyLocks || {};
   clone.reqMeta = {};
+  clone.reqNotes = {};
   clone.schedule = {};
   clone.extras = {};
   clone.requirements = {};
@@ -4896,7 +4897,8 @@ function buildInitialRequirementsData(sourceData, month, year, reqSettings = {})
     fondZpp: clone.fondZpp,
     holidays: clone.holidays,
     reqXyLocks: clone.reqXyLocks,
-    reqMeta: clone.reqMeta
+    reqMeta: clone.reqMeta,
+    reqNotes: {}
   };
   clone.unmatchedXls = [];
   return clone;

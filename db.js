@@ -792,17 +792,8 @@ async function init() {
     }
   }
 
-  // ── Migrace: přesun recepčních z role vedoucí → recepční ─────────────────
-  {
-    const { rows: migRows } = await db.query(
-      `UPDATE users SET role = 'recepční'
-       WHERE role = 'vedoucí'
-         AND perm_overrides IS NOT NULL
-         AND perm_overrides::text LIKE '%"raspis_staff"%'
-       RETURNING id`
-    );
-    if (migRows.length > 0) console.log(`Migrace: ${migRows.length} recepčních přesunuto do skupiny recepční.`);
-  }
+  // Historical one-shot migration disabled: in production, role changes must
+  // stay exactly as saved in Sprava uzivatelu.
 
   // ── Oprava překlepů v jménech recepčních ──────────────────────────────────
   {
