@@ -728,6 +728,9 @@ app.get('/api/my-permissions', requireLogin, async (req, res) => {
     const { rows: ur } = await db.query('SELECT perm_overrides FROM users WHERE id = $1', [user.id]);
     const userOv       = (ur.length && ur[0].perm_overrides) ? JSON.parse(ur[0].perm_overrides) : {};
     const result = {};
+    const requirementProxy = userOv.requirements_proxy && typeof userOv.requirements_proxy === 'object'
+      ? userOv.requirements_proxy
+      : {};
     const isAdm = user.role === 'admin';
     const isManager = isAdm || String(user.role || '').toLowerCase().includes('ved');
     const DEFAULTS = {
@@ -793,7 +796,8 @@ app.get('/api/my-permissions', requireLogin, async (req, res) => {
         logs_delete: isAdm
       } }
     };
-    const allApps = new Set([...Object.keys(DEFAULTS), ...Object.keys(groupPerms), ...Object.keys(userOv)].filter(k => !k.startsWith('__')));
+    const allApps = new Set([...Object.keys(DEFAULTS), ...Object.keys(groupPerms), ...Object.keys(userOv)]
+      .filter(k => !k.startsWith('__') && k !== 'requirements_proxy' && k !== 'raspis_staff'));
     for (const appKey of allApps) {
       const dp   = DEFAULTS[appKey] || { enabled: true, buttons: {} };
       const gp   = groupPerms[appKey] || dp;
@@ -811,6 +815,11 @@ app.get('/api/my-permissions', requireLogin, async (req, res) => {
     }
     result.__defaultApp = userOv.__defaultApp || groupPerms.__defaultApp ||
       (['admin', 'vedoucí', 'recepční', 'pb6'].includes(user.role) ? 'raspis' : null);
+    result.requirementsProxy = {
+      allowedStaffLogins: Array.isArray(requirementProxy.allowedStaffLogins)
+        ? requirementProxy.allowedStaffLogins.map(v => String(v || '').trim().toUpperCase()).filter(Boolean)
+        : []
+    };
     res.json(result);
   } catch(err) { console.error(err); res.json({}); }
 });
@@ -4922,6 +4931,41 @@ function isSessionUserRequirementStaff(staff, user) {
     (!!userName && normReqStaffKey(staff.name) === userName);
 }
 
+function getRequirementStaffLoginKeys(staff) {
+  return new Set([
+    staff && staff.login,
+    staff && staff.username,
+    staff && staff.userLogin,
+    staff && staff.code,
+    staff && staff.short
+  ].map(normReqStaffKey).filter(Boolean));
+}
+
+function requirementStaffMatchesProxyLogin(staff, allowedLogins) {
+  if (!staff || !allowedLogins || !allowedLogins.size) return false;
+  for (const key of getRequirementStaffLoginKeys(staff)) {
+    if (allowedLogins.has(key)) return true;
+  }
+  return false;
+}
+
+async function getRequirementProxyAllowedLoginSet(user, client = null) {
+  if (!user || !user.id) return new Set();
+  const db = client || getPool();
+  const { rows } = await db.query('SELECT perm_overrides FROM users WHERE id = $1', [user.id]);
+  const overrides = parsePermOverridesValue(rows[0]?.perm_overrides);
+  const raw = overrides?.requirements_proxy?.allowedStaffLogins;
+  return new Set((Array.isArray(raw) ? raw : []).map(normReqStaffKey).filter(Boolean));
+}
+
+function getAllowedRequirementStaffIndexes(data, user, allowedLogins = new Set()) {
+  const staff = Array.isArray(data && data.staff) ? data.staff : [];
+  return staff
+    .map((s, si) => ({ s, si }))
+    .filter(({ s }) => isSessionUserRequirementStaff(s, user) || requirementStaffMatchesProxyLogin(s, allowedLogins))
+    .map(({ si }) => si);
+}
+
 function getReqCalCols(month, year) {
   const days = new Date(year, month, 0).getDate();
   const cols = [];
@@ -5213,9 +5257,13 @@ function rtFindLiveRequirementStaff(row, user, liveStaff, month, year) {
   const staff = Array.isArray(liveStaff) ? liveStaff : [];
   const rowId = row && row.userId ? String(row.userId) : '';
   const rowName = rtNormalizeStaffName(row && row.name);
+  const rowLogins = getRequirementStaffLoginKeys(row);
   return staff.find(s => {
     if (!rtIsStaffActiveForMonth(s, month, year)) return false;
     if (rowId && s.userId && String(s.userId) === rowId) return true;
+    for (const key of getRequirementStaffLoginKeys(s)) {
+      if (rowLogins.has(key)) return true;
+    }
     if (isSessionUserRequirementStaff(s, user)) return true;
     return rowName && rtNormalizeStaffName(s.name) === rowName;
   }) || null;
@@ -5274,15 +5322,18 @@ function validateRequirementStaffRowValues(currentData, incomingSchedule, si, so
   return '';
 }
 
-function mergeRequirementStaffRow(currentData, incomingData, user, requestedStaffIndex = null, liveStaff = []) {
+function mergeRequirementStaffRow(currentData, incomingData, user, requestedStaffIndex = null, liveStaff = [], allowedStaffIndexes = null) {
   const current = currentData && typeof currentData === 'object' ? currentData : {};
   const incoming = incomingData && typeof incomingData === 'object' ? incomingData : {};
   const staff = Array.isArray(current.staff) ? current.staff : [];
   const ownSi = staff.findIndex(s => isSessionUserRequirementStaff(s, user));
-  const si = ownSi;
-  let sourceSi = requestedStaffIndex !== null ? requestedStaffIndex : ownSi;
+  const allowed = allowedStaffIndexes instanceof Set
+    ? allowedStaffIndexes
+    : (Array.isArray(allowedStaffIndexes) ? new Set(allowedStaffIndexes) : null);
+  const si = requestedStaffIndex !== null ? requestedStaffIndex : ownSi;
+  let sourceSi = si;
   if (si < 0) return { error: 'V požadavcích nemám přiřazený váš řádek.' };
-  if (!staff[si] || sourceSi < 0) {
+  if (!staff[si] || sourceSi < 0 || (allowed && !allowed.has(si))) {
     return { error: 'Tento radek pozadavku nemuzete ulozit.' };
   }
 
@@ -5359,6 +5410,21 @@ function mergeRequirementStaffRow(currentData, incomingData, user, requestedStaf
   return { data: merged, staffIndex: si };
 }
 
+function mergeRequirementStaffRows(currentData, incomingData, user, staffIndexes, liveStaff = []) {
+  const indexes = Array.from(new Set((Array.isArray(staffIndexes) ? staffIndexes : [])
+    .map(v => Number(v))
+    .filter(v => Number.isInteger(v) && v >= 0)));
+  if (!indexes.length) return { error: 'V pozadavcich nemate prirazeny zadny povoleny radek.' };
+  let mergedData = currentData;
+  const allowed = new Set(indexes);
+  for (const si of indexes) {
+    const merged = mergeRequirementStaffRow(mergedData, incomingData, user, si, liveStaff, allowed);
+    if (merged.error) return merged;
+    mergedData = merged.data;
+  }
+  return { data: mergedData, staffIndexes: allowed };
+}
+
 function updateRequirementMeta(currentData, nextData, user, staffIndex = null) {
   const current = currentData && typeof currentData === 'object' ? currentData : {};
   const next = nextData && typeof nextData === 'object' ? nextData : {};
@@ -5369,8 +5435,14 @@ function updateRequirementMeta(currentData, nextData, user, staffIndex = null) {
     : {};
   const keys = new Set([...Object.keys(curSchedule), ...Object.keys(nextSchedule)]);
   const changedAt = new Date().toISOString();
+  const staffScope = staffIndex instanceof Set
+    ? staffIndex
+    : (Array.isArray(staffIndex) ? new Set(staffIndex) : null);
   keys.forEach(key => {
-    if (staffIndex !== null && !key.startsWith(`${staffIndex}_`)) return;
+    if (staffScope) {
+      const si = parseInt(String(key).split('_')[0], 10);
+      if (!staffScope.has(si)) return;
+    } else if (staffIndex !== null && !key.startsWith(`${staffIndex}_`)) return;
     const oldVal = String(curSchedule[key] || '').trim();
     const newVal = String(nextSchedule[key] || '').trim();
     if (oldVal === newVal) return;
@@ -5418,9 +5490,12 @@ function summarizeRequirementDuplicates(data, staffIndex = null) {
       groups.get(key).people.push({ si, name: s && s.name ? s.name : `Řádek ${si + 1}` });
     });
   });
+  const staffScope = staffIndex instanceof Set
+    ? staffIndex
+    : (Array.isArray(staffIndex) ? new Set(staffIndex) : null);
   return Array.from(groups.values())
     .filter(g => g.people.length > 1)
-    .filter(g => staffIndex === null || g.people.some(p => p.si === staffIndex))
+    .filter(g => staffScope ? g.people.some(p => staffScope.has(p.si)) : (staffIndex === null || g.people.some(p => p.si === staffIndex)))
     .map(g => {
       const label = `${g.col.day}. ${month}. ${year} ${g.col.dn}`;
       return `${label} - ${g.val}: ${g.people.map(p => p.name).join(', ')}`;
@@ -5745,18 +5820,26 @@ app.post('/api/rt/requirements/save', requireLogin, async (req, res) => {
     let saveData = data;
     let logScope = 'full-data';
     let staffIndex = null;
+    let staffScope = null;
     const rowScopedSave = requestedStaffIndex !== null || !manager;
     if (rowScopedSave) {
       if (existing.rows[0].status !== 'open') {
         return rollbackJson({ ok: false, msg: 'Editace požadavků není povolena.' });
       }
       const liveStaff = await loadRtPortalReceptionists(client);
-      const merged = mergeRequirementStaffRow(currentData, data, req.session.user, requestedStaffIndex, liveStaff);
+      const proxyLogins = manager ? new Set() : await getRequirementProxyAllowedLoginSet(req.session.user, client);
+      const allowedStaffIndexes = manager
+        ? null
+        : getAllowedRequirementStaffIndexes(currentData, req.session.user, proxyLogins);
+      const merged = (!manager && requestedStaffIndex === null && proxyLogins.size)
+        ? mergeRequirementStaffRows(currentData, data, req.session.user, allowedStaffIndexes, liveStaff)
+        : mergeRequirementStaffRow(currentData, data, req.session.user, requestedStaffIndex, liveStaff, allowedStaffIndexes);
       if (merged.error) return rollbackJson({ ok: false, msg: merged.error });
       saveData = merged.data;
       staffIndex = merged.staffIndex;
+      staffScope = merged.staffIndexes || staffIndex;
       if (!saveData) return rollbackJson({ ok: false, msg: 'V požadavcích nemám přiřazený váš řádek.' });
-      const duplicates = summarizeRequirementDuplicates(saveData, staffIndex);
+      const duplicates = summarizeRequirementDuplicates(saveData, staffScope);
       if (duplicates.length && !existing.rows[0].allow_duplicates) {
         return rollbackJson({ ok: false, msg: `Tato směna už je zapsaná jiným recepčním:\n${duplicates.slice(0, 12).join('\n')}` });
       }
@@ -5765,7 +5848,7 @@ app.post('/api/rt/requirements/save', requireLogin, async (req, res) => {
       }
       logScope = 'own-row';
     }
-    saveData = updateRequirementMeta(currentData, saveData, req.session.user, staffIndex);
+    saveData = updateRequirementMeta(currentData, saveData, req.session.user, staffScope);
     const { rowCount } = await client.query(
       `UPDATE rt_requirements
        SET data = $2, updated_at = NOW(), updated_by = $3

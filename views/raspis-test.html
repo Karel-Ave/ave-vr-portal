@@ -5275,6 +5275,7 @@ function canManageRequirements() {
 
 function getCurrentRequirementStaffIndexForSave() {
   if (canManageRequirements()) return null;
+  if (getRequirementProxyLoginSet().size) return null;
   const staff = Array.isArray(state.staff) ? state.staff : [];
   const idx = staff.findIndex(s => isCurrentUserStaff(s));
   return idx >= 0 ? idx : null;
@@ -5302,6 +5303,20 @@ async function loadRtPermissions() {
 function rtCan(btnKey, fallback = true) {
   const val = rtPermissions?.raspis?.buttons?.[btnKey];
   return val == null ? fallback : val !== false;
+}
+
+function getRequirementProxyLoginSet() {
+  return new Set((Array.isArray(rtPermissions?.requirementsProxy?.allowedStaffLogins)
+    ? rtPermissions.requirementsProxy.allowedStaffLogins
+    : []).map(v => String(v || '').trim().toLowerCase()).filter(Boolean));
+}
+
+function staffMatchesRequirementProxy(s) {
+  const allowed = getRequirementProxyLoginSet();
+  if (!s || !allowed.size) return false;
+  return [s.login, s.username, s.userLogin, s.code, s.short]
+    .map(v => String(v || '').trim().toLowerCase())
+    .some(v => v && allowed.has(v));
 }
 
 function setPermHidden(el, hidden) {
@@ -6961,6 +6976,33 @@ function validateRequirementCellValue(si, ci, val) {
 
 function validateRequirementLimitsBeforeSave() {
   if (getActiveScheduleTableId() !== 'pozadavky-tbl' || canManageRequirements()) return '';
+  if (getRequirementProxyLoginSet().size) {
+    const staffRows = Array.isArray(state.staff) ? state.staff : [];
+    const indexes = staffRows
+      .map((s, si) => canEditRequirementStaff(s) ? si : null)
+      .filter(si => si !== null);
+    for (const si of indexes) {
+      const staff = state.staff[si] || {};
+      const xLimit = getRequirementLimitForStaff(staff, 'reqXLimit', 7);
+      const yLimit = getRequirementLimitForStaff(staff, 'reqYLimit', 0);
+      let xCount = 0;
+      let yCount = 0;
+      const prefix = `${si}_`;
+      Object.entries(state.schedule || {}).forEach(([key, raw]) => {
+        if (!key.startsWith(prefix)) return;
+        const val = String(raw || '').trim().toUpperCase();
+        if (val === 'X') xCount += 1;
+        if (val === 'Y') yCount += 1;
+      });
+      const who = staff.name ? ` (${staff.name})` : '';
+      if (xCount > xLimit) return `Prekrocen max. povoleny pocet x${who} (${xCount}/${xLimit}).`;
+      if (yCount > yLimit) {
+        if (yLimit <= 0) return `Nemate opravneni psat y${who}.`;
+        return `Prekrocen max. povoleny pocet y${who} (${yCount}/${yLimit}).`;
+      }
+    }
+    return '';
+  }
   const si = getCurrentRequirementStaffIndexForSave();
   if (si === null) return '';
   const staff = state.staff[si] || {};
@@ -8950,7 +8992,7 @@ function isRequirementsReceptionistView() {
 function canEditRequirementStaff(s) {
   if (!currentReqEntry) return false;
   if (canManageRequirements()) return true;
-  return currentReqEntry.status === 'open' && isCurrentUserStaff(s);
+  return currentReqEntry.status === 'open' && (isCurrentUserStaff(s) || staffMatchesRequirementProxy(s));
 }
 
 function getRequestNoteKey(s, si = null) {

@@ -1029,6 +1029,76 @@
       block.appendChild(btnsWrap);
       container.appendChild(block);
     }
+    renderRequirementProxyBlock(container);
+  }
+
+  function getRequirementProxyLogins() {
+    const proxy = overridesData.requirements_proxy && typeof overridesData.requirements_proxy === 'object'
+      ? overridesData.requirements_proxy
+      : {};
+    return new Set((Array.isArray(proxy.allowedStaffLogins) ? proxy.allowedStaffLogins : [])
+      .map(v => String(v || '').trim().toUpperCase())
+      .filter(Boolean));
+  }
+
+  function isReceptionistUserForProxy(u) {
+    if (!u) return false;
+    if (String(u.role || '').toLowerCase().includes('recep')) return true;
+    const rs = getRaspisStaffOverride(u);
+    return !!(rs && rs.active && String(rs.type || '').trim());
+  }
+
+  function renderRequirementProxyBlock(container) {
+    const allowed = getRequirementProxyLogins();
+    const currentUser = allUsers.find(u => String(u.id) === String(currentOverridesId));
+    const currentLogin = String(currentUser?.username || '').trim().toUpperCase();
+    const options = allUsers
+      .filter(u => String(u.id) !== String(currentOverridesId))
+      .filter(isReceptionistUserForProxy)
+      .filter(u => String(u.username || '').trim().toUpperCase() !== currentLogin)
+      .sort((a, b) =>
+        (a.name || '').localeCompare(b.name || '', 'cs', { sensitivity: 'base' }) ||
+        (a.username || '').localeCompare(b.username || '', 'cs', { sensitivity: 'base' })
+      );
+    const block = document.createElement('div');
+    block.className = 'over-app-block';
+    block.innerHTML = `
+      <div class="over-app-header">
+        <span class="over-app-label">PoĹľadavky za jinĂ© recepÄŤnĂ­</span>
+        <span class="over-status ${allowed.size ? '' : 'inherit'}">${allowed.size ? 'vĂ˝jimka' : 'nikdo'}</span>
+      </div>
+      <div style="padding:8px 12px;color:#667;font-size:12px;line-height:1.35;">
+        VybranĂ˝ uĹľivatel smĂ­ v listu PoĹľadavky editovat svĹŻj Ĺ™Ăˇdek a tyto vybranĂ© Ĺ™Ăˇdky. Limity x/y se berou podle recepÄŤnĂ­ho, kterĂ©mu poĹľadavky pĂ­Ĺˇe.
+      </div>
+      <div class="over-btns-wrap" style="max-height:220px;overflow:auto;">
+        ${options.length ? options.map(u => {
+          const login = String(u.username || '').trim().toUpperCase();
+          const checked = allowed.has(login);
+          return `
+            <label class="over-btn-row" style="cursor:pointer;">
+              <span class="over-btn-label">${esc(u.name)} <span style="color:#888;font-family:monospace;">${esc(login)}</span></span>
+              <input type="checkbox" ${checked ? 'checked' : ''} onchange="toggleRequirementProxyLogin('${esc(login)}', this.checked)">
+            </label>
+          `;
+        }).join('') : '<div class="over-btn-row"><span class="over-btn-label">Ĺ˝ĂˇdnĂ­ recepÄŤnĂ­ k vĂ˝bÄ›ru.</span></div>'}
+      </div>
+    `;
+    container.appendChild(block);
+  }
+
+  function toggleRequirementProxyLogin(login, enabled) {
+    const key = String(login || '').trim().toUpperCase();
+    if (!key) return;
+    const allowed = getRequirementProxyLogins();
+    if (enabled) allowed.add(key);
+    else allowed.delete(key);
+    if (allowed.size) {
+      overridesData.requirements_proxy = { allowedStaffLogins: Array.from(allowed).sort() };
+    } else {
+      delete overridesData.requirements_proxy;
+    }
+    const grp = allGroups.find(g => g.name === currentOverridesRole) || { perms: {} };
+    renderOverridesContent(grp.perms || {});
   }
 
   function toggleOver(appKey, btnKey, el) {
@@ -1076,8 +1146,17 @@
     // Clean nulls
     const clean = {};
     if (overridesData.__defaultApp) clean.__defaultApp = overridesData.__defaultApp;
+    if (overridesData.raspis_staff) clean.raspis_staff = overridesData.raspis_staff;
+    if (overridesData.requirements_proxy?.allowedStaffLogins?.length) {
+      clean.requirements_proxy = {
+        allowedStaffLogins: overridesData.requirements_proxy.allowedStaffLogins
+          .map(v => String(v || '').trim().toUpperCase())
+          .filter(Boolean)
+      };
+    }
     for (const [appKey, uo] of Object.entries(overridesData)) {
       if (appKey.startsWith('__')) continue;
+      if (appKey === 'raspis_staff' || appKey === 'requirements_proxy') continue;
       const cb = {};
       for (const [k, v] of Object.entries(uo.buttons || {})) { if (v != null) cb[k] = v; }
       if (uo.enabled != null || Object.keys(cb).length) clean[appKey] = { enabled: uo.enabled, buttons: cb };
