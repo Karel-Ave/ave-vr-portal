@@ -1064,11 +1064,11 @@
     block.className = 'over-app-block';
     block.innerHTML = `
       <div class="over-app-header">
-        <span class="over-app-label">PoĹľadavky za jinĂ© recepÄŤnĂ­</span>
-        <span class="over-status ${allowed.size ? '' : 'inherit'}">${allowed.size ? 'vĂ˝jimka' : 'nikdo'}</span>
+        <span class="over-app-label">Po&#382;adavky za jin&#233; recep&#269;n&#237;</span>
+        <span class="over-status ${allowed.size ? '' : 'inherit'}">${allowed.size ? 'v&#253;jimka' : 'nikdo'}</span>
       </div>
       <div style="padding:8px 12px;color:#667;font-size:12px;line-height:1.35;">
-        VybranĂ˝ uĹľivatel smĂ­ v listu PoĹľadavky editovat svĹŻj Ĺ™Ăˇdek a tyto vybranĂ© Ĺ™Ăˇdky. Limity x/y se berou podle recepÄŤnĂ­ho, kterĂ©mu poĹľadavky pĂ­Ĺˇe.
+        Vybran&#253; u&#382;ivatel sm&#237; v listu Po&#382;adavky editovat sv&#367;j &#345;&#225;dek a tyto vybran&#233; &#345;&#225;dky. Limity x/y se berou podle recep&#269;n&#237;ho, kter&#233;mu po&#382;adavky p&#237;&#353;e.
       </div>
       <div class="over-btns-wrap" style="max-height:220px;overflow:auto;">
         ${options.length ? options.map(u => {
@@ -1080,7 +1080,7 @@
               <input type="checkbox" ${checked ? 'checked' : ''} onchange="toggleRequirementProxyLogin('${esc(login)}', this.checked)">
             </label>
           `;
-        }).join('') : '<div class="over-btn-row"><span class="over-btn-label">Ĺ˝ĂˇdnĂ­ recepÄŤnĂ­ k vĂ˝bÄ›ru.</span></div>'}
+        }).join('') : '<div class="over-btn-row"><span class="over-btn-label">&#381;&#225;dn&#237; recep&#269;n&#237; k v&#253;b&#283;ru.</span></div>'}
       </div>
     `;
     container.appendChild(block);
@@ -1089,6 +1089,8 @@
   function toggleRequirementProxyLogin(login, enabled) {
     const key = String(login || '').trim().toUpperCase();
     if (!key) return;
+    const container = document.getElementById('overrides-content');
+    const scrollTop = container ? container.scrollTop : 0;
     const allowed = getRequirementProxyLogins();
     if (enabled) allowed.add(key);
     else allowed.delete(key);
@@ -1099,6 +1101,8 @@
     }
     const grp = allGroups.find(g => g.name === currentOverridesRole) || { perms: {} };
     renderOverridesContent(grp.perms || {});
+    const nextContainer = document.getElementById('overrides-content');
+    if (nextContainer) nextContainer.scrollTop = scrollTop;
   }
 
   function toggleOver(appKey, btnKey, el) {

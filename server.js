@@ -4721,6 +4721,61 @@ function rtRemapDataStaffIndexes(data, oldToNew) {
   });
 }
 
+function rtStaffIdentityKey(s) {
+  if (!s) return '';
+  if (s.userId) return `u:${String(s.userId)}`;
+  const login = String(s.login || s.username || s.userLogin || s.code || s.short || '').trim().toLowerCase();
+  if (login) return `l:${login}`;
+  const name = rtNormalizeStaffName(s.name);
+  return name ? `n:${name}` : '';
+}
+
+function rtMergeStaffRows(primary, duplicate) {
+  const merged = { ...(primary || {}) };
+  Object.entries(duplicate || {}).forEach(([key, val]) => {
+    if (val === undefined || val === null || val === '') return;
+    if (Array.isArray(val)) {
+      if (!Array.isArray(merged[key]) || !merged[key].length) merged[key] = val;
+      return;
+    }
+    if (typeof val === 'object') {
+      if (!merged[key] || typeof merged[key] !== 'object' || !Object.keys(merged[key]).length) {
+        merged[key] = JSON.parse(JSON.stringify(val));
+      }
+      return;
+    }
+    if (merged[key] === undefined || merged[key] === null || merged[key] === '') merged[key] = val;
+  });
+  return merged;
+}
+
+function rtDedupeStaffRows(data) {
+  if (!data || typeof data !== 'object' || !Array.isArray(data.staff)) return false;
+  const oldToNew = {};
+  const byKey = new Map();
+  const nextStaff = [];
+  let changed = false;
+  data.staff.forEach((s, oldIdx) => {
+    const key = rtStaffIdentityKey(s) || `row:${oldIdx}`;
+    if (byKey.has(key)) {
+      const newIdx = byKey.get(key);
+      nextStaff[newIdx] = rtMergeStaffRows(nextStaff[newIdx], s);
+      oldToNew[oldIdx] = newIdx;
+      changed = true;
+      return;
+    }
+    const newIdx = nextStaff.length;
+    byKey.set(key, newIdx);
+    oldToNew[oldIdx] = newIdx;
+    nextStaff.push(s);
+  });
+  if (!changed) return false;
+  data.staff = nextStaff;
+  data.staffOrder = data.staff.map(s => s.userId || null);
+  rtRemapDataStaffIndexes(data, oldToNew);
+  return true;
+}
+
 async function augmentRtDataWithActiveReceptionists(data, db = getPool()) {
   if (!data || typeof data !== 'object') return data;
   const month = parseInt(data.month, 10);
@@ -4734,7 +4789,7 @@ async function augmentRtDataWithActiveReceptionists(data, db = getPool()) {
     ? data.portalCustomData
     : {};
 
-  let changed = false;
+  let changed = rtDedupeStaffRows(data);
   let added = false;
   for (const s of active) {
     if (s.userId) {
@@ -5264,7 +5319,6 @@ function rtFindLiveRequirementStaff(row, user, liveStaff, month, year) {
     for (const key of getRequirementStaffLoginKeys(s)) {
       if (rowLogins.has(key)) return true;
     }
-    if (isSessionUserRequirementStaff(s, user)) return true;
     return rowName && rtNormalizeStaffName(s.name) === rowName;
   }) || null;
 }
