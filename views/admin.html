@@ -1022,13 +1022,13 @@
       const visibleRow = document.createElement('div');
       visibleRow.className = 'over-btn-row';
       visibleRow.innerHTML = `
-        <span class="over-btn-label" style="color:#666;">Viditeln? na port?lu</span>
+        <span class="over-btn-label" style="color:#666;">Viditeln&aacute; na port&aacute;lu</span>
         <div style="display:flex;align-items:center;gap:6px;">
           <span class="over-status ${visibleOverridden ? '' : 'inherit'}" style="font-size:10px;">${visibleOverridden ? 'v?jimka' : 'ze skupiny'}</span>
           <div class="toggle" onclick="toggleOver('${appKey}','__visible__',this)">
             <div class="toggle-track ${appVisible ? 'on' : ''}"></div>
           </div>
-          ${visibleOverridden ? `<button class="reset-btn" onclick="clearOver('${appKey}','__visible__');event.stopPropagation();">?</button>` : ''}
+          ${visibleOverridden ? `<button class="reset-btn" onclick="clearOver('${appKey}','__visible__');event.stopPropagation();">&#8617;</button>` : ''}
         </div>
       `;
       btnsWrap.appendChild(visibleRow);
