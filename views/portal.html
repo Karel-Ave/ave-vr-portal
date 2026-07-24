@@ -396,6 +396,40 @@
   }
   #app-loading.visible { opacity: 1; pointer-events: auto; }
   #app-frame { transition: opacity .15s; }
+
+  .portal-notice-backdrop {
+    position: fixed;
+    inset: 0;
+    z-index: 30000;
+    background: rgba(0,0,0,.34);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 18px;
+  }
+  .portal-notice-box {
+    width: min(420px, 100%);
+    background: var(--surface);
+    color: var(--text);
+    border: 1px solid var(--btn-top-border);
+    border-radius: 12px;
+    box-shadow: 0 18px 50px rgba(0,0,0,.28);
+    padding: 20px;
+  }
+  .portal-notice-box h2 {
+    margin: 0 0 12px;
+    color: var(--accent-h);
+    font-size: 20px;
+  }
+  .portal-notice-box p {
+    margin: 0 0 18px;
+    font-weight: 800;
+    line-height: 1.45;
+  }
+  .portal-notice-foot {
+    display: flex;
+    justify-content: flex-end;
+  }
   .spinner {
     width: 28px;
     height: 28px;
@@ -1059,6 +1093,79 @@
   })();
 
   // ── Init: fetch user + permissions + app order, render cards ────────────
+  let portalNoticeOpen = false;
+  let portalNoticeTimer = null;
+
+  function showPortalNotice(message, onOk) {
+    if (portalNoticeOpen || document.querySelector('.portal-notice-backdrop')) return;
+    portalNoticeOpen = true;
+    const wrap = document.createElement('div');
+    wrap.className = 'portal-notice-backdrop';
+    const box = document.createElement('div');
+    box.className = 'portal-notice-box';
+    const title = document.createElement('h2');
+    title.textContent = 'Ozn\u00e1men\u00ed';
+    const text = document.createElement('p');
+    text.textContent = message || 'Zm\u011bna v sekci dovolen\u00e9';
+    const foot = document.createElement('div');
+    foot.className = 'portal-notice-foot';
+    const ok = document.createElement('button');
+    ok.type = 'button';
+    ok.className = 'btn-top';
+    ok.style.background = 'var(--accent)';
+    ok.style.borderColor = 'var(--accent)';
+    ok.style.color = '#fff';
+    ok.textContent = 'OK';
+    ok.addEventListener('click', async () => {
+      try { if (typeof onOk === 'function') await onOk(); } catch(e) {}
+      try {
+        document.getElementById('app-frame')?.contentWindow?.postMessage({ type: 'ave-notification-seen', notificationType: 'vacations' }, location.origin);
+      } catch(e) {}
+      wrap.remove();
+      portalNoticeOpen = false;
+      setTimeout(refreshPortalNotifications, 250);
+    });
+    foot.appendChild(ok);
+    box.appendChild(title);
+    box.appendChild(text);
+    box.appendChild(foot);
+    wrap.appendChild(box);
+    document.body.appendChild(wrap);
+  }
+
+  async function markPortalNotificationSeen(note) {
+    await fetch('/api/notifications/seen', {
+      method: 'POST',
+      credentials: 'include',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ type: note.type, signature: note.signature })
+    });
+  }
+
+  async function refreshPortalNotifications() {
+    if (!portalUser || portalNoticeOpen) return;
+    try {
+      const r = await fetch('/api/notifications/summary', { credentials: 'include', cache: 'no-store' });
+      const j = r.ok ? await r.json() : null;
+      const note = j && Array.isArray(j.notifications) ? j.notifications[0] : null;
+      if (!note) return;
+      showPortalNotice(note.message || 'Zm\u011bna v sekci dovolen\u00e9', () => markPortalNotificationSeen(note));
+    } catch(e) {}
+  }
+
+  function startPortalNotifications() {
+    clearInterval(portalNoticeTimer);
+    refreshPortalNotifications();
+    setTimeout(refreshPortalNotifications, 600);
+    setTimeout(refreshPortalNotifications, 1800);
+    portalNoticeTimer = setInterval(refreshPortalNotifications, 60000);
+  }
+
+  window.addEventListener('message', e => {
+    if (!e.data || !['vacations-changed', 'ave-refresh-notifications'].includes(e.data.type)) return;
+    refreshPortalNotifications();
+    setTimeout(refreshPortalNotifications, 700);
+  });
   (async () => {
     const [user, perms, orderData, prefData, rtSettings] = await Promise.all([
       fetch('/api/me').then(r => r.json()).catch(() => null),
@@ -1130,6 +1237,7 @@
     // ── Restore last app after F5 ────────────────────────────────────────
     // URL was already validated synchronously above; just call loadApp().
     loadApp(window._portalRestoreUrl || portalDefaultUrl || visibleCards[0]?.href);
+    startPortalNotifications();
   })();
 
   // ── User appearance settings ──────────────────────────────────────────────

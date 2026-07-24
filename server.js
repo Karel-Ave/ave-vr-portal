@@ -417,6 +417,10 @@ app.get('/raspis-test', requireLogin, (req, res) =>
   res.sendFile(path.join(__dirname, 'views', 'raspis-test.html'))
 );
 
+app.get('/dovolene', requireLogin, (req, res) =>
+  res.sendFile(path.join(__dirname, 'views', 'dovolene.html'))
+);
+
 // Stará adresa widgetu zůstává funkční jako přesměrování do portálu.
 app.get('/widget', requireLogin, (req, res) => res.redirect('/portal'));
 
@@ -774,6 +778,14 @@ app.get('/api/my-permissions', requireLogin, async (req, res) => {
         settings: isAdm,
         manageTexts: isAdm,
         internalNote: isManager
+      } },
+      dovolene: { enabled: true, visible: true, buttons: {
+        viewAll: isManager,
+        manage: isManager,
+        manageBalances: isManager,
+        delete: isManager,
+        bulkDelete: isAdm,
+        syncNote: isManager
       } },
       blacklist: { enabled: true, visible: true, buttons: {
         view: true,
@@ -1504,8 +1516,8 @@ app.post('/api/user-prefs/default-public-hotel', requireLogin, async (req, res) 
 });
 
 app.post('/api/user-prefs/default-views', requireLogin, async (req, res) => {
-  const allowedApps = new Set(['raspis', 'priplatky', 'blacklist', 'admin']);
-  const allowedTabs = new Set(['nastaveni', 'tvorba', 'rozpis', 'public', 'denni', 'pozadavky']);
+  const allowedApps = new Set(['raspis', 'priplatky', 'dovolene', 'blacklist', 'admin']);
+  const allowedTabs = new Set(['nastaveni', 'tvorba', 'rozpis', 'public', 'denni', 'pozadavky', 'dovolene']);
   const raw = req.body && req.body.default_views && typeof req.body.default_views === 'object'
     ? req.body.default_views
     : {};
@@ -3812,7 +3824,714 @@ app.get('/api/raspis-staff', requireLogin, async (req, res) => {
 
 // ═════════════════════════════════════════════════════════════════════════════
 // ── Raspis Test API (/api/rt/) ────────────────────────────────────────────────
+// Vacation requests API - separate records, optional sync into monthly note
+function vacationParseDays(raw, month, year) {
+  const days = Array.isArray(raw) ? raw : [];
+  const last = new Date(year, month, 0).getDate();
+  const out = [];
+  const seen = new Set();
+  for (const value of days) {
+    const day = parseInt(value, 10);
+    if (!Number.isInteger(day) || day < 1 || day > last || seen.has(day)) continue;
+    seen.add(day);
+    out.push(`${year}-${String(month).padStart(2, '0')}-${String(day).padStart(2, '0')}`);
+  }
+  return out.sort();
+}
+
+function vacationParseRow(row) {
+  const days = (() => {
+    try { return typeof row.days_json === 'string' ? JSON.parse(row.days_json || '[]') : (row.days_json || []); }
+    catch (e) { return []; }
+  })();
+  return { ...row, days, days_count: Number(row.days_count || 0) };
+}
+
+function vacationFormatDate(value) {
+  const m = String(value || '').match(/^(\d{4})-(\d{2})-(\d{2})$/);
+  if (!m) return String(value || '');
+  return `${parseInt(m[3], 10)}.${parseInt(m[2], 10)}.${m[1]}`;
+}
+
+function vacationFormatDays(days, month, year, daysCount = 0) {
+  const clean = Array.isArray(days) ? days.filter(Boolean).sort() : [];
+  if (!clean.length) {
+    const n = Number(daysCount || 0);
+    return n > 0 ? `${n} dnu (${month}/${year})` : `${month}/${year}`;
+  }
+  const parts = [];
+  let start = clean[0];
+  let prev = clean[0];
+  const dayNum = v => parseInt(String(v).slice(8, 10), 10);
+  const flush = () => {
+    parts.push(start === prev ? vacationFormatDate(start) : `${dayNum(start)}.-${vacationFormatDate(prev)}`);
+  };
+  for (let i = 1; i < clean.length; i++) {
+    const d = clean[i];
+    if (dayNum(d) === dayNum(prev) + 1) prev = d;
+    else { flush(); start = prev = d; }
+  }
+  flush();
+  return parts.join(', ');
+}
+
+function vacationManagerRole(user) {
+  const role = String(user?.role || '').toLowerCase();
+  return role === 'admin' || role.includes('ved');
+}
+
+async function canManageVacationsServer(user) {
+  return vacationManagerRole(user)
+    || await hasButtonPerm(user, 'dovolene', 'manage', false)
+    || await hasButtonPerm(user, 'dovolene', 'viewAll', false);
+}
+
+async function vacationCanDelete(user) {
+  return vacationManagerRole(user) || await hasButtonPerm(user, 'dovolene', 'delete', false);
+}
+
+async function vacationCanSyncNote(user) {
+  return vacationManagerRole(user) || await hasButtonPerm(user, 'dovolene', 'syncNote', false);
+}
+
+async function vacationCanBulkDelete(user) {
+  return user?.role === 'admin' || await hasButtonPerm(user, 'dovolene', 'bulkDelete', false);
+}
+
+async function vacationCanManageBalances(user) {
+  return vacationManagerRole(user) || await hasButtonPerm(user, 'dovolene', 'manageBalances', false);
+}
+
+async function vacationResolveStaff(req, body, db) {
+  const user = req.session.user;
+  const staff = await loadRtPortalReceptionists(db);
+  const canManage = await canManageVacationsServer(user);
+  let found = null;
+  if (canManage && body?.staff_user_id) found = staff.find(s => String(s.userId || '') === String(body.staff_user_id));
+  if (canManage && !found && body?.staff_login) {
+    const login = String(body.staff_login || '').trim().toUpperCase();
+    found = staff.find(s => String(s.login || '').trim().toUpperCase() === login);
+  }
+  if (!found) {
+    const login = String(user.username || user.login || '').trim().toUpperCase();
+    found = staff.find(s => String(s.userId || '') === String(user.id))
+      || staff.find(s => String(s.login || '').trim().toUpperCase() === login);
+  }
+  return found || { userId: user.id, displayName: user.name, login: String(user.username || user.login || '').trim().toUpperCase() };
+}
+
+async function vacationAppendMonthlyNote(db, item, noteText, user) {
+  const text = String(noteText || '').trim();
+  if (!text || !item.staff_user_id) return false;
+  const key = `${item.year}-${item.month}`;
+  const { rows } = await db.query('SELECT data FROM rt_staff_settings WHERE user_id = $1', [item.staff_user_id]);
+  const current = rows.length ? (typeof rows[0].data === 'string' ? JSON.parse(rows[0].data || '{}') : (rows[0].data || {})) : {};
+  const normalized = normalizeRtStaffSettings(current);
+  normalized.monthlyOverrides = normalized.monthlyOverrides && typeof normalized.monthlyOverrides === 'object' ? normalized.monthlyOverrides : {};
+  const monthData = normalized.monthlyOverrides[key] && typeof normalized.monthlyOverrides[key] === 'object' ? normalized.monthlyOverrides[key] : {};
+  const oldNote = String(monthData.noteM || '').trim();
+  monthData.noteM = oldNote ? (oldNote.includes(text) ? oldNote : `${oldNote}; ${text}`) : text;
+  normalized.monthlyOverrides[key] = monthData;
+  await db.query(
+    `INSERT INTO rt_staff_settings (user_id, data, updated_at, updated_by)
+     VALUES ($1, $2, NOW(), $3)
+     ON CONFLICT (user_id) DO UPDATE
+     SET data = EXCLUDED.data, updated_at = NOW(), updated_by = EXCLUDED.updated_by`,
+    [item.staff_user_id, JSON.stringify(normalized), user.id]
+  );
+  await db.query(
+    `UPDATE vacation_requests SET synced_to_month_note_at = NOW(), synced_note_text = $2, updated_at = NOW() WHERE id = $1`,
+    [item.id, text]
+  );
+  return true;
+}
+
+app.get('/api/vacations/staff', requireLogin, async (req, res) => {
+  try {
+    if (!await canManageVacationsServer(req.session.user)) return res.status(403).json({ ok: false, msg: 'Nemate opravneni.' });
+    const db = getPool();
+    const month = parseInt(req.query.month, 10) || (new Date().getMonth() + 1);
+    const year = parseInt(req.query.year, 10) || new Date().getFullYear();
+    const active = (await loadRtPortalReceptionists(db)).filter(s => rtIsStaffActiveForMonth(s, month, year));
+    res.json({ ok: true, staff: active.map(s => ({ userId: s.userId, login: s.login, name: s.displayName || s.name || s.login })) });
+  } catch (err) { console.error('Chyba /api/vacations/staff:', err); res.status(500).json({ ok: false, msg: 'Chyba serveru.' }); }
+});
+
+app.get('/api/vacations', requireLogin, async (req, res) => {
+  try {
+    const db = getPool();
+    const user = req.session.user;
+    const manager = await canManageVacationsServer(user);
+    const where = [];
+    const params = [];
+    const add = v => { params.push(v); return `$${params.length}`; };
+    const month = parseInt(req.query.month, 10);
+    const year = parseInt(req.query.year, 10);
+    if (month >= 1 && month <= 12) where.push(`month = ${add(month)}`);
+    if (year >= 2000 && year <= 2100) where.push(`year = ${add(year)}`);
+    if (req.query.status && req.query.status !== 'all') where.push(`status = ${add(String(req.query.status))}`);
+    if (!manager) {
+      const login = String(user.username || user.login || '').trim().toUpperCase();
+      where.push(`(staff_user_id = ${add(user.id)} OR UPPER(staff_login) = ${add(login)})`);
+    }
+    const { rows } = await db.query(
+      `SELECT * FROM vacation_requests ${where.length ? 'WHERE ' + where.join(' AND ') : ''}
+       ORDER BY year DESC, month DESC, created_at DESC, id DESC`, params);
+    const userLogin = String(user.username || user.login || '').trim().toUpperCase();
+    const canDelete = await vacationCanDelete(user);
+    const items = rows.map(row => {
+      const item = vacationParseRow(row);
+      const own = String(row.staff_user_id || '') === String(user.id)
+        || String(row.created_by || '') === String(user.id)
+        || String(row.staff_login || '').toUpperCase() === userLogin;
+      return {
+        ...item,
+        canEdit: !manager && ['pending', 'needs_info'].includes(String(row.status || '')),
+        canDelete
+      };
+    });
+    res.json({ ok: true, manager, userId: user.id, userLogin, userName: user.name || userLogin, items });
+  } catch (err) { console.error('Chyba GET /api/vacations:', err); res.status(500).json({ ok: false, msg: 'Chyba serveru.' }); }
+});
+
+app.get('/api/vacations/summary', requireLogin, async (req, res) => {
+  try {
+    const db = getPool();
+    const user = req.session.user;
+    const manager = await canManageVacationsServer(user);
+    const userLogin = String(user.username || user.login || '').trim().toUpperCase();
+    let rows;
+    if (manager) {
+      ({ rows } = await db.query(
+        "SELECT COUNT(*)::int AS count, MAX(GREATEST(created_at, updated_at)) AS latest_at FROM vacation_requests WHERE status IN ('pending','needs_info')"
+      ));
+    } else {
+      ({ rows } = await db.query(
+        "SELECT COUNT(*)::int AS count, MAX(GREATEST(created_at, updated_at)) AS latest_at FROM vacation_requests WHERE (staff_user_id = $1 OR UPPER(staff_login) = $2) AND status IN ('approved','rejected','needs_info')",
+        [user.id, userLogin]
+      ));
+    }
+    const row = rows[0] || {};
+    const count = Number(row.count || 0);
+    const latestAt = row.latest_at ? new Date(row.latest_at).toISOString() : '';
+    const scope = manager ? 'manager' : 'own';
+    const signature = 'vacations:' + scope + ':' + count + ':' + latestAt;
+    const { rows: seenRows } = await db.query(
+      'SELECT signature FROM user_notification_reads WHERE user_id=$1 AND notification_type=$2',
+      [user.id, 'vacations']
+    );
+    const unseen = count > 0 && String(seenRows[0]?.signature || '') !== signature;
+    res.json({ ok: true, manager, userLogin, scope, count, latestAt: latestAt || null, signature, unseen });
+  } catch (err) {
+    console.error('Chyba GET /api/vacations/summary:', err);
+    res.status(500).json({ ok: false, msg: 'Chyba serveru.' });
+  }
+});
+
+async function buildVacationNotification(db, user) {
+  const manager = await canManageVacationsServer(user);
+  const userLogin = String(user.username || user.login || '').trim().toUpperCase();
+  let rows;
+  if (manager) {
+    ({ rows } = await db.query(
+      "SELECT COUNT(*)::int AS count, MAX(GREATEST(created_at, updated_at)) AS latest_at FROM vacation_requests WHERE status IN ('pending','needs_info')"
+    ));
+  } else {
+    ({ rows } = await db.query(
+      "SELECT COUNT(*)::int AS count, MAX(GREATEST(created_at, updated_at)) AS latest_at FROM vacation_requests WHERE (staff_user_id = $1 OR UPPER(staff_login) = $2) AND status IN ('approved','rejected','needs_info')",
+      [user.id, userLogin]
+    ));
+  }
+  const row = rows[0] || {};
+  const count = Number(row.count || 0);
+  const latestAt = row.latest_at ? new Date(row.latest_at).toISOString() : '';
+  const scope = manager ? 'manager' : 'own';
+  const signature = 'vacations:' + scope + ':' + count + ':' + latestAt;
+  return { type: 'vacations', message: 'Zm\u011bna v sekci dovolen\u00e9', scope, userLogin, count, latestAt, signature };
+}
+
+app.get('/api/notifications/summary', requireLogin, async (req, res) => {
+  try {
+    const db = getPool();
+    const user = req.session.user;
+    const vacation = await buildVacationNotification(db, user);
+    const notifications = [];
+    if (vacation.count > 0) {
+      const { rows } = await db.query(
+        'SELECT signature FROM user_notification_reads WHERE user_id=$1 AND notification_type=$2',
+        [user.id, vacation.type]
+      );
+      if (String(rows[0]?.signature || '') !== vacation.signature) notifications.push(vacation);
+    }
+    res.json({ ok: true, userLogin: String(user.username || user.login || '').trim().toUpperCase(), notifications });
+  } catch (err) {
+    console.error('Chyba GET /api/notifications/summary:', err);
+    res.status(500).json({ ok: false, msg: 'Chyba nacteni notifikaci.' });
+  }
+});
+
+app.post('/api/notifications/seen', requireLogin, async (req, res) => {
+  try {
+    const type = String(req.body?.type || '').trim();
+    const signature = String(req.body?.signature || '').trim();
+    if (!type || !signature || type.length > 50) return res.status(400).json({ ok: false, msg: 'Neplatna notifikace.' });
+    await getPool().query(
+      `INSERT INTO user_notification_reads (user_id, notification_type, signature, seen_at)
+       VALUES ($1,$2,$3,NOW())
+       ON CONFLICT (user_id, notification_type) DO UPDATE SET signature=EXCLUDED.signature, seen_at=NOW()`,
+      [req.session.user.id, type, signature]
+    );
+    res.json({ ok: true });
+  } catch (err) {
+    console.error('Chyba POST /api/notifications/seen:', err);
+    res.status(500).json({ ok: false, msg: 'Chyba ulozeni notifikace.' });
+  }
+});
+app.post('/api/vacations', requireLogin, async (req, res) => {
+  try {
+    const db = getPool();
+    const user = req.session.user;
+    const month = parseInt(req.body?.month, 10);
+    const year = parseInt(req.body?.year, 10);
+    if (!(month >= 1 && month <= 12) || !(year >= 2000 && year <= 2100)) return res.status(400).json({ ok: false, msg: 'Neplatny mesic nebo rok.' });
+    const staff = await vacationResolveStaff(req, req.body, db);
+    const days = vacationParseDays(req.body?.days, month, year);
+    const daysCount = Math.max(0, Math.min(31, parseInt(req.body?.days_count, 10) || 0));
+    if (!days.length && daysCount <= 0) return res.status(400).json({ ok: false, msg: 'Vyberte datum nebo pocet dni.' });
+    const note = String(req.body?.note || '').trim();
+    const { rows } = await db.query(
+      `INSERT INTO vacation_requests (staff_user_id, staff_login, staff_name, month, year, days_json, days_count, note, status, created_by, created_name, updated_at)
+       VALUES ($1,$2,$3,$4,$5,$6,$7,$8,'pending',$9,$10,NOW()) RETURNING *`,
+      [staff.userId || null, String(staff.login || '').trim().toUpperCase(), staff.displayName || staff.name || staff.login, month, year, JSON.stringify(days), daysCount, note, user.id, user.name]
+    );
+    res.json({ ok: true, item: vacationParseRow(rows[0]) });
+  } catch (err) { console.error('Chyba POST /api/vacations:', err); res.status(500).json({ ok: false, msg: 'Chyba serveru.' }); }
+});
+
+app.patch('/api/vacations/:id', requireLogin, async (req, res) => {
+  try {
+    const db = getPool();
+    const user = req.session.user;
+    const { rows } = await db.query('SELECT * FROM vacation_requests WHERE id = $1', [req.params.id]);
+    if (!rows.length) return res.status(404).json({ ok: false, msg: 'Zadost nenalezena.' });
+    const item = rows[0];
+    const own = String(item.staff_user_id || '') === String(user.id)
+      || String(item.created_by || '') === String(user.id)
+      || String(item.staff_login || '').toUpperCase() === String(user.username || user.login || '').toUpperCase();
+    if (!own || !['pending', 'needs_info'].includes(item.status)) return res.status(403).json({ ok: false, msg: 'Tuto zadost nemuzete upravit.' });
+    const month = parseInt(req.body?.month, 10) || item.month;
+    const year = parseInt(req.body?.year, 10) || item.year;
+    const days = vacationParseDays(req.body?.days, month, year);
+    const daysCount = Math.max(0, Math.min(31, parseInt(req.body?.days_count, 10) || 0));
+    if (!days.length && daysCount <= 0) return res.status(400).json({ ok: false, msg: 'Vyberte datum nebo pocet dni.' });
+    const nextStatus = (!manager && item.status === 'needs_info') ? 'pending' : item.status;
+    const note = String(req.body?.note || '').trim();
+    const { rows: updated } = await db.query(
+      `UPDATE vacation_requests SET month=$1, year=$2, days_json=$3, days_count=$4, note=$5, status=$6, updated_at=NOW(), resolved_by=NULL, resolved_name=NULL, resolved_at=NULL WHERE id=$7 RETURNING *`,
+      [month, year, JSON.stringify(days), daysCount, note, nextStatus, req.params.id]
+    );
+    res.json({ ok: true, item: vacationParseRow(updated[0]) });
+  } catch (err) { console.error('Chyba PATCH /api/vacations:', err); res.status(500).json({ ok: false, msg: 'Chyba serveru.' }); }
+});
+
+app.post('/api/vacations/:id/status', requireLogin, async (req, res) => {
+  try {
+    if (!await canManageVacationsServer(req.session.user)) return res.status(403).json({ ok: false, msg: 'Nemate opravneni.' });
+    const status = String(req.body?.status || '').trim();
+    if (!['pending', 'approved', 'rejected', 'needs_info'].includes(status)) return res.status(400).json({ ok: false, msg: 'Neplatny status.' });
+    const db = getPool();
+    const user = req.session.user;
+    const comment = String(req.body?.manager_comment || '').trim();
+    const { rows } = await db.query(
+      `UPDATE vacation_requests SET status=$1, manager_comment=$2, resolved_by=$3, resolved_name=$4, resolved_at=NOW(), updated_at=NOW() WHERE id=$5 RETURNING *`,
+      [status, comment, user.id, user.name, req.params.id]
+    );
+    if (!rows.length) return res.status(404).json({ ok: false, msg: 'Zadost nenalezena.' });
+    let item = vacationParseRow(rows[0]);
+    let synced = false;
+    if (status === 'approved' && req.body?.syncNote === true && await vacationCanSyncNote(user)) {
+      const text = String(req.body?.sync_note_text || '').trim() || `Dovolena ${vacationFormatDays(item.days, item.month, item.year, item.days_count)}`;
+      synced = await vacationAppendMonthlyNote(db, item, text, user);
+      const { rows: fresh } = await db.query('SELECT * FROM vacation_requests WHERE id=$1', [item.id]);
+      item = vacationParseRow(fresh[0] || rows[0]);
+    }
+    res.json({ ok: true, item, synced });
+  } catch (err) { console.error('Chyba POST /api/vacations/:id/status:', err); res.status(500).json({ ok: false, msg: 'Chyba serveru.' }); }
+});
+
+app.delete('/api/vacations/:id', requireLogin, async (req, res) => {
+  try {
+    const db = getPool();
+    const user = req.session.user;
+    const { rows } = await db.query('SELECT * FROM vacation_requests WHERE id = $1', [req.params.id]);
+    if (!rows.length) return res.status(404).json({ ok: false, msg: 'Zadost nenalezena.' });
+    const item = rows[0];
+    const canDelete = await vacationCanDelete(user);
+    if (!canDelete) return res.status(403).json({ ok: false, msg: 'Tuto zadost nemuzete smazat.' });
+    await db.query('DELETE FROM vacation_requests WHERE id = $1', [req.params.id]);
+    res.json({ ok: true });
+  } catch (err) { console.error('Chyba DELETE /api/vacations:', err); res.status(500).json({ ok: false, msg: 'Chyba serveru.' }); }
+});
+
+app.post('/api/vacations/bulk-delete', requireLogin, async (req, res) => {
+  try {
+    if (!await vacationCanBulkDelete(req.session.user)) return res.status(403).json({ ok: false, msg: 'Nemate opravneni.' });
+    const months = Array.isArray(req.body?.months) ? req.body.months : [];
+    const valid = months.map(m => ({ month: parseInt(m.month, 10), year: parseInt(m.year, 10) })).filter(m => m.month >= 1 && m.month <= 12 && m.year >= 2000 && m.year <= 2100);
+    if (!valid.length) return res.status(400).json({ ok: false, msg: 'Vyberte mesice ke smazani.' });
+    const params = [];
+    const clauses = valid.map(m => { params.push(m.year, m.month); return `(year = $${params.length - 1} AND month = $${params.length})`; });
+    const { rowCount } = await getPool().query(`DELETE FROM vacation_requests WHERE ${clauses.join(' OR ')}`, params);
+    res.json({ ok: true, deleted: rowCount });
+  } catch (err) { console.error('Chyba POST /api/vacations/bulk-delete:', err); res.status(500).json({ ok: false, msg: 'Chyba serveru.' }); }
+});
 // Kompletně separátní data od Raspis VR (vlastní tabulky rt_drafts, rt_schedules)
+function vacationContractKey(contract) {
+  const c = String(contract || '').trim().toUpperCase();
+  if (c.includes('DPP')) return 'DPP';
+  if (c.includes('DPC') || c.includes('DP')) return 'DPC';
+  if (c.includes('ZPP')) return 'ZPP';
+  if (c.includes('HPP')) return 'HPP';
+  return '';
+}
+
+function vacationHasBalanceContract(contract) {
+  return vacationContractKey(contract) !== 'DPP';
+}
+
+function vacationDayHoursByContract(contract) {
+  const key = vacationContractKey(contract);
+  if (key === 'DPC') return 4;
+  if (key === 'ZPP') return 4.8;
+  if (key === 'DPP') return 0;
+  return 7.5;
+}
+
+function vacationScheduleKey(month, year) {
+  return `RT:${String(month).padStart(2, '0')}/${year}`;
+}
+
+function vacationDateSourceKey(scheduleKey, staffLogin, year, month, day) {
+  return `schedule:${scheduleKey}:${String(staffLogin || '').toUpperCase()}:${year}-${String(month).padStart(2,'0')}-${String(day).padStart(2,'0')}`;
+}
+
+function vacationStaffSort(a, b) {
+  return String(a.staff_name || a.name || '').localeCompare(String(b.staff_name || b.name || ''), 'cs', { sensitivity: 'base' });
+}
+
+async function vacationEnsureBalance(db, staff, user) {
+  const login = String(staff.login || staff.staff_login || '').trim().toUpperCase();
+  if (!login) return null;
+  const name = staff.displayName || staff.name || staff.staff_name || login;
+  const contract = staff.contract || '';
+  if (!vacationHasBalanceContract(contract)) return null;
+  const dayHours = vacationDayHoursByContract(contract);
+  const baseDays = 20;
+  const baseHours = +(baseDays * dayHours).toFixed(2);
+  const { rows } = await db.query(
+    `INSERT INTO vacation_balance_settings
+     (staff_user_id, staff_login, staff_name, contract, base_days, base_hours, day_hours, updated_by, updated_at)
+     VALUES ($1,$2,$3,$4,$5,$6,$7,$8,NOW())
+     ON CONFLICT (staff_login) DO UPDATE SET
+       staff_user_id = COALESCE(vacation_balance_settings.staff_user_id, EXCLUDED.staff_user_id),
+       staff_name = EXCLUDED.staff_name,
+       contract = COALESCE(NULLIF(vacation_balance_settings.contract, ''), EXCLUDED.contract),
+       day_hours = CASE WHEN vacation_balance_settings.day_hours = 0 THEN EXCLUDED.day_hours ELSE vacation_balance_settings.day_hours END,
+       base_hours = CASE WHEN vacation_balance_settings.base_hours = 0 THEN EXCLUDED.base_hours ELSE vacation_balance_settings.base_hours END,
+       updated_at = vacation_balance_settings.updated_at
+     RETURNING *`,
+    [staff.userId || staff.staff_user_id || null, login, name, contract, baseDays, baseHours, dayHours, user?.id || null]
+  );
+  return rows[0];
+}
+
+async function vacationBalanceRows(db, user) {
+  const manager = await canManageVacationsServer(user);
+  const canManageBalances = await vacationCanManageBalances(user);
+  const staffList = await loadRtPortalReceptionists(db);
+  const eligibleStaff = staffList.filter(s => vacationHasBalanceContract(s.contract));
+  const filteredStaff = (manager || canManageBalances) ? eligibleStaff : eligibleStaff.filter(s => {
+    const login = String(user.username || user.login || '').trim().toUpperCase();
+    return String(s.userId || '') === String(user.id) || String(s.login || '').trim().toUpperCase() === login;
+  });
+  const logins = filteredStaff.map(s => String(s.login || '').trim().toUpperCase()).filter(Boolean);
+  if (!logins.length) return { manager, canManageBalances, balances: [] };
+  const { rows: settingsRows } = await db.query(
+    `SELECT b.*,
+            COALESCE(SUM(m.days_delta), 0) AS moved_days,
+            COALESCE(SUM(m.hours_delta), 0) AS moved_hours
+       FROM vacation_balance_settings b
+       LEFT JOIN vacation_movements m ON UPPER(m.staff_login) = UPPER(b.staff_login)
+        AND (b.base_from_year IS NULL OR m.year > b.base_from_year OR (m.year = b.base_from_year AND COALESCE(m.month, 1) >= COALESCE(b.base_from_month, 1)))
+      WHERE UPPER(b.staff_login) = ANY($1::text[])
+      GROUP BY b.id`,
+    [logins]
+  );
+  const settingsByLogin = new Map(settingsRows.map(r => [String(r.staff_login || '').trim().toUpperCase(), r]));
+  const missingLogins = logins.filter(login => !settingsByLogin.has(login));
+  const movementByLogin = new Map();
+  if (missingLogins.length) {
+    const { rows: movementRows } = await db.query(
+      `SELECT UPPER(staff_login) AS staff_login,
+              COALESCE(SUM(days_delta), 0) AS moved_days,
+              COALESCE(SUM(hours_delta), 0) AS moved_hours
+         FROM vacation_movements
+        WHERE UPPER(staff_login) = ANY($1::text[])
+        GROUP BY UPPER(staff_login)`,
+      [missingLogins]
+    );
+    movementRows.forEach(r => movementByLogin.set(String(r.staff_login || '').trim().toUpperCase(), r));
+  }
+  const balances = filteredStaff.map(staff => {
+    const login = String(staff.login || '').trim().toUpperCase();
+    const saved = settingsByLogin.get(login);
+    const moved = saved || movementByLogin.get(login) || {};
+    const contract = saved?.contract || staff.contract || '';
+    const defaultDayHours = vacationDayHoursByContract(contract);
+    const savedDayHours = Number(saved?.day_hours || 0);
+    const dayHours = defaultDayHours || savedDayHours;
+    const baseDays = saved ? Number(saved.base_days || 0) : 20;
+    const baseHours = saved ? Number(saved.base_hours || 0) : +(baseDays * dayHours).toFixed(2);
+    const movedDays = Number(moved.moved_days || 0);
+    const movedHours = Number(moved.moved_hours || 0);
+    return {
+      id: saved?.id || null,
+      staff_user_id: saved?.staff_user_id || staff.userId || null,
+      staff_login: login,
+      staff_name: saved?.staff_name || staff.displayName || staff.name || login,
+      contract,
+      base_days: baseDays,
+      base_hours: baseHours,
+      day_hours: dayHours,
+      base_from_month: saved?.base_from_month || null,
+      base_from_year: saved?.base_from_year || null,
+      note: saved?.note || '',
+      moved_days: movedDays,
+      moved_hours: movedHours,
+      remaining_days: +(baseDays + movedDays).toFixed(2),
+      remaining_hours: +(baseHours + movedHours).toFixed(2)
+    };
+  }).sort(vacationStaffSort);
+  return { manager, canManageBalances, balances };
+}
+
+app.get('/api/vacations/balances', requireLogin, async (req, res) => {
+  try {
+    const db = getPool();
+    const result = await vacationBalanceRows(db, req.session.user);
+    res.json({ ok: true, ...result });
+  } catch (err) {
+    console.error('Chyba GET /api/vacations/balances:', err);
+    res.status(500).json({ ok: false, msg: 'Chyba nacteni zustatku.' });
+  }
+});
+
+app.post('/api/vacations/balances/:login', requireLogin, async (req, res) => {
+  try {
+    if (!await vacationCanManageBalances(req.session.user)) return res.status(403).json({ ok: false, msg: 'Nemate opravneni.' });
+    const login = String(req.params.login || '').trim().toUpperCase();
+    const baseDays = Number(req.body?.base_days);
+    const dayHours = Number(req.body?.day_hours);
+    if (!login || !Number.isFinite(baseDays) || baseDays < 0 || !Number.isFinite(dayHours) || dayHours < 0) {
+      return res.status(400).json({ ok: false, msg: 'Neplatny zustatek.' });
+    }
+    const baseHours = Number.isFinite(Number(req.body?.base_hours)) ? Number(req.body.base_hours) : +(baseDays * dayHours).toFixed(2);
+    const baseFromMonth = parseInt(req.body?.base_from_month, 10);
+    const baseFromYear = parseInt(req.body?.base_from_year, 10);
+    const fromMonth = baseFromMonth >= 1 && baseFromMonth <= 12 ? baseFromMonth : null;
+    const fromYear = baseFromYear >= 2000 && baseFromYear <= 2100 ? baseFromYear : null;
+    const staff = (await loadRtPortalReceptionists(getPool())).find(s => String(s.login || '').trim().toUpperCase() === login) || {};
+    await getPool().query(
+      `INSERT INTO vacation_balance_settings
+       (staff_user_id, staff_login, staff_name, contract, base_days, base_hours, day_hours, base_from_month, base_from_year, note, updated_by, updated_at)
+       VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,NOW())
+       ON CONFLICT (staff_login) DO UPDATE SET
+         staff_user_id = EXCLUDED.staff_user_id,
+         staff_name = EXCLUDED.staff_name,
+         contract = EXCLUDED.contract,
+         base_days = EXCLUDED.base_days,
+         base_hours = EXCLUDED.base_hours,
+         day_hours = EXCLUDED.day_hours,
+         base_from_month = EXCLUDED.base_from_month,
+         base_from_year = EXCLUDED.base_from_year,
+         note = EXCLUDED.note,
+         updated_by = EXCLUDED.updated_by,
+         updated_at = NOW()`,
+      [staff.userId || null, login, staff.displayName || staff.name || req.body?.staff_name || login, staff.contract || req.body?.contract || '', baseDays, baseHours, dayHours, fromMonth, fromYear, String(req.body?.note || ''), req.session.user.id]
+    );
+    res.json({ ok: true });
+  } catch (err) {
+    console.error('Chyba POST /api/vacations/balances:', err);
+    res.status(500).json({ ok: false, msg: 'Chyba ulozeni zustatku.' });
+  }
+});
+
+app.get('/api/vacations/movements', requireLogin, async (req, res) => {
+  try {
+    const db = getPool();
+    const user = req.session.user;
+    const manager = await canManageVacationsServer(user);
+    const where = [];
+    const params = [];
+    const add = v => { params.push(v); return `$${params.length}`; };
+    if (req.query.login) where.push(`UPPER(staff_login) = ${add(String(req.query.login).trim().toUpperCase())}`);
+    if (req.query.year) where.push(`year = ${add(parseInt(req.query.year, 10))}`);
+    if (req.query.month && req.query.month !== 'all') where.push(`month = ${add(parseInt(req.query.month, 10))}`);
+    if (!manager) {
+      const login = String(user.username || user.login || '').trim().toUpperCase();
+      where.push(`UPPER(staff_login) = ${add(login)}`);
+    }
+    const { rows } = await db.query(
+      `SELECT * FROM vacation_movements ${where.length ? 'WHERE ' + where.join(' AND ') : ''}
+       ORDER BY LOWER(staff_name), year, month, day, id`, params
+    );
+    res.json({ ok: true, manager, movements: rows });
+  } catch (err) {
+    console.error('Chyba GET /api/vacations/movements:', err);
+    res.status(500).json({ ok: false, msg: 'Chyba nacteni pohybu.' });
+  }
+});
+
+app.post('/api/vacations/movements', requireLogin, async (req, res) => {
+  try {
+    if (!await canManageVacationsServer(req.session.user)) return res.status(403).json({ ok: false, msg: 'Nemate opravneni.' });
+    const login = String(req.body?.staff_login || '').trim().toUpperCase();
+    const year = parseInt(req.body?.year, 10);
+    if (!login || !(year >= 2000 && year <= 2100)) return res.status(400).json({ ok: false, msg: 'Chybi recepcni nebo rok.' });
+    const staff = (await loadRtPortalReceptionists(getPool())).find(s => String(s.login || '').trim().toUpperCase() === login) || {};
+    await vacationEnsureBalance(getPool(), { ...staff, login, displayName: staff.displayName || req.body?.staff_name || login }, req.session.user);
+    await getPool().query(
+      `INSERT INTO vacation_movements
+       (staff_user_id, staff_login, staff_name, year, month, day, movement_type, source_label, days_delta, hours_delta, note, created_by, created_name)
+       VALUES ($1,$2,$3,$4,$5,$6,'manual',$7,$8,$9,$10,$11,$12)`,
+      [staff.userId || null, login, staff.displayName || staff.name || req.body?.staff_name || login, year,
+       parseInt(req.body?.month, 10) || null, parseInt(req.body?.day, 10) || null, 'Rucni korekce',
+       Number(req.body?.days_delta || 0), Number(req.body?.hours_delta || 0), String(req.body?.note || ''), req.session.user.id, req.session.user.name]
+    );
+    res.json({ ok: true });
+  } catch (err) {
+    console.error('Chyba POST /api/vacations/movements:', err);
+    res.status(500).json({ ok: false, msg: 'Chyba ulozeni pohybu.' });
+  }
+});
+
+app.delete('/api/vacations/movements/:id', requireLogin, async (req, res) => {
+  try {
+    if (!await canManageVacationsServer(req.session.user)) return res.status(403).json({ ok: false, msg: 'Nemate opravneni.' });
+    await getPool().query('DELETE FROM vacation_movements WHERE id = $1', [parseInt(req.params.id, 10)]);
+    res.json({ ok: true });
+  } catch (err) {
+    console.error('Chyba DELETE /api/vacations/movements:', err);
+    res.status(500).json({ ok: false, msg: 'Chyba smazani pohybu.' });
+  }
+});
+function vacationParseScheduleKey(key) {
+  const m = String(key || '').match(/^RT:(\d{2})\/(\d{4})$/);
+  return m ? { month: Number(m[1]), year: Number(m[2]) } : { month: null, year: null };
+}
+
+function vacationCollectScheduleZDays(scheduleKey, month, year, data) {
+  const staff = Array.isArray(data?.staff) ? data.staff : [];
+  const schedule = data?.schedule && typeof data.schedule === 'object' ? data.schedule : {};
+  const desired = new Map();
+  let found = 0;
+  for (let si = 0; si < staff.length; si++) {
+    const s = staff[si] || {};
+    const login = String(s.login || s.username || '').trim().toUpperCase();
+    if (!login || !rtIsReceptionistType(s.type)) continue;
+    const seenDays = new Set();
+    for (const [cellKey, raw] of Object.entries(schedule)) {
+      const m = String(cellKey).match(/^(\d+)_(\d+)$/);
+      if (!m || Number(m[1]) !== si) continue;
+      if (String(raw || '').trim().toLowerCase() !== 'z') continue;
+      const day = Math.floor(Number(m[2]) / 2) + 1;
+      if (day < 1 || day > 31 || seenDays.has(day)) continue;
+      seenDays.add(day);
+      found++;
+      const sourceKey = vacationDateSourceKey(scheduleKey, login, year, month, day);
+      desired.set(sourceKey, { staff: s, login, day });
+    }
+  }
+  return { desired, found };
+}
+
+async function vacationSyncScheduleZMovements(db, scheduleKey, month, year, data, user) {
+  const parsed = vacationParseScheduleKey(scheduleKey);
+  const syncMonth = Number(month) || parsed.month;
+  const syncYear = Number(year) || parsed.year;
+  const key = String(scheduleKey || (syncMonth && syncYear ? vacationScheduleKey(syncMonth, syncYear) : '')).trim();
+  if (!key || !(syncMonth >= 1 && syncMonth <= 12) || !(syncYear >= 2000 && syncYear <= 2100)) {
+    return { ok: false, msg: 'Chybi mesic/rok pro synchronizaci dovolene.', found: 0, inserted: 0, removed: 0, kept: 0 };
+  }
+  const { desired, found } = vacationCollectScheduleZDays(key, syncMonth, syncYear, data || {});
+  const existingRows = await db.query(
+    `SELECT source_key FROM vacation_movements
+      WHERE movement_type = 'schedule_import'
+        AND source_key LIKE $1`,
+    [`schedule:${key}:%`]
+  );
+  const existing = new Set(existingRows.rows.map(r => String(r.source_key || '')));
+  const desiredKeys = new Set(desired.keys());
+  const toRemove = [...existing].filter(k => !desiredKeys.has(k));
+  let removed = 0;
+  if (toRemove.length) {
+    const del = await db.query(
+      `DELETE FROM vacation_movements
+        WHERE movement_type = 'schedule_import'
+          AND source_key = ANY($1::text[])`,
+      [toRemove]
+    );
+    removed = del.rowCount || 0;
+  }
+  let inserted = 0;
+  let kept = 0;
+  for (const [sourceKey, info] of desired.entries()) {
+    if (existing.has(sourceKey)) { kept++; continue; }
+    const s = info.staff || {};
+    if (!vacationHasBalanceContract(s.contract)) { kept++; continue; }
+    const balance = await vacationEnsureBalance(db, s, user);
+    if (!balance) { kept++; continue; }
+    const dayHours = vacationDayHoursByContract(balance?.contract || s.contract) || Number(balance?.day_hours || 0);
+    const name = s.displayName || s.name || info.login;
+    const ins = await db.query(
+      `INSERT INTO vacation_movements
+       (staff_user_id, staff_login, staff_name, year, month, day, movement_type, source_key, source_label, days_delta, hours_delta, note, created_by, created_name)
+       VALUES ($1,$2,$3,$4,$5,$6,'schedule_import',$7,$8,-1,$9,$10,$11,$12)
+       ON CONFLICT (source_key) DO NOTHING RETURNING id`,
+      [s.userId || null, info.login, name, syncYear, syncMonth, info.day, sourceKey, `Sync z Rozpis VR ${syncMonth}/${syncYear}`, -dayHours, `z v Rozpis VR ${info.day}.${syncMonth}.${syncYear}`, user?.id || null, user?.name || null]
+    );
+    if (ins.rows.length) inserted++; else kept++;
+  }
+  return { ok: true, key, month: syncMonth, year: syncYear, found, inserted, removed, kept };
+}
+
+async function vacationTrySyncScheduleZMovements(db, scheduleKey, month, year, data, user) {
+  try {
+    return await vacationSyncScheduleZMovements(db, scheduleKey, month, year, data, user);
+  } catch (err) {
+    console.error('Chyba synchronizace dovolene z rozpisu:', err);
+    return { ok: false, msg: 'Chyba synchronizace dovolene z rozpisu.' };
+  }
+}
+app.post('/api/vacations/import-schedule', requireLogin, async (req, res) => {
+  try {
+    if (!await canManageVacationsServer(req.session.user)) return res.status(403).json({ ok: false, msg: 'Nemate opravneni.' });
+    const month = parseInt(req.body?.month, 10);
+    const year = parseInt(req.body?.year, 10);
+    const key = String(req.body?.key || (month && year ? vacationScheduleKey(month, year) : '')).trim();
+    if (!key) return res.status(400).json({ ok: false, msg: 'Chybi rozpis.' });
+    const db = getPool();
+    const { rows } = await db.query('SELECT key, month, year, data FROM rt_schedules WHERE key = $1', [key]);
+    if (!rows.length) return res.status(404).json({ ok: false, msg: 'Publikovany rozpis nebyl nalezen.' });
+    const entry = rows[0];
+    const data = typeof entry.data === 'string' ? JSON.parse(entry.data || '{}') : (entry.data || {});
+    const sync = await vacationSyncScheduleZMovements(db, entry.key, Number(entry.month), Number(entry.year), data, req.session.user);
+    res.json({ ok: true, ...sync });
+  } catch (err) {
+    console.error('Chyba POST /api/vacations/import-schedule:', err);
+    res.status(500).json({ ok: false, msg: 'Chyba prenosu dovolene z rozpisu.' });
+  }
+});
 // ═════════════════════════════════════════════════════════════════════════════
 
 // ── Drafts ───────────────────────────────────────────────────────────────────
@@ -3968,7 +4687,8 @@ app.post('/api/rt/drafts/save', requireLogin, requirePermDefault('raspis', 'edit
        RETURNING id`,
       [req.session.user.id, month, year, JSON.stringify(data)]
     );
-    res.json({ ok: true, id: rows[0].id });
+    const vacationSync = await vacationTrySyncScheduleZMovements(db, vacationScheduleKey(month, year), month, year, data, req.session.user);
+    res.json({ ok: true, id: rows[0].id, vacationSync });
   } catch (err) { console.error(err); res.json({ ok: false, msg: 'Chyba serveru.' }); }
 });
 
@@ -4095,6 +4815,19 @@ function buildRtCoverageCounts(data) {
   return counts;
 }
 
+app.get('/api/rt/schedules/summary', requireLogin, async (req, res) => {
+  try {
+    const db = getPool();
+    const { rows } = await db.query(
+      'SELECT key, month, year, label, published_at, published_by FROM rt_schedules ORDER BY published_at DESC LIMIT 1'
+    );
+    const row = rows[0] || {};
+    const user = req.session.user || {};
+    const userLogin = String(user.username || user.login || '').trim().toUpperCase();
+    res.json({ ok: true, userLogin, key: row.key || null, label: row.label || '', month: row.month || null, year: row.year || null, latestAt: row.published_at || null, publishedBy: row.published_by || '' });
+  } catch (err) { console.error('Chyba GET /api/rt/schedules/summary:', err); res.status(500).json({ ok: false }); }
+});
+
 app.get('/api/rt/schedules/:key', requireLogin, async (req, res) => {
   const key = decodeURIComponent(req.params.key);
   try {
@@ -4128,6 +4861,7 @@ app.post('/api/rt/schedules/publish', requireLogin, requirePermDefault('raspis',
        ON CONFLICT (key) DO UPDATE SET data=$5, published_at=NOW(), published_by=$6`,
       [key, month, year, label, JSON.stringify(data), req.session.user.name]
     );
+    const vacationSync = await vacationTrySyncScheduleZMovements(db, key, month, year, data, req.session.user);
     const parsedDraftId = parseInt(draftId, 10);
     if (parsedDraftId) {
       const draftRows = await db.query(
@@ -4144,7 +4878,7 @@ app.post('/api/rt/schedules/publish', requireLogin, requirePermDefault('raspis',
       }
     }
     broadcastWidgetUpdate();
-    res.json({ ok: true, key, knownHotelSync });
+    res.json({ ok: true, key, knownHotelSync, vacationSync });
   } catch (err) { console.error(err); res.json({ ok: false, msg: 'Chyba serveru.' }); }
 });
 
@@ -4209,8 +4943,10 @@ app.post('/api/rt/schedules/save-edits', requireLogin, requirePerm('raspis', 'ed
     data = await augmentRtDataWithSpecialStaff(data, req.session.user.id, db);
     const knownHotelSync = await syncRtKnownHotelsFromSchedule(data, db);
     await db.query('UPDATE rt_schedules SET data = $1 WHERE key = $2', [JSON.stringify(data), key]);
+    const parsedVacationKey = vacationParseScheduleKey(key);
+    const vacationSync = await vacationTrySyncScheduleZMovements(db, key, data.month || parsedVacationKey.month, data.year || parsedVacationKey.year, data, req.session.user);
     broadcastWidgetUpdate();
-    res.json({ ok: true, knownHotelSync });
+    res.json({ ok: true, knownHotelSync, vacationSync });
   } catch (err) { console.error(err); res.json({ ok: false }); }
 });
 

@@ -550,6 +550,14 @@
       manageTexts: { label: 'Spravovat přednastavené texty', default: false },
       internalNote: { label: 'Vid\u011bt a editovat intern\u00ed pozn\u00e1mku', default: false }
     } },
+    dovolene: { label: 'Dovolen\u00e9', buttons: {
+      viewAll: { label: 'Vid\u011bt v\u0161echny \u017e\u00e1dosti', default: false },
+      manage: { label: 'Schvalovat a upravovat \u017e\u00e1dosti', default: false },
+      manageBalances: { label: 'Spravovat z\u016fstatky dovolen\u00e9', default: false },
+      delete: { label: 'Mazat \u017e\u00e1dosti', default: false },
+      bulkDelete: { label: 'Hromadn\u011b mazat m\u011bs\u00edce', default: false },
+      syncNote: { label: 'Zapisovat do pozn. aktu\u00e1ln\u00ed', default: false }
+    } },
     blacklist: { label: 'Blacklist', buttons: {
       view:           'Zobrazit',
       add:            'Přidat záznam',
@@ -574,6 +582,7 @@
   const DEFAULT_APP_OPTIONS = [
     ['raspis', 'Rozpis a požadavky'],
     ['priplatky', 'Příplatky a pokuty'],
+    ['dovolene', 'Dovolen\u00e9'],
     ['blacklist', 'Blacklist'],
     ['admin', 'Správa uživatelů']
   ];

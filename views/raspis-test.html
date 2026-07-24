@@ -51,6 +51,7 @@ body.with-subtoolbar:has(#schedule-legend.show) { padding-bottom: 30px; }
 }
 
 .tb-tab {
+  position: relative;
   height: 34px; padding: 0 13px; border: 1px solid transparent; border-radius: 7px;
   background: var(--surface); color: var(--accent-h); cursor: pointer;
   font-size: 13px; font-weight: 600; font-family: inherit;
@@ -69,6 +70,26 @@ body.with-subtoolbar:has(#schedule-legend.show) { padding-bottom: 30px; }
   border-color: var(--accent);
   color: #fff;
   box-shadow: 0 3px 10px rgba(20,20,20,.18);
+}
+.tb-tab.vacation-badge {
+  background: #e60026 !important;
+  border-color: #7c0014 !important;
+  color: #fff !important;
+  outline: 3px solid #ffea00;
+  outline-offset: 2px;
+  box-shadow: 0 0 0 2px #fff inset, 0 4px 16px rgba(130,0,18,.38) !important;
+}
+.tb-tab.vacation-badge::before {
+  content: '';
+  position: absolute;
+  top: -6px;
+  right: -6px;
+  width: 14px;
+  height: 14px;
+  border-radius: 999px;
+  background: #ffea00;
+  border: 2px solid #7c0014;
+  box-shadow: 0 1px 5px rgba(0,0,0,.35);
 }
 [data-theme="dark"] .tb-tab { color: var(--text-topbar); }
 [data-theme="dark"] .tb-tab:hover:not(.active) {
@@ -2275,6 +2296,7 @@ body.hide-req-changes .sched-cell[data-req-tip]:hover::after {
   .tb-tab[data-tab="rozpis"]::after { content: "Rozpis"; }
   .tb-tab[data-tab="public"]::after { content: "Rozpis"; }
   .tb-tab[data-tab="pozadavky"]::after { content: "Požadavky"; }
+  .tb-tab[data-tab="dovolene"]::after { content: "Dovol."; }
 
   .tb-actions:not(.hidden),
   #tb-right-actions {
@@ -3034,6 +3056,7 @@ body.hide-req-changes .sched-cell[data-req-tip]:hover::after {
     <button class="tb-tab" data-tab="rozpis" type="button">Rozpis</button>
     <button class="tb-tab" data-tab="public" type="button">Rozpis</button>
     <button class="tb-tab" data-tab="pozadavky" type="button">Požadavky</button>
+    <button class="tb-tab" data-tab="dovolene" type="button">Dovolen&eacute;</button>
   </div>
 
   <!-- Nastavení actions — prázdné, tlačítka přesunuta do mode baru a Ostatní sekce -->
@@ -3451,6 +3474,10 @@ body.hide-req-changes .sched-cell[data-req-tip]:hover::after {
     <div class="spinner-wrap" id="daily-spinner" style="display:none"><div class="spinner"></div></div>
     <div id="daily-content" class="daily-empty">Denní rozpis se načte po otevření listu.</div>
   </div>
+</div>
+
+<div class="tab-panel" id="tab-dovolene">
+  <iframe id="dovolene-frame" src="/dovolene" style="width:100%;height:100%;min-height:calc(100vh - 170px);border:0;display:block;background:var(--bg);"></iframe>
 </div>
 
 <div class="tab-panel" id="tab-pozadavky">
@@ -5288,7 +5315,8 @@ const RT_TAB_PERMS = {
   rozpis: 'tab_rozpis_vr',
   public: 'tab_rozpis',
   denni: 'tab_denni',
-  pozadavky: 'tab_pozadavky'
+  pozadavky: 'tab_pozadavky',
+  dovolene: 'dovolene'
 };
 
 async function loadRtPermissions() {
@@ -5303,6 +5331,12 @@ async function loadRtPermissions() {
 function rtCan(btnKey, fallback = true) {
   const val = rtPermissions?.raspis?.buttons?.[btnKey];
   return val == null ? fallback : val !== false;
+}
+
+function rtCanApp(appKey, fallback = true) {
+  const app = rtPermissions?.[appKey];
+  if (!app) return fallback;
+  return app.enabled !== false && app.visible !== false;
 }
 
 function getRequirementProxyLoginSet() {
@@ -5328,10 +5362,133 @@ function setPermVisibleById(id, btnKey, fallback = true) {
   setPermHidden(document.getElementById(id), !rtCan(btnKey, fallback));
 }
 
+let rtVacationSummary = null;
+function rtVacationSeenKey(summary) {
+  return 'ave-vacations-seen:' + String(summary?.scope || '') + ':' + String(summary?.userLogin || '');
+}
+function rtVacationSignature(summary) {
+  return String(summary?.count || 0) + ':' + String(summary?.latestAt || '');
+}
+function rtHasUnseenVacation(summary) {
+  if (typeof summary?.unseen === 'boolean') return summary.unseen;
+  return Number(summary?.count || 0) > 0 && rtVacationSignature(summary) !== String(localStorage.getItem(rtVacationSeenKey(summary)) || '');
+}
+function rtApplyVacationBadge(summary) {
+  const btn = document.querySelector('.tb-tab[data-tab="dovolene"]');
+  if (!btn) return;
+  btn.classList.toggle('vacation-badge', rtHasUnseenVacation(summary));
+}
+async function rtRefreshVacationBadge() {
+  try {
+    const r = await fetch('/api/vacations/summary', { credentials: 'include', cache: 'no-store' });
+    const j = r.ok ? await r.json() : null;
+    if (!j || j.ok === false) return;
+    rtVacationSummary = j;
+    rtApplyVacationBadge(j);
+    rtMaybeShowVacationNotice(j);
+  } catch(e) {}
+}
+async function rtMarkVacationSeenServer() {
+  try {
+    let note = rtVacationSummary?.signature ? { type: 'vacations', signature: rtVacationSummary.signature } : null;
+    if (!note) {
+      const r = await fetch('/api/notifications/summary', { credentials: 'include', cache: 'no-store' });
+      const j = r.ok ? await r.json() : null;
+      note = (j?.notifications || []).find(n => n.type === 'vacations') || null;
+    }
+    if (!note?.signature) return;
+    await fetch('/api/notifications/seen', {
+      method: 'POST',
+      credentials: 'include',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ type: note.type, signature: note.signature })
+    });
+  } catch(e) {}
+}
+function rtClearVacationBadge() {
+  const btn = document.querySelector('.tb-tab[data-tab="dovolene"]');
+  if (btn) btn.classList.remove('vacation-badge');
+}
+function rtMarkVacationSeen() {
+  if (rtVacationSummary) localStorage.setItem(rtVacationSeenKey(rtVacationSummary), rtVacationSignature(rtVacationSummary));
+  rtClearVacationBadge();
+  rtMarkVacationSeenServer().then(() => {
+    if (rtVacationSummary) rtVacationSummary.unseen = false;
+    setTimeout(rtRefreshVacationBadge, 500);
+  });
+}
+
+let rtNotificationPopupOpen = false;
+function rtShowNotificationPopup(message, onOk) {
+  if (rtNotificationPopupOpen) return;
+  rtNotificationPopupOpen = true;
+  const wrap = document.createElement('div');
+  wrap.className = 'rt-notice-backdrop';
+  wrap.style.cssText = 'position:fixed;inset:0;z-index:20000;background:rgba(0,0,0,.32);display:flex;align-items:center;justify-content:center;padding:18px;';
+  const box = document.createElement('div');
+  box.style.cssText = 'width:min(420px,100%);background:var(--surface);color:var(--text);border:1px solid var(--btn-top-border);border-radius:12px;box-shadow:0 18px 50px rgba(0,0,0,.28);padding:20px;';
+  const title = document.createElement('h2');
+  title.textContent = 'Ozn\u00e1men\u00ed';
+  title.style.cssText = 'margin:0 0 12px;color:var(--accent-h);font-size:20px;';
+  const p = document.createElement('p');
+  p.textContent = message;
+  p.style.cssText = 'margin:0 0 18px;font-weight:800;line-height:1.45;';
+  const foot = document.createElement('div');
+  foot.style.cssText = 'display:flex;justify-content:flex-end;';
+  const ok = document.createElement('button');
+  ok.className = 'tb-btn primary';
+  ok.type = 'button';
+  ok.textContent = 'OK';
+  ok.addEventListener('click', () => {
+    try { if (typeof onOk === 'function') onOk(); } catch(e) {}
+    wrap.remove();
+    rtNotificationPopupOpen = false;
+  });
+  foot.appendChild(ok); box.appendChild(title); box.appendChild(p); box.appendChild(foot); wrap.appendChild(box); document.body.appendChild(wrap);
+}
+function rtMaybeShowVacationNotice(summary) {
+  // Popup acknowledgements are handled server-side per user by rtRefreshNotifications().
+}
+async function rtMarkServerNotificationSeen(note) {
+  try {
+    await fetch('/api/notifications/seen', {
+      method: 'POST',
+      credentials: 'include',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ type: note.type, signature: note.signature })
+    });
+  } catch(e) {}
+  if (note.type === 'vacations') rtMarkVacationSeen();
+}
+async function rtRefreshNotifications() {
+  try { parent.postMessage({ type: 'ave-refresh-notifications' }, location.origin); } catch(e) {}
+}let rtScheduleSummary = null;
+function rtScheduleSeenKey(summary) {
+  const login = String(summary?.userLogin || _user?.username || _user?.login || '').trim().toUpperCase();
+  return 'ave-schedule-seen:' + login;
+}
+function rtScheduleSignature(summary) {
+  return String(summary?.key || '') + ':' + String(summary?.latestAt || '');
+}
+function rtMarkScheduleSeen() {
+  if (rtScheduleSummary) localStorage.setItem(rtScheduleSeenKey(rtScheduleSummary), rtScheduleSignature(rtScheduleSummary));
+}
+async function rtRefreshScheduleNotice() {
+  try {
+    const r = await fetch('/api/rt/schedules/summary', { credentials: 'include', cache: 'no-store' });
+    const j = r.ok ? await r.json() : null;
+    if (!j || j.ok === false || !j.latestAt) return;
+    rtScheduleSummary = j;
+    const seen = String(localStorage.getItem(rtScheduleSeenKey(j)) || '');
+    if (rtScheduleSignature(j) !== seen) rtShowNotificationPopup('Prave byl vydan novy rozpis', rtMarkScheduleSeen);
+  } catch(e) {}
+}
+
 function applyRaspisPermissions() {
   document.querySelectorAll('.tb-tab[data-tab]').forEach(btn => {
     const key = RT_TAB_PERMS[btn.dataset.tab];
-    if (key) setPermHidden(btn, !rtCan(key, btn.dataset.tab === 'public' || btn.dataset.tab === 'denni' || btn.dataset.tab === 'pozadavky'));
+    if (btn.dataset.tab === 'dovolene') setPermHidden(btn, !rtCanApp('dovolene', canManageRequirements()));
+    else if (key) setPermHidden(btn, !rtCan(key, btn.dataset.tab === 'public' || btn.dataset.tab === 'denni' || btn.dataset.tab === 'pozadavky'));
   });
 
   ['btn-fonds','btn-template-dl','btn-import-xls','btn-color-editor','stb-export2'].forEach(id => setPermHidden(document.getElementById(id), true));
@@ -8778,6 +8935,7 @@ async function publishSchedule() {
     clearTimeout(autoSaveTimer);
     loadScheduleList();
     loadDraftList();
+    rtRefreshScheduleNotice();
   } catch(e) {
     toast('Chyba publikování', true);
   }
@@ -13955,6 +14113,12 @@ function switchTab(name) {
       applyRowFilters();
       refreshCoverageSticky();
     }
+  } else if (name === 'dovolene') {
+    rtMarkVacationSeen();
+    if (!window._initRendering) {
+      const frame = document.getElementById('dovolene-frame');
+      if (frame) frame.contentWindow?.postMessage({ type: 'vacations-visible' }, location.origin);
+    }
   } else if (name === 'denni') {
     if (!window._initRendering) loadDailySchedule();
   } else if (name === 'nastaveni') {
@@ -13968,6 +14132,13 @@ function switchTab(name) {
 ══════════════════════════════════════════════════════════════════════════════ */
 
 window.addEventListener('message', e => {
+  if (e.data && e.data.type === 'vacations-changed') { rtRefreshVacationBadge(); rtRefreshNotifications(); setTimeout(rtRefreshVacationBadge, 700); setTimeout(rtRefreshNotifications, 900); return; }
+  if (e.data && e.data.type === 'ave-notification-seen' && e.data.notificationType === 'vacations') {
+    if (rtVacationSummary) rtVacationSummary.unseen = false;
+    rtClearVacationBadge();
+    setTimeout(rtRefreshVacationBadge, 500);
+    return;
+  }
   if (e.data && e.data.type === 'ave-public-default-hotel') {
     publicDefaultHotel = String(e.data.hotel || 'ALL').toUpperCase();
     publicHotelFilterTouched = false;
@@ -13993,7 +14164,7 @@ document.addEventListener('DOMContentLoaded', async () => {
   window._initRendering = true;
   {
     const urlTab = new URLSearchParams(location.search).get('tab');
-    const allowedTabs = new Set(['nastaveni', 'tvorba', 'rozpis', 'public', 'denni', 'pozadavky']);
+    const allowedTabs = new Set(['nastaveni', 'tvorba', 'rozpis', 'public', 'denni', 'pozadavky', 'dovolene']);
     let initialTab = allowedTabs.has(urlTab) ? urlTab : (sessionStorage.getItem('rt-active-tab') || 'rozpis');
     if (initialTab === 'tvorba' && isMobileLike()) initialTab = mobileTabFallback();
     switchTab(initialTab);
@@ -14016,6 +14187,14 @@ document.addEventListener('DOMContentLoaded', async () => {
   await fetchUser();
   await loadRtPermissions();
   applyRaspisPermissions();
+  rtRefreshVacationBadge();
+  rtRefreshNotifications();
+  setTimeout(rtRefreshVacationBadge, 500);
+  setTimeout(rtRefreshNotifications, 700);
+  setTimeout(rtRefreshVacationBadge, 1500);
+  setTimeout(rtRefreshNotifications, 1800);
+  setInterval(rtRefreshVacationBadge, 60000);
+  setInterval(rtRefreshNotifications, 60000);
   await loadUserPrefs();
 
 

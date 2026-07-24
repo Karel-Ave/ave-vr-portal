@@ -668,6 +668,86 @@ async function init() {
       UNIQUE(month, year, staff_login)
     )
   `);
+  await db.query(`
+    CREATE TABLE IF NOT EXISTS vacation_requests (
+      id                       BIGSERIAL PRIMARY KEY,
+      staff_user_id            INTEGER REFERENCES users(id) ON DELETE SET NULL,
+      staff_login              VARCHAR(100) NOT NULL,
+      staff_name               VARCHAR(100) NOT NULL,
+      month                    INTEGER NOT NULL,
+      year                     INTEGER NOT NULL,
+      days_json                TEXT NOT NULL DEFAULT '[]',
+      days_count               INTEGER NOT NULL DEFAULT 0,
+      note                     TEXT NOT NULL DEFAULT '',
+      status                   VARCHAR(20) NOT NULL DEFAULT 'pending',
+      manager_comment          TEXT NOT NULL DEFAULT '',
+      created_by               INTEGER REFERENCES users(id) ON DELETE SET NULL,
+      created_name             VARCHAR(100),
+      created_at               TIMESTAMPTZ DEFAULT NOW(),
+      updated_at               TIMESTAMPTZ DEFAULT NOW(),
+      resolved_by              INTEGER REFERENCES users(id) ON DELETE SET NULL,
+      resolved_name            VARCHAR(100),
+      resolved_at              TIMESTAMPTZ,
+      synced_to_month_note_at  TIMESTAMPTZ,
+      synced_note_text         TEXT NOT NULL DEFAULT ''
+    )
+  `);
+  await db.query(`ALTER TABLE vacation_requests ADD COLUMN IF NOT EXISTS days_json TEXT NOT NULL DEFAULT '[]'`);
+  await db.query(`ALTER TABLE vacation_requests ADD COLUMN IF NOT EXISTS days_count INTEGER NOT NULL DEFAULT 0`);
+  await db.query(`ALTER TABLE vacation_requests ADD COLUMN IF NOT EXISTS manager_comment TEXT NOT NULL DEFAULT ''`);
+  await db.query(`ALTER TABLE vacation_requests ADD COLUMN IF NOT EXISTS synced_to_month_note_at TIMESTAMPTZ`);
+  await db.query(`ALTER TABLE vacation_requests ADD COLUMN IF NOT EXISTS synced_note_text TEXT NOT NULL DEFAULT ''`);
+  await db.query(`CREATE INDEX IF NOT EXISTS idx_vacation_requests_month ON vacation_requests (year, month, status)`);
+  await db.query(`CREATE INDEX IF NOT EXISTS idx_vacation_requests_staff ON vacation_requests (staff_login, year, month)`);
+  await db.query(`
+    CREATE TABLE IF NOT EXISTS vacation_balance_settings (
+      id            BIGSERIAL PRIMARY KEY,
+      staff_user_id INTEGER REFERENCES users(id) ON DELETE SET NULL,
+      staff_login   VARCHAR(100) NOT NULL UNIQUE,
+      staff_name    VARCHAR(100) NOT NULL,
+      contract      VARCHAR(50) NOT NULL DEFAULT '',
+      base_days     NUMERIC(8,2) NOT NULL DEFAULT 20,
+      base_hours    NUMERIC(8,2) NOT NULL DEFAULT 0,
+      day_hours     NUMERIC(8,2) NOT NULL DEFAULT 0,
+      base_from_month INTEGER,
+      base_from_year  INTEGER,
+      note          TEXT NOT NULL DEFAULT '',
+      updated_by    INTEGER REFERENCES users(id) ON DELETE SET NULL,
+      updated_at    TIMESTAMPTZ DEFAULT NOW()
+    )
+  `);
+  await db.query(`ALTER TABLE vacation_balance_settings ADD COLUMN IF NOT EXISTS base_from_month INTEGER`);
+  await db.query(`ALTER TABLE vacation_balance_settings ADD COLUMN IF NOT EXISTS base_from_year INTEGER`);
+  await db.query(`
+    CREATE TABLE IF NOT EXISTS vacation_movements (
+      id            BIGSERIAL PRIMARY KEY,
+      staff_user_id INTEGER REFERENCES users(id) ON DELETE SET NULL,
+      staff_login   VARCHAR(100) NOT NULL,
+      staff_name    VARCHAR(100) NOT NULL,
+      year          INTEGER NOT NULL,
+      month         INTEGER,
+      day           INTEGER,
+      movement_type VARCHAR(30) NOT NULL DEFAULT 'manual',
+      source_key    VARCHAR(220) UNIQUE,
+      source_label  TEXT NOT NULL DEFAULT '',
+      days_delta    NUMERIC(8,2) NOT NULL DEFAULT 0,
+      hours_delta   NUMERIC(8,2) NOT NULL DEFAULT 0,
+      note          TEXT NOT NULL DEFAULT '',
+      created_by    INTEGER REFERENCES users(id) ON DELETE SET NULL,
+      created_name  VARCHAR(100),
+      created_at    TIMESTAMPTZ DEFAULT NOW()
+    )
+  `);
+  await db.query(`CREATE INDEX IF NOT EXISTS idx_vacation_movements_staff ON vacation_movements (staff_login, year, month)`);
+  await db.query(`
+    CREATE TABLE IF NOT EXISTS user_notification_reads (
+      user_id           INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+      notification_type VARCHAR(50) NOT NULL,
+      signature         TEXT NOT NULL DEFAULT '',
+      seen_at           TIMESTAMPTZ DEFAULT NOW(),
+      PRIMARY KEY (user_id, notification_type)
+    )
+  `);
   await db.query(`ALTER TABLE rt_requirements ADD COLUMN IF NOT EXISTS allow_duplicates BOOLEAN NOT NULL DEFAULT TRUE`);
   await db.query(`ALTER TABLE rt_requirements ADD COLUMN IF NOT EXISTS xy_locks TEXT NOT NULL DEFAULT '{}'`);
   await db.query(`ALTER TABLE rt_requirements ADD COLUMN IF NOT EXISTS archived_at TIMESTAMPTZ`);
