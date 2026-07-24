@@ -996,7 +996,9 @@
       const gp  = groupPerms[appKey] || { enabled: true, buttons: {} };
       const uo  = overridesData[appKey] || {};
       const appEnabled   = (uo.enabled != null) ? uo.enabled : gp.enabled;
+      const appVisible   = (uo.visible != null) ? uo.visible : (gp.visible != null ? gp.visible : true);
       const appOverridden = uo.enabled != null;
+      const visibleOverridden = uo.visible != null;
 
       const block = document.createElement('div');
       block.className = 'over-app-block';
@@ -1017,6 +1019,19 @@
       // Button rows
       const btnsWrap = document.createElement('div');
       btnsWrap.className = 'over-btns-wrap';
+      const visibleRow = document.createElement('div');
+      visibleRow.className = 'over-btn-row';
+      visibleRow.innerHTML = `
+        <span class="over-btn-label" style="color:#666;">Viditeln? na port?lu</span>
+        <div style="display:flex;align-items:center;gap:6px;">
+          <span class="over-status ${visibleOverridden ? '' : 'inherit'}" style="font-size:10px;">${visibleOverridden ? 'v?jimka' : 'ze skupiny'}</span>
+          <div class="toggle" onclick="toggleOver('${appKey}','__visible__',this)">
+            <div class="toggle-track ${appVisible ? 'on' : ''}"></div>
+          </div>
+          ${visibleOverridden ? `<button class="reset-btn" onclick="clearOver('${appKey}','__visible__');event.stopPropagation();">?</button>` : ''}
+        </div>
+      `;
+      btnsWrap.appendChild(visibleRow);
       for (const [btnKey, btnDef] of Object.entries(appDef.buttons)) {
         const gb = (gp.buttons || {})[btnKey]; const ub = (uo.buttons || {})[btnKey];
         const btnEnabled    = (ub != null) ? ub : (gb != null ? gb : permButtonDefault(btnDef));
@@ -1120,6 +1135,7 @@
     const track = el.querySelector ? el.querySelector('.toggle-track') : el.closest('.toggle').querySelector('.toggle-track');
     const nowOn = track.classList.contains('on');
     if (btnKey === null) overridesData[appKey].enabled = !nowOn;
+    else if (btnKey === '__visible__') overridesData[appKey].visible = !nowOn;
     else overridesData[appKey].buttons[btnKey] = !nowOn;
     const grp = allGroups.find(g => g.name === currentOverridesRole) || { perms: {} };
     renderOverridesContent(grp.perms || {});
@@ -1141,6 +1157,7 @@
   function clearOver(appKey, btnKey) {
     if (!overridesData[appKey]) return;
     if (btnKey === null) { overridesData[appKey].enabled = null; }
+    else if (btnKey === '__visible__') { delete overridesData[appKey].visible; }
     else { if (overridesData[appKey].buttons) delete overridesData[appKey].buttons[btnKey]; }
     const grp = allGroups.find(g => g.name === currentOverridesRole) || { perms: {} };
     renderOverridesContent(grp.perms || {});
@@ -1172,7 +1189,7 @@
       if (appKey === 'raspis_staff' || appKey === 'requirements_proxy') continue;
       const cb = {};
       for (const [k, v] of Object.entries(uo.buttons || {})) { if (v != null) cb[k] = v; }
-      if (uo.enabled != null || Object.keys(cb).length) clean[appKey] = { enabled: uo.enabled, buttons: cb };
+      if (uo.enabled != null || uo.visible != null || Object.keys(cb).length) clean[appKey] = { enabled: uo.enabled ?? null, visible: uo.visible ?? null, buttons: cb };
     }
     const r = await fetch(`/api/admin/users/${currentOverridesId}/overrides`, {
       method: 'PUT', headers: {'Content-Type':'application/json'},
