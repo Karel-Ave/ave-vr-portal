@@ -1062,6 +1062,9 @@
   let portalMaintenance = { mode: 'off', noticeType: 'maintenance', message: MAINTENANCE_DEFAULT_MESSAGE, startsAt: null, targetGroups: [...DEFAULT_MAINTENANCE_TARGETS], targeted: true, updatedAt: null, canControl: false };
   let maintenanceAdminAction = null;
   let portalMaintenanceTimer = null;
+  let portalMaintenanceRefreshInFlight = false;
+  let portalMaintenanceLastActivityRefresh = 0;
+  let portalMaintenanceAutoRefreshReady = false;
 
   function makeAppNavButton(c) {
     const btn = document.createElement('button');
@@ -1088,6 +1091,24 @@
 
   function maintenanceStamp(state) {
     return state?.updatedAt || `${state?.mode || 'off'}:${state?.noticeType || 'maintenance'}:${state?.startsAt || ''}:${(state?.targetGroups || []).join(',')}:${state?.message || ''}`;
+  }
+
+  function maintenanceSeenKey() {
+    const userKey = String(portalUser?.login || portalUser?.username || portalUser?.name || portalUser?.displayName || 'user').trim().toLowerCase() || 'user';
+    return `ave-maintenance-warning-seen:${userKey}`;
+  }
+
+  function getMaintenanceSeenStamp() {
+    const key = maintenanceSeenKey();
+    try { return localStorage.getItem(key) || sessionStorage.getItem(key); } catch (_) {
+      try { return sessionStorage.getItem(key); } catch (__) { return null; }
+    }
+  }
+
+  function setMaintenanceSeenStamp(stamp) {
+    const key = maintenanceSeenKey();
+    try { localStorage.setItem(key, stamp); } catch (_) {}
+    try { sessionStorage.setItem(key, stamp); } catch (_) {}
   }
 
   function maintenanceStartMessage(startsAt) {
@@ -1125,7 +1146,7 @@
 
   function showMaintenanceWarning(state) {
     const stamp = maintenanceStamp(state);
-    if (sessionStorage.getItem('ave-maintenance-warning-seen') === stamp) return;
+    if (getMaintenanceSeenStamp() === stamp) return;
     const modal = document.getElementById('maintenance-warning-modal');
     const title = document.getElementById('maintenance-warning-title');
     const msg = document.getElementById('maintenance-warning-message');
@@ -1179,13 +1200,33 @@
   }
 
   async function refreshMaintenanceStatus() {
-    if (!portalUser) return;
+    if (!portalUser || portalMaintenanceRefreshInFlight) return;
+    portalMaintenanceRefreshInFlight = true;
     try {
       const res = await fetch('/api/maintenance/status', { credentials: 'include', cache: 'no-store' });
       if (!res.ok) return;
       const state = await res.json();
       applyMaintenanceState(state);
-    } catch (_) {}
+    } catch (_) {
+    } finally {
+      portalMaintenanceRefreshInFlight = false;
+    }
+  }
+
+  function refreshMaintenanceAfterActivity() {
+    const now = Date.now();
+    if (now - portalMaintenanceLastActivityRefresh < 10000) return;
+    portalMaintenanceLastActivityRefresh = now;
+    refreshMaintenanceStatus();
+  }
+
+  function setupMaintenanceAutoRefresh() {
+    if (portalMaintenanceAutoRefreshReady) return;
+    portalMaintenanceAutoRefreshReady = true;
+    document.addEventListener('visibilitychange', () => { if (!document.hidden) refreshMaintenanceStatus(); });
+    window.addEventListener('focus', refreshMaintenanceStatus);
+    document.addEventListener('pointerdown', refreshMaintenanceAfterActivity, { passive: true });
+    document.addEventListener('keydown', refreshMaintenanceAfterActivity);
   }
 
   async function setMaintenanceMode(mode, options = {}) {
@@ -1337,7 +1378,7 @@
       handleMaintenanceClick();
     });
     document.getElementById('maintenance-warning-ok')?.addEventListener('click', () => {
-      sessionStorage.setItem('ave-maintenance-warning-seen', maintenanceStamp(portalMaintenance));
+      setMaintenanceSeenStamp(maintenanceStamp(portalMaintenance));
       hideMaintenanceWarning();
     });
     document.getElementById('maintenance-admin-close')?.addEventListener('click', closeMaintenanceAdminModal);
@@ -1353,7 +1394,8 @@
   function startMaintenancePolling() {
     clearInterval(portalMaintenanceTimer);
     refreshMaintenanceStatus();
-    portalMaintenanceTimer = setInterval(refreshMaintenanceStatus, 15000);
+    setupMaintenanceAutoRefresh();
+    portalMaintenanceTimer = setInterval(refreshMaintenanceStatus, 10000);
   }
 
   function renderAppNav(cards) {
