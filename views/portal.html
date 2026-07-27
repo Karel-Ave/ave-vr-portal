@@ -1004,7 +1004,7 @@
   let portalHotelLetters = ['A','B','C','D','E','G','H','I','J','L','M','N','S','T','U'];
   const MAINTENANCE_DEFAULT_MESSAGE = 'Na webu momentálně probíhá údržba. Zkuste prosím později.';
   const MAINTENANCE_WARNING_MESSAGE = 'Za chvíli proběhne údržba systému. Prosím uložte si rozpracované změny.';
-  let portalMaintenance = { mode: 'off', message: MAINTENANCE_DEFAULT_MESSAGE, updatedAt: null };
+  let portalMaintenance = { mode: 'off', message: MAINTENANCE_DEFAULT_MESSAGE, startsAt: null, updatedAt: null };
   let portalMaintenanceTimer = null;
 
   function makeAppNavButton(c) {
@@ -1031,7 +1031,24 @@
   }
 
   function maintenanceStamp(state) {
-    return state?.updatedAt || `${state?.mode || 'off'}:${state?.message || ''}`;
+    return state?.updatedAt || `${state?.mode || 'off'}:${state?.startsAt || ''}:${state?.message || ''}`;
+  }
+
+  function maintenanceStartMessage(startsAt) {
+    const date = startsAt ? new Date(startsAt) : null;
+    const time = date && !Number.isNaN(date.getTime())
+      ? date.toLocaleTimeString('cs-CZ', { hour: '2-digit', minute: '2-digit' })
+      : '';
+    return time
+      ? `?dr?ba za?ne p?ibli?n? v ${time}. Pros?m ulo?te si rozpracovan? zm?ny.`
+      : MAINTENANCE_WARNING_MESSAGE;
+  }
+
+  function maintenanceRemainingLabel(startsAt) {
+    const date = startsAt ? new Date(startsAt) : null;
+    if (!date || Number.isNaN(date.getTime())) return '?dr?ba brzy';
+    const minutes = Math.max(1, Math.ceil((date.getTime() - Date.now()) / 60000));
+    return minutes <= 1 ? '?dr?ba za 1 min' : `?dr?ba za ${minutes} min`;
   }
 
   function setMaintenanceScreen(show, state = portalMaintenance) {
@@ -1077,6 +1094,7 @@
     portalMaintenance = {
       mode: state?.mode || 'off',
       message: state?.message || (state?.mode === 'warning' ? MAINTENANCE_WARNING_MESSAGE : MAINTENANCE_DEFAULT_MESSAGE),
+      startsAt: state?.startsAt || null,
       updatedAt: state?.updatedAt || null,
       updatedBy: state?.updatedBy || null
     };
@@ -1104,13 +1122,14 @@
     } catch (_) {}
   }
 
-  async function setMaintenanceMode(mode) {
-    const message = mode === 'warning' ? MAINTENANCE_WARNING_MESSAGE : MAINTENANCE_DEFAULT_MESSAGE;
+  async function setMaintenanceMode(mode, options = {}) {
+    const startsAt = options.startsAt || null;
+    const message = options.message || (mode === 'warning' ? maintenanceStartMessage(startsAt) : MAINTENANCE_DEFAULT_MESSAGE);
     const res = await fetch('/api/maintenance', {
       method: 'POST',
       credentials: 'include',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ mode, message })
+      body: JSON.stringify({ mode, message, startsAt })
     });
     const state = await res.json().catch(() => ({}));
     if (!res.ok || state.ok === false) throw new Error(state.msg || 'Režim údržby se nepodařilo uložit.');

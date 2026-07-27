@@ -91,13 +91,16 @@ const MAINTENANCE_WARNING_MESSAGE = 'Za chvíli proběhne údržba systému. Pro
 
 function normalizeMaintenanceState(raw = {}) {
   const mode = ['off', 'warning', 'on'].includes(raw.mode) ? raw.mode : 'off';
+  const startsAtTime = raw.startsAt ? Date.parse(raw.startsAt) : NaN;
   return {
     mode,
     message: String(raw.message || (mode === 'warning' ? MAINTENANCE_WARNING_MESSAGE : MAINTENANCE_DEFAULT_MESSAGE)),
+    startsAt: Number.isFinite(startsAtTime) ? new Date(startsAtTime).toISOString() : null,
     updatedAt: raw.updatedAt || null,
     updatedBy: raw.updatedBy || null
   };
 }
+
 
 async function getMaintenanceState() {
   const db = getPool();
@@ -117,6 +120,7 @@ async function saveMaintenanceState(input, user) {
   const state = normalizeMaintenanceState({
     mode: input?.mode,
     message: input?.message,
+    startsAt: input?.mode === 'warning' ? input?.startsAt : null,
     updatedAt: now,
     updatedBy: user?.username || user?.name || user?.id || null
   });
@@ -559,7 +563,9 @@ app.post('/api/maintenance', requireLogin, requireAdmin, async (req, res) => {
   try {
     const mode = ['off', 'warning', 'on'].includes(req.body?.mode) ? req.body.mode : 'off';
     const fallback = mode === 'warning' ? MAINTENANCE_WARNING_MESSAGE : MAINTENANCE_DEFAULT_MESSAGE;
-    const state = await saveMaintenanceState({ mode, message: req.body?.message || fallback }, req.session.user);
+    const startsAtTime = req.body?.startsAt ? Date.parse(req.body.startsAt) : NaN;
+    const startsAt = mode === 'warning' && Number.isFinite(startsAtTime) ? new Date(startsAtTime).toISOString() : null;
+    const state = await saveMaintenanceState({ mode, message: req.body?.message || fallback, startsAt }, req.session.user);
     res.json({ ok: true, ...state });
   } catch (err) {
     console.error('Maintenance save error:', err.message);
