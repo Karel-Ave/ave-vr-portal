@@ -92,8 +92,10 @@ const MAINTENANCE_WARNING_MESSAGE = 'Za chvíli proběhne údržba systému. Pro
 function normalizeMaintenanceState(raw = {}) {
   const mode = ['off', 'warning', 'on'].includes(raw.mode) ? raw.mode : 'off';
   const startsAtTime = raw.startsAt ? Date.parse(raw.startsAt) : NaN;
+  const noticeType = ['maintenance', 'message'].includes(raw.noticeType) ? raw.noticeType : 'maintenance';
   return {
     mode,
+    noticeType,
     message: String(raw.message || (mode === 'warning' ? MAINTENANCE_WARNING_MESSAGE : MAINTENANCE_DEFAULT_MESSAGE)),
     startsAt: Number.isFinite(startsAtTime) ? new Date(startsAtTime).toISOString() : null,
     updatedAt: raw.updatedAt || null,
@@ -119,6 +121,7 @@ async function saveMaintenanceState(input, user) {
   const now = new Date().toISOString();
   const state = normalizeMaintenanceState({
     mode: input?.mode,
+    noticeType: input?.noticeType,
     message: input?.message,
     startsAt: input?.mode === 'warning' ? input?.startsAt : null,
     updatedAt: now,
@@ -565,7 +568,8 @@ app.post('/api/maintenance', requireLogin, requireAdmin, async (req, res) => {
     const fallback = mode === 'warning' ? MAINTENANCE_WARNING_MESSAGE : MAINTENANCE_DEFAULT_MESSAGE;
     const startsAtTime = req.body?.startsAt ? Date.parse(req.body.startsAt) : NaN;
     const startsAt = mode === 'warning' && Number.isFinite(startsAtTime) ? new Date(startsAtTime).toISOString() : null;
-    const state = await saveMaintenanceState({ mode, message: req.body?.message || fallback, startsAt }, req.session.user);
+    const noticeType = ['maintenance', 'message'].includes(req.body?.noticeType) ? req.body.noticeType : 'maintenance';
+    const state = await saveMaintenanceState({ mode, noticeType, message: req.body?.message || fallback, startsAt }, req.session.user);
     res.json({ ok: true, ...state });
   } catch (err) {
     console.error('Maintenance save error:', err.message);
