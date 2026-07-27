@@ -293,6 +293,7 @@
   .maintenance-admin-actions button { min-height: 42px; justify-content: center; }
   .maintenance-admin-actions .wide { grid-column: 1 / -1; }
   .maintenance-admin-form { display: grid; gap: 14px; margin-top: 16px; }
+  .maintenance-admin-actions[hidden], .maintenance-admin-form[hidden], .maintenance-admin-row[hidden], #maintenance-admin-clear[hidden] { display: none !important; }
   .maintenance-admin-row { display: grid; gap: 6px; }
   .maintenance-admin-row label, .maintenance-targets legend { font-weight: 700; color: var(--accent-h); }
   .maintenance-admin-row textarea, .maintenance-admin-row input { width: 100%; border: 1px solid var(--border); border-radius: 8px; padding: 9px 10px; background: var(--input-bg); color: var(--text); font: inherit; }
@@ -934,7 +935,7 @@
         </div>
       </fieldset>
       <div class="maintenance-admin-footer">
-        <button type="button" class="btn-secondary" id="maintenance-admin-back">Zp&#283;t</button>
+        <button type="button" class="btn-secondary" id="maintenance-admin-back">Zru&#353;it</button>
         <button type="button" class="btn-primary" id="maintenance-admin-send">Odeslat</button>
       </div>
     </div>
@@ -1265,6 +1266,10 @@
 
   async function submitMaintenanceAdminForm() {
     try {
+      if (!['message', 'maintenance'].includes(maintenanceAdminAction)) {
+        alert('Nejprve vyberte typ zpr\u00e1vy.');
+        return;
+      }
       const targetGroups = selectedMaintenanceTargetGroups();
       if (!targetGroups.length) {
         alert('Vyberte pros\u00edm alespo\u0148 jednu skupinu u\u017eivatel\u016f.');
@@ -1336,7 +1341,7 @@
       hideMaintenanceWarning();
     });
     document.getElementById('maintenance-admin-close')?.addEventListener('click', closeMaintenanceAdminModal);
-    document.getElementById('maintenance-admin-back')?.addEventListener('click', openMaintenanceAdminModal);
+    document.getElementById('maintenance-admin-back')?.addEventListener('click', closeMaintenanceAdminModal);
     document.getElementById('maintenance-admin-message')?.addEventListener('click', () => openMaintenanceForm('message'));
     document.getElementById('maintenance-admin-warning')?.addEventListener('click', () => openMaintenanceForm('maintenance'));
     document.getElementById('maintenance-admin-send')?.addEventListener('click', submitMaintenanceAdminForm);
