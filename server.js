@@ -191,7 +191,7 @@ function maintenanceHtml(state) {
     .box{max-width:560px;background:white;border:1px solid #b8c7f6;border-radius:14px;box-shadow:0 18px 50px rgba(20,35,90,.15);padding:34px;text-align:center}
     img{width:58px;height:auto;margin-bottom:18px}
     h1{margin:0 0 12px;font-size:26px}
-    p{margin:8px 0;font-size:16px;line-height:1.5}.muted{color:#53618f;font-size:14px}
+    p{margin:8px 0;font-size:16px;line-height:1.5}.muted{color:#53618f;font-size:14px}.logout{display:inline-flex;margin-top:18px;padding:9px 16px;border:1px solid #9fb1ed;border-radius:8px;color:#14235a;text-decoration:none;font-weight:700;background:#f7f9ff}
   </style>
 </head>
 <body>
@@ -200,6 +200,7 @@ function maintenanceHtml(state) {
     <h1>Probíhá údržba systému</h1>
     <p>${message}</p>
     <p class="muted">Děkujeme za pochopení.</p>
+    <a class="logout" href="/logout">Odhl&aacute;sit se</a>
   </main>
 </body>
 </html>`;
