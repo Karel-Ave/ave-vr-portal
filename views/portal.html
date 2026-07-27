@@ -223,6 +223,71 @@
     color: var(--accent-h);
     border-color: var(--accent);
   }
+  .maintenance-btn {
+    display: none;
+    font-weight: 700;
+  }
+  .maintenance-btn.visible {
+    display: inline-flex;
+  }
+  .maintenance-btn.maintenance-warning {
+    background: #fbbc04;
+    border-color: #d99a00;
+    color: #172044;
+  }
+  .maintenance-btn.maintenance-on {
+    background: #d93025;
+    border-color: #b3261e;
+    color: #fff;
+  }
+  .maintenance-screen {
+    position: fixed;
+    inset: 0;
+    z-index: 40000;
+    display: none;
+    align-items: center;
+    justify-content: center;
+    padding: 24px;
+    background: var(--bg);
+    color: var(--text);
+    text-align: center;
+  }
+  .maintenance-screen.show { display: flex; }
+  .maintenance-card {
+    width: min(560px, 100%);
+    background: var(--card-bg);
+    border: 1px solid var(--border);
+    border-radius: 14px;
+    box-shadow: 0 18px 50px rgba(20,35,90,.16);
+    padding: 34px;
+  }
+  .maintenance-card img { width: 58px; height: auto; margin-bottom: 18px; }
+  .maintenance-card h1 { margin: 0 0 12px; font-size: 26px; color: var(--accent-h); }
+  .maintenance-card p { margin: 8px 0; font-size: 16px; line-height: 1.5; }
+  .maintenance-card .muted { color: var(--text-muted); font-size: 14px; }
+  .maintenance-warning-backdrop {
+    position: fixed;
+    inset: 0;
+    z-index: 35000;
+    display: none;
+    align-items: center;
+    justify-content: center;
+    padding: 18px;
+    background: rgba(0,0,0,.32);
+  }
+  .maintenance-warning-backdrop.show { display: flex; }
+  .maintenance-warning-box {
+    width: min(460px, 100%);
+    background: var(--card-bg);
+    border: 2px solid #fbbc04;
+    border-radius: 12px;
+    box-shadow: 0 18px 50px rgba(0,0,0,.22);
+    padding: 22px;
+    color: var(--text);
+  }
+  .maintenance-warning-box h2 { margin: 0 0 10px; color: var(--accent-h); font-size: 20px; }
+  .maintenance-warning-box p { margin: 0 0 18px; line-height: 1.45; }
+  .maintenance-warning-actions { display: flex; justify-content: flex-end; }
 
   /* ── Obsah ── */
   #cards-view {
@@ -774,6 +839,7 @@
   <!-- Right: User controls -->
   <div class="topbar-right">
     <span class="user-badge" id="user-label"></span>
+    <button id="btn-maintenance" class="btn-top maintenance-btn" type="button">Údržba</button>
     <button id="btn-user-settings" class="btn-top" onclick="openUserSettings()">Nastavení</button>
 <button id="btn-pw-change" class="btn-top" onclick="document.getElementById('pw-overlay').classList.add('show')">Změnit heslo</button>
     <a id="btn-logout" href="/logout" class="btn-top">Odhlásit</a>
@@ -785,6 +851,7 @@
 <!-- Mobilní slide-down menu (skryté na desktopu) -->
 <div id="mobile-menu" aria-hidden="true">
   <div id="mobile-menu-user"></div>
+  <button id="mob-maintenance" class="mob-menu-btn maintenance-btn" type="button">Údržba</button>
   <button class="mob-menu-btn" onclick="openUserSettings()">Nastavení</button>
   <button class="mob-menu-btn" onclick="openPwModal()">🔑&nbsp; Změnit heslo</button>
   <a class="mob-menu-btn" href="/logout">⎋&nbsp; Odhlásit</a>
@@ -801,8 +868,29 @@
   </div>
 </div>
 
+<!-- Maintenance screen -->
+<div id="maintenance-screen" class="maintenance-screen" aria-live="assertive" aria-hidden="true">
+  <div class="maintenance-card">
+    <img src="/static/logo.png" alt="AVE Hotels">
+    <h1>Probíhá údržba systému</h1>
+    <p id="maintenance-screen-message">Na webu momentálně probíhá údržba. Zkuste prosím později.</p>
+    <p class="muted">Děkujeme za pochopení.</p>
+  </div>
+</div>
+
+<div id="maintenance-warning-modal" class="maintenance-warning-backdrop" aria-live="assertive" aria-hidden="true">
+  <div class="maintenance-warning-box" role="dialog" aria-modal="true" aria-labelledby="maintenance-warning-title">
+    <h2 id="maintenance-warning-title">Plánovaná údržba</h2>
+    <p id="maintenance-warning-message">Za chvíli proběhne údržba systému. Prosím uložte si rozpracované změny.</p>
+    <div class="maintenance-warning-actions">
+      <button type="button" class="btn-primary" id="maintenance-warning-ok">OK</button>
+    </div>
+  </div>
+</div>
+
 <!-- Loading overlay -->
 <div id="app-loading">
+
   <div class="spinner"></div>
   <span>Načítám…</span>
 </div>
@@ -914,6 +1002,10 @@
   let portalPrefs = {};
   let portalPerms = null;
   let portalHotelLetters = ['A','B','C','D','E','G','H','I','J','L','M','N','S','T','U'];
+  const MAINTENANCE_DEFAULT_MESSAGE = 'Na webu momentálně probíhá údržba. Zkuste prosím později.';
+  const MAINTENANCE_WARNING_MESSAGE = 'Za chvíli proběhne údržba systému. Prosím uložte si rozpracované změny.';
+  let portalMaintenance = { mode: 'off', message: MAINTENANCE_DEFAULT_MESSAGE, updatedAt: null };
+  let portalMaintenanceTimer = null;
 
   function makeAppNavButton(c) {
     const btn = document.createElement('button');
@@ -936,6 +1028,133 @@
     const current = document.getElementById('app-nav-current');
     if (current) current.textContent = active?.textContent || 'Vybrat kartu';
     document.getElementById('app-nav')?.classList.remove('open');
+  }
+
+  function maintenanceStamp(state) {
+    return state?.updatedAt || `${state?.mode || 'off'}:${state?.message || ''}`;
+  }
+
+  function setMaintenanceScreen(show, state = portalMaintenance) {
+    const screen = document.getElementById('maintenance-screen');
+    const msg = document.getElementById('maintenance-screen-message');
+    if (!screen) return;
+    if (msg) msg.textContent = state?.message || MAINTENANCE_DEFAULT_MESSAGE;
+    screen.classList.toggle('show', !!show);
+    screen.setAttribute('aria-hidden', show ? 'false' : 'true');
+  }
+
+  function hideMaintenanceWarning() {
+    const modal = document.getElementById('maintenance-warning-modal');
+    if (!modal) return;
+    modal.classList.remove('show');
+    modal.setAttribute('aria-hidden', 'true');
+  }
+
+  function showMaintenanceWarning(state) {
+    const stamp = maintenanceStamp(state);
+    if (sessionStorage.getItem('ave-maintenance-warning-seen') === stamp) return;
+    const modal = document.getElementById('maintenance-warning-modal');
+    const msg = document.getElementById('maintenance-warning-message');
+    if (!modal) return;
+    if (msg) msg.textContent = state?.message || MAINTENANCE_WARNING_MESSAGE;
+    modal.classList.add('show');
+    modal.setAttribute('aria-hidden', 'false');
+  }
+
+  function updateMaintenanceButtons(state = portalMaintenance) {
+    const isAdmin = portalUser?.role === 'admin';
+    [document.getElementById('btn-maintenance'), document.getElementById('mob-maintenance')].forEach(btn => {
+      if (!btn) return;
+      btn.classList.toggle('visible', isAdmin);
+      btn.hidden = !isAdmin;
+      btn.classList.toggle('maintenance-warning', state.mode === 'warning');
+      btn.classList.toggle('maintenance-on', state.mode === 'on');
+      btn.textContent = state.mode === 'on' ? 'Údržba aktivní' : (state.mode === 'warning' ? 'Údržba brzy' : 'Údržba');
+    });
+  }
+
+  function applyMaintenanceState(state) {
+    portalMaintenance = {
+      mode: state?.mode || 'off',
+      message: state?.message || (state?.mode === 'warning' ? MAINTENANCE_WARNING_MESSAGE : MAINTENANCE_DEFAULT_MESSAGE),
+      updatedAt: state?.updatedAt || null,
+      updatedBy: state?.updatedBy || null
+    };
+    updateMaintenanceButtons(portalMaintenance);
+    if (portalUser?.role === 'admin') {
+      setMaintenanceScreen(false);
+      return;
+    }
+    if (portalMaintenance.mode === 'on') {
+      hideMaintenanceWarning();
+      setMaintenanceScreen(true, portalMaintenance);
+    } else {
+      setMaintenanceScreen(false, portalMaintenance);
+      if (portalMaintenance.mode === 'warning') showMaintenanceWarning(portalMaintenance);
+    }
+  }
+
+  async function refreshMaintenanceStatus() {
+    if (!portalUser) return;
+    try {
+      const res = await fetch('/api/maintenance/status', { credentials: 'include', cache: 'no-store' });
+      if (!res.ok) return;
+      const state = await res.json();
+      applyMaintenanceState(state);
+    } catch (_) {}
+  }
+
+  async function setMaintenanceMode(mode) {
+    const message = mode === 'warning' ? MAINTENANCE_WARNING_MESSAGE : MAINTENANCE_DEFAULT_MESSAGE;
+    const res = await fetch('/api/maintenance', {
+      method: 'POST',
+      credentials: 'include',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ mode, message })
+    });
+    const state = await res.json().catch(() => ({}));
+    if (!res.ok || state.ok === false) throw new Error(state.msg || 'Režim údržby se nepodařilo uložit.');
+    applyMaintenanceState(state);
+  }
+
+  async function handleMaintenanceClick() {
+    try {
+      if (portalMaintenance.mode === 'on') {
+        if (confirm('Vypnout režim údržby a znovu pustit uživatele na web?')) await setMaintenanceMode('off');
+        return;
+      }
+      if (portalMaintenance.mode === 'warning') {
+        if (confirm('Zapnout údržbu teď? OK = zapnout, Zrušit = jen zrušit upozornění.')) await setMaintenanceMode('on');
+        else await setMaintenanceMode('off');
+        return;
+      }
+      if (confirm('Nejdřív zobrazit uživatelům upozornění, aby si uložili práci? OK = upozornění, Zrušit = zapnout údržbu rovnou.')) {
+        await setMaintenanceMode('warning');
+      } else if (confirm('Opravdu zapnout údržbu hned? Ostatní uživatelé uvidí jen hlášení o údržbě.')) {
+        await setMaintenanceMode('on');
+      }
+    } catch (err) {
+      alert(err.message || 'Režim údržby se nepodařilo změnit.');
+    }
+  }
+
+  function setupMaintenanceControls() {
+    document.getElementById('btn-maintenance')?.addEventListener('click', handleMaintenanceClick);
+    document.getElementById('mob-maintenance')?.addEventListener('click', () => {
+      document.getElementById('mobile-menu')?.classList.remove('open');
+      handleMaintenanceClick();
+    });
+    document.getElementById('maintenance-warning-ok')?.addEventListener('click', () => {
+      sessionStorage.setItem('ave-maintenance-warning-seen', maintenanceStamp(portalMaintenance));
+      hideMaintenanceWarning();
+    });
+    updateMaintenanceButtons(portalMaintenance);
+  }
+
+  function startMaintenancePolling() {
+    clearInterval(portalMaintenanceTimer);
+    refreshMaintenanceStatus();
+    portalMaintenanceTimer = setInterval(refreshMaintenanceStatus, 15000);
   }
 
   function renderAppNav(cards) {
@@ -1237,6 +1456,8 @@
     // ── Restore last app after F5 ────────────────────────────────────────
     // URL was already validated synchronously above; just call loadApp().
     loadApp(window._portalRestoreUrl || portalDefaultUrl || visibleCards[0]?.href);
+    setupMaintenanceControls();
+    startMaintenancePolling();
     startPortalNotifications();
   })();
 

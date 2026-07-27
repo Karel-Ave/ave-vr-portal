@@ -85,6 +85,122 @@ const requirePortalAccess = (req, res, next) => {
   return next();
 };
 
+const MAINTENANCE_SETTINGS_KEY = 'maintenance';
+const MAINTENANCE_DEFAULT_MESSAGE = 'Na webu momentálně probíhá údržba. Zkuste prosím později.';
+const MAINTENANCE_WARNING_MESSAGE = 'Za chvíli proběhne údržba systému. Prosím uložte si rozpracované změny.';
+
+function normalizeMaintenanceState(raw = {}) {
+  const mode = ['off', 'warning', 'on'].includes(raw.mode) ? raw.mode : 'off';
+  return {
+    mode,
+    message: String(raw.message || (mode === 'warning' ? MAINTENANCE_WARNING_MESSAGE : MAINTENANCE_DEFAULT_MESSAGE)),
+    updatedAt: raw.updatedAt || null,
+    updatedBy: raw.updatedBy || null
+  };
+}
+
+async function getMaintenanceState() {
+  const db = getPool();
+  const { rows } = await db.query('SELECT value FROM settings WHERE key = $1', [MAINTENANCE_SETTINGS_KEY]);
+  if (!rows[0]?.value) return normalizeMaintenanceState();
+  try {
+    const parsed = typeof rows[0].value === 'string' ? JSON.parse(rows[0].value) : rows[0].value;
+    return normalizeMaintenanceState(parsed || {});
+  } catch (err) {
+    console.error('Maintenance settings parse error:', err.message);
+    return normalizeMaintenanceState();
+  }
+}
+
+async function saveMaintenanceState(input, user) {
+  const now = new Date().toISOString();
+  const state = normalizeMaintenanceState({
+    mode: input?.mode,
+    message: input?.message,
+    updatedAt: now,
+    updatedBy: user?.username || user?.name || user?.id || null
+  });
+  const db = getPool();
+  await db.query(
+    `INSERT INTO settings (key, value, updated_at)
+     VALUES ($1, $2, NOW())
+     ON CONFLICT (key) DO UPDATE SET value = EXCLUDED.value, updated_at = NOW()`,
+    [MAINTENANCE_SETTINGS_KEY, JSON.stringify(state)]
+  );
+  return state;
+}
+
+function maintenanceWantsJson(req) {
+  return req.path.startsWith('/api/') || req.xhr || String(req.headers.accept || '').includes('application/json');
+}
+
+function maintenanceHtml(state) {
+  const message = String(state?.message || MAINTENANCE_DEFAULT_MESSAGE)
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;');
+  return `<!doctype html>
+<html lang="cs">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Probíhá údržba systému</title>
+  <style>
+    body{margin:0;min-height:100vh;display:flex;align-items:center;justify-content:center;background:#eef3ff;color:#14235a;font-family:Segoe UI,Arial,sans-serif;padding:24px;box-sizing:border-box}
+    .box{max-width:560px;background:white;border:1px solid #b8c7f6;border-radius:14px;box-shadow:0 18px 50px rgba(20,35,90,.15);padding:34px;text-align:center}
+    img{width:58px;height:auto;margin-bottom:18px}
+    h1{margin:0 0 12px;font-size:26px}
+    p{margin:8px 0;font-size:16px;line-height:1.5}.muted{color:#53618f;font-size:14px}
+  </style>
+</head>
+<body>
+  <main class="box">
+    <img src="/static/logo.png" alt="AVE Hotels">
+    <h1>Probíhá údržba systému</h1>
+    <p>${message}</p>
+    <p class="muted">Děkujeme za pochopení.</p>
+  </main>
+</body>
+</html>`;
+}
+
+function sendMaintenanceBlock(req, res, state) {
+  if (maintenanceWantsJson(req)) {
+    return res.status(503).json({ ok: false, maintenance: true, msg: state?.message || MAINTENANCE_DEFAULT_MESSAGE });
+  }
+  return res.status(503).send(maintenanceHtml(state));
+}
+
+function maintenanceBypassPath(req) {
+  const p = req.path;
+  return p === '/' ||
+    p === '/logout' ||
+    p === '/api/me' ||
+    p === '/api/session/status' ||
+    p === '/api/maintenance/status' ||
+    p.startsWith('/static/') ||
+    p === '/apple-touch-icon.png' ||
+    p === '/apple-touch-icon-precomposed.png';
+}
+
+app.use(async (req, res, next) => {
+  const user = req.session.user;
+  if (!user) return next();
+  if (user.role === 'admin') return next();
+  if (maintenanceBypassPath(req)) return next();
+
+  try {
+    const state = await getMaintenanceState();
+    if (state.mode === 'on') return sendMaintenanceBlock(req, res, state);
+    return next();
+  } catch (err) {
+    console.error('Maintenance gate error:', err.message);
+    return next();
+  }
+});
+
+
 // ── In-memory zámky (zabrání dvěma uživatelům editovat zároveň) ──────────────
 
 function releaseUserLocks(userId) {
@@ -427,6 +543,30 @@ app.get('/widget', requireLogin, (req, res) => res.redirect('/portal'));
 // ── API: Auth ─────────────────────────────────────────────────────────────────
 
 app.get('/api/me', requireLogin, (req, res) => res.json(req.session.user));
+
+
+app.get('/api/maintenance/status', requireLogin, async (req, res) => {
+  try {
+    const state = await getMaintenanceState();
+    res.json({ ok: true, admin: req.session.user?.role === 'admin', ...state });
+  } catch (err) {
+    console.error('Maintenance status error:', err.message);
+    res.status(500).json({ ok: false, msg: 'Chyba načtení režimu údržby.' });
+  }
+});
+
+app.post('/api/maintenance', requireLogin, requireAdmin, async (req, res) => {
+  try {
+    const mode = ['off', 'warning', 'on'].includes(req.body?.mode) ? req.body.mode : 'off';
+    const fallback = mode === 'warning' ? MAINTENANCE_WARNING_MESSAGE : MAINTENANCE_DEFAULT_MESSAGE;
+    const state = await saveMaintenanceState({ mode, message: req.body?.message || fallback }, req.session.user);
+    res.json({ ok: true, ...state });
+  } catch (err) {
+    console.error('Maintenance save error:', err.message);
+    res.status(500).json({ ok: false, msg: 'Chyba uložení režimu údržby.' });
+  }
+});
+
 
 app.get('/api/session/status', (req, res) => {
   if (!req.session.user) return res.status(401).json({ ok: false });
