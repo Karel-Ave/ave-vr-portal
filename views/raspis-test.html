@@ -10952,23 +10952,24 @@ function selectedRealHotels() {
   return Array.from(filterHotels).map(h => String(h).toUpperCase()).filter(h => h !== 'P');
 }
 
-function filterCellValue(tblId, si, ci) {
-  const tbl = document.getElementById(tblId);
-  const cell = tbl?.querySelector(`tbody tr[data-si="${si}"] td.sched-cell[data-ci="${ci}"]`);
-  if (cell) {
-    const input = cell.querySelector('input');
-    const val = cell.querySelector('.cell-val');
-    return String(input ? input.value : (val ? val.textContent : cell.textContent) || '').trim();
-  }
-  return String(state.schedule[`${si}_${ci}`] || '').trim();
+function cellDisplayValue(cell) {
+  if (!cell) return '';
+  const input = cell.querySelector('input');
+  const val = cell.querySelector('.cell-val');
+  return String(input ? input.value : (val ? val.textContent : cell.textContent) || '').trim();
 }
 
-function rowHasSelectedHotel(tblId, si, selectedHotels) {
+function rowFilterValues(tblId, si, tr = null) {
+  const row = tr || document.getElementById(tblId)?.querySelector(`tbody tr[data-si="${si}"]`);
+  if (row) return Array.from(row.querySelectorAll('td.sched-cell')).map(cellDisplayValue);
+  return getCalCols(state.month, state.year).map((_, ci) => String(state.schedule[`${si}_${ci}`] || '').trim());
+}
+
+function rowHasSelectedHotel(tblId, si, selectedHotels, tr = null) {
   const hotels = (selectedHotels || []).map(h => String(h || '').toUpperCase()).filter(Boolean);
   if (!hotels.length) return false;
-  return getCalCols(state.month, state.year).some((_, ci) => hotels.includes(filterCellValue(tblId, si, ci).toUpperCase()));
+  return rowFilterValues(tblId, si, tr).some(value => hotels.includes(String(value || '').toUpperCase()));
 }
-
 function normalizedStaffType(s) {
   return String(s?.type || '').normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase().trim();
 }
@@ -10984,7 +10985,7 @@ function isNightOnlyStaff(s) {
 function staffHasHotelShift(si, letter, tblId = '') {
   const wanted = String(letter || '').toUpperCase();
   return getCalCols(state.month, state.year).some((_, ci) =>
-    String(tblId ? filterCellValue(tblId, si, ci) : state.schedule[`${si}_${ci}`] || '').trim().toUpperCase() === wanted
+    String(tblId ? rowFilterValues(tblId, si)[ci] : state.schedule[`${si}_${ci}`] || '').trim().toUpperCase() === wanted
   );
 }
 
@@ -11068,9 +11069,9 @@ function applyRowFilters() {
         const selectedHotels = isTvorbaTbl
           ? selectedRealHotels()
           : Array.from(filterHotels).map(h => String(h).toUpperCase());
-        const hasHotel = rowHasSelectedHotel(tblId, si, selectedHotels);
+        const hasHotel = rowHasSelectedHotel(tblId, si, selectedHotels, tr);
         const canWorkHotel = showQualifiedWorkers && selectedHotels.length && staffCanWorkSelectedHotels(s);
-        const missingStandby = isTvorbaTbl && filterHotels.has('P') && staffCanTakeStandby(s) && !staffHasHotelShift(si, 'P', tblId);
+        const missingStandby = isTvorbaTbl && filterHotels.has('P') && staffCanTakeStandby(s) && !rowFilterValues(tblId, si, tr).some(value => String(value || '').trim().toUpperCase() === 'P');
         if (!hasHotel && !canWorkHotel && !missingStandby && !markedWorkers.has(si)) hide = true;
       }
       if (!hide && filterShift === 'day') {
