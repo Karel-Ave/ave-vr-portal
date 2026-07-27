@@ -11,7 +11,7 @@ const SESSION_MAX_AGE = 10 * 365 * 24 * 60 * 60 * 1000;
 const DEFAULT_LIGHT_SKIN = 'indigo';
 const DEFAULT_DARK_SKIN = 'green';
 const THEME_SKINS = new Set(['default','mono','graphite','slate','blue','teal','green','olive','amber','rose','violet','indigo','cyan','mint','lime','yellow','orange','red','pink','plum','coffee','navy']);
-const AUTO_LOGOUT_ALLOWED_MINUTES = new Set([0, 30, 60, 720]);
+const AUTO_LOGOUT_ALLOWED_MINUTES = new Set([30, 60, 360]);
 
 function normalizeThemeSkin(skin, fallback = 'default') {
   const raw = String(skin || fallback || 'default').toLowerCase();
@@ -87,13 +87,14 @@ const requirePortalAccess = (req, res, next) => {
 
 const MAINTENANCE_SETTINGS_KEY = 'maintenance';
 const MAINTENANCE_DEFAULT_MESSAGE = 'Na webu momentálně probíhá údržba. Zkuste prosím později.';
-const MAINTENANCE_WARNING_MESSAGE = 'Za chvíli proběhne údržba systému. Prosím uložte si rozpracované změny.';
+const MAINTENANCE_WARNING_MESSAGE = 'Pozor: Bude probíhat údržba systému. Prosím uložte si rozpracované změny.';
 const MAINTENANCE_TARGET_GROUPS = new Set(['admin', 'vr', 'recepcni', 'pb6', 'hotely']);
 const MAINTENANCE_DEFAULT_TARGET_GROUPS = ['vr', 'recepcni', 'pb6'];
 
 function normalizeMaintenanceState(raw = {}) {
   const mode = ['off', 'warning', 'on'].includes(raw.mode) ? raw.mode : 'off';
   const startsAtTime = raw.startsAt ? Date.parse(raw.startsAt) : NaN;
+  const endsAtTime = raw.endsAt ? Date.parse(raw.endsAt) : NaN;
   const noticeType = ['maintenance', 'message'].includes(raw.noticeType) ? raw.noticeType : 'maintenance';
   const rawTargets = Array.isArray(raw.targetGroups) ? raw.targetGroups : [];
   const targetGroups = [...new Set(rawTargets.map(v => String(v || '').trim().toLowerCase()).filter(v => MAINTENANCE_TARGET_GROUPS.has(v)))];
@@ -102,6 +103,7 @@ function normalizeMaintenanceState(raw = {}) {
     noticeType,
     message: String(raw.message || (mode === 'warning' ? MAINTENANCE_WARNING_MESSAGE : MAINTENANCE_DEFAULT_MESSAGE)),
     startsAt: Number.isFinite(startsAtTime) ? new Date(startsAtTime).toISOString() : null,
+    endsAt: Number.isFinite(endsAtTime) ? new Date(endsAtTime).toISOString() : null,
     targetGroups: targetGroups.length ? targetGroups : [...MAINTENANCE_DEFAULT_TARGET_GROUPS],
     updatedAt: raw.updatedAt || null,
     updatedBy: raw.updatedBy || null
@@ -146,6 +148,7 @@ async function saveMaintenanceState(input, user) {
     noticeType: input?.noticeType,
     message: input?.message,
     startsAt: input?.mode === 'warning' ? input?.startsAt : null,
+    endsAt: input?.mode === 'warning' ? input?.endsAt : null,
     targetGroups: input?.targetGroups,
     updatedAt: now,
     updatedBy: user?.username || user?.name || user?.id || null
@@ -257,7 +260,7 @@ async function getAutoLogoutMinutes(userId) {
     [userId]
   );
   const minutes = Number(rows[0]?.auto_logout_minutes);
-  return AUTO_LOGOUT_ALLOWED_MINUTES.has(minutes) ? minutes : 60;
+  return AUTO_LOGOUT_ALLOWED_MINUTES.has(minutes) ? minutes : 30;
 }
 
 async function destroyAllSessionsForUser(userId) {
@@ -591,12 +594,14 @@ app.post('/api/maintenance', requireLogin, requirePermDefault('admin', 'maintena
     const mode = ['off', 'warning', 'on'].includes(req.body?.mode) ? req.body.mode : 'off';
     const fallback = mode === 'warning' ? MAINTENANCE_WARNING_MESSAGE : MAINTENANCE_DEFAULT_MESSAGE;
     const startsAtTime = req.body?.startsAt ? Date.parse(req.body.startsAt) : NaN;
+    const endsAtTime = req.body?.endsAt ? Date.parse(req.body.endsAt) : NaN;
     const startsAt = mode === 'warning' && Number.isFinite(startsAtTime) ? new Date(startsAtTime).toISOString() : null;
+    const endsAt = mode === 'warning' && Number.isFinite(endsAtTime) ? new Date(endsAtTime).toISOString() : null;
     const noticeType = ['maintenance', 'message'].includes(req.body?.noticeType) ? req.body.noticeType : 'maintenance';
     const targetGroups = Array.isArray(req.body?.targetGroups)
       ? [...new Set(req.body.targetGroups.map(v => String(v || '').trim().toLowerCase()).filter(v => MAINTENANCE_TARGET_GROUPS.has(v)))]
       : [...MAINTENANCE_DEFAULT_TARGET_GROUPS];
-    const state = await saveMaintenanceState({ mode, noticeType, message: req.body?.message || fallback, startsAt, targetGroups }, req.session.user);
+    const state = await saveMaintenanceState({ mode, noticeType, message: req.body?.message || fallback, startsAt, endsAt, targetGroups }, req.session.user);
     res.json({ ok: true, ...state });
   } catch (err) {
     console.error('Maintenance save error:', err.message);
@@ -962,7 +967,8 @@ app.get('/api/my-permissions', requireLogin, async (req, res) => {
         manageBalances: isManager,
         delete: isManager,
         bulkDelete: isAdm,
-        syncNote: isManager
+        syncNote: isManager,
+        manualCreate: isAdm
       } },
       blacklist: { enabled: true, visible: true, buttons: {
         view: true,
@@ -1612,9 +1618,9 @@ app.get('/api/user-prefs', requireLogin, async (req, res) => {
     );
     let defaultViews = {};
     try { defaultViews = rows[0]?.default_views ? JSON.parse(rows[0].default_views) : {}; } catch { defaultViews = {}; }
-    const autoLogoutMinutes = [0, 30, 60, 720].includes(Number(rows[0]?.auto_logout_minutes))
+    const autoLogoutMinutes = [30, 60, 360].includes(Number(rows[0]?.auto_logout_minutes))
       ? Number(rows[0].auto_logout_minutes)
-      : 60;
+      : 30;
     res.json({
       default_raspis_key: rows[0]?.default_raspis_key || null,
       default_public_hotel: rows[0]?.default_public_hotel || 'ALL',
@@ -1622,7 +1628,7 @@ app.get('/api/user-prefs', requireLogin, async (req, res) => {
       auto_logout_minutes: autoLogoutMinutes
     });
   } catch (err) {
-    res.json({ default_raspis_key: null, default_public_hotel: 'ALL', default_views: {}, auto_logout_minutes: 60 });
+    res.json({ default_raspis_key: null, default_public_hotel: 'ALL', default_views: {}, auto_logout_minutes: 30 });
   }
 });
 
@@ -1725,7 +1731,7 @@ app.post('/api/user-prefs/default-views', requireLogin, async (req, res) => {
 
 app.post('/api/user-prefs/auto-logout', requireLogin, async (req, res) => {
   const minutes = Number(req.body?.minutes);
-  const allowed = new Set([0, 30, 60, 720]);
+  const allowed = new Set([30, 60, 360]);
   if (!allowed.has(minutes)) return res.status(400).json({ ok: false, msg: 'Neplatná hodnota.' });
   try {
     const db = getPool();
@@ -4080,10 +4086,14 @@ async function vacationCanManageBalances(user) {
   return vacationManagerRole(user) || await hasButtonPerm(user, 'dovolene', 'manageBalances', false);
 }
 
+async function vacationCanManualCreate(user) {
+  return user?.role === 'admin' || await hasButtonPerm(user, 'dovolene', 'manualCreate', false);
+}
+
 async function vacationResolveStaff(req, body, db) {
   const user = req.session.user;
   const staff = await loadRtPortalReceptionists(db);
-  const canManage = await canManageVacationsServer(user);
+  const canManage = await canManageVacationsServer(user) || await vacationCanManualCreate(user);
   let found = null;
   if (canManage && body?.staff_user_id) found = staff.find(s => String(s.userId || '') === String(body.staff_user_id));
   if (canManage && !found && body?.staff_login) {
@@ -4126,7 +4136,7 @@ async function vacationAppendMonthlyNote(db, item, noteText, user) {
 
 app.get('/api/vacations/staff', requireLogin, async (req, res) => {
   try {
-    if (!await canManageVacationsServer(req.session.user)) return res.status(403).json({ ok: false, msg: 'Nemate opravneni.' });
+    if (!await canManageVacationsServer(req.session.user) && !await vacationCanManualCreate(req.session.user)) return res.status(403).json({ ok: false, msg: 'Nemate opravneni.' });
     const db = getPool();
     const month = parseInt(req.query.month, 10) || (new Date().getMonth() + 1);
     const year = parseInt(req.query.year, 10) || new Date().getFullYear();
@@ -4272,15 +4282,34 @@ app.post('/api/vacations', requireLogin, async (req, res) => {
     const month = parseInt(req.body?.month, 10);
     const year = parseInt(req.body?.year, 10);
     if (!(month >= 1 && month <= 12) || !(year >= 2000 && year <= 2100)) return res.status(400).json({ ok: false, msg: 'Neplatny mesic nebo rok.' });
+    const manual = req.body?.manual === true;
+    if (manual && !await vacationCanManualCreate(user)) return res.status(403).json({ ok: false, msg: 'Nemate opravneni vlozit dovolenou rucne.' });
     const staff = await vacationResolveStaff(req, req.body, db);
     const days = vacationParseDays(req.body?.days, month, year);
     const daysCount = Math.max(0, Math.min(31, parseInt(req.body?.days_count, 10) || 0));
     if (!days.length && daysCount <= 0) return res.status(400).json({ ok: false, msg: 'Vyberte datum nebo pocet dni.' });
     const note = String(req.body?.note || '').trim();
+    const status = manual ? 'approved' : 'pending';
     const { rows } = await db.query(
-      `INSERT INTO vacation_requests (staff_user_id, staff_login, staff_name, month, year, days_json, days_count, note, status, created_by, created_name, updated_at)
-       VALUES ($1,$2,$3,$4,$5,$6,$7,$8,'pending',$9,$10,NOW()) RETURNING *`,
-      [staff.userId || null, String(staff.login || '').trim().toUpperCase(), staff.displayName || staff.name || staff.login, month, year, JSON.stringify(days), daysCount, note, user.id, user.name]
+      `INSERT INTO vacation_requests
+       (staff_user_id, staff_login, staff_name, month, year, days_json, days_count, note, status, created_by, created_name, resolved_by, resolved_name, resolved_at, updated_at)
+       VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,NOW()) RETURNING *`,
+      [
+        staff.userId || null,
+        String(staff.login || '').trim().toUpperCase(),
+        staff.displayName || staff.name || staff.login,
+        month,
+        year,
+        JSON.stringify(days),
+        daysCount,
+        note,
+        status,
+        user.id,
+        user.name,
+        manual ? user.id : null,
+        manual ? user.name : null,
+        manual ? new Date() : null
+      ]
     );
     res.json({ ok: true, item: vacationParseRow(rows[0]) });
   } catch (err) { console.error('Chyba POST /api/vacations:', err); res.status(500).json({ ok: false, msg: 'Chyba serveru.' }); }

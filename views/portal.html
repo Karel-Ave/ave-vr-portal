@@ -920,9 +920,13 @@
         <label for="maintenance-admin-text">Text zpr&#225;vy</label>
         <textarea id="maintenance-admin-text" placeholder="Napi&#353;te zpr&#225;vu pro u&#382;ivatele..."></textarea>
       </div>
-      <div class="maintenance-admin-row" id="maintenance-minutes-row">
-        <label for="maintenance-admin-minutes">Za kolik minut p&#345;ibli&#382;n&#283; za&#269;ne &#250;dr&#382;ba</label>
-        <input id="maintenance-admin-minutes" type="number" min="0" step="1" value="5">
+      <div class="maintenance-admin-row" id="maintenance-start-row">
+        <label for="maintenance-admin-start-time">&#268;as zah&#225;jen&#237; &#250;dr&#382;by</label>
+        <input id="maintenance-admin-start-time" type="time" step="60">
+      </div>
+      <div class="maintenance-admin-row" id="maintenance-end-row">
+        <label for="maintenance-admin-end-time">P&#345;edpokl&#225;dan&#253; &#269;as dokon&#269;en&#237;</label>
+        <input id="maintenance-admin-end-time" type="time" step="60">
       </div>
       <fieldset class="maintenance-targets">
         <legend>Komu zpr&#225;vu zobrazit</legend>
@@ -1059,7 +1063,7 @@
   const MAINTENANCE_DEFAULT_MESSAGE = 'Na webu momentálně probíhá údržba. Zkuste prosím později.';
   const MAINTENANCE_WARNING_MESSAGE = 'Za chvíli proběhne údržba systému. Prosím uložte si rozpracované změny.';
   const DEFAULT_MAINTENANCE_TARGETS = ['vr', 'recepcni', 'pb6'];
-  let portalMaintenance = { mode: 'off', noticeType: 'maintenance', message: MAINTENANCE_DEFAULT_MESSAGE, startsAt: null, targetGroups: [...DEFAULT_MAINTENANCE_TARGETS], targeted: true, updatedAt: null, canControl: false };
+  let portalMaintenance = { mode: 'off', noticeType: 'maintenance', message: MAINTENANCE_DEFAULT_MESSAGE, startsAt: null, endsAt: null, targetGroups: [...DEFAULT_MAINTENANCE_TARGETS], targeted: true, updatedAt: null, canControl: false };
   let maintenanceAdminAction = null;
   let portalMaintenanceTimer = null;
   let portalMaintenanceRefreshInFlight = false;
@@ -1090,7 +1094,7 @@
   }
 
   function maintenanceStamp(state) {
-    return state?.updatedAt || `${state?.mode || 'off'}:${state?.noticeType || 'maintenance'}:${state?.startsAt || ''}:${(state?.targetGroups || []).join(',')}:${state?.message || ''}`;
+    return state?.updatedAt || `${state?.mode || 'off'}:${state?.noticeType || 'maintenance'}:${state?.startsAt || ''}:${state?.endsAt || ''}:${(state?.targetGroups || []).join(',')}:${state?.message || ''}`;
   }
 
   function maintenanceSeenKey() {
@@ -1119,6 +1123,22 @@
     return time
       ? `\u00dadr\u017eba za\u010dne p\u0159ibli\u017en\u011b v ${time}. Pros\u00edm ulo\u017ete si rozpracovan\u00e9 zm\u011bny.`
       : MAINTENANCE_WARNING_MESSAGE;
+  }
+
+  function maintenanceTimeLabel(value) {
+    const date = value ? new Date(value) : null;
+    if (!date || Number.isNaN(date.getTime())) return '';
+    return `${date.toLocaleTimeString('cs-CZ', { hour: '2-digit', minute: '2-digit' })} hod.`;
+  }
+
+  function maintenanceWarningMessage(startsAt, endsAt) {
+    const start = maintenanceTimeLabel(startsAt);
+    const end = maintenanceTimeLabel(endsAt);
+    let message = start
+      ? `Pozor: Od ${start} bude probíhat údržba systému.`
+      : 'Pozor: Bude probíhat údržba systému.';
+    if (end) message += ` Předpokládaný čas dokončení: ${end}.`;
+    return `${message} Prosím uložte si rozpracované změny.`;
   }
 
   function maintenanceRemainingLabel(startsAt) {
@@ -1179,6 +1199,7 @@
       noticeType: state?.noticeType || 'maintenance',
       message: state?.message || (state?.mode === 'warning' ? MAINTENANCE_WARNING_MESSAGE : MAINTENANCE_DEFAULT_MESSAGE),
       startsAt: state?.startsAt || null,
+      endsAt: state?.endsAt || null,
       targetGroups: Array.isArray(state?.targetGroups) ? state.targetGroups : [...DEFAULT_MAINTENANCE_TARGETS],
       targeted: state?.targeted !== false,
       canControl: state?.canControl === true,
@@ -1231,13 +1252,14 @@
 
   async function setMaintenanceMode(mode, options = {}) {
     const startsAt = options.startsAt || null;
+    const endsAt = options.endsAt || null;
     const noticeType = options.noticeType || 'maintenance';
     const message = options.message || (mode === 'warning' ? maintenanceStartMessage(startsAt) : MAINTENANCE_DEFAULT_MESSAGE);
     const res = await fetch('/api/maintenance', {
       method: 'POST',
       credentials: 'include',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ mode, noticeType, message, startsAt, targetGroups: options.targetGroups || DEFAULT_MAINTENANCE_TARGETS })
+      body: JSON.stringify({ mode, noticeType, message, startsAt, endsAt, targetGroups: options.targetGroups || DEFAULT_MAINTENANCE_TARGETS })
     });
     const state = await res.json().catch(() => ({}));
     if (!res.ok || state.ok === false) throw new Error(state.msg || 'Režim údržby se nepodařilo uložit.');
@@ -1289,20 +1311,28 @@
     const form = document.getElementById('maintenance-admin-form');
     const help = document.getElementById('maintenance-admin-help');
     const messageRow = document.getElementById('maintenance-message-row');
-    const minutesRow = document.getElementById('maintenance-minutes-row');
+    const startRow = document.getElementById('maintenance-start-row');
+    const endRow = document.getElementById('maintenance-end-row');
     const text = document.getElementById('maintenance-admin-text');
-    const minutes = document.getElementById('maintenance-admin-minutes');
+    const startTime = document.getElementById('maintenance-admin-start-time');
+    const endTime = document.getElementById('maintenance-admin-end-time');
     if (actions) actions.hidden = true;
     if (form) form.hidden = false;
     if (messageRow) messageRow.hidden = action !== 'message';
-    if (minutesRow) minutesRow.hidden = action !== 'maintenance';
+    if (startRow) startRow.hidden = action !== 'maintenance';
+    if (endRow) endRow.hidden = action !== 'maintenance';
     if (help) help.textContent = action === 'message'
       ? 'Napi\u0161te vlastn\u00ed zpr\u00e1vu a vyberte skupiny, kter\u00fdm se zobraz\u00ed.'
       : 'Vyberte orienta\u010dn\u00ed \u010das a skupiny, kter\u00fdm se zobraz\u00ed upozorn\u011bn\u00ed.';
     if (text) text.value = '';
-    if (minutes) minutes.value = '5';
+    const now = new Date();
+    const startDefault = new Date(now.getTime() + 10 * 60000);
+    const endDefault = new Date(now.getTime() + 45 * 60000);
+    const fmt = d => `${String(d.getHours()).padStart(2, '0')}:${String(d.getMinutes()).padStart(2, '0')}`;
+    if (startTime) startTime.value = fmt(startDefault);
+    if (endTime) endTime.value = fmt(endDefault);
     setMaintenanceTargetDefaults();
-    setTimeout(() => (action === 'message' ? text : minutes)?.focus(), 20);
+    setTimeout(() => (action === 'message' ? text : startTime)?.focus(), 20);
   }
 
   async function submitMaintenanceAdminForm() {
@@ -1328,14 +1358,25 @@
         return;
       }
       if (maintenanceAdminAction === 'maintenance') {
-        const raw = document.getElementById('maintenance-admin-minutes')?.value || '5';
-        const minutes = Number(String(raw).replace(',', '.'));
-        if (!Number.isFinite(minutes) || minutes < 0) {
-          alert('Zadejte pros\u00edm po\u010det minut, nap\u0159\u00edklad 5 nebo 10.');
+        const startValue = document.getElementById('maintenance-admin-start-time')?.value || '';
+        const endValue = document.getElementById('maintenance-admin-end-time')?.value || '';
+        if (!startValue || !/^\d{2}:\d{2}$/.test(startValue)) {
+          alert('Vyberte pros\u00edm \u010das zah\u00e1jen\u00ed \u00fadr\u017eby.');
           return;
         }
-        const startsAt = new Date(Date.now() + Math.round(minutes * 60000)).toISOString();
-        await setMaintenanceMode('warning', { noticeType: 'maintenance', startsAt, message: maintenanceStartMessage(startsAt), targetGroups });
+        const toIso = (value, baseIso = null) => {
+          const [h, m] = String(value).split(':').map(Number);
+          const d = new Date();
+          d.setHours(h, m, 0, 0);
+          if (baseIso) {
+            const base = new Date(baseIso);
+            if (!Number.isNaN(base.getTime()) && d.getTime() <= base.getTime()) d.setDate(d.getDate() + 1);
+          }
+          return d.toISOString();
+        };
+        const startsAt = toIso(startValue);
+        const endsAt = endValue && /^\d{2}:\d{2}$/.test(endValue) ? toIso(endValue, startsAt) : null;
+        await setMaintenanceMode('warning', { noticeType: 'maintenance', startsAt, endsAt, message: maintenanceWarningMessage(startsAt, endsAt), targetGroups });
         closeMaintenanceAdminModal();
       }
     } catch (err) {
@@ -1858,14 +1899,13 @@
   function refreshAutoLogoutPref() {
     const wrap = document.getElementById('auto-logout-choices');
     if (!wrap) return;
-    const current = [0, 30, 60, 720].includes(Number(portalPrefs.auto_logout_minutes))
+    const current = [30, 60, 360].includes(Number(portalPrefs.auto_logout_minutes))
       ? Number(portalPrefs.auto_logout_minutes)
-      : 60;
+      : 30;
     const choices = [
-      [0, 'Nikdy'],
       [30, '30 minut'],
       [60, '1 hod.'],
-      [720, '12 hod.']
+      [360, '6 hod.']
     ];
     wrap.innerHTML = choices.map(([minutes, label]) =>
       `<button type="button" class="settings-choice${minutes === current ? ' active' : ''}" onclick="saveAutoLogout(${minutes})">${label}</button>`

@@ -1581,6 +1581,13 @@ body[data-active-tab="pozadavky"] #schedule-legend .legend-item.schedule-dynamic
     --sched-sum-w: var(--print-sum-w, 18px);
     --sched-hrs-w: var(--print-hrs-w, 22px);
     --sched-pm-w: var(--print-pm-w, 18px);
+    --print-wd-bg: var(--col-wd-bg, #fff);
+    --print-wn-bg: var(--col-wn-bg, #e5e5e2);
+    --print-kd-bg: var(--col-kd-bg, #d8e2d4);
+    --print-kn-bg: var(--col-kn-bg, #c9d6c5);
+    --print-holiday-bg: color-mix(in srgb, var(--accent) 16%, #fff);
+    --print-name-bg: var(--col-name-bg, #eeeeeb);
+    --print-sum-bg: var(--col-sum-bg, #f6f6f3);
     border-collapse: separate !important;
     white-space: nowrap !important;
     table-layout: fixed !important;
@@ -1588,7 +1595,7 @@ body[data-active-tab="pozadavky"] #schedule-legend .legend-item.schedule-dynamic
     min-width: var(--print-root-w, 196mm) !important;
     max-width: var(--print-root-w, 196mm) !important;
     font-size: var(--print-font, 5.2px) !important;
-    background: #fff !important;
+    background: var(--print-wd-bg) !important;
     -webkit-print-color-adjust: exact;
     print-color-adjust: exact;
   }
@@ -1606,7 +1613,7 @@ body[data-active-tab="pozadavky"] #schedule-legend .legend-item.schedule-dynamic
     position: static !important;
     top: auto !important;
     z-index: auto !important;
-    background: #f8f8f5 !important;
+    background: var(--print-sum-bg) !important;
     color: #000 !important;
   }
   body.print-schedule #print-root .sched-tbl thead th,
@@ -1632,7 +1639,7 @@ body[data-active-tab="pozadavky"] #schedule-legend .legend-item.schedule-dynamic
     max-width: var(--print-name-w, 82px) !important;
     width: var(--print-name-w, 82px) !important;
     font-size: var(--print-font, 6.5px) !important;
-    background: #eeeeeb !important;
+    background: var(--print-name-bg) !important;
     color: #000 !important;
     font-weight: 600 !important;
     overflow: hidden !important;
@@ -1721,7 +1728,7 @@ body[data-active-tab="pozadavky"] #schedule-legend .legend-item.schedule-dynamic
     min-width: var(--print-sum-w, 16px) !important;
     max-width: var(--print-sum-w, 16px) !important;
     font-size: var(--print-font, 6.5px) !important;
-    background: #f6f6f3 !important;
+    background: var(--print-sum-bg) !important;
   }
   body.print-schedule #print-root .sched-tbl .cell-val {
     font-size: var(--print-font, 6.5px) !important;
@@ -1730,30 +1737,30 @@ body[data-active-tab="pozadavky"] #schedule-legend .legend-item.schedule-dynamic
     color: #000 !important;
   }
   body.print-schedule #print-root .sched-tbl td.sched-cell {
-    background: #fff !important;
+    background: var(--print-wd-bg) !important;
   }
   body.print-schedule #print-root .sched-tbl td.sched-cell[data-dn="n"] {
-    background: #e5e5e2 !important;
+    background: var(--print-wn-bg) !important;
   }
   body.print-schedule #print-root .sched-tbl td.sched-cell.vsedni-noc,
   body.print-schedule #print-root .sched-tbl td.sched-cell.night,
   body.print-schedule #print-root .sched-tbl td.sched-cell.col-night,
   body.print-schedule #print-root .sched-tbl td.sched-cell.cell-wn {
-    background: #e5e5e2 !important;
+    background: var(--print-wn-bg) !important;
   }
   body.print-schedule #print-root .sched-tbl td.sched-cell.weekend,
   body.print-schedule #print-root .sched-tbl td.sched-cell.is-weekend,
   body.print-schedule #print-root .sched-tbl td.sched-cell.vikend,
   body.print-schedule #print-root .sched-tbl td.sched-cell.cell-kd {
-    background: #d8e2d4 !important;
+    background: var(--print-kd-bg) !important;
   }
   body.print-schedule #print-root .sched-tbl td.sched-cell.cell-kn {
-    background: #c9d6c5 !important;
+    background: var(--print-kn-bg) !important;
   }
   body.print-schedule #print-root .sched-tbl td.sched-cell.holiday,
   body.print-schedule #print-root .sched-tbl td.sched-cell.is-holiday,
   body.print-schedule #print-root .sched-tbl td.sched-cell.svatek {
-    background: #f2dddd !important;
+    background: var(--print-holiday-bg) !important;
   }
   body.print-schedule #print-root .sched-tbl td.sched-cell.req-changed,
   body.print-schedule #print-root .sched-tbl td.sched-cell.unavailable,
@@ -3082,6 +3089,7 @@ body.hide-req-changes .sched-cell[data-req-tip]:hover::after {
     <button class="tb-btn" id="btn-import-unmatched" style="display:none">Neznámá jména</button>
     <button class="tb-btn" id="btn-draft-delete">Smazat</button>
     <button class="tb-btn" id="btn-draft-trash">Koš</button>
+    <button class="tb-btn" id="btn-tvorba-print">Tisk</button>
     <div class="rt-fonds-info" style="display:none">
       <span class="fonds-label">Fond HPP:</span><strong class="rt-fond-hpp-info">-</strong>
       <span class="fonds-label">Fond ZPP:</span><strong class="rt-fond-zpp-info">-</strong>
@@ -3094,6 +3102,7 @@ body.hide-req-changes .sched-cell[data-req-tip]:hover::after {
     <select id="pub-sel" class="tb-btn" style="padding:4px 6px;font-size:12px;"></select>
     <button class="tb-btn" id="btn-view-edit" data-mobile-label="Editovat">Editovat</button>
     <button class="tb-btn" id="btn-view-cancel" data-mobile-label="Zrušit" style="display:none">Zrušit</button>
+    <button class="tb-btn" id="btn-vr-print">Tisk</button>
     <span id="lock-info"></span>
     <div class="rt-fonds-info" style="display:none">
       <span class="fonds-label">Fond HPP:</span><strong class="rt-fond-hpp-info">-</strong>
@@ -5642,8 +5651,15 @@ function rebuildPrintScheduleHeader(table) {
 
 function printScheduleTab(tab) {
   document.getElementById('print-root')?.remove();
-  const cls = tab === 'pozadavky' ? 'print-req' : 'print-public';
-  const tblId = tab === 'pozadavky' ? 'pozadavky-tbl' : 'public-rozpis-tbl';
+  const printCfg = {
+    pozadavky: { cls: 'print-req', tblId: 'pozadavky-tbl', title: 'Požadavky na směny' },
+    public: { cls: 'print-public', tblId: 'public-rozpis-tbl', title: 'Rozpis směn' },
+    tvorba: { cls: 'print-public', tblId: 'tvorba-tbl', title: 'Tvorba rozpisu' },
+    rozpis: { cls: 'print-public', tblId: 'rozpis-tbl', title: 'Rozpis VR' }
+  };
+  const cfg = printCfg[tab] || printCfg.public;
+  const cls = cfg.cls;
+  const tblId = cfg.tblId;
   const srcTbl = document.getElementById(tblId);
   if (!srcTbl) return;
 
@@ -5652,7 +5668,7 @@ function printScheduleTab(tab) {
   const monthTitle = `${MONTH_NAMES[(state.month || 1) - 1] || ''} ${state.year || ''}`.trim();
   const title = document.createElement('div');
   title.className = 'print-title';
-  title.textContent = `${tab === 'pozadavky' ? 'Po\u017eadavky na sm\u011bny' : 'Rozpis sm\u011bn'} - ${monthTitle}`;
+  title.textContent = `${cfg.title} - ${monthTitle}`;
 
   const wrap = document.createElement('div');
   wrap.className = 'schedule-wrap';
@@ -7073,7 +7089,7 @@ function normalizeScheduleCellValue(val) {
   if (!raw) return '';
   const up = raw.toUpperCase();
   if (raw.length !== 1) return null;
-  if (up === 'X' || up === 'Y' || up === 'Z' || up === 'Ž') return smartCase(raw);
+  if (up === 'X' || up === 'Y' || up === 'Z' || up === 'Ž') return up.toLowerCase();
   const allowed = getAllowedScheduleHotelLetterSet();
   return allowed.has(up) ? up : null;
 }
@@ -14539,6 +14555,7 @@ document.addEventListener('DOMContentLoaded', async () => {
   document.getElementById('btn-draft-new').addEventListener('click', newDraft);
   document.getElementById('btn-publish').addEventListener('click', publishSchedule);
   document.getElementById('btn-draft-trash').addEventListener('click', showTrash);
+  document.getElementById('btn-tvorba-print')?.addEventListener('click', () => printScheduleTab('tvorba'));
   document.getElementById('btn-show-hidden').addEventListener('click', () => {
     document.querySelectorAll('#tvorba-tbl .staff-tbody tr.row-hidden').forEach(tr => {
       tr.classList.remove('row-hidden');
@@ -14614,6 +14631,7 @@ document.addEventListener('DOMContentLoaded', async () => {
   document.getElementById('btn-schedule-log').addEventListener('click', showScheduleLog);
   document.getElementById('btn-view-edit').addEventListener('click', toggleViewEdit);
   document.getElementById('btn-view-cancel')?.addEventListener('click', cancelViewEdit);
+  document.getElementById('btn-vr-print')?.addEventListener('click', () => printScheduleTab('rozpis'));
   document.getElementById('btn-public-print')?.addEventListener('click', () => printScheduleTab('public'));
 
   // ── Trash modal (drafts) ──

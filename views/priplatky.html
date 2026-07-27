@@ -819,10 +819,9 @@ function acFilter(val) {
 
   const active = recepniAll.filter(r => r.active);
   const filtered = active.filter(r => {
-    // Match login prefix OR příjmení (first word of full_name) prefix — case insensitive
-    const loginL   = r.login.toLowerCase();
-    const prijmeni = r.full_name.toLowerCase().split(' ')[0];
-    return loginL.startsWith(v) || prijmeni.startsWith(v);
+    const loginL = String(r.login || '').toLowerCase();
+    const nameParts = String(r.full_name || '').toLowerCase().split(/\s+/).filter(Boolean);
+    return loginL.startsWith(v) || nameParts.some(part => part.startsWith(v));
   }).slice(0, 12);
 
   if (!filtered.length) { listEl.innerHTML = ''; listEl.classList.add('hidden'); return; }
