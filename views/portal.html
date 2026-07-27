@@ -890,7 +890,7 @@
   <div class="maintenance-card">
     <img src="/static/logo.png" alt="AVE Hotels">
     <h1>Probíhá údržba systému</h1>
-    <p id="maintenance-screen-message">Na webu momentálně probíhá údržba. Zkuste prosím později.</p>
+    <p id="maintenance-screen-message">P&#345;edpokl&aacute;dan&yacute; &#269;as ukon&#269;en&iacute; bude up&#345;esn&#283;n.</p>
     <p class="muted">Děkujeme za pochopení.</p>
   </div>
 </div>
@@ -1060,7 +1060,7 @@
   let portalPrefs = {};
   let portalPerms = null;
   let portalHotelLetters = ['A','B','C','D','E','G','H','I','J','L','M','N','S','T','U'];
-  const MAINTENANCE_DEFAULT_MESSAGE = 'Na webu momentálně probíhá údržba. Zkuste prosím později.';
+  const MAINTENANCE_DEFAULT_MESSAGE = 'Předpokládaný čas ukončení bude upřesněn.';
   const MAINTENANCE_WARNING_MESSAGE = 'Za chvíli proběhne údržba systému. Prosím uložte si rozpracované změny.';
   const DEFAULT_MAINTENANCE_TARGETS = ['vr', 'recepcni', 'pb6'];
   let portalMaintenance = { mode: 'off', noticeType: 'maintenance', message: MAINTENANCE_DEFAULT_MESSAGE, startsAt: null, endsAt: null, targetGroups: [...DEFAULT_MAINTENANCE_TARGETS], targeted: true, updatedAt: null, canControl: false };
@@ -1131,6 +1131,13 @@
     return `${date.toLocaleTimeString('cs-CZ', { hour: '2-digit', minute: '2-digit' })} hod.`;
   }
 
+  function maintenanceActiveMessage(state) {
+    const end = maintenanceTimeLabel(state?.endsAt);
+    return end
+      ? `Předpokládaný čas ukončení: ${end}`
+      : 'Předpokládaný čas ukončení bude upřesněn.';
+  }
+
   function maintenanceWarningMessage(startsAt, endsAt) {
     const start = maintenanceTimeLabel(startsAt);
     const end = maintenanceTimeLabel(endsAt);
@@ -1152,7 +1159,7 @@
     const screen = document.getElementById('maintenance-screen');
     const msg = document.getElementById('maintenance-screen-message');
     if (!screen) return;
-    if (msg) msg.textContent = state?.message || MAINTENANCE_DEFAULT_MESSAGE;
+    if (msg) msg.textContent = maintenanceActiveMessage(state);
     screen.classList.toggle('show', !!show);
     screen.setAttribute('aria-hidden', show ? 'false' : 'true');
   }
@@ -1389,7 +1396,7 @@
       if (portalMaintenance.mode === 'on') {
         if (confirm('Vypnout re\u017eim \u00fadr\u017eby a znovu pustit u\u017eivatele na web?')) await setMaintenanceMode('off');
       } else if (confirm('Opravdu zapnout \u00fadr\u017ebu hned? Ostatn\u00ed u\u017eivatel\u00e9 uvid\u00ed jen hl\u00e1\u0161en\u00ed o \u00fadr\u017eb\u011b.')) {
-        await setMaintenanceMode('on');
+        await setMaintenanceMode('on', { endsAt: portalMaintenance.endsAt || null });
       }
       closeMaintenanceAdminModal();
     } catch (err) {

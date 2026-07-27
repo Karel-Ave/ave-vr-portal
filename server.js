@@ -86,7 +86,7 @@ const requirePortalAccess = (req, res, next) => {
 };
 
 const MAINTENANCE_SETTINGS_KEY = 'maintenance';
-const MAINTENANCE_DEFAULT_MESSAGE = 'Na webu momentálně probíhá údržba. Zkuste prosím později.';
+const MAINTENANCE_DEFAULT_MESSAGE = 'Předpokládaný čas ukončení bude upřesněn.';
 const MAINTENANCE_WARNING_MESSAGE = 'Pozor: Bude probíhat údržba systému. Prosím uložte si rozpracované změny.';
 const MAINTENANCE_TARGET_GROUPS = new Set(['admin', 'vr', 'recepcni', 'pb6', 'hotely']);
 const MAINTENANCE_DEFAULT_TARGET_GROUPS = ['vr', 'recepcni', 'pb6'];
@@ -148,7 +148,7 @@ async function saveMaintenanceState(input, user) {
     noticeType: input?.noticeType,
     message: input?.message,
     startsAt: input?.mode === 'warning' ? input?.startsAt : null,
-    endsAt: input?.mode === 'warning' ? input?.endsAt : null,
+    endsAt: input?.mode === 'warning' || input?.mode === 'on' ? input?.endsAt : null,
     targetGroups: input?.targetGroups,
     updatedAt: now,
     updatedBy: user?.username || user?.name || user?.id || null
@@ -167,8 +167,15 @@ function maintenanceWantsJson(req) {
   return req.path.startsWith('/api/') || req.xhr || String(req.headers.accept || '').includes('application/json');
 }
 
+function maintenanceEndLabel(value) {
+  const date = value ? new Date(value) : null;
+  if (!date || Number.isNaN(date.getTime())) return '';
+  return date.toLocaleTimeString('cs-CZ', { hour: '2-digit', minute: '2-digit' }) + ' hod.';
+}
+
 function maintenanceHtml(state) {
-  const message = String(state?.message || MAINTENANCE_DEFAULT_MESSAGE)
+  const endLabel = maintenanceEndLabel(state?.endsAt);
+  const message = (endLabel ? `Předpokládaný čas ukončení: ${endLabel}` : 'Předpokládaný čas ukončení bude upřesněn.')
     .replace(/&/g, '&amp;')
     .replace(/</g, '&lt;')
     .replace(/>/g, '&gt;')
@@ -596,7 +603,7 @@ app.post('/api/maintenance', requireLogin, requirePermDefault('admin', 'maintena
     const startsAtTime = req.body?.startsAt ? Date.parse(req.body.startsAt) : NaN;
     const endsAtTime = req.body?.endsAt ? Date.parse(req.body.endsAt) : NaN;
     const startsAt = mode === 'warning' && Number.isFinite(startsAtTime) ? new Date(startsAtTime).toISOString() : null;
-    const endsAt = mode === 'warning' && Number.isFinite(endsAtTime) ? new Date(endsAtTime).toISOString() : null;
+    const endsAt = (mode === 'warning' || mode === 'on') && Number.isFinite(endsAtTime) ? new Date(endsAtTime).toISOString() : null;
     const noticeType = ['maintenance', 'message'].includes(req.body?.noticeType) ? req.body.noticeType : 'maintenance';
     const targetGroups = Array.isArray(req.body?.targetGroups)
       ? [...new Set(req.body.targetGroups.map(v => String(v || '').trim().toLowerCase()).filter(v => MAINTENANCE_TARGET_GROUPS.has(v)))]
