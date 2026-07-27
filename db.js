@@ -274,7 +274,7 @@ async function init() {
     } },
     priplatky: { enabled: true, visible: true, buttons: { viewAll: true, add: true, edit: true, delete: true, export: true, template: true, settings: true, manageReceptionists: true, manageTexts: true, internalNote: true } },
     blacklist: { enabled: true, visible: true, buttons: { view: true, add: true, remove: true, edit: true, export_pdf: true, export_email: true, edit_intro: true, history: true, history_delete: true } },
-    admin: { enabled: true, visible: true, buttons: { users_add: true, users_edit: true, users_delete: true, user_permissions: true, groups_manage: true, logs_view: true, logs_delete: true } }
+    admin: { enabled: true, visible: true, buttons: { users_add: true, users_edit: true, users_delete: true, user_permissions: true, groups_manage: true, logs_view: true, logs_delete: true, maintenance: true } }
   });
   const vedPerms    = JSON.stringify({
     raspis: { enabled: true, visible: true, buttons: {
@@ -287,7 +287,7 @@ async function init() {
     } },
     priplatky: { enabled: true, visible: true, buttons: { viewAll: false, add: true, edit: true, delete: false, export: true, template: false, settings: false, manageReceptionists: false, manageTexts: false, internalNote: true } },
     blacklist: { enabled: true, visible: true, buttons: { view: true, add: true, remove: true, edit: true, export_pdf: true, export_email: true, edit_intro: false, history: true, history_delete: false } },
-    admin: { enabled: false, visible: false, buttons: { users_add: false, users_edit: false, users_delete: false, user_permissions: false, groups_manage: false, logs_view: false, logs_delete: false } }
+    admin: { enabled: false, visible: false, buttons: { users_add: false, users_edit: false, users_delete: false, user_permissions: false, groups_manage: false, logs_view: false, logs_delete: false, maintenance: false } }
   });
   const hotelPerms = JSON.stringify({
     raspis: { enabled: true, visible: true, buttons: {
@@ -300,7 +300,7 @@ async function init() {
     } },
     priplatky: { enabled: false, visible: false, buttons: { viewAll: false, add: false, edit: false, delete: false, export: false, template: false, settings: false, manageReceptionists: false, manageTexts: false, internalNote: false } },
     blacklist: { enabled: false, visible: false, buttons: { view: false, add: false, remove: false, edit: false, export_pdf: false, export_email: false, edit_intro: false, history: false, history_delete: false } },
-    admin: { enabled: false, visible: false, buttons: { users_add: false, users_edit: false, users_delete: false, user_permissions: false, groups_manage: false, logs_view: false, logs_delete: false } }
+    admin: { enabled: false, visible: false, buttons: { users_add: false, users_edit: false, users_delete: false, user_permissions: false, groups_manage: false, logs_view: false, logs_delete: false, maintenance: false } }
   });
   const recepPerms  = JSON.stringify({
     raspis: { enabled: true, visible: true, buttons: {
@@ -313,7 +313,7 @@ async function init() {
     } },
     priplatky: { enabled: true, visible: true, buttons: { viewAll: false, add: true, edit: true, delete: false, export: true, template: false, settings: false, manageReceptionists: false, manageTexts: false, internalNote: false } },
     blacklist: { enabled: true, visible: true, buttons: { view: true, add: false, remove: false, edit: false, export_pdf: false, export_email: false, edit_intro: false, history: false, history_delete: false } },
-    admin: { enabled: false, visible: false, buttons: { users_add: false, users_edit: false, users_delete: false, user_permissions: false, groups_manage: false, logs_view: false, logs_delete: false } }
+    admin: { enabled: false, visible: false, buttons: { users_add: false, users_edit: false, users_delete: false, user_permissions: false, groups_manage: false, logs_view: false, logs_delete: false, maintenance: false } }
   });
   const pb6Perms = JSON.stringify({
     raspis: { enabled: true, visible: true, buttons: {
@@ -326,7 +326,7 @@ async function init() {
     } },
     priplatky: { enabled: false, visible: false, buttons: { viewAll: false, add: false, edit: false, delete: false, export: false, template: false, settings: false, manageReceptionists: false, manageTexts: false, internalNote: false } },
     blacklist: { enabled: false, visible: false, buttons: { view: false, add: false, remove: false, edit: false, export_pdf: false, export_email: false, edit_intro: false, history: false, history_delete: false } },
-    admin: { enabled: false, visible: false, buttons: { users_add: false, users_edit: false, users_delete: false, user_permissions: false, groups_manage: false, logs_view: false, logs_delete: false } }
+    admin: { enabled: false, visible: false, buttons: { users_add: false, users_edit: false, users_delete: false, user_permissions: false, groups_manage: false, logs_view: false, logs_delete: false, maintenance: false } }
   });
   await db.query(`INSERT INTO permission_groups (name, display_name, perms, sublist) VALUES ('admin','Admin',$1,'VR'),('vedoucí','VR',$2,'VR'),('recepční','Recepční',$3,'Recepční'),('pb6','PB6',$5,'PB6'),('hotely','Hotely',$4,'Hotely') ON CONFLICT (name) DO NOTHING`, [adminPerms, vedPerms, recepPerms, hotelPerms, pb6Perms]);
   await db.query(`UPDATE users SET role='hotely' WHERE role='widget'`);

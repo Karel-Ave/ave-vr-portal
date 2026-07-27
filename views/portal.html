@@ -288,6 +288,22 @@
   .maintenance-warning-box h2 { margin: 0 0 10px; color: var(--accent-h); font-size: 20px; }
   .maintenance-warning-box p { margin: 0 0 18px; line-height: 1.45; }
   .maintenance-warning-actions { display: flex; justify-content: flex-end; }
+  .maintenance-admin-box { width: min(620px, 100%); }
+  .maintenance-admin-actions { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 10px; margin-top: 18px; }
+  .maintenance-admin-actions button { min-height: 42px; justify-content: center; }
+  .maintenance-admin-actions .wide { grid-column: 1 / -1; }
+  .maintenance-admin-form { display: grid; gap: 14px; margin-top: 16px; }
+  .maintenance-admin-row { display: grid; gap: 6px; }
+  .maintenance-admin-row label, .maintenance-targets legend { font-weight: 700; color: var(--accent-h); }
+  .maintenance-admin-row textarea, .maintenance-admin-row input { width: 100%; border: 1px solid var(--border); border-radius: 8px; padding: 9px 10px; background: var(--input-bg); color: var(--text); font: inherit; }
+  .maintenance-admin-row textarea { min-height: 92px; resize: vertical; }
+  .maintenance-targets { border: 1px solid var(--border); border-radius: 10px; padding: 12px; }
+  .maintenance-target-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 8px 12px; margin-top: 10px; }
+  .maintenance-target-item { display: flex; align-items: center; gap: 8px; font-weight: 700; }
+  .maintenance-admin-footer { display: flex; justify-content: flex-end; gap: 10px; margin-top: 4px; }
+  @media (max-width: 560px) {
+    .maintenance-admin-actions, .maintenance-target-grid { grid-template-columns: 1fr; }
+  }
 
   /* ── Obsah ── */
   #cards-view {
@@ -887,6 +903,43 @@
     </div>
   </div>
 </div>
+<div id="maintenance-admin-modal" class="maintenance-warning-backdrop" aria-hidden="true">
+  <div class="maintenance-warning-box maintenance-admin-box" role="dialog" aria-modal="true" aria-labelledby="maintenance-admin-title">
+    <h2 id="maintenance-admin-title">&#218;dr&#382;ba a zpr&#225;vy</h2>
+    <p id="maintenance-admin-help">Vyberte akci.</p>
+    <div id="maintenance-admin-actions" class="maintenance-admin-actions">
+      <button type="button" class="btn-primary" id="maintenance-admin-message">Vlastn&#237; pop-up zpr&#225;va</button>
+      <button type="button" class="btn-secondary" id="maintenance-admin-warning">Upozorn&#283;n&#237; na &#250;dr&#382;bu</button>
+      <button type="button" class="btn-secondary" id="maintenance-admin-toggle">Zapnout &#250;dr&#382;bu hned</button>
+      <button type="button" class="btn-secondary" id="maintenance-admin-clear">Zru&#353;it aktu&#225;ln&#237; zpr&#225;vu</button>
+      <button type="button" class="btn-secondary wide" id="maintenance-admin-close">Zav&#345;&#237;t</button>
+    </div>
+    <div id="maintenance-admin-form" class="maintenance-admin-form" hidden>
+      <div class="maintenance-admin-row" id="maintenance-message-row">
+        <label for="maintenance-admin-text">Text zpr&#225;vy</label>
+        <textarea id="maintenance-admin-text" placeholder="Napi&#353;te zpr&#225;vu pro u&#382;ivatele..."></textarea>
+      </div>
+      <div class="maintenance-admin-row" id="maintenance-minutes-row">
+        <label for="maintenance-admin-minutes">Za kolik minut p&#345;ibli&#382;n&#283; za&#269;ne &#250;dr&#382;ba</label>
+        <input id="maintenance-admin-minutes" type="number" min="0" step="1" value="5">
+      </div>
+      <fieldset class="maintenance-targets">
+        <legend>Komu zpr&#225;vu zobrazit</legend>
+        <div class="maintenance-target-grid">
+          <label class="maintenance-target-item"><input type="checkbox" name="maintenance-target" value="admin"> Admin</label>
+          <label class="maintenance-target-item"><input type="checkbox" name="maintenance-target" value="vr" checked> VR</label>
+          <label class="maintenance-target-item"><input type="checkbox" name="maintenance-target" value="recepcni" checked> Recep&#269;n&#237;</label>
+          <label class="maintenance-target-item"><input type="checkbox" name="maintenance-target" value="pb6" checked> PB6</label>
+          <label class="maintenance-target-item"><input type="checkbox" name="maintenance-target" value="hotely"> Hotely</label>
+        </div>
+      </fieldset>
+      <div class="maintenance-admin-footer">
+        <button type="button" class="btn-secondary" id="maintenance-admin-back">Zp&#283;t</button>
+        <button type="button" class="btn-primary" id="maintenance-admin-send">Odeslat</button>
+      </div>
+    </div>
+  </div>
+</div>
 
 <!-- Loading overlay -->
 <div id="app-loading">
@@ -1004,7 +1057,9 @@
   let portalHotelLetters = ['A','B','C','D','E','G','H','I','J','L','M','N','S','T','U'];
   const MAINTENANCE_DEFAULT_MESSAGE = 'Na webu momentálně probíhá údržba. Zkuste prosím později.';
   const MAINTENANCE_WARNING_MESSAGE = 'Za chvíli proběhne údržba systému. Prosím uložte si rozpracované změny.';
-  let portalMaintenance = { mode: 'off', message: MAINTENANCE_DEFAULT_MESSAGE, startsAt: null, updatedAt: null };
+  const DEFAULT_MAINTENANCE_TARGETS = ['vr', 'recepcni', 'pb6'];
+  let portalMaintenance = { mode: 'off', noticeType: 'maintenance', message: MAINTENANCE_DEFAULT_MESSAGE, startsAt: null, targetGroups: [...DEFAULT_MAINTENANCE_TARGETS], targeted: true, updatedAt: null, canControl: false };
+  let maintenanceAdminAction = null;
   let portalMaintenanceTimer = null;
 
   function makeAppNavButton(c) {
@@ -1031,7 +1086,7 @@
   }
 
   function maintenanceStamp(state) {
-    return state?.updatedAt || `${state?.mode || 'off'}:${state?.noticeType || 'maintenance'}:${state?.startsAt || ''}:${state?.message || ''}`;
+    return state?.updatedAt || `${state?.mode || 'off'}:${state?.noticeType || 'maintenance'}:${state?.startsAt || ''}:${(state?.targetGroups || []).join(',')}:${state?.message || ''}`;
   }
 
   function maintenanceStartMessage(startsAt) {
@@ -1040,15 +1095,15 @@
       ? date.toLocaleTimeString('cs-CZ', { hour: '2-digit', minute: '2-digit' })
       : '';
     return time
-      ? `?dr?ba za?ne p?ibli?n? v ${time}. Pros?m ulo?te si rozpracovan? zm?ny.`
+      ? `\u00dadr\u017eba za\u010dne p\u0159ibli\u017en\u011b v ${time}. Pros\u00edm ulo\u017ete si rozpracovan\u00e9 zm\u011bny.`
       : MAINTENANCE_WARNING_MESSAGE;
   }
 
   function maintenanceRemainingLabel(startsAt) {
     const date = startsAt ? new Date(startsAt) : null;
-    if (!date || Number.isNaN(date.getTime())) return '?dr?ba brzy';
+    if (!date || Number.isNaN(date.getTime())) return '\u00dadr\u017eba brzy';
     const minutes = Math.max(1, Math.ceil((date.getTime() - Date.now()) / 60000));
-    return minutes <= 1 ? '?dr?ba za 1 min' : `?dr?ba za ${minutes} min`;
+    return minutes <= 1 ? '\u00dadr\u017eba za 1 min' : `\u00dadr\u017eba za ${minutes} min`;
   }
 
   function setMaintenanceScreen(show, state = portalMaintenance) {
@@ -1071,22 +1126,28 @@
     const stamp = maintenanceStamp(state);
     if (sessionStorage.getItem('ave-maintenance-warning-seen') === stamp) return;
     const modal = document.getElementById('maintenance-warning-modal');
+    const title = document.getElementById('maintenance-warning-title');
     const msg = document.getElementById('maintenance-warning-message');
     if (!modal) return;
+    if (title) title.textContent = state?.noticeType === 'message' ? 'Zpr\u00e1va' : 'Pl\u00e1novan\u00e1 \u00fadr\u017eba';
     if (msg) msg.textContent = state?.message || MAINTENANCE_WARNING_MESSAGE;
     modal.classList.add('show');
     modal.setAttribute('aria-hidden', 'false');
   }
 
+  function canControlMaintenance() {
+    return portalUser?.role === 'admin' || portalPerms?.admin?.buttons?.maintenance === true || portalMaintenance?.canControl === true;
+  }
+
   function updateMaintenanceButtons(state = portalMaintenance) {
-    const isAdmin = portalUser?.role === 'admin';
+    const canControl = canControlMaintenance();
     [document.getElementById('btn-maintenance'), document.getElementById('mob-maintenance')].forEach(btn => {
       if (!btn) return;
-      btn.classList.toggle('visible', isAdmin);
-      btn.hidden = !isAdmin;
+      btn.classList.toggle('visible', canControl);
+      btn.hidden = !canControl;
       btn.classList.toggle('maintenance-warning', state.mode === 'warning');
       btn.classList.toggle('maintenance-on', state.mode === 'on');
-      btn.textContent = state.mode === 'on' ? 'Údržba aktivní' : (state.mode === 'warning' ? 'Údržba brzy' : 'Údržba');
+      btn.textContent = state.mode === 'on' ? '\u00dadr\u017eba aktivn\u00ed' : (state.mode === 'warning' ? '\u00dadr\u017eba brzy' : '\u00dadr\u017eba');
     });
   }
 
@@ -1096,6 +1157,9 @@
       noticeType: state?.noticeType || 'maintenance',
       message: state?.message || (state?.mode === 'warning' ? MAINTENANCE_WARNING_MESSAGE : MAINTENANCE_DEFAULT_MESSAGE),
       startsAt: state?.startsAt || null,
+      targetGroups: Array.isArray(state?.targetGroups) ? state.targetGroups : [...DEFAULT_MAINTENANCE_TARGETS],
+      targeted: state?.targeted !== false,
+      canControl: state?.canControl === true,
       updatedAt: state?.updatedAt || null,
       updatedBy: state?.updatedBy || null
     };
@@ -1109,7 +1173,7 @@
       setMaintenanceScreen(true, portalMaintenance);
     } else {
       setMaintenanceScreen(false, portalMaintenance);
-      if (portalMaintenance.mode === 'warning') showMaintenanceWarning(portalMaintenance);
+      if (portalMaintenance.mode === 'warning' && portalMaintenance.targeted !== false) showMaintenanceWarning(portalMaintenance);
     }
   }
 
@@ -1131,67 +1195,134 @@
       method: 'POST',
       credentials: 'include',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ mode, noticeType, message, startsAt })
+      body: JSON.stringify({ mode, noticeType, message, startsAt, targetGroups: options.targetGroups || DEFAULT_MAINTENANCE_TARGETS })
     });
     const state = await res.json().catch(() => ({}));
     if (!res.ok || state.ok === false) throw new Error(state.msg || 'Režim údržby se nepodařilo uložit.');
     applyMaintenanceState(state);
   }
 
-  async function handleMaintenanceClick() {
+  function closeMaintenanceAdminModal() {
+    const modal = document.getElementById('maintenance-admin-modal');
+    if (!modal) return;
+    modal.classList.remove('show');
+    modal.setAttribute('aria-hidden', 'true');
+  }
+
+  function setMaintenanceTargetDefaults() {
+    const defaults = new Set(DEFAULT_MAINTENANCE_TARGETS);
+    document.querySelectorAll('input[name="maintenance-target"]').forEach(input => {
+      input.checked = defaults.has(input.value);
+    });
+  }
+
+  function selectedMaintenanceTargetGroups() {
+    return Array.from(document.querySelectorAll('input[name="maintenance-target"]:checked')).map(input => input.value);
+  }
+
+  function openMaintenanceAdminModal() {
+    if (!canControlMaintenance()) return;
+    const modal = document.getElementById('maintenance-admin-modal');
+    const actions = document.getElementById('maintenance-admin-actions');
+    const form = document.getElementById('maintenance-admin-form');
+    const help = document.getElementById('maintenance-admin-help');
+    const toggle = document.getElementById('maintenance-admin-toggle');
+    const clear = document.getElementById('maintenance-admin-clear');
+    if (!modal) return;
+    maintenanceAdminAction = null;
+    if (actions) actions.hidden = false;
+    if (form) form.hidden = true;
+    if (help) help.textContent = portalMaintenance.mode === 'on'
+      ? '\u00dadr\u017eba je aktivn\u00ed. M\u016f\u017eete ji vypnout, nebo poslat novou zpr\u00e1vu.'
+      : (portalMaintenance.mode === 'warning' ? 'Je aktivn\u00ed pop-up zpr\u00e1va. M\u016f\u017eete ji zm\u011bnit, zru\u0161it, nebo zapnout \u00fadr\u017ebu.' : 'Vyberte akci.');
+    if (toggle) toggle.textContent = portalMaintenance.mode === 'on' ? 'Vypnout \u00fadr\u017ebu' : 'Zapnout \u00fadr\u017ebu hned';
+    if (clear) clear.hidden = portalMaintenance.mode !== 'warning';
+    modal.classList.add('show');
+    modal.setAttribute('aria-hidden', 'false');
+  }
+
+  function openMaintenanceForm(action) {
+    maintenanceAdminAction = action;
+    const actions = document.getElementById('maintenance-admin-actions');
+    const form = document.getElementById('maintenance-admin-form');
+    const help = document.getElementById('maintenance-admin-help');
+    const messageRow = document.getElementById('maintenance-message-row');
+    const minutesRow = document.getElementById('maintenance-minutes-row');
+    const text = document.getElementById('maintenance-admin-text');
+    const minutes = document.getElementById('maintenance-admin-minutes');
+    if (actions) actions.hidden = true;
+    if (form) form.hidden = false;
+    if (messageRow) messageRow.hidden = action !== 'message';
+    if (minutesRow) minutesRow.hidden = action !== 'maintenance';
+    if (help) help.textContent = action === 'message'
+      ? 'Napi\u0161te vlastn\u00ed zpr\u00e1vu a vyberte skupiny, kter\u00fdm se zobraz\u00ed.'
+      : 'Vyberte orienta\u010dn\u00ed \u010das a skupiny, kter\u00fdm se zobraz\u00ed upozorn\u011bn\u00ed.';
+    if (text) text.value = '';
+    if (minutes) minutes.value = '5';
+    setMaintenanceTargetDefaults();
+    setTimeout(() => (action === 'message' ? text : minutes)?.focus(), 20);
+  }
+
+  async function submitMaintenanceAdminForm() {
     try {
-      if (portalMaintenance.mode === 'on') {
-        if (confirm('Vypnout re\u017eim \u00fadr\u017eby a znovu pustit u\u017eivatele na web?')) await setMaintenanceMode('off');
+      const targetGroups = selectedMaintenanceTargetGroups();
+      if (!targetGroups.length) {
+        alert('Vyberte pros\u00edm alespo\u0148 jednu skupinu u\u017eivatel\u016f.');
         return;
       }
-      if (portalMaintenance.mode === 'warning') {
-        if (portalMaintenance.noticeType === 'maintenance') {
-          if (confirm('Zapnout \u00fadr\u017ebu te\u010f? OK = zapnout blokaci webu, Zru\u0161it = zru\u0161it upozorn\u011bn\u00ed.')) await setMaintenanceMode('on');
-          else if (confirm('Opravdu zru\u0161it upozorn\u011bn\u00ed na \u00fadr\u017ebu?')) await setMaintenanceMode('off');
-        } else if (confirm('Zru\u0161it zobrazenou pop-up zpr\u00e1vu?')) {
-          await setMaintenanceMode('off');
+      if (maintenanceAdminAction === 'message') {
+        const text = document.getElementById('maintenance-admin-text');
+        const message = (text?.value || '').trim();
+        if (!message) {
+          alert('Zpr\u00e1va nesm\u00ed b\u00fdt pr\u00e1zdn\u00e1.');
+          return;
         }
+        await setMaintenanceMode('warning', { noticeType: 'message', message, targetGroups });
+        closeMaintenanceAdminModal();
         return;
       }
-
-      const choice = prompt('Co chcete ud\u011blat?\n1 = poslat upozorn\u011bn\u00ed na \u00fadr\u017ebu\n2 = poslat vlastn\u00ed pop-up zpr\u00e1vu\n3 = zapnout \u00fadr\u017ebu hned', '1');
-      if (choice === null) return;
-      const normalizedChoice = String(choice).trim();
-
-      if (normalizedChoice === '1') {
-        const rawMinutes = prompt('Za kolik minut p\u0159ibli\u017en\u011b za\u010dne \u00fadr\u017eba? Zadejte jen \u010d\u00edslo, nap\u0159\u00edklad 5 nebo 10.', '5');
-        if (rawMinutes === null) return;
-        const minutes = Number(String(rawMinutes).replace(',', '.'));
+      if (maintenanceAdminAction === 'maintenance') {
+        const raw = document.getElementById('maintenance-admin-minutes')?.value || '5';
+        const minutes = Number(String(raw).replace(',', '.'));
         if (!Number.isFinite(minutes) || minutes < 0) {
           alert('Zadejte pros\u00edm po\u010det minut, nap\u0159\u00edklad 5 nebo 10.');
           return;
         }
         const startsAt = new Date(Date.now() + Math.round(minutes * 60000)).toISOString();
-        await setMaintenanceMode('warning', { noticeType: 'maintenance', startsAt, message: maintenanceStartMessage(startsAt) });
-        return;
+        await setMaintenanceMode('warning', { noticeType: 'maintenance', startsAt, message: maintenanceStartMessage(startsAt), targetGroups });
+        closeMaintenanceAdminModal();
       }
-
-      if (normalizedChoice === '2') {
-        const message = prompt('Napi\u0161te zpr\u00e1vu, kter\u00e1 se zobraz\u00ed u\u017eivatel\u016fm v pop-up okn\u011b.', '');
-        if (message === null) return;
-        const cleanMessage = message.trim();
-        if (!cleanMessage) {
-          alert('Zpr\u00e1va nesm\u00ed b\u00fdt pr\u00e1zdn\u00e1.');
-          return;
-        }
-        await setMaintenanceMode('warning', { noticeType: 'message', message: cleanMessage });
-        return;
-      }
-
-      if (normalizedChoice === '3') {
-        if (confirm('Opravdu zapnout \u00fadr\u017ebu hned? Ostatn\u00ed u\u017eivatel\u00e9 uvid\u00ed jen hl\u00e1\u0161en\u00ed o \u00fadr\u017eb\u011b.')) await setMaintenanceMode('on');
-        return;
-      }
-
-      alert('Vyberte pros\u00edm 1, 2 nebo 3.');
     } catch (err) {
       alert(err.message || 'Re\u017eim \u00fadr\u017eby se nepoda\u0159ilo zm\u011bnit.');
     }
+  }
+
+  async function toggleMaintenanceNow() {
+    try {
+      if (portalMaintenance.mode === 'on') {
+        if (confirm('Vypnout re\u017eim \u00fadr\u017eby a znovu pustit u\u017eivatele na web?')) await setMaintenanceMode('off');
+      } else if (confirm('Opravdu zapnout \u00fadr\u017ebu hned? Ostatn\u00ed u\u017eivatel\u00e9 uvid\u00ed jen hl\u00e1\u0161en\u00ed o \u00fadr\u017eb\u011b.')) {
+        await setMaintenanceMode('on');
+      }
+      closeMaintenanceAdminModal();
+    } catch (err) {
+      alert(err.message || 'Re\u017eim \u00fadr\u017eby se nepoda\u0159ilo zm\u011bnit.');
+    }
+  }
+
+  async function clearMaintenanceNotice() {
+    try {
+      if (confirm('Zru\u0161it aktu\u00e1ln\u00ed pop-up zpr\u00e1vu?')) {
+        await setMaintenanceMode('off');
+        closeMaintenanceAdminModal();
+      }
+    } catch (err) {
+      alert(err.message || 'Re\u017eim \u00fadr\u017eby se nepoda\u0159ilo zm\u011bnit.');
+    }
+  }
+
+  function handleMaintenanceClick() {
+    openMaintenanceAdminModal();
   }
 
   function setupMaintenanceControls() {
@@ -1204,6 +1335,13 @@
       sessionStorage.setItem('ave-maintenance-warning-seen', maintenanceStamp(portalMaintenance));
       hideMaintenanceWarning();
     });
+    document.getElementById('maintenance-admin-close')?.addEventListener('click', closeMaintenanceAdminModal);
+    document.getElementById('maintenance-admin-back')?.addEventListener('click', openMaintenanceAdminModal);
+    document.getElementById('maintenance-admin-message')?.addEventListener('click', () => openMaintenanceForm('message'));
+    document.getElementById('maintenance-admin-warning')?.addEventListener('click', () => openMaintenanceForm('maintenance'));
+    document.getElementById('maintenance-admin-send')?.addEventListener('click', submitMaintenanceAdminForm);
+    document.getElementById('maintenance-admin-toggle')?.addEventListener('click', toggleMaintenanceNow);
+    document.getElementById('maintenance-admin-clear')?.addEventListener('click', clearMaintenanceNotice);
     updateMaintenanceButtons(portalMaintenance);
   }
 

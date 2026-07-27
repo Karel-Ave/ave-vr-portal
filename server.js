@@ -88,19 +88,41 @@ const requirePortalAccess = (req, res, next) => {
 const MAINTENANCE_SETTINGS_KEY = 'maintenance';
 const MAINTENANCE_DEFAULT_MESSAGE = 'Na webu momentálně probíhá údržba. Zkuste prosím později.';
 const MAINTENANCE_WARNING_MESSAGE = 'Za chvíli proběhne údržba systému. Prosím uložte si rozpracované změny.';
+const MAINTENANCE_TARGET_GROUPS = new Set(['admin', 'vr', 'recepcni', 'pb6', 'hotely']);
+const MAINTENANCE_DEFAULT_TARGET_GROUPS = ['vr', 'recepcni', 'pb6'];
 
 function normalizeMaintenanceState(raw = {}) {
   const mode = ['off', 'warning', 'on'].includes(raw.mode) ? raw.mode : 'off';
   const startsAtTime = raw.startsAt ? Date.parse(raw.startsAt) : NaN;
   const noticeType = ['maintenance', 'message'].includes(raw.noticeType) ? raw.noticeType : 'maintenance';
+  const rawTargets = Array.isArray(raw.targetGroups) ? raw.targetGroups : [];
+  const targetGroups = [...new Set(rawTargets.map(v => String(v || '').trim().toLowerCase()).filter(v => MAINTENANCE_TARGET_GROUPS.has(v)))];
   return {
     mode,
     noticeType,
     message: String(raw.message || (mode === 'warning' ? MAINTENANCE_WARNING_MESSAGE : MAINTENANCE_DEFAULT_MESSAGE)),
     startsAt: Number.isFinite(startsAtTime) ? new Date(startsAtTime).toISOString() : null,
+    targetGroups: targetGroups.length ? targetGroups : [...MAINTENANCE_DEFAULT_TARGET_GROUPS],
     updatedAt: raw.updatedAt || null,
     updatedBy: raw.updatedBy || null
   };
+}
+
+function maintenanceUserGroups(user) {
+  const role = String(user?.role || '').toLowerCase();
+  const groups = new Set();
+  if (role === 'admin') groups.add('admin');
+  if (role.includes('ved') || role.includes('vr')) groups.add('vr');
+  if (role.includes('recep')) groups.add('recepcni');
+  if (role.includes('pb6')) groups.add('pb6');
+  if (role.includes('hotel')) groups.add('hotely');
+  return groups;
+}
+
+function maintenanceNoticeTargetsUser(state, user) {
+  if (!state || state.mode !== 'warning') return true;
+  const groups = maintenanceUserGroups(user);
+  return (state.targetGroups || MAINTENANCE_DEFAULT_TARGET_GROUPS).some(group => groups.has(group));
 }
 
 
@@ -124,6 +146,7 @@ async function saveMaintenanceState(input, user) {
     noticeType: input?.noticeType,
     message: input?.message,
     startsAt: input?.mode === 'warning' ? input?.startsAt : null,
+    targetGroups: input?.targetGroups,
     updatedAt: now,
     updatedBy: user?.username || user?.name || user?.id || null
   });
@@ -555,21 +578,25 @@ app.get('/api/me', requireLogin, (req, res) => res.json(req.session.user));
 app.get('/api/maintenance/status', requireLogin, async (req, res) => {
   try {
     const state = await getMaintenanceState();
-    res.json({ ok: true, admin: req.session.user?.role === 'admin', ...state });
+    const canControl = await hasButtonPerm(req.session.user, 'admin', 'maintenance', false);
+    res.json({ ok: true, admin: req.session.user?.role === 'admin', canControl, targeted: maintenanceNoticeTargetsUser(state, req.session.user), ...state });
   } catch (err) {
     console.error('Maintenance status error:', err.message);
     res.status(500).json({ ok: false, msg: 'Chyba načtení režimu údržby.' });
   }
 });
 
-app.post('/api/maintenance', requireLogin, requireAdmin, async (req, res) => {
+app.post('/api/maintenance', requireLogin, requirePermDefault('admin', 'maintenance', false), async (req, res) => {
   try {
     const mode = ['off', 'warning', 'on'].includes(req.body?.mode) ? req.body.mode : 'off';
     const fallback = mode === 'warning' ? MAINTENANCE_WARNING_MESSAGE : MAINTENANCE_DEFAULT_MESSAGE;
     const startsAtTime = req.body?.startsAt ? Date.parse(req.body.startsAt) : NaN;
     const startsAt = mode === 'warning' && Number.isFinite(startsAtTime) ? new Date(startsAtTime).toISOString() : null;
     const noticeType = ['maintenance', 'message'].includes(req.body?.noticeType) ? req.body.noticeType : 'maintenance';
-    const state = await saveMaintenanceState({ mode, noticeType, message: req.body?.message || fallback, startsAt }, req.session.user);
+    const targetGroups = Array.isArray(req.body?.targetGroups)
+      ? [...new Set(req.body.targetGroups.map(v => String(v || '').trim().toLowerCase()).filter(v => MAINTENANCE_TARGET_GROUPS.has(v)))]
+      : [...MAINTENANCE_DEFAULT_TARGET_GROUPS];
+    const state = await saveMaintenanceState({ mode, noticeType, message: req.body?.message || fallback, startsAt, targetGroups }, req.session.user);
     res.json({ ok: true, ...state });
   } catch (err) {
     console.error('Maintenance save error:', err.message);
@@ -955,7 +982,8 @@ app.get('/api/my-permissions', requireLogin, async (req, res) => {
         user_permissions: isAdm,
         groups_manage: isAdm,
         logs_view: isAdm,
-        logs_delete: isAdm
+        logs_delete: isAdm,
+        maintenance: isAdm
       } }
     };
     const allApps = new Set([...Object.keys(DEFAULTS), ...Object.keys(groupPerms), ...Object.keys(userOv)]
