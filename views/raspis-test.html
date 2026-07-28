@@ -1834,20 +1834,20 @@ tbody tr.row-filtered { display: none; }
 .sched-cell.cell-p-many { color: #e74c3c !important; font-weight: 400; }
 .sched-cell.cell-p-many input { color: #e74c3c !important; font-weight: 400; }
 .sched-cell.cell-regular-off {
-  background: var(--col-unavail-bg,var(--col-reg-off-bg,#f9dce3)) !important;
-  color: var(--col-reg-off-tx,#7c2f3d) !important;
-  outline: 2px solid color-mix(in srgb, var(--col-unavail-border,#c65b70) 54%, transparent);
+  background: var(--col-unavail-bg,var(--col-reg-off-bg,#f4b8c3)) !important;
+  color: var(--col-reg-off-tx,#6f1725) !important;
+  outline: 2px solid color-mix(in srgb, var(--col-unavail-border,#d03a52) 70%, transparent);
   outline-offset: -2px;
 }
 [data-theme="dark"] .sched-cell.cell-regular-off {
-  background: var(--col-unavail-bg,var(--col-reg-off-bg,#4a2630)) !important;
+  background: var(--col-unavail-bg,var(--col-reg-off-bg,#5a1f2b)) !important;
   color: var(--col-reg-off-tx,#f1b8c3) !important;
 }
 .sched-cell.cell-unavailable-conflict {
-  background: var(--col-unavail-bg,#f9dce3) !important;
-  outline: 2px solid var(--col-unavail-border,#c65b70) !important;
+  background: var(--col-unavail-bg,#f4b8c3) !important;
+  outline: 2px solid var(--col-unavail-border,#d03a52) !important;
   outline-offset: -2px;
-  box-shadow: inset 0 0 0 999px color-mix(in srgb, var(--col-unavail-bg,#f9dce3) 24%, transparent);
+  box-shadow: inset 0 0 0 999px color-mix(in srgb, var(--col-unavail-bg,#f4b8c3) 30%, transparent);
 }
 .sched-cell.cell-req-missing {
   background: var(--col-req-miss-bg,#eadcff) !important;
@@ -13493,6 +13493,7 @@ async function toggleViewEdit() {
   viewEditMode = true;
   viewEditSnapshot = JSON.parse(JSON.stringify(buildSaveData()));
   renderScheduleTable('rozpis-tbl', true);
+  applyStbStateUi();
   restoreScheduleWrapScroll('rozpis-wrap', scrollLeft, scrollTop);
   updateLockUI();
   startViewEditIdleWatch();
@@ -13519,6 +13520,7 @@ async function saveViewEdits(options = {}) {
       viewEditMode = false; viewEditSnapshot = null;
       stopViewEditIdleWatch();
       renderScheduleTable('rozpis-tbl', false);
+      applyStbStateUi();
       restoreScheduleWrapScroll('rozpis-wrap', scrollLeft, scrollTop);
       renderScheduleTable('public-rozpis-tbl', false);
       await releaseLock();
@@ -13542,6 +13544,7 @@ async function cancelViewEdit() {
   viewEditSnapshot = null;
   stopViewEditIdleWatch();
   renderScheduleTable('rozpis-tbl', false);
+  applyStbStateUi();
   restoreScheduleWrapScroll('rozpis-wrap', scrollLeft, scrollTop);
   renderScheduleTable('public-rozpis-tbl', false);
   await releaseLock();
@@ -14576,10 +14579,19 @@ document.addEventListener('DOMContentLoaded', async () => {
   document.getElementById('btn-import-unmatched').addEventListener('click', showImportUnmatchedOverlay);
 
   // ── Rozpis VR actions ──
+  function blockPublishedScheduleSwitchWhileEditing(selectEl) {
+    if (!viewEditMode) return false;
+    alert('Nejd\u0159\u00edv ulo\u017ete nebo zru\u0161te aktu\u00e1ln\u00ed editaci Rozpis VR.');
+    if (selectEl && currentPubKey) selectEl.value = currentPubKey;
+    return true;
+  }
+
   document.getElementById('pub-sel').addEventListener('change', e => {
+    if (blockPublishedScheduleSwitchWhileEditing(e.target)) return;
     if (e.target.value) loadSchedule(e.target.value);
   });
   document.getElementById('pub-sel-public').addEventListener('change', e => {
+    if (blockPublishedScheduleSwitchWhileEditing(e.target)) return;
     if (e.target.value) loadSchedule(e.target.value);
   });
   document.getElementById('req-sel')?.addEventListener('change', e => {

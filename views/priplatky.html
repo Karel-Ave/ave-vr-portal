@@ -812,16 +812,24 @@ function recepniName(login) {
 }
 
 // ═══ Autocomplete ════════════════════════════════════════════════════════════
+function acNorm(value) {
+  return String(value || '')
+    .toLowerCase()
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '');
+}
+
 function acFilter(val) {
   const listEl = document.getElementById('ac-list');
-  const v = val.trim().toLowerCase();
+  const v = acNorm(val).trim();
   if (!v) { listEl.innerHTML = ''; listEl.classList.add('hidden'); return; }
 
   const active = recepniAll.filter(r => r.active);
   const filtered = active.filter(r => {
-    const loginL = String(r.login || '').toLowerCase();
-    const nameParts = String(r.full_name || '').toLowerCase().split(/\s+/).filter(Boolean);
-    return loginL.startsWith(v) || nameParts.some(part => part.startsWith(v));
+    const loginL = acNorm(r.login);
+    const fullName = acNorm(r.full_name);
+    const nameParts = fullName.split(/\s+/).filter(Boolean);
+    return loginL.startsWith(v) || fullName.includes(v) || nameParts.some(part => part.startsWith(v));
   }).slice(0, 12);
 
   if (!filtered.length) { listEl.innerHTML = ''; listEl.classList.add('hidden'); return; }

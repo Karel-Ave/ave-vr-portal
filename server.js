@@ -11,7 +11,7 @@ const SESSION_MAX_AGE = 10 * 365 * 24 * 60 * 60 * 1000;
 const DEFAULT_LIGHT_SKIN = 'indigo';
 const DEFAULT_DARK_SKIN = 'green';
 const THEME_SKINS = new Set(['default','mono','graphite','slate','blue','teal','green','olive','amber','rose','violet','indigo','cyan','mint','lime','yellow','orange','red','pink','plum','coffee','navy']);
-const AUTO_LOGOUT_ALLOWED_MINUTES = new Set([30, 60, 360]);
+const AUTO_LOGOUT_ALLOWED_MINUTES = new Set([0, 30, 60, 360]);
 
 function normalizeThemeSkin(skin, fallback = 'default') {
   const raw = String(skin || fallback || 'default').toLowerCase();
@@ -268,7 +268,27 @@ async function getAutoLogoutMinutes(userId) {
     [userId]
   );
   const minutes = Number(rows[0]?.auto_logout_minutes);
-  return AUTO_LOGOUT_ALLOWED_MINUTES.has(minutes) ? minutes : 30;
+  if (!AUTO_LOGOUT_ALLOWED_MINUTES.has(minutes)) return 30;
+  if (minutes === 0) {
+    const { rows: userRows } = await db.query('SELECT id, username, name, role, perm_overrides FROM users WHERE id = $1', [userId]);
+    const canNever = userRows.length && await hasButtonPerm(sessionUserFromDbUser(userRows[0]), 'admin', 'never_logout', false);
+    return canNever ? 0 : 30;
+  }
+  return minutes;
+}
+
+async function touchUserActivity(req, force = false) {
+  const userId = req.session?.user?.id;
+  if (!userId) return;
+  const now = Date.now();
+  req.session.lastActivityAt = now;
+  if (!force && now - Number(req.session.lastActivityDbAt || 0) < 30000) return;
+  req.session.lastActivityDbAt = now;
+  try {
+    await getPool().query('UPDATE users SET last_activity_at = NOW() WHERE id = $1', [userId]);
+  } catch (err) {
+    console.error('touchUserActivity error:', err.message);
+  }
 }
 
 async function destroyAllSessionsForUser(userId) {
@@ -286,11 +306,9 @@ app.use(async (req, res, next) => {
 
   try {
     const minutes = await getAutoLogoutMinutes(user.id);
-    if (minutes === 0) return next();
-
     const now = Date.now();
     const lastActivity = Number(req.session.lastActivityAt || req.session.loginAt || now);
-    if (now - lastActivity > minutes * 60 * 1000) {
+    if (minutes !== 0 && now - lastActivity > minutes * 60 * 1000) {
       releaseUserLocks(user.id);
       await destroyAllSessionsForUser(user.id);
       return req.session.destroy(() => sessionExpiredResponse(req, res));
@@ -298,7 +316,7 @@ app.use(async (req, res, next) => {
 
     const methodTouches = ['POST', 'PUT', 'PATCH', 'DELETE'].includes(req.method);
     const pathTouches = req.path === '/api/session/activity' || (!req.path.startsWith('/api/') && req.method === 'GET');
-    if (methodTouches || pathTouches) req.session.lastActivityAt = now;
+    if (methodTouches || pathTouches) await touchUserActivity(req);
     return next();
   } catch (err) {
     console.error('Auto logout check error:', err.message);
@@ -620,11 +638,12 @@ app.post('/api/maintenance', requireLogin, requirePermDefault('admin', 'maintena
 
 app.get('/api/session/status', (req, res) => {
   if (!req.session.user) return res.status(401).json({ ok: false });
+  req.session.lastSeenAt = Date.now();
   res.json({ ok: true });
 });
 
-app.post('/api/session/activity', requireLogin, (req, res) => {
-  req.session.lastActivityAt = Date.now();
+app.post('/api/session/activity', requireLogin, async (req, res) => {
+  await touchUserActivity(req, true);
   res.json({ ok: true });
 });
 
@@ -669,7 +688,10 @@ app.post('/login', async (req, res) => {
     req.session.user = sessionUserFromDbUser(user);
     req.session.loginAt = Date.now();
     req.session.lastActivityAt = req.session.loginAt;
+    req.session.lastSeenAt = req.session.loginAt;
+    req.session.lastActivityDbAt = req.session.loginAt;
     req.session.cookie.maxAge = SESSION_MAX_AGE;
+    await db.query('UPDATE users SET last_activity_at = NOW() WHERE id = $1', [user.id]);
     logEvent(user.id, user.username, 'login', { role: user.role });
     const next = req.body.next || '';
     const target = (next && next.startsWith('/') && next !== '/widget') ? next : '/portal';
@@ -885,11 +907,72 @@ app.put('/api/admin/users/:id/overrides', requireLogin, requireAdmin, async (req
 app.get('/api/admin/logs', requireLogin, requireAdmin, async (req, res) => {
   try {
     const db = getPool();
-    const { rows } = await db.query(
-      `SELECT id, timestamp, user_id, user_name, action, details
-       FROM logs WHERE action = 'login' ORDER BY timestamp DESC LIMIT 500`
+    const { rows: users } = await db.query(
+      `SELECT id, username, name, role, perm_overrides, last_activity_at
+       FROM users
+       WHERE role IN ('admin','vedoucí','recepční','pb6')
+       ORDER BY role, name`
     );
-    res.json(rows);
+    let sessions = [];
+    try {
+      const { rows } = await db.query(`SELECT sess FROM session WHERE expire > NOW()`);
+      sessions = rows;
+    } catch (err) {
+      sessions = [];
+    }
+    const activityByUserId = new Map();
+    const seenByUserId = new Map();
+    const now = Date.now();
+    for (const row of sessions) {
+      let sess = row.sess;
+      if (typeof sess === 'string') {
+        try { sess = JSON.parse(sess); } catch { sess = {}; }
+      }
+      const user = sess?.user || {};
+      const id = Number(user.id);
+      if (!id) continue;
+      const ts = Number(sess.lastActivityAt || sess.loginAt || 0);
+      const seenTs = Number(sess.lastSeenAt || ts || 0);
+      const prevActivity = activityByUserId.get(id) || 0;
+      const prevSeen = seenByUserId.get(id) || 0;
+      if (ts > prevActivity) activityByUserId.set(id, ts);
+      if (seenTs > prevSeen) seenByUserId.set(id, seenTs);
+    }
+    const currentMonth = new Date().getFullYear() * 12 + new Date().getMonth() + 1;
+    const groupOrder = { admin: 0, 'vedoucí': 0, 'recepční': 1, pb6: 2 };
+    const groupLabel = role => (role === 'admin' || role === 'vedoucí') ? 'Admin/VR' : (role === 'pb6' ? 'PB6' : 'Recepční');
+    const isActiveUser = row => {
+      const role = String(row.role || '').toLowerCase();
+      if (role === 'admin' || role === 'vedoucí') return true;
+      const ov = parsePermOverridesValue(row.perm_overrides);
+      const rs = ov?.raspis_staff || {};
+      if (rs.inactive === true) return false;
+      if (rs.activeUntil) {
+        const m = String(rs.activeUntil).match(/^(\d{4})-(\d{2})$/);
+        if (m && (Number(m[1]) * 12 + Number(m[2])) < currentMonth) return false;
+      }
+      return true;
+    };
+    const rows = users
+      .filter(isActiveUser)
+      .map(u => {
+        const sessionTs = activityByUserId.get(Number(u.id)) || 0;
+        const seenTs = seenByUserId.get(Number(u.id)) || 0;
+        const dbTs = u.last_activity_at ? new Date(u.last_activity_at).getTime() : 0;
+        const lastMs = Math.max(sessionTs, dbTs);
+        return {
+          id: u.id,
+          name: u.name || u.username,
+          username: u.username,
+          role: u.role,
+          group: groupLabel(u.role),
+          group_order: groupOrder[u.role] ?? 9,
+          last_activity_at: lastMs ? new Date(lastMs).toISOString() : null,
+          online: seenTs && now - seenTs <= 2 * 60 * 1000
+        };
+      })
+      .sort((a, b) => (a.group_order - b.group_order) || String(a.name).localeCompare(String(b.name), 'cs'));
+    res.json({ online: rows.filter(r => r.online), users: rows });
   } catch (err) {
     console.error(err);
     res.status(500).json({ ok: false, msg: 'Chyba serveru.' });
@@ -997,7 +1080,8 @@ app.get('/api/my-permissions', requireLogin, async (req, res) => {
         groups_manage: isAdm,
         logs_view: isAdm,
         logs_delete: isAdm,
-        maintenance: isAdm
+        maintenance: isAdm,
+        never_logout: isAdm
       } }
     };
     const allApps = new Set([...Object.keys(DEFAULTS), ...Object.keys(groupPerms), ...Object.keys(userOv)]
@@ -1626,17 +1710,20 @@ app.get('/api/user-prefs', requireLogin, async (req, res) => {
     );
     let defaultViews = {};
     try { defaultViews = rows[0]?.default_views ? JSON.parse(rows[0].default_views) : {}; } catch { defaultViews = {}; }
-    const autoLogoutMinutes = [30, 60, 360].includes(Number(rows[0]?.auto_logout_minutes))
-      ? Number(rows[0].auto_logout_minutes)
-      : 30;
+    const canNeverLogout = await hasButtonPerm(req.session.user, 'admin', 'never_logout', false);
+    const rawAutoLogout = Number(rows[0]?.auto_logout_minutes);
+    const autoLogoutMinutes = (rawAutoLogout === 0 && canNeverLogout)
+      ? 0
+      : ([30, 60, 360].includes(rawAutoLogout) ? rawAutoLogout : 30);
     res.json({
       default_raspis_key: rows[0]?.default_raspis_key || null,
       default_public_hotel: rows[0]?.default_public_hotel || 'ALL',
       default_views: defaultViews,
-      auto_logout_minutes: autoLogoutMinutes
+      auto_logout_minutes: autoLogoutMinutes,
+      can_never_logout: canNeverLogout
     });
   } catch (err) {
-    res.json({ default_raspis_key: null, default_public_hotel: 'ALL', default_views: {}, auto_logout_minutes: 30 });
+    res.json({ default_raspis_key: null, default_public_hotel: 'ALL', default_views: {}, auto_logout_minutes: 30, can_never_logout: false });
   }
 });
 
@@ -1739,7 +1826,8 @@ app.post('/api/user-prefs/default-views', requireLogin, async (req, res) => {
 
 app.post('/api/user-prefs/auto-logout', requireLogin, async (req, res) => {
   const minutes = Number(req.body?.minutes);
-  const allowed = new Set([30, 60, 360]);
+  const canNeverLogout = await hasButtonPerm(req.session.user, 'admin', 'never_logout', false);
+  const allowed = new Set(canNeverLogout ? [0, 30, 60, 360] : [30, 60, 360]);
   if (!allowed.has(minutes)) return res.status(400).json({ ok: false, msg: 'Neplatná hodnota.' });
   try {
     const db = getPool();

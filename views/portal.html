@@ -1308,7 +1308,7 @@
     if (help) help.textContent = portalMaintenance.mode === 'on'
       ? '\u00dadr\u017eba je aktivn\u00ed. M\u016f\u017eete ji vypnout, nebo poslat novou zpr\u00e1vu.'
       : (portalMaintenance.mode === 'warning' ? 'Je aktivn\u00ed pop-up zpr\u00e1va. M\u016f\u017eete ji zm\u011bnit, zru\u0161it, nebo zapnout \u00fadr\u017ebu.' : 'Vyberte akci.');
-    if (toggle) toggle.textContent = portalMaintenance.mode === 'on' ? 'Vypnout \u00fadr\u017ebu' : 'Zapnout \u00fadr\u017ebu hned';
+    if (toggle) toggle.textContent = portalMaintenance.mode === 'on' ? 'Ukon\u010dit \u00fadr\u017ebu' : 'Zapnout \u00fadr\u017ebu hned';
     if (clear) clear.hidden = portalMaintenance.mode !== 'warning';
     modal.classList.add('show');
     modal.setAttribute('aria-hidden', 'false');
@@ -1396,7 +1396,7 @@
   async function toggleMaintenanceNow() {
     try {
       if (portalMaintenance.mode === 'on') {
-        if (confirm('Vypnout re\u017eim \u00fadr\u017eby a znovu pustit u\u017eivatele na web?')) await setMaintenanceMode('off');
+        if (confirm('Ukon\u010dit re\u017eim \u00fadr\u017eby a znovu pustit u\u017eivatele na web?')) await setMaintenanceMode('off');
       } else if (confirm('Opravdu zapnout \u00fadr\u017ebu hned? Ostatn\u00ed u\u017eivatel\u00e9 uvid\u00ed jen hl\u00e1\u0161en\u00ed o \u00fadr\u017eb\u011b.')) {
         await setMaintenanceMode('on', { endsAt: portalMaintenance.endsAt || null });
       }
@@ -1908,7 +1908,9 @@
   function refreshAutoLogoutPref() {
     const wrap = document.getElementById('auto-logout-choices');
     if (!wrap) return;
-    const current = [30, 60, 360].includes(Number(portalPrefs.auto_logout_minutes))
+    const canNever = portalPrefs.can_never_logout === true || portalPerms?.admin?.buttons?.never_logout === true || portalUser?.role === 'admin';
+    const valid = canNever ? [0, 30, 60, 360] : [30, 60, 360];
+    const current = valid.includes(Number(portalPrefs.auto_logout_minutes))
       ? Number(portalPrefs.auto_logout_minutes)
       : 30;
     const choices = [
@@ -1916,6 +1918,7 @@
       [60, '1 hod.'],
       [360, '6 hod.']
     ];
+    if (canNever) choices.push([0, 'Nikdy neodhla\u0161ovat']);
     wrap.innerHTML = choices.map(([minutes, label]) =>
       `<button type="button" class="settings-choice${minutes === current ? ' active' : ''}" onclick="saveAutoLogout(${minutes})">${label}</button>`
     ).join('');
@@ -2001,7 +2004,9 @@
 
   async function saveAutoLogout(minutes) {
     minutes = Number(minutes);
-    if (![0, 30, 60, 720].includes(minutes)) return;
+    const canNever = portalPrefs.can_never_logout === true || portalPerms?.admin?.buttons?.never_logout === true || portalUser?.role === 'admin';
+    const valid = canNever ? [0, 30, 60, 360] : [30, 60, 360];
+    if (!valid.includes(minutes)) return;
     portalPrefs.auto_logout_minutes = minutes;
     refreshAutoLogoutPref();
     window.AVE_AUTO_LOGOUT?.setMinutes?.(minutes);
@@ -2142,11 +2147,13 @@
   // Auto-logout: aktivita na portálu i v iframe obnovuje serverovou session.
   const AVE_IDLE_KEY = 'ave-last-activity';
   const AVE_IDLE_EVENTS = ['pointerdown', 'pointermove', 'keydown', 'touchstart', 'scroll', 'focus'];
-  const aveIdle = { minutes: 60, timer: null, poll: null, lastPing: 0, frameWin: null };
+  const aveIdle = { minutes: 30, timer: null, poll: null, lastPing: 0, frameWin: null };
 
   function currentIdleMinutes() {
     const minutes = Number(portalPrefs.auto_logout_minutes);
-    return [0, 30, 60, 720].includes(minutes) ? minutes : 60;
+    const canNever = portalPrefs.can_never_logout === true || portalPerms?.admin?.buttons?.never_logout === true || portalUser?.role === 'admin';
+    const valid = canNever ? [0, 30, 60, 360] : [30, 60, 360];
+    return valid.includes(minutes) ? minutes : 30;
   }
 
   function idleLogoutNow() {

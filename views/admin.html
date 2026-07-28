@@ -307,17 +307,15 @@
   <!-- ── Tab: Záznamy (logy) ── -->
   <div id="tab-logs" style="display:none;">
     <div class="page-header">
-      <h1>Záznamy</h1>
+      <h1>Aktivita uživatelů</h1>
       <div style="display:flex;gap:8px;flex-wrap:wrap;">
-        <button class="btn-add" onclick="loadLogs()">↻ Obnovit</button>
-        <button class="btn-action" style="background:#8b1a1a;color:#fff;border-color:#8b1a1a;" onclick="deleteLogs(7)">🗑 Smazat starší 7 dní</button>
-        <button class="btn-action" style="background:#5a0a0a;color:#fff;border-color:#5a0a0a;" onclick="deleteLogs(0)">🗑 Smazat vše</button>
+        <button class="btn-add" onclick="loadLogs()">Obnovit</button>
       </div>
     </div>
     <div class="table-wrap">
       <table>
         <thead>
-          <tr><th>#</th><th>Čas</th><th>Uživatel</th><th>Akce</th><th>Detail</th></tr>
+          <tr><th>#</th><th>Skupina</th><th>Uživatel</th><th>Login</th><th>Poslední aktivita</th></tr>
         </thead>
         <tbody id="logs-tbody">
           <tr class="empty-row"><td colspan="5">Vyberte záložku pro načtení…</td></tr>
@@ -578,7 +576,8 @@
       groups_manage: { label: 'Spravovat skupiny a oprávnění', default: false },
       logs_view: { label: 'Zobrazit záznamy', default: false },
       logs_delete: { label: 'Mazat záznamy', default: false },
-      maintenance: { label: 'Ovl\u00e1dat \u00fadr\u017ebu', default: false }
+      maintenance: { label: 'Ovl\u00e1dat \u00fadr\u017ebu', default: false },
+      never_logout: { label: 'Povolit Nikdy neodhla\u0161ovat', default: false }
     } }
   };
   const DEFAULT_APP_OPTIONS = [
@@ -1392,18 +1391,33 @@
     const tbody = document.getElementById('logs-tbody');
     tbody.innerHTML = '<tr class="empty-row"><td colspan="5">Načítám…</td></tr>';
     try {
-      const rows = await fetch('/api/admin/logs').then(r => r.json());
-      if (!Array.isArray(rows) || rows.length === 0) {
-        tbody.innerHTML = '<tr class="empty-row"><td colspan="5">Žádné záznamy.</td></tr>';
+      const data = await fetch('/api/admin/logs').then(r => r.json());
+      const online = Array.isArray(data.online) ? data.online : [];
+      const users = Array.isArray(data.users) ? data.users : [];
+      if (!users.length) {
+        tbody.innerHTML = '<tr class="empty-row"><td colspan="5">Žádní aktivní uživatelé.</td></tr>';
         return;
       }
-      tbody.innerHTML = rows.map((r, i) => `<tr>
-        <td style="color:#888;font-size:12px">${i + 1}</td>
-        <td style="font-size:12px;white-space:nowrap;">${formatDateTime(r.timestamp)}</td>
-        <td style="font-family:monospace;font-size:12px">${esc(r.user_name)}</td>
-        <td style="font-size:12px">${ACTION_LABELS[r.action] || esc(r.action)}</td>
-        <td style="font-size:12px;color:#666;">${formatLogDetails(r.action, r.details)}</td>
-      </tr>`).join('');
+      const onlineNames = online.length
+        ? online.map(u => esc(u.name) + ' <span style="color:#777;font-family:monospace">(' + esc(u.username) + ')</span>').join(', ')
+        : '<span style="color:#777">Nikdo není právě online.</span>';
+      const rows = ['<tr><td colspan="5" style="font-weight:700;background:#eef3ff;color:#172a7a;">Právě online: ' + onlineNames + '</td></tr>'];
+      let lastGroup = '';
+      let index = 1;
+      for (const u of users) {
+        if (u.group !== lastGroup) {
+          lastGroup = u.group;
+          rows.push('<tr><td colspan="5" style="font-weight:700;background:#f5f7ff;color:#172a7a;">' + esc(lastGroup) + '</td></tr>');
+        }
+        rows.push('<tr>' +
+          '<td style="color:#888;font-size:12px">' + (index++) + '</td>' +
+          '<td style="font-size:12px">' + esc(u.group) + '</td>' +
+          '<td style="font-size:12px;font-weight:' + (u.online ? '700' : '400') + ';">' + esc(u.name) + (u.online ? ' <span style="color:#1f9d55">online</span>' : '') + '</td>' +
+          '<td style="font-family:monospace;font-size:12px">' + esc(u.username) + '</td>' +
+          '<td style="font-size:12px;color:#555;white-space:nowrap;">' + formatDateTime(u.last_activity_at) + '</td>' +
+        '</tr>');
+      }
+      tbody.innerHTML = rows.join('');
     } catch {
       tbody.innerHTML = '<tr class="empty-row"><td colspan="5">Chyba načtení.</td></tr>';
     }
