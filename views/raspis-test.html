@@ -10012,7 +10012,7 @@ function cancelRequirementsEdit() {
   toast('Editace zrušena');
 }
 
-function toggleRequirementsEditWindow() {
+async function toggleRequirementsEditWindow() {
   if (!currentReqEntry) return;
   const manager = canManageRequirements();
   if (!manager && currentReqEntry.status !== 'open') {
@@ -10045,6 +10045,17 @@ function toggleRequirementsEditWindow() {
         applyRowFilters();
       }
     });
+    return;
+  }
+  const reqKey = currentReqKey;
+  if (!reqKey) return toast('Nejdřív vyberte požadavky', true);
+  await loadRequirement(reqKey);
+  if (!currentReqEntry || currentReqKey !== reqKey) {
+    toast('Požadavky se nepodařilo před editací načíst', true);
+    return;
+  }
+  if (!manager && currentReqEntry.status !== 'open') {
+    toast('Zatím není možné editovat', true);
     return;
   }
   if (!manager && !state.staff.some(s => isCurrentUserStaff(s))) {
