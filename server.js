@@ -674,7 +674,7 @@ app.get('/api/maintenance/status', requireLogin, async (req, res) => {
 app.post('/api/maintenance', requireLogin, requirePermDefault('admin', 'maintenance', false), async (req, res) => {
   try {
     const mode = ['off', 'warning', 'on'].includes(req.body?.mode) ? req.body.mode : 'off';
-    const previousState = await loadMaintenanceState();
+    const previousState = await getMaintenanceState();
     const fallback = mode === 'warning' ? MAINTENANCE_WARNING_MESSAGE : MAINTENANCE_DEFAULT_MESSAGE;
     const startsAtTime = req.body?.startsAt ? Date.parse(req.body.startsAt) : NaN;
     const endsAtTime = req.body?.endsAt ? Date.parse(req.body.endsAt) : NaN;
