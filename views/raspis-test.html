@@ -7540,9 +7540,10 @@ function renderStaffTable() {
   // ── Recepční table — data z state.allPortalUsers (všichni portáloví pracovníci z API) ──
   // Pokud allPortalUsers ještě není naplněno (syncRaspisStaff ještě neproběhl),
   // padneme na state.staff.filter(s => s.userId) jako zálohu.
-  const _portalSource = (state.allPortalUsers && state.allPortalUsers.length > 0)
+  const _portalSourceRaw = (state.allPortalUsers && state.allPortalUsers.length > 0)
     ? state.allPortalUsers
     : state.staff.filter(s => s.userId);
+  const _portalSource = _portalSourceRaw.filter(s => isStaffActiveInCurrentMonth(s));
   _portalSource.sort((a, b) => (a.name || '').localeCompare(b.name || '', 'cs'));
   let portalRowNum = 0;
   _portalSource.forEach((s, ai) => {

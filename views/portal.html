@@ -771,7 +771,7 @@
 
     /* Schovat desktop prvky, ukázat hamburger */
     .user-badge { display: none; }
-    #btn-pw-change, #btn-user-settings { display: none; }
+    #btn-maintenance, #btn-pw-change, #btn-user-settings { display: none; }
     #btn-logout    { display: none; }
     #btn-hamburger { display: inline-flex; align-items: center; justify-content: center; }
 
@@ -820,7 +820,7 @@
     #topbar { padding: 0 env(safe-area-inset-right, 12px) 0 env(safe-area-inset-left, 12px); }
     .portal-copy { display: none; }
     .user-badge  { display: none; }
-    #btn-pw-change, #btn-user-settings { display: none; }
+    #btn-maintenance, #btn-pw-change, #btn-user-settings { display: none; }
     #btn-logout    { display: none; }
     #btn-hamburger { display: inline-flex; align-items: center; justify-content: center; }
     .home-label    { display: none; }
@@ -937,7 +937,6 @@
           <label class="maintenance-target-item"><input type="checkbox" name="maintenance-target" value="vr" checked> VR</label>
           <label class="maintenance-target-item"><input type="checkbox" name="maintenance-target" value="recepcni" checked> Recep&#269;n&#237;</label>
           <label class="maintenance-target-item"><input type="checkbox" name="maintenance-target" value="pb6" checked> PB6</label>
-          <label class="maintenance-target-item"><input type="checkbox" name="maintenance-target" value="hotely"> Hotely</label>
         </div>
       </fieldset>
       <div class="maintenance-admin-footer">
@@ -1034,7 +1033,7 @@
     { id: 'raspis',      title: 'Rozpis a požadavky', href: '/raspis-test',  permKey: 'raspis' },
     { id: 'priplatky',   title: 'Příplatky a pokuty', href: '/priplatky',    permKey: 'priplatky' },
     { id: 'blacklist',   title: 'Blacklist',          href: '/blacklist',    permKey: 'blacklist' },
-    { id: 'admin',       title: 'Správa uživatelů',   href: '/admin',        permKey: 'admin', adminOnly: true }
+    { id: 'admin',       title: 'Správa uživatelů',   href: '/admin',        permKey: 'admin' }
   ];
 
   // ── Build a card element ──────────────────────────────────────────────────

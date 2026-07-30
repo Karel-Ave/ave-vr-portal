@@ -88,7 +88,7 @@ const requirePortalAccess = (req, res, next) => {
 const MAINTENANCE_SETTINGS_KEY = 'maintenance';
 const MAINTENANCE_DEFAULT_MESSAGE = 'Předpokládaný čas ukončení bude upřesněn.';
 const MAINTENANCE_WARNING_MESSAGE = 'Pozor: Bude probíhat údržba systému. Prosím uložte si rozpracované změny.';
-const MAINTENANCE_TARGET_GROUPS = new Set(['admin', 'vr', 'recepcni', 'pb6', 'hotely']);
+const MAINTENANCE_TARGET_GROUPS = new Set(['admin', 'vr', 'recepcni', 'pb6']);
 const MAINTENANCE_DEFAULT_TARGET_GROUPS = ['vr', 'recepcni', 'pb6'];
 
 function normalizeMaintenanceState(raw = {}) {
@@ -117,7 +117,6 @@ function maintenanceUserGroups(user) {
   if (role.includes('ved') || role.includes('vr')) groups.add('vr');
   if (role.includes('recep')) groups.add('recepcni');
   if (role.includes('pb6')) groups.add('pb6');
-  if (role.includes('hotel')) groups.add('hotely');
   return groups;
 }
 
@@ -486,6 +485,63 @@ function parsePermOverridesValue(value) {
   return value || {};
 }
 
+function staffMonthIndexValue(value) {
+  if (!value) return null;
+  if (typeof value === 'string') {
+    const m = value.match(/^(\d{4})-(\d{2})$/);
+    if (!m) return null;
+    return Number(m[1]) * 12 + Number(m[2]);
+  }
+  if (typeof value === 'object') {
+    const year = Number(value.year);
+    const month = Number(value.month);
+    if (Number.isFinite(year) && Number.isFinite(month) && month >= 1 && month <= 12) {
+      return year * 12 + month;
+    }
+  }
+  return null;
+}
+
+function isRaspisStaffActiveForMonthFromOverrides(overrides, monthIndex) {
+  const rs = parsePermOverridesValue(overrides)?.raspis_staff || {};
+  if (rs.inactive === true || rs.active === false) return false;
+  const from = staffMonthIndexValue(rs.activeFrom);
+  const until = staffMonthIndexValue(rs.activeUntil);
+  if (from !== null && from > monthIndex) return false;
+  if (until !== null && until < monthIndex) return false;
+  return true;
+}
+
+async function hasAppAccess(user, appKey) {
+  if (!user) return false;
+  if (user.role === 'admin') return true;
+  const { groupPerms, userOv } = await getUserEffectivePerms(user);
+  const gp = groupPerms[appKey] || {};
+  const uo = userOv[appKey] || {};
+  const enabled = (uo.enabled != null) ? uo.enabled : (gp.enabled != null ? gp.enabled : true);
+  const visible = (uo.visible != null) ? uo.visible : (gp.visible != null ? gp.visible : true);
+  if (appKey === 'admin') return visible !== false;
+  return enabled !== false && visible !== false;
+}
+
+function requireAdminAppAccess(req, res, next) {
+  hasAppAccess(req.session.user, 'admin')
+    .then(ok => ok ? next() : res.redirect('/portal'))
+    .catch(err => {
+      console.error('Chyba overeni pristupu do spravy:', err);
+      res.redirect('/portal');
+    });
+}
+
+function requireAdminReadAccess(req, res, next) {
+  hasAppAccess(req.session.user, 'admin')
+    .then(ok => ok ? next() : res.status(403).json({ ok: false, msg: 'Nemate opravneni.' }))
+    .catch(err => {
+      console.error('Chyba overeni pristupu do spravy:', err);
+      res.status(500).json({ ok: false, msg: 'Chyba overeni opravneni.' });
+    });
+}
+
 async function loadPortalReceptionistNameMap(db) {
   const { rows } = await db.query(
     `SELECT name, username, perm_overrides
@@ -568,7 +624,7 @@ app.get('/portal', requirePortalAccess, (req, res) =>
   res.sendFile(path.join(__dirname, 'views', 'portal.html'))
 );
 
-app.get('/admin', requireLogin, requireAdmin, (req, res) =>
+app.get('/admin', requireLogin, requireAdminAppAccess, (req, res) =>
   res.sendFile(path.join(__dirname, 'views', 'admin.html'))
 );
 
@@ -752,7 +808,7 @@ app.post('/api/change-password', requireLogin, async (req, res) => {
 
 // ── API: Správa uživatelů (admin) ─────────────────────────────────────────────
 
-app.get('/api/users', requireLogin, requireAdmin, async (req, res) => {
+app.get('/api/users', requireLogin, requireAdminReadAccess, async (req, res) => {
   try {
     const db = getPool();
     const { rows } = await db.query(
@@ -765,7 +821,7 @@ app.get('/api/users', requireLogin, requireAdmin, async (req, res) => {
   }
 });
 
-app.post('/api/users', requireLogin, requireAdmin, async (req, res) => {
+app.post('/api/users', requireLogin, requirePermDefault('admin', 'users_add', false), async (req, res) => {
   const { name, username, password, role, phone } = req.body;
   if (!name?.trim() || !username?.trim() || !password || !role) {
     return res.json({ ok: false, msg: 'Vyplňte všechna pole.' });
@@ -791,7 +847,7 @@ app.post('/api/users', requireLogin, requireAdmin, async (req, res) => {
   }
 });
 
-app.patch('/api/users/:id', requireLogin, requireAdmin, async (req, res) => {
+app.patch('/api/users/:id', requireLogin, requirePermDefault('admin', 'users_edit', false), async (req, res) => {
   const id = parseInt(req.params.id, 10);
   const { name, role, password, username, phone } = req.body;
 
@@ -827,7 +883,7 @@ app.patch('/api/users/:id', requireLogin, requireAdmin, async (req, res) => {
   }
 });
 
-app.delete('/api/users/:id', requireLogin, requireAdmin, async (req, res) => {
+app.delete('/api/users/:id', requireLogin, requirePermDefault('admin', 'users_delete', false), async (req, res) => {
   const id = parseInt(req.params.id, 10);
   if (id === req.session.user.id) {
     return res.json({ ok: false, msg: 'Nemůžete smazat vlastní účet.' });
@@ -844,7 +900,7 @@ app.delete('/api/users/:id', requireLogin, requireAdmin, async (req, res) => {
 
 // ── API: Oprávnění skupin ─────────────────────────────────────────────────────
 
-app.get('/api/admin/groups', requireLogin, requireAdmin, async (req, res) => {
+app.get('/api/admin/groups', requireLogin, requireAdminReadAccess, async (req, res) => {
   try {
     const db = getPool();
     const { rows } = await db.query('SELECT name, display_name, perms, sublist FROM permission_groups ORDER BY name');
@@ -852,7 +908,7 @@ app.get('/api/admin/groups', requireLogin, requireAdmin, async (req, res) => {
   } catch(err) { res.json([]); }
 });
 
-app.post('/api/admin/groups', requireLogin, requireAdmin, async (req, res) => {
+app.post('/api/admin/groups', requireLogin, requirePermDefault('admin', 'groups_manage', false), async (req, res) => {
   const { name, displayName, sublist } = req.body;
   if (!name || !displayName) return res.json({ ok: false, msg: 'Chybí data.' });
   try {
@@ -862,7 +918,7 @@ app.post('/api/admin/groups', requireLogin, requireAdmin, async (req, res) => {
   } catch(err) { res.json({ ok: false, msg: 'Skupina s tímto klíčem již existuje.' }); }
 });
 
-app.delete('/api/admin/groups/:name', requireLogin, requireAdmin, async (req, res) => {
+app.delete('/api/admin/groups/:name', requireLogin, requirePermDefault('admin', 'groups_manage', false), async (req, res) => {
   const name = req.params.name;
   if (name === 'admin') return res.json({ ok: false, msg: 'Skupinu admin nelze smazat.' });
   try {
@@ -874,7 +930,7 @@ app.delete('/api/admin/groups/:name', requireLogin, requireAdmin, async (req, re
   } catch(err) { res.json({ ok: false, msg: 'Chyba serveru.' }); }
 });
 
-app.put('/api/admin/groups/:name/perms', requireLogin, requireAdmin, async (req, res) => {
+app.put('/api/admin/groups/:name/perms', requireLogin, requirePermDefault('admin', 'groups_manage', false), async (req, res) => {
   try {
     const db = getPool();
     await db.query('UPDATE permission_groups SET perms = $1 WHERE name = $2', [JSON.stringify(req.body.perms || {}), req.params.name]);
@@ -882,7 +938,7 @@ app.put('/api/admin/groups/:name/perms', requireLogin, requireAdmin, async (req,
   } catch(err) { res.json({ ok: false, msg: 'Chyba serveru.' }); }
 });
 
-app.get('/api/admin/users/:id/overrides', requireLogin, requireAdmin, async (req, res) => {
+app.get('/api/admin/users/:id/overrides', requireLogin, requireAdminReadAccess, async (req, res) => {
   try {
     const db = getPool();
     const { rows } = await db.query('SELECT perm_overrides FROM users WHERE id = $1', [req.params.id]);
@@ -891,7 +947,7 @@ app.get('/api/admin/users/:id/overrides', requireLogin, requireAdmin, async (req
   } catch(err) { res.json({ ok: false }); }
 });
 
-app.put('/api/admin/users/:id/overrides', requireLogin, requireAdmin, async (req, res) => {
+app.put('/api/admin/users/:id/overrides', requireLogin, requirePermDefault('admin', 'user_permissions', false), async (req, res) => {
   try {
     const db = getPool();
     const { rows: beforeRows } = await db.query('SELECT username, perm_overrides FROM users WHERE id = $1', [req.params.id]);
@@ -904,7 +960,7 @@ app.put('/api/admin/users/:id/overrides', requireLogin, requireAdmin, async (req
   } catch(err) { res.json({ ok: false, msg: 'Chyba serveru.' }); }
 });
 
-app.get('/api/admin/logs', requireLogin, requireAdmin, async (req, res) => {
+app.get('/api/admin/logs', requireLogin, requirePermDefault('admin', 'logs_view', false), async (req, res) => {
   try {
     const db = getPool();
     const { rows: users } = await db.query(
@@ -938,20 +994,28 @@ app.get('/api/admin/logs', requireLogin, requireAdmin, async (req, res) => {
       if (ts > prevActivity) activityByUserId.set(id, ts);
       if (seenTs > prevSeen) seenByUserId.set(id, seenTs);
     }
+    try {
+      const { rows: loginRows } = await db.query(
+        `SELECT user_id, MAX(timestamp) AS last_login
+           FROM logs
+          WHERE action = 'login' AND user_id IS NOT NULL
+          GROUP BY user_id`
+      );
+      loginRows.forEach(r => {
+        const id = Number(r.user_id);
+        const ts = r.last_login ? new Date(r.last_login).getTime() : 0;
+        if (id && ts > (activityByUserId.get(id) || 0)) activityByUserId.set(id, ts);
+      });
+    } catch (err) {
+      console.error('Last login fallback error:', err.message);
+    }
     const currentMonth = new Date().getFullYear() * 12 + new Date().getMonth() + 1;
     const groupOrder = { admin: 0, 'vedoucí': 0, 'recepční': 1, pb6: 2 };
     const groupLabel = role => (role === 'admin' || role === 'vedoucí') ? 'Admin/VR' : (role === 'pb6' ? 'PB6' : 'Recepční');
     const isActiveUser = row => {
       const role = String(row.role || '').toLowerCase();
       if (role === 'admin' || role === 'vedoucí') return true;
-      const ov = parsePermOverridesValue(row.perm_overrides);
-      const rs = ov?.raspis_staff || {};
-      if (rs.inactive === true) return false;
-      if (rs.activeUntil) {
-        const m = String(rs.activeUntil).match(/^(\d{4})-(\d{2})$/);
-        if (m && (Number(m[1]) * 12 + Number(m[2])) < currentMonth) return false;
-      }
-      return true;
+      return isRaspisStaffActiveForMonthFromOverrides(row.perm_overrides, currentMonth);
     };
     const rows = users
       .filter(isActiveUser)
@@ -972,7 +1036,7 @@ app.get('/api/admin/logs', requireLogin, requireAdmin, async (req, res) => {
         };
       })
       .sort((a, b) => (a.group_order - b.group_order) || String(a.name).localeCompare(String(b.name), 'cs'));
-    res.json({ online: rows.filter(r => r.online), users: rows });
+    res.json({ ok: true, online: rows.filter(r => r.online), users: rows });
   } catch (err) {
     console.error(err);
     res.status(500).json({ ok: false, msg: 'Chyba serveru.' });
@@ -980,7 +1044,7 @@ app.get('/api/admin/logs', requireLogin, requireAdmin, async (req, res) => {
 });
 
 // Smazat všechny logy (nebo starší než N dní)
-app.delete('/api/admin/logs', requireLogin, requireAdmin, async (req, res) => {
+app.delete('/api/admin/logs', requireLogin, requirePermDefault('admin', 'logs_delete', false), async (req, res) => {
   try {
     const db = getPool();
     const days = parseInt(req.query.days);
@@ -2708,6 +2772,7 @@ app.get('/api/priplatky/zaznamy', requireLogin, async (req, res) => {
     params
   );
   applyPortalReceptionistNames(rows, await loadPortalReceptionistNameMap(db));
+  rows.forEach(r => { if (r.poznamka == null) r.poznamka = ''; });
   if (!(await canUsePriplatkyInternalNote(req.session.user))) {
     rows.forEach(r => { delete r.internal_note; });
   }
