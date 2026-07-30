@@ -1397,6 +1397,7 @@
       if (portalMaintenance.mode === 'on') {
         if (confirm('Ukon\u010dit re\u017eim \u00fadr\u017eby a znovu pustit u\u017eivatele na web?')) await setMaintenanceMode('off');
       } else if (confirm('Opravdu zapnout \u00fadr\u017ebu hned? Ostatn\u00ed u\u017eivatel\u00e9 uvid\u00ed jen hl\u00e1\u0161en\u00ed o \u00fadr\u017eb\u011b.')) {
+        await refreshMaintenanceStatus();
         await setMaintenanceMode('on', { endsAt: portalMaintenance.endsAt || null });
       }
       closeMaintenanceAdminModal();

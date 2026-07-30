@@ -674,11 +674,13 @@ app.get('/api/maintenance/status', requireLogin, async (req, res) => {
 app.post('/api/maintenance', requireLogin, requirePermDefault('admin', 'maintenance', false), async (req, res) => {
   try {
     const mode = ['off', 'warning', 'on'].includes(req.body?.mode) ? req.body.mode : 'off';
+    const previousState = await loadMaintenanceState();
     const fallback = mode === 'warning' ? MAINTENANCE_WARNING_MESSAGE : MAINTENANCE_DEFAULT_MESSAGE;
     const startsAtTime = req.body?.startsAt ? Date.parse(req.body.startsAt) : NaN;
     const endsAtTime = req.body?.endsAt ? Date.parse(req.body.endsAt) : NaN;
     const startsAt = mode === 'warning' && Number.isFinite(startsAtTime) ? new Date(startsAtTime).toISOString() : null;
-    const endsAt = (mode === 'warning' || mode === 'on') && Number.isFinite(endsAtTime) ? new Date(endsAtTime).toISOString() : null;
+    const parsedEndsAt = (mode === 'warning' || mode === 'on') && Number.isFinite(endsAtTime) ? new Date(endsAtTime).toISOString() : null;
+    const endsAt = parsedEndsAt || (mode === 'on' ? previousState.endsAt : null);
     const noticeType = ['maintenance', 'message'].includes(req.body?.noticeType) ? req.body.noticeType : 'maintenance';
     const targetGroups = Array.isArray(req.body?.targetGroups)
       ? [...new Set(req.body.targetGroups.map(v => String(v || '').trim().toLowerCase()).filter(v => MAINTENANCE_TARGET_GROUPS.has(v)))]
