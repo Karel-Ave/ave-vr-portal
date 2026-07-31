@@ -704,6 +704,7 @@ async function init() {
   await db.query(`ALTER TABLE vacation_requests ADD COLUMN IF NOT EXISTS manager_comment TEXT NOT NULL DEFAULT ''`);
   await db.query(`ALTER TABLE vacation_requests ADD COLUMN IF NOT EXISTS synced_to_month_note_at TIMESTAMPTZ`);
   await db.query(`ALTER TABLE vacation_requests ADD COLUMN IF NOT EXISTS synced_note_text TEXT NOT NULL DEFAULT ''`);
+  await db.query(`ALTER TABLE vacation_requests ADD COLUMN IF NOT EXISTS manual_entry BOOLEAN NOT NULL DEFAULT false`);
   await db.query(`CREATE INDEX IF NOT EXISTS idx_vacation_requests_month ON vacation_requests (year, month, status)`);
   await db.query(`CREATE INDEX IF NOT EXISTS idx_vacation_requests_staff ON vacation_requests (staff_login, year, month)`);
   await db.query(`

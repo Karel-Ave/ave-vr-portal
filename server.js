@@ -4358,7 +4358,7 @@ app.get('/api/vacations/summary', requireLogin, async (req, res) => {
       ));
     } else {
       ({ rows } = await db.query(
-        "SELECT COUNT(*)::int AS count, MAX(GREATEST(created_at, updated_at)) AS latest_at FROM vacation_requests WHERE (staff_user_id = $1 OR UPPER(staff_login) = $2) AND status IN ('approved','rejected','needs_info')",
+        "SELECT COUNT(*)::int AS count, MAX(GREATEST(created_at, updated_at)) AS latest_at FROM vacation_requests WHERE (staff_user_id = $1 OR UPPER(staff_login) = $2) AND status IN ('approved','rejected','needs_info') AND COALESCE(manual_entry, false) = false",
         [user.id, userLogin]
       ));
     }
@@ -4389,7 +4389,7 @@ async function buildVacationNotification(db, user) {
     ));
   } else {
     ({ rows } = await db.query(
-      "SELECT COUNT(*)::int AS count, MAX(GREATEST(created_at, updated_at)) AS latest_at FROM vacation_requests WHERE (staff_user_id = $1 OR UPPER(staff_login) = $2) AND status IN ('approved','rejected','needs_info')",
+      "SELECT COUNT(*)::int AS count, MAX(GREATEST(created_at, updated_at)) AS latest_at FROM vacation_requests WHERE (staff_user_id = $1 OR UPPER(staff_login) = $2) AND status IN ('approved','rejected','needs_info') AND COALESCE(manual_entry, false) = false",
       [user.id, userLogin]
     ));
   }
@@ -4455,8 +4455,8 @@ app.post('/api/vacations', requireLogin, async (req, res) => {
     const status = manual ? 'approved' : 'pending';
     const { rows } = await db.query(
       `INSERT INTO vacation_requests
-       (staff_user_id, staff_login, staff_name, month, year, days_json, days_count, note, status, created_by, created_name, resolved_by, resolved_name, resolved_at, updated_at)
-       VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,NOW()) RETURNING *`,
+       (staff_user_id, staff_login, staff_name, month, year, days_json, days_count, note, status, manual_entry, created_by, created_name, resolved_by, resolved_name, resolved_at, updated_at)
+       VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,NOW()) RETURNING *`,
       [
         staff.userId || null,
         String(staff.login || '').trim().toUpperCase(),
@@ -4467,6 +4467,7 @@ app.post('/api/vacations', requireLogin, async (req, res) => {
         daysCount,
         note,
         status,
+        manual,
         user.id,
         user.name,
         manual ? user.id : null,
@@ -4474,7 +4475,9 @@ app.post('/api/vacations', requireLogin, async (req, res) => {
         manual ? new Date() : null
       ]
     );
-    res.json({ ok: true, item: vacationParseRow(rows[0]) });
+    let item = vacationParseRow(rows[0]);
+    if (manual) await vacationSyncApprovedRequestMovements(db, item, user);
+    res.json({ ok: true, item });
   } catch (err) { console.error('Chyba POST /api/vacations:', err); res.status(500).json({ ok: false, msg: 'Chyba serveru.' }); }
 });
 
@@ -4482,6 +4485,7 @@ app.patch('/api/vacations/:id', requireLogin, async (req, res) => {
   try {
     const db = getPool();
     const user = req.session.user;
+    const manager = await canManageVacationsServer(user);
     const { rows } = await db.query('SELECT * FROM vacation_requests WHERE id = $1', [req.params.id]);
     if (!rows.length) return res.status(404).json({ ok: false, msg: 'Zadost nenalezena.' });
     const item = rows[0];
@@ -4525,6 +4529,7 @@ app.post('/api/vacations/:id/status', requireLogin, async (req, res) => {
       const { rows: fresh } = await db.query('SELECT * FROM vacation_requests WHERE id=$1', [item.id]);
       item = vacationParseRow(fresh[0] || rows[0]);
     }
+    if (status === 'approved') await vacationSyncApprovedRequestMovements(db, item, user);
     res.json({ ok: true, item, synced });
   } catch (err) { console.error('Chyba POST /api/vacations/:id/status:', err); res.status(500).json({ ok: false, msg: 'Chyba serveru.' }); }
 });
@@ -4585,8 +4590,103 @@ function vacationDateSourceKey(scheduleKey, staffLogin, year, month, day) {
   return `schedule:${scheduleKey}:${String(staffLogin || '').toUpperCase()}:${year}-${String(month).padStart(2,'0')}-${String(day).padStart(2,'0')}`;
 }
 
+function vacationRequestSourceKey(requestId, suffix) {
+  return `request:${requestId}:${suffix}`;
+}
+
 function vacationStaffSort(a, b) {
   return String(a.staff_name || a.name || '').localeCompare(String(b.staff_name || b.name || ''), 'cs', { sensitivity: 'base' });
+}
+
+async function vacationSyncApprovedRequestMovements(db, item, user) {
+  if (!item || String(item.status || '') !== 'approved') return { inserted: 0, skipped: 0 };
+  const login = String(item.staff_login || '').trim().toUpperCase();
+  if (!login) return { inserted: 0, skipped: 0 };
+  const staff = (await loadRtPortalReceptionists(db)).find(s =>
+    String(s.login || '').trim().toUpperCase() === login ||
+    String(s.userId || '') === String(item.staff_user_id || '')
+  ) || {
+    userId: item.staff_user_id || null,
+    login,
+    displayName: item.staff_name || login,
+    contract: ''
+  };
+  if (!vacationHasBalanceContract(staff.contract)) return { inserted: 0, skipped: 0 };
+  const balance = await vacationEnsureBalance(db, { ...staff, login, displayName: staff.displayName || item.staff_name || login }, user);
+  if (!balance) return { inserted: 0, skipped: 0 };
+  const dayHours = vacationDayHoursByContract(balance.contract || staff.contract) || Number(balance.day_hours || 0);
+  const days = Array.isArray(item.days) ? item.days.filter(Boolean) : [];
+  const desired = [];
+  if (days.length) {
+    for (const dateText of days) {
+      const m = String(dateText).match(/^(\d{4})-(\d{2})-(\d{2})$/);
+      if (!m) continue;
+      desired.push({
+        sourceKey: vacationRequestSourceKey(item.id, `date:${dateText}`),
+        year: Number(m[1]),
+        month: Number(m[2]),
+        day: Number(m[3]),
+        daysDelta: -1,
+        hoursDelta: -dayHours,
+        label: `Schvalena dovolena ${vacationFormatDate(dateText)}`,
+        note: `Schvalena dovolena ${vacationFormatDate(dateText)}`
+      });
+    }
+  } else {
+    const count = Number(item.days_count || 0);
+    if (count > 0) {
+      desired.push({
+        sourceKey: vacationRequestSourceKey(item.id, `count:${item.year}-${String(item.month).padStart(2, '0')}`),
+        year: Number(item.year),
+        month: Number(item.month),
+        day: null,
+        daysDelta: -count,
+        hoursDelta: -(count * dayHours),
+        label: `Schvalena dovolena ${item.month}/${item.year}`,
+        note: `Schvalena dovolena: ${count} dni (${item.month}/${item.year})`
+      });
+    }
+  }
+  let inserted = 0;
+  let skipped = 0;
+  for (const move of desired) {
+    if (move.day) {
+      const { rows: sameDay } = await db.query(
+        `SELECT 1 FROM vacation_movements
+          WHERE UPPER(staff_login) = UPPER($1)
+            AND year = $2
+            AND month = $3
+            AND day = $4
+            AND movement_type IN ('schedule_import', 'request_approved')
+          LIMIT 1`,
+        [login, move.year, move.month, move.day]
+      );
+      if (sameDay.length) { skipped++; continue; }
+    }
+    const { rows } = await db.query(
+      `INSERT INTO vacation_movements
+       (staff_user_id, staff_login, staff_name, year, month, day, movement_type, source_key, source_label, days_delta, hours_delta, note, created_by, created_name)
+       VALUES ($1,$2,$3,$4,$5,$6,'request_approved',$7,$8,$9,$10,$11,$12,$13)
+       ON CONFLICT (source_key) DO NOTHING RETURNING id`,
+      [
+        staff.userId || item.staff_user_id || null,
+        login,
+        staff.displayName || staff.name || item.staff_name || login,
+        move.year,
+        move.month,
+        move.day,
+        move.sourceKey,
+        move.label,
+        move.daysDelta,
+        move.hoursDelta,
+        move.note,
+        user?.id || null,
+        user?.name || null
+      ]
+    );
+    if (rows.length) inserted++; else skipped++;
+  }
+  return { inserted, skipped };
 }
 
 async function vacationEnsureBalance(db, staff, user) {
@@ -4863,6 +4963,17 @@ async function vacationSyncScheduleZMovements(db, scheduleKey, month, year, data
     if (!balance) { kept++; continue; }
     const dayHours = vacationDayHoursByContract(balance?.contract || s.contract) || Number(balance?.day_hours || 0);
     const name = s.displayName || s.name || info.login;
+    const sameDay = await db.query(
+      `SELECT 1 FROM vacation_movements
+        WHERE UPPER(staff_login) = UPPER($1)
+          AND year = $2
+          AND month = $3
+          AND day = $4
+          AND movement_type = 'request_approved'
+        LIMIT 1`,
+      [info.login, syncYear, syncMonth, info.day]
+    );
+    if (sameDay.rows.length) { kept++; continue; }
     const ins = await db.query(
       `INSERT INTO vacation_movements
        (staff_user_id, staff_login, staff_name, year, month, day, movement_type, source_key, source_label, days_delta, hours_delta, note, created_by, created_name)
