@@ -1459,14 +1459,17 @@ app.get('/api/widget-today', requireLogin, async (req, res) => {
     const dayCol = (day - 1) * 2;
     const nightCol = dayCol + 1;
     staff.forEach((s, si) => {
-      const name = cleanWidgetName(s.name);
+      const rawStaffName = String(s.name || '').trim();
+      const name = cleanWidgetName(rawStaffName);
       if (!name) return;
-      const isStandbyPlaceholder = String(s.name || '').trim().toLowerCase() === 'pohotovost'
+      const isStandbyPlaceholder = rawStaffName.toLowerCase() === 'pohotovost'
         || String(s.type || '').trim().toLowerCase() === 'pohotovost';
+      const isTheatrinoPlaceholder = /^z+\s+/i.test(rawStaffName)
+        && name.toLowerCase() === 'theatrino';
       const dayVal = String(schedule[`${si}_${dayCol}`] || '').trim().toUpperCase();
       const nightVal = String(schedule[`${si}_${nightCol}`] || '').trim().toUpperCase();
-      if (hotelMap[dayVal] && !hotelMap[dayVal].day && !(dayVal === 'P' && isStandbyPlaceholder)) hotelMap[dayVal].day = name;
-      if (hotelMap[nightVal] && !hotelMap[nightVal].night && !(nightVal === 'P' && isStandbyPlaceholder)) hotelMap[nightVal].night = name;
+      if (hotelMap[dayVal] && !hotelMap[dayVal].day && !(dayVal === 'P' && isStandbyPlaceholder) && !(dayVal === 'J' && isTheatrinoPlaceholder)) hotelMap[dayVal].day = name;
+      if (hotelMap[nightVal] && !hotelMap[nightVal].night && !(nightVal === 'P' && isStandbyPlaceholder) && !(nightVal === 'J' && isTheatrinoPlaceholder)) hotelMap[nightVal].night = name;
     });
 
     res.json({
