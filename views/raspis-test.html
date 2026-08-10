@@ -1611,6 +1611,8 @@ body[data-active-tab="pozadavky"] #schedule-legend .legend-item.schedule-dynamic
     padding: 0 !important;
     border-color: #777 !important;
     color: #000 !important;
+    box-shadow: none !important;
+    outline: none !important;
     -webkit-print-color-adjust: exact;
     print-color-adjust: exact;
   }
@@ -1734,6 +1736,8 @@ body[data-active-tab="pozadavky"] #schedule-legend .legend-item.schedule-dynamic
     max-width: var(--print-sum-w, 16px) !important;
     font-size: var(--print-font, 6.5px) !important;
     background: var(--print-sum-bg) !important;
+    overflow: hidden !important;
+    text-align: center !important;
   }
   body.print-schedule #print-root .sched-tbl .cell-val {
     font-size: var(--print-font, 6.5px) !important;
@@ -5721,7 +5725,7 @@ function printScheduleTab(tab) {
     ? { w: 1068, h: 740 }
     : { w: 740, h: isReqPrint ? 1010 : 1068 }; // A4 printable area approximation
   let nameW = filterHotels.size ? 86 : 88;
-  let sumW = filterHotels.size ? 10 : 10;
+  let sumW = useLandscapePrint ? 14 : 10;
   let colW = (page.w - nameW - sumCols * sumW - 4) / Math.max(1, dayCols);
   let totalW = nameW + dayCols * colW + sumCols * sumW + 4;
   if (totalW > page.w) {
