@@ -27,13 +27,15 @@ body { min-height: 100vh; background: var(--bg); font-family: 'Segoe UI', system
 
 /* Přehled: flexbox layout — controls stuck at top, table fills rest */
 /* Důležité: #tab-prehled.active (specificita ID+class) > .tab-panel { display:none } (class) */
-#tab-prehled.active {
+#tab-prehled.active,
+#tab-skoleni.active {
   display: flex;
   flex-direction: column;
   height: calc(100dvh - 48px);
   overflow: hidden;
 }
-#prehled-sticky-wrap {
+#prehled-sticky-wrap,
+#skoleni-sticky-wrap {
   flex-shrink: 0;
   background: var(--bg-controls);
   border-bottom: 1px solid var(--bg-controls-border);
@@ -57,6 +59,34 @@ body { min-height: 100vh; background: var(--bg); font-family: 'Segoe UI', system
   overflow-y: auto;
   overflow-x: auto;
   box-sizing: border-box;
+}
+#skoleni-scroll {
+  flex: 1;
+  min-height: 0;
+  max-width: 1020px;
+  margin: 0 auto;
+  width: 100%;
+  padding: 16px 16px 60px;
+  overflow-y: auto;
+  box-sizing: border-box;
+}
+.training-list { display:grid; gap:8px; }
+.training-card {
+  display:grid;
+  grid-template-columns: 92px 54px minmax(130px,1fr) minmax(130px,1fr) minmax(160px,1.2fr);
+  gap:10px;
+  align-items:start;
+  padding:10px 12px;
+  border:1px solid var(--border);
+  border-radius:8px;
+  background:var(--surface);
+  font-size:13px;
+}
+.training-card .label { display:block; color:var(--text-muted); font-size:10px; text-transform:uppercase; letter-spacing:.04em; margin-bottom:2px; }
+.training-card strong { color:var(--accent-h); }
+@media (max-width: 700px) {
+  .training-card { grid-template-columns: 1fr 1fr; }
+  .training-card .note { grid-column: 1 / -1; }
 }
 
 /* Wrap for settings */
@@ -345,6 +375,7 @@ table.dtbl { width: 100%; border-collapse: collapse; table-layout: fixed; font-s
 
 <div id="tabs">
   <button class="tab-btn active" data-tab="prehled">Přehled</button>
+  <button class="tab-btn" data-tab="skoleni">Školení</button>
   <button class="tab-btn" data-tab="nastaveni">Nastavení</button>
 </div>
 
@@ -374,6 +405,24 @@ table.dtbl { width: 100%; border-collapse: collapse; table-layout: fixed; font-s
     </div>
   </div>
 
+</div>
+
+<!-- ═══ TAB: ŠKOLENÍ ════════════════════════════════════════════════════════ -->
+<div class="tab-panel" id="tab-skoleni">
+  <div id="skoleni-sticky-wrap">
+    <div style="max-width:1020px;margin:0 auto;padding:12px 16px 10px">
+      <div class="controls-bar">
+        <button class="nav-btn" id="btn-skoleni-prev">◀</button>
+        <span class="month-label" id="skoleni-month-label">—</span>
+        <button class="nav-btn" id="btn-skoleni-next">▶</button>
+      </div>
+    </div>
+  </div>
+  <div id="skoleni-scroll">
+    <div class="stbl-wrap" id="skoleni-wrap">
+      <p class="empty">Načítám…</p>
+    </div>
+  </div>
 </div>
 
 <!-- ═══ TAB: NASTAVENÍ ════════════════════════════════════════════════════ -->
@@ -701,6 +750,7 @@ document.querySelectorAll('.tab-btn').forEach(btn => btn.addEventListener('click
   btn.classList.add('active');
   document.getElementById('tab-' + btn.dataset.tab).classList.add('active');
   if (btn.dataset.tab === 'nastaveni') { loadDuvodyBraniList(); loadDuvodyObecneList(); }
+  if (btn.dataset.tab === 'skoleni') loadSkoleni();
 }));
 
 // Sub-záložky v Nastavení
@@ -717,22 +767,35 @@ const MIN_ROK = 2026, MIN_MESIC = 5; // Nejstarší povolený měsíc: květen 2
 function isAtMin() { return rok === MIN_ROK && mesic === MIN_MESIC; }
 function updatePrevBtn() {
   document.getElementById('btn-prev').disabled = isAtMin();
+  const skoleniPrev = document.getElementById('btn-skoleni-prev');
+  if (skoleniPrev) skoleniPrev.disabled = isAtMin();
 }
 function updateMonthLabel() {
   document.getElementById('month-label').textContent = `${MESICE[mesic]} ${rok}`;
+  const skoleniLabel = document.getElementById('skoleni-month-label');
+  if (skoleniLabel) skoleniLabel.textContent = `${MESICE[mesic]} ${rok}`;
   document.getElementById('link-export').href = `/api/priplatky/export/xlsx?rok=${rok}&mesic=${mesic}`;
   updatePrevBtn();
+}
+function activeBonusTab() {
+  return document.querySelector('.tab-btn.active')?.dataset.tab || 'prehled';
+}
+function loadActiveMonthTab() {
+  if (activeBonusTab() === 'skoleni') loadSkoleni();
+  else loadPrehled();
 }
 document.getElementById('btn-prev').addEventListener('click', () => {
   if (isAtMin()) return;
   mesic--; if (mesic < 1) { mesic = 12; rok--; }
   if (rok < MIN_ROK || (rok === MIN_ROK && mesic < MIN_MESIC)) { rok = MIN_ROK; mesic = MIN_MESIC; }
-  updateMonthLabel(); loadPrehled();
+  updateMonthLabel(); loadActiveMonthTab();
 });
 document.getElementById('btn-next').addEventListener('click', () => {
   mesic++; if (mesic > 12) { mesic = 1; rok++; }
-  updateMonthLabel(); loadPrehled();
+  updateMonthLabel(); loadActiveMonthTab();
 });
+document.getElementById('btn-skoleni-prev')?.addEventListener('click', () => document.getElementById('btn-prev')?.click());
+document.getElementById('btn-skoleni-next')?.addEventListener('click', () => document.getElementById('btn-next')?.click());
 
 // ═══ Inicializace ════════════════════════════════════════════════════════════
 async function init() {
@@ -910,6 +973,48 @@ async function loadPrehled() {
   } catch(e) {
     wrap.innerHTML = `<p class="empty">Chyba: ${e.message}</p>`;
   }
+}
+
+async function loadSkoleni() {
+  const wrap = document.getElementById('skoleni-wrap');
+  if (!wrap) return;
+  wrap.innerHTML = '<p class="empty">Načítám…</p>';
+  try {
+    const resp = await fetch(`/api/priplatky/zaznamy?rok=${rok}&mesic=${mesic}`);
+    const data = await resp.json();
+    renderSkoleni(Array.isArray(data) ? data : []);
+  } catch(e) {
+    wrap.innerHTML = `<p class="empty">Chyba: ${esc(e.message)}</p>`;
+  }
+}
+
+function renderSkoleni(data) {
+  const wrap = document.getElementById('skoleni-wrap');
+  if (!wrap) return;
+  const rows = data
+    .filter(z => z.sekce === 'školení')
+    .sort((a, b) => {
+      const byDate = String(a.datum || '').localeCompare(String(b.datum || ''));
+      if (byDate) return byDate;
+      return String(a.full_name || recepniName(a.login) || a.login || '')
+        .localeCompare(String(b.full_name || recepniName(b.login) || b.login || ''), 'cs', { sensitivity:'base' });
+    });
+
+  if (!rows.length) {
+    wrap.innerHTML = '<p class="empty">Žádná školení v tomto měsíci.</p>';
+    return;
+  }
+
+  wrap.innerHTML = `<div class="training-list">${rows.map(z => {
+    const trainer = z.full_name || recepniName(z.login) || z.login || '';
+    return `<div class="training-card">
+      <div><span class="label">Datum</span><strong>${esc(fmtDateCz(z.datum))}</strong></div>
+      <div><span class="label">Hotel</span>${esc(z.hotel || '-')}</div>
+      <div><span class="label">Školil</span>${esc(trainer)}</div>
+      <div><span class="label">Koho školil</span>${esc(z.koho_skolil || '-')}</div>
+      <div class="note"><span class="label">Poznámka</span>${esc(z.poznamka || '-')}</div>
+    </div>`;
+  }).join('')}</div>`;
 }
 
 function renderPrehled(data) {

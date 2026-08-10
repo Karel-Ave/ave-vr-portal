@@ -1520,6 +1520,11 @@ body[data-active-tab="pozadavky"] #schedule-legend .legend-item.schedule-dynamic
     padding: 0 !important;
     margin: 0 !important;
   }
+  html.print-landscape-page,
+  body.print-landscape-page {
+    width: 283mm !important;
+    height: 196mm !important;
+  }
   body.print-schedule > :not(#print-root) { display: none !important; }
   body.print-schedule #print-root {
     display: block !important;
@@ -4355,12 +4360,8 @@ function editExtraAdj(si, idx) {
   document.getElementById('extra-pop-date').value = a.date || '';
   document.getElementById('extra-pop-apply').textContent = 'Uložit';
   document.getElementById('extra-pop-title').textContent = '± Hodiny — upravit záznam';
-  if (isMobileLike()) {
-    valInp.readOnly = true;
-  } else {
-    valInp.readOnly = false;
-    valInp.focus();
-  }
+  valInp.readOnly = false;
+  valInp.focus();
 }
 
 function deleteExtraAdj(si, idx) {
@@ -4394,12 +4395,8 @@ function showExtraPopup(si) {
   pop.style.left = Math.round(window.innerWidth / 2 - 140) + 'px';
   pop.style.top = Math.round(window.innerHeight / 2 - 150) + 'px';
   setTimeout(() => {
-    if (isMobileLike()) {
-      valInp.readOnly = true;
-    } else {
-      valInp.readOnly = false;
-      valInp.focus();
-    }
+    valInp.readOnly = false;
+    valInp.focus();
   }, 30);
 }
 
@@ -5662,6 +5659,7 @@ function printScheduleTab(tab) {
   const tblId = cfg.tblId;
   const srcTbl = document.getElementById(tblId);
   if (!srcTbl) return;
+  const useLandscapePrint = tab === 'public' && filterHotels.size > 0;
 
   const root = document.createElement('div');
   root.id = 'print-root';
@@ -5719,7 +5717,9 @@ function printScheduleTab(tab) {
   }).length;
   const dayCols = clone.querySelectorAll('thead th.th-dn').length;
   const sumCols = clone.querySelectorAll('thead th.th-sum').length;
-  const page = { w: 740, h: isReqPrint ? 1010 : 1068 }; // A4 portrait printable area approximation
+  const page = useLandscapePrint
+    ? { w: 1068, h: 740 }
+    : { w: 740, h: isReqPrint ? 1010 : 1068 }; // A4 printable area approximation
   let nameW = filterHotels.size ? 86 : 88;
   let sumW = filterHotels.size ? 10 : 10;
   let colW = (page.w - nameW - sumCols * sumW - 4) / Math.max(1, dayCols);
@@ -5762,9 +5762,20 @@ function printScheduleTab(tab) {
   document.documentElement.style.setProperty('--print-dn-head-h', dnHeadH + 'px');
   document.documentElement.style.setProperty('--print-font', font + 'px');
 
+  let landscapeStyle = null;
+  if (useLandscapePrint) {
+    landscapeStyle = document.createElement('style');
+    landscapeStyle.id = 'print-landscape-style';
+    landscapeStyle.textContent = '@page { size: A4 landscape; margin: 7mm; }';
+    document.head.appendChild(landscapeStyle);
+    document.documentElement.classList.add('print-landscape-page');
+  }
   document.body.classList.add('print-schedule', cls);
+  if (useLandscapePrint) document.body.classList.add('print-landscape-page');
   const cleanup = () => {
-    document.body.classList.remove('print-schedule', 'print-public', 'print-req');
+    document.body.classList.remove('print-schedule', 'print-public', 'print-req', 'print-landscape-page');
+    document.documentElement.classList.remove('print-landscape-page');
+    landscapeStyle?.remove();
     ['--print-root-w','--print-name-w','--print-col-w','--print-sum-w','--print-row-h','--print-head-h','--print-day-head-h','--print-dn-head-h','--print-font'].forEach(p => {
       document.documentElement.style.removeProperty(p);
     });
@@ -6478,6 +6489,14 @@ function renderScheduleTable(tableId, editable) {
         if (!rowEditable) return;
         openRequirementNoteModal(si);
       });
+      if (reqNotePreview) {
+        wrap.addEventListener('click', e => {
+          if (!isMobileLike() || e.target === noteBtn) return;
+          e.preventDefault();
+          e.stopPropagation();
+          alert(`PR:\n${reqNotePreview}`);
+        });
+      }
       wrap.appendChild(txt);
       wrap.appendChild(noteBtn);
       nameTd.appendChild(wrap);
@@ -14442,12 +14461,12 @@ document.addEventListener('DOMContentLoaded', async () => {
   document.getElementById('extra-pop-plus').addEventListener('click', () => {
     const inp = document.getElementById('extra-pop-val');
     const v = parseFloat(inp.value) || 0;
-    inp.value = v <= 0 ? '1' : String(Math.round((v + 0.5) * 2) / 2);
+    inp.value = v < 0 ? '0.5' : String(Math.round((v + 0.5) * 2) / 2);
   });
   document.getElementById('extra-pop-minus').addEventListener('click', () => {
     const inp = document.getElementById('extra-pop-val');
     const v = parseFloat(inp.value) || 0;
-    inp.value = v >= 0 ? '-1' : String(Math.round((v - 0.5) * 2) / 2);
+    inp.value = v > 0 ? '-0.5' : String(Math.round((v - 0.5) * 2) / 2);
   });
   document.getElementById('extra-pop-apply').addEventListener('click', applyExtraAdj);
   document.getElementById('extra-pop-cancel').addEventListener('click', () => {
@@ -14456,15 +14475,6 @@ document.addEventListener('DOMContentLoaded', async () => {
   document.getElementById('extra-pop-val').addEventListener('keydown', e => {
     if (e.key === 'Enter') applyExtraAdj();
     if (e.key === 'Escape') document.getElementById('extra-popup').style.display = 'none';
-  });
-  document.getElementById('extra-pop-val').addEventListener('pointerdown', e => {
-    if (!isMobileLike()) return;
-    e.preventDefault();
-    e.currentTarget.readOnly = true;
-  });
-  document.getElementById('extra-pop-val').addEventListener('focus', e => {
-    if (!isMobileLike()) return;
-    e.currentTarget.blur();
   });
   document.addEventListener('pointerdown', e => {
     const keypad = document.getElementById('mobile-cell-keypad');
@@ -14966,7 +14976,7 @@ document.addEventListener('DOMContentLoaded', async () => {
   <div style="font-weight:700;font-size:12px;margin-bottom:10px" id="extra-pop-title">± Hodiny — přidat záznam</div>
   <div style="display:flex;gap:6px;margin-bottom:8px;align-items:center">
     <button id="extra-pop-minus" style="padding:4px 12px;border:1px solid var(--border);border-radius:5px;cursor:pointer;background:var(--surface-alt);color:var(--text);font-size:18px;line-height:1">−</button>
-    <input id="extra-pop-val" type="text" inputmode="decimal" placeholder="±hod (např. 2 nebo -3)" style="flex:1;padding:5px 8px;border:1px solid var(--border);border-radius:5px;font-family:inherit;font-size:13px;text-align:center;background:var(--input-bg,var(--bg));color:var(--text)">
+    <input id="extra-pop-val" type="text" inputmode="decimal" placeholder="±hod (např. 0,5 nebo -1)" style="flex:1;padding:5px 8px;border:1px solid var(--border);border-radius:5px;font-family:inherit;font-size:13px;text-align:center;background:var(--input-bg,var(--bg));color:var(--text)">
     <button id="extra-pop-plus" style="padding:4px 12px;border:1px solid var(--border);border-radius:5px;cursor:pointer;background:var(--surface-alt);color:var(--text);font-size:18px;line-height:1">+</button>
   </div>
   <input id="extra-pop-note" type="text" placeholder="Poznámka..." style="width:100%;padding:5px 8px;border:1px solid var(--border);border-radius:5px;font-family:inherit;font-size:12px;margin-bottom:6px;background:var(--input-bg,var(--bg));color:var(--text)">
