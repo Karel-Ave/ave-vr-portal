@@ -1116,7 +1116,8 @@ app.get('/api/my-permissions', requireLogin, async (req, res) => {
         export: true,
         settings: isAdm,
         manageTexts: isAdm,
-        internalNote: isManager
+        internalNote: isManager,
+        trainingTab: isManager
       } },
       dovolene: { enabled: true, visible: true, buttons: {
         viewAll: isManager,

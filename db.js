@@ -274,7 +274,7 @@ async function init() {
       req_create: true, req_edit: true, req_toggle_reception: true, req_send_tvorba: true, req_delete: true, req_archive: true,
       hotel_manager: true, settings_monthly: true, settings_add_staff: true, settings_clear_overrides: true
     } },
-    priplatky: { enabled: true, visible: true, buttons: { viewAll: true, add: true, edit: true, delete: true, export: true, template: true, settings: true, manageReceptionists: true, manageTexts: true, internalNote: true } },
+    priplatky: { enabled: true, visible: true, buttons: { viewAll: true, add: true, edit: true, delete: true, export: true, template: true, settings: true, manageReceptionists: true, manageTexts: true, internalNote: true, trainingTab: true } },
     blacklist: { enabled: true, visible: true, buttons: { view: true, add: true, remove: true, edit: true, export_pdf: true, export_email: true, edit_intro: true, history: true, history_delete: true } },
     dovolene: { enabled: true, visible: true, buttons: { viewAll: true, manage: true, manageBalances: true, manualCreate: true, delete: true, bulkDelete: true, syncNote: false } },
     admin: { enabled: true, visible: true, buttons: { users_add: true, users_edit: true, users_delete: true, user_permissions: true, groups_manage: true, logs_view: true, logs_delete: true, maintenance: true, never_logout: true } }
@@ -288,7 +288,7 @@ async function init() {
       req_create: true, req_edit: true, req_toggle_reception: true, req_send_tvorba: true, req_delete: false, req_archive: true,
       hotel_manager: false, settings_monthly: true, settings_add_staff: true, settings_clear_overrides: false
     } },
-    priplatky: { enabled: true, visible: true, buttons: { viewAll: false, add: true, edit: true, delete: false, export: true, template: false, settings: false, manageReceptionists: false, manageTexts: false, internalNote: true } },
+    priplatky: { enabled: true, visible: true, buttons: { viewAll: false, add: true, edit: true, delete: false, export: true, template: false, settings: false, manageReceptionists: false, manageTexts: false, internalNote: true, trainingTab: true } },
     blacklist: { enabled: true, visible: true, buttons: { view: true, add: true, remove: true, edit: true, export_pdf: true, export_email: true, edit_intro: false, history: true, history_delete: false } },
     dovolene: { enabled: true, visible: true, buttons: { viewAll: true, manage: true, manageBalances: true, manualCreate: false, delete: true, bulkDelete: false, syncNote: false } },
     admin: { enabled: false, visible: false, buttons: { users_add: false, users_edit: false, users_delete: false, user_permissions: false, groups_manage: false, logs_view: false, logs_delete: false, maintenance: false, never_logout: false } }
@@ -302,7 +302,7 @@ async function init() {
       req_create: false, req_edit: false, req_toggle_reception: false, req_send_tvorba: false, req_delete: false, req_archive: false,
       hotel_manager: false, settings_monthly: false, settings_add_staff: false, settings_clear_overrides: false
     } },
-    priplatky: { enabled: false, visible: false, buttons: { viewAll: false, add: false, edit: false, delete: false, export: false, template: false, settings: false, manageReceptionists: false, manageTexts: false, internalNote: false } },
+    priplatky: { enabled: false, visible: false, buttons: { viewAll: false, add: false, edit: false, delete: false, export: false, template: false, settings: false, manageReceptionists: false, manageTexts: false, internalNote: false, trainingTab: false } },
     blacklist: { enabled: false, visible: false, buttons: { view: false, add: false, remove: false, edit: false, export_pdf: false, export_email: false, edit_intro: false, history: false, history_delete: false } },
     dovolene: { enabled: false, visible: false, buttons: { viewAll: false, manage: false, manageBalances: false, manualCreate: false, delete: false, bulkDelete: false, syncNote: false } },
     admin: { enabled: false, visible: false, buttons: { users_add: false, users_edit: false, users_delete: false, user_permissions: false, groups_manage: false, logs_view: false, logs_delete: false, maintenance: false, never_logout: false } }
@@ -316,7 +316,7 @@ async function init() {
       req_create: false, req_edit: false, req_toggle_reception: false, req_send_tvorba: false, req_delete: false, req_archive: false,
       hotel_manager: false, settings_monthly: false, settings_add_staff: false, settings_clear_overrides: false
     } },
-    priplatky: { enabled: true, visible: true, buttons: { viewAll: false, add: true, edit: true, delete: false, export: true, template: false, settings: false, manageReceptionists: false, manageTexts: false, internalNote: false } },
+    priplatky: { enabled: true, visible: true, buttons: { viewAll: false, add: true, edit: true, delete: false, export: true, template: false, settings: false, manageReceptionists: false, manageTexts: false, internalNote: false, trainingTab: false } },
     blacklist: { enabled: true, visible: true, buttons: { view: true, add: false, remove: false, edit: false, export_pdf: false, export_email: false, edit_intro: false, history: false, history_delete: false } },
     dovolene: { enabled: true, visible: false, buttons: { viewAll: false, manage: false, manageBalances: false, manualCreate: false, delete: false, bulkDelete: false, syncNote: false } },
     admin: { enabled: false, visible: false, buttons: { users_add: false, users_edit: false, users_delete: false, user_permissions: false, groups_manage: false, logs_view: false, logs_delete: false, maintenance: false, never_logout: false } }
@@ -330,7 +330,7 @@ async function init() {
       req_create: false, req_edit: true, req_toggle_reception: false, req_send_tvorba: false, req_delete: false, req_archive: false,
       hotel_manager: false, settings_monthly: false, settings_add_staff: false, settings_clear_overrides: false
     } },
-    priplatky: { enabled: false, visible: false, buttons: { viewAll: false, add: false, edit: false, delete: false, export: false, template: false, settings: false, manageReceptionists: false, manageTexts: false, internalNote: false } },
+    priplatky: { enabled: false, visible: false, buttons: { viewAll: false, add: false, edit: false, delete: false, export: false, template: false, settings: false, manageReceptionists: false, manageTexts: false, internalNote: false, trainingTab: false } },
     blacklist: { enabled: false, visible: false, buttons: { view: false, add: false, remove: false, edit: false, export_pdf: false, export_email: false, edit_intro: false, history: false, history_delete: false } },
     dovolene: { enabled: true, visible: false, buttons: { viewAll: false, manage: false, manageBalances: false, manualCreate: false, delete: false, bulkDelete: false, syncNote: false } },
     admin: { enabled: false, visible: false, buttons: { users_add: false, users_edit: false, users_delete: false, user_permissions: false, groups_manage: false, logs_view: false, logs_delete: false, maintenance: false, never_logout: false } }

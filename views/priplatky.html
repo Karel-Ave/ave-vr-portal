@@ -727,15 +727,20 @@ function setPriplatkyVisible(id, visible) {
 
 function applyPriplatkyPermissions() {
   const showSettings = priplatkyCan('settings', canViewAllPriplatky);
+  const showTraining = priplatkyCan('trainingTab', false);
   document.querySelectorAll('.tab-btn[data-tab="nastaveni"]').forEach(btn => {
     btn.style.display = showSettings ? '' : 'none';
+  });
+  document.querySelectorAll('.tab-btn[data-tab="skoleni"]').forEach(btn => {
+    btn.style.display = showTraining ? '' : 'none';
   });
   setPriplatkyVisible('btn-add', priplatkyCan('add', true));
   setPriplatkyVisible('link-export', priplatkyCan('export', true));
   setPriplatkyVisible('btn-add-duvod-brani', priplatkyCan('manageTexts', false));
   setPriplatkyVisible('btn-add-duvod-obecne', priplatkyCan('manageTexts', false));
   setPriplatkyVisible('field-internal-note', priplatkyCan('internalNote', false));
-  if (!showSettings) {
+  const activeTab = document.querySelector('.tab-btn.active')?.dataset.tab;
+  if ((!showSettings && activeTab === 'nastaveni') || (!showTraining && activeTab === 'skoleni')) {
     document.querySelectorAll('.tab-panel').forEach(p => p.classList.remove('active'));
     document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
     document.getElementById('tab-prehled').classList.add('active');
