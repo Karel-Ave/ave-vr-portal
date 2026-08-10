@@ -1593,7 +1593,8 @@ body[data-active-tab="pozadavky"] #schedule-legend .legend-item.schedule-dynamic
     --print-holiday-bg: color-mix(in srgb, var(--accent) 16%, #fff);
     --print-name-bg: var(--col-name-bg, #eeeeeb);
     --print-sum-bg: var(--col-sum-bg, #f6f6f3);
-    border-collapse: separate !important;
+    border-collapse: collapse !important;
+    border-spacing: 0 !important;
     white-space: nowrap !important;
     table-layout: fixed !important;
     width: var(--print-root-w, 196mm) !important;
@@ -1609,7 +1610,7 @@ body[data-active-tab="pozadavky"] #schedule-legend .legend-item.schedule-dynamic
     height: var(--print-row-h, 8px) !important;
     line-height: var(--print-row-h, 8px) !important;
     padding: 0 !important;
-    border-color: #777 !important;
+    border: .5px solid #777 !important;
     color: #000 !important;
     box-shadow: none !important;
     outline: none !important;
