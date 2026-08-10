@@ -1936,11 +1936,29 @@ function canWriteMessages(user, groupPerms, userOv) {
   return fromOv != null ? fromOv : (fromGp != null ? fromGp : false);
 }
 
+function messageUserGroups(user) {
+  return [...maintenanceUserGroups(user)];
+}
+
+function messageTargetsUser(msg, user) {
+  if (msg.target_type === 'all') return true;
+  let ids = [];
+  try { ids = JSON.parse(msg.target_ids || '[]'); } catch (_) { ids = []; }
+  if (msg.target_type === 'groups') {
+    const groups = new Set(messageUserGroups(user));
+    return ids.some(id => groups.has(String(id || '').trim().toLowerCase()));
+  }
+  if (msg.target_type === 'users') return ids.map(String).includes(String(user.id));
+  return false;
+}
+
 // GET /api/messages — zprávy viditelné pro přihlášeného uživatele
 app.get('/api/messages', requireLogin, async (req, res) => {
   try {
     const db = getPool();
     const user = req.session.user;
+    const { groupPerms, userOv } = await getUserPerms(user);
+    const canWrite = canWriteMessages(user, groupPerms, userOv);
     const { rows } = await db.query(`
       SELECT m.id, m.author_id, m.author_name, m.content,
              m.target_type, m.target_ids, m.created_at, m.expires_at,
@@ -1948,20 +1966,14 @@ app.get('/api/messages', requireLogin, async (req, res) => {
       FROM messages m
       LEFT JOIN message_reads mr ON mr.message_id = m.id AND mr.user_id = $1
       WHERE (m.expires_at IS NULL OR m.expires_at > NOW())
-        AND (mr.dismissed IS NULL OR mr.dismissed = FALSE)
       ORDER BY m.created_at DESC
     `, [user.id]);
 
-    const visible = rows.filter(msg => {
-      if (msg.target_type === 'all') return true;
-      const ids = JSON.parse(msg.target_ids || '[]');
-      if (msg.target_type === 'groups') return ids.includes(user.role);
-      if (msg.target_type === 'users') return ids.map(String).includes(String(user.id));
-      return false;
-    });
+    const visible = (canWrite && req.query.all === '1')
+      ? rows
+      : rows.filter(msg => !msg.dismissed && messageTargetsUser(msg, user));
 
-    const { groupPerms, userOv } = await getUserPerms(user);
-    res.json({ messages: visible, canWrite: canWriteMessages(user, groupPerms, userOv) });
+    res.json({ messages: visible, canWrite });
   } catch (err) { console.error(err); res.json({ messages: [], canWrite: false }); }
 });
 
@@ -2047,13 +2059,17 @@ app.put('/api/messages/:id', requireLogin, async (req, res) => {
     if (!content?.trim()) return res.json({ ok: false, msg: 'Chybí obsah zprávy.' });
 
     // Check if content actually changed (to decide whether to reset dismissed status)
-    const { rows: oldRows } = await db.query('SELECT content FROM messages WHERE id = $1', [req.params.id]);
-    const contentChanged = oldRows[0]?.content !== content.trim();
+    const { rows: oldRows } = await db.query('SELECT content, target_type, target_ids FROM messages WHERE id = $1', [req.params.id]);
+    const nextTargetType = target_type || 'all';
+    const nextTargetIds = JSON.stringify(target_ids || []);
+    const contentChanged = oldRows[0]?.content !== content.trim()
+      || oldRows[0]?.target_type !== nextTargetType
+      || String(oldRows[0]?.target_ids || '[]') !== nextTargetIds;
 
     await db.query(`
       UPDATE messages SET content=$1, target_type=$2, target_ids=$3, expires_at=$4
       WHERE id=$5
-    `, [content.trim(), target_type || 'all', JSON.stringify(target_ids || []),
+    `, [content.trim(), nextTargetType, nextTargetIds,
         expires_at || null, req.params.id]);
 
     // If the message text changed, reset dismissed status so users see it again

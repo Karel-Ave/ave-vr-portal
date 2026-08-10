@@ -302,6 +302,11 @@
   .maintenance-targets { border: 1px solid var(--border); border-radius: 10px; padding: 12px; }
   .maintenance-target-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 8px 12px; margin-top: 10px; }
   .maintenance-target-item { display: flex; align-items: center; gap: 8px; font-weight: 700; }
+  .maintenance-message-list { display: grid; gap: 8px; margin-top: 14px; }
+  .maintenance-message-item { border: 1px solid var(--border); border-radius: 8px; padding: 10px; background: var(--surface); display: grid; gap: 8px; }
+  .maintenance-message-preview { font-weight: 700; line-height: 1.35; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .maintenance-message-meta { color: var(--text-muted); font-size: 12px; }
+  .maintenance-message-actions { display: flex; gap: 8px; flex-wrap: wrap; }
   .maintenance-admin-footer { display: flex; justify-content: flex-end; gap: 10px; margin-top: 4px; }
   @media (max-width: 560px) {
     .maintenance-admin-actions, .maintenance-target-grid { grid-template-columns: 1fr; }
@@ -914,9 +919,10 @@
       <button type="button" class="btn-primary" id="maintenance-admin-message">Vlastn&#237; pop-up zpr&#225;va</button>
       <button type="button" class="btn-secondary" id="maintenance-admin-warning">Upozorn&#283;n&#237; na &#250;dr&#382;bu</button>
       <button type="button" class="btn-secondary" id="maintenance-admin-toggle">Zapnout &#250;dr&#382;bu hned</button>
-      <button type="button" class="btn-secondary" id="maintenance-admin-clear">Zru&#353;it aktu&#225;ln&#237; zpr&#225;vu</button>
+      <button type="button" class="btn-secondary" id="maintenance-admin-clear">Zru&#353;it upozorn&#283;n&#237; na &#250;dr&#382;bu</button>
       <button type="button" class="btn-secondary wide" id="maintenance-admin-close">Zav&#345;&#237;t</button>
     </div>
+    <div id="maintenance-message-list" class="maintenance-message-list" hidden></div>
     <div id="maintenance-admin-form" class="maintenance-admin-form" hidden>
       <div class="maintenance-admin-row" id="maintenance-message-row">
         <label for="maintenance-admin-text">Text zpr&#225;vy</label>
@@ -1066,7 +1072,10 @@
   const DEFAULT_MAINTENANCE_TARGETS = ['vr', 'recepcni', 'pb6'];
   let portalMaintenance = { mode: 'off', noticeType: 'maintenance', message: MAINTENANCE_DEFAULT_MESSAGE, startsAt: null, endsAt: null, targetGroups: [...DEFAULT_MAINTENANCE_TARGETS], targeted: true, updatedAt: null, canControl: false };
   let maintenanceAdminAction = null;
+  let maintenanceEditMessageId = null;
   let portalMaintenanceTimer = null;
+  let portalUserMessageTimer = null;
+  let portalUserMessageRefreshInFlight = false;
   let portalMaintenanceRefreshInFlight = false;
   let portalMaintenanceLastActivityRefresh = 0;
   let portalMaintenanceAutoRefreshReady = false;
@@ -1288,8 +1297,100 @@
     });
   }
 
+  function setMaintenanceTargetValues(values) {
+    const selected = new Set((values || []).map(v => String(v || '').trim().toLowerCase()));
+    document.querySelectorAll('input[name="maintenance-target"]').forEach(input => {
+      input.checked = selected.has(input.value);
+    });
+  }
+
   function selectedMaintenanceTargetGroups() {
     return Array.from(document.querySelectorAll('input[name="maintenance-target"]:checked')).map(input => input.value);
+  }
+
+  function parseMessageTargetIds(raw) {
+    if (Array.isArray(raw)) return raw;
+    try { return JSON.parse(raw || '[]'); } catch (_) { return []; }
+  }
+
+  function maintenanceGroupLabel(id) {
+    const map = { admin: 'Admin', vr: 'VR', recepcni: 'Recep\u010dn\u00ed', pb6: 'PB6' };
+    return map[String(id || '').toLowerCase()] || id;
+  }
+
+  function renderAdminMessages(messages) {
+    const list = document.getElementById('maintenance-message-list');
+    if (!list) return;
+    list.innerHTML = '';
+    if (!Array.isArray(messages) || !messages.length) {
+      list.hidden = true;
+      return;
+    }
+    const title = document.createElement('div');
+    title.className = 'maintenance-message-meta';
+    title.textContent = 'Aktivn\u00ed vlastn\u00ed zpr\u00e1vy';
+    list.appendChild(title);
+    messages.forEach(msg => {
+      const item = document.createElement('div');
+      item.className = 'maintenance-message-item';
+      const preview = document.createElement('div');
+      preview.className = 'maintenance-message-preview';
+      preview.textContent = msg.content || '';
+      const ids = parseMessageTargetIds(msg.target_ids);
+      const meta = document.createElement('div');
+      meta.className = 'maintenance-message-meta';
+      meta.textContent = `Komu: ${ids.length ? ids.map(maintenanceGroupLabel).join(', ') : 'V\u0161ichni'}`;
+      const actions = document.createElement('div');
+      actions.className = 'maintenance-message-actions';
+      const edit = document.createElement('button');
+      edit.type = 'button';
+      edit.className = 'btn-secondary';
+      edit.textContent = 'Upravit';
+      edit.addEventListener('click', () => editAdminMessage(msg));
+      const del = document.createElement('button');
+      del.type = 'button';
+      del.className = 'btn-secondary';
+      del.textContent = 'Smazat';
+      del.addEventListener('click', () => deleteAdminMessage(msg.id));
+      actions.append(edit, del);
+      item.append(preview, meta, actions);
+      list.appendChild(item);
+    });
+    list.hidden = false;
+  }
+
+  async function loadAdminMessages() {
+    if (!canControlMaintenance()) return;
+    try {
+      const res = await fetch('/api/messages?all=1', { credentials: 'include', cache: 'no-store' });
+      const json = res.ok ? await res.json() : null;
+      renderAdminMessages(json?.messages || []);
+    } catch (_) {
+      renderAdminMessages([]);
+    }
+  }
+
+  async function deleteAdminMessage(id) {
+    if (!id || !confirm('Smazat tuto vlastn\u00ed pop-up zpr\u00e1vu?')) return;
+    try {
+      const res = await fetch(`/api/messages/${encodeURIComponent(id)}`, { method: 'DELETE', credentials: 'include' });
+      const json = await res.json().catch(() => ({}));
+      if (!res.ok || json.ok === false) throw new Error(json.msg || 'Zpr\u00e1vu se nepoda\u0159ilo smazat.');
+      await loadAdminMessages();
+      refreshPortalMessages();
+    } catch (err) {
+      alert(err.message || 'Zpr\u00e1vu se nepoda\u0159ilo smazat.');
+    }
+  }
+
+  function editAdminMessage(msg) {
+    openMaintenanceForm('message');
+    maintenanceEditMessageId = msg.id;
+    const text = document.getElementById('maintenance-admin-text');
+    if (text) text.value = msg.content || '';
+    setMaintenanceTargetValues(parseMessageTargetIds(msg.target_ids));
+    const help = document.getElementById('maintenance-admin-help');
+    if (help) help.textContent = 'Upravte zpr\u00e1vu. Po ulo\u017een\u00ed se znovu zobraz\u00ed u\u017eivatel\u016fm, kte\u0159\u00ed ji u\u017e potvrdili.';
   }
 
   function openMaintenanceAdminModal() {
@@ -1297,24 +1398,28 @@
     const modal = document.getElementById('maintenance-admin-modal');
     const actions = document.getElementById('maintenance-admin-actions');
     const form = document.getElementById('maintenance-admin-form');
+    const list = document.getElementById('maintenance-message-list');
     const help = document.getElementById('maintenance-admin-help');
     const toggle = document.getElementById('maintenance-admin-toggle');
     const clear = document.getElementById('maintenance-admin-clear');
     if (!modal) return;
     maintenanceAdminAction = null;
+    maintenanceEditMessageId = null;
     if (actions) actions.hidden = false;
     if (form) form.hidden = true;
     if (help) help.textContent = portalMaintenance.mode === 'on'
       ? '\u00dadr\u017eba je aktivn\u00ed. M\u016f\u017eete ji vypnout, nebo poslat novou zpr\u00e1vu.'
-      : (portalMaintenance.mode === 'warning' ? 'Je aktivn\u00ed pop-up zpr\u00e1va. M\u016f\u017eete ji zm\u011bnit, zru\u0161it, nebo zapnout \u00fadr\u017ebu.' : 'Vyberte akci.');
+      : (portalMaintenance.mode === 'warning' ? 'Je aktivn\u00ed upozorn\u011bn\u00ed na \u00fadr\u017ebu. M\u016f\u017eete ho zru\u0161it, nebo zapnout \u00fadr\u017ebu.' : 'Vyberte akci.');
     if (toggle) toggle.textContent = portalMaintenance.mode === 'on' ? 'Ukon\u010dit \u00fadr\u017ebu' : 'Zapnout \u00fadr\u017ebu hned';
     if (clear) clear.hidden = portalMaintenance.mode !== 'warning';
+    loadAdminMessages();
     modal.classList.add('show');
     modal.setAttribute('aria-hidden', 'false');
   }
 
   function openMaintenanceForm(action) {
     maintenanceAdminAction = action;
+    maintenanceEditMessageId = null;
     const actions = document.getElementById('maintenance-admin-actions');
     const form = document.getElementById('maintenance-admin-form');
     const help = document.getElementById('maintenance-admin-help');
@@ -1326,6 +1431,7 @@
     const endTime = document.getElementById('maintenance-admin-end-time');
     if (actions) actions.hidden = true;
     if (form) form.hidden = false;
+    if (list) list.hidden = true;
     if (messageRow) messageRow.hidden = action !== 'message';
     if (startRow) startRow.hidden = action !== 'maintenance';
     if (endRow) endRow.hidden = action !== 'maintenance';
@@ -1361,8 +1467,18 @@
           alert('Zpr\u00e1va nesm\u00ed b\u00fdt pr\u00e1zdn\u00e1.');
           return;
         }
-        await setMaintenanceMode('warning', { noticeType: 'message', message, targetGroups });
+        const url = maintenanceEditMessageId ? `/api/messages/${encodeURIComponent(maintenanceEditMessageId)}` : '/api/messages';
+        const res = await fetch(url, {
+          method: maintenanceEditMessageId ? 'PUT' : 'POST',
+          credentials: 'include',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ content: message, target_type: 'groups', target_ids: targetGroups })
+        });
+        const json = await res.json().catch(() => ({}));
+        if (!res.ok || json.ok === false) throw new Error(json.msg || 'Zpr\u00e1vu se nepoda\u0159ilo ulo\u017eit.');
+        maintenanceEditMessageId = null;
         closeMaintenanceAdminModal();
+        refreshPortalMessages();
         return;
       }
       if (maintenanceAdminAction === 'maintenance') {
@@ -1408,7 +1524,7 @@
 
   async function clearMaintenanceNotice() {
     try {
-      if (confirm('Zru\u0161it aktu\u00e1ln\u00ed pop-up zpr\u00e1vu?')) {
+      if (confirm('Zru\u0161it aktu\u00e1ln\u00ed upozorn\u011bn\u00ed na \u00fadr\u017ebu?')) {
         await setMaintenanceMode('off');
         closeMaintenanceAdminModal();
       }
@@ -1606,7 +1722,7 @@
   let portalNoticeOpen = false;
   let portalNoticeTimer = null;
 
-  function showPortalNotice(message, onOk) {
+  function showPortalNotice(message, onOk, titleText = 'Ozn\u00e1men\u00ed', afterClose = null) {
     if (portalNoticeOpen || document.querySelector('.portal-notice-backdrop')) return;
     portalNoticeOpen = true;
     const wrap = document.createElement('div');
@@ -1614,7 +1730,7 @@
     const box = document.createElement('div');
     box.className = 'portal-notice-box';
     const title = document.createElement('h2');
-    title.textContent = 'Ozn\u00e1men\u00ed';
+    title.textContent = titleText || 'Ozn\u00e1men\u00ed';
     const text = document.createElement('p');
     text.textContent = message || 'Zm\u011bna v sekci dovolen\u00e9';
     const foot = document.createElement('div');
@@ -1633,7 +1749,8 @@
       } catch(e) {}
       wrap.remove();
       portalNoticeOpen = false;
-      setTimeout(refreshPortalNotifications, 250);
+      if (typeof afterClose === 'function') afterClose();
+      else setTimeout(refreshPortalNotifications, 250);
     });
     foot.appendChild(ok);
     box.appendChild(title);
@@ -1659,7 +1776,10 @@
       const j = r.ok ? await r.json() : null;
       const note = j && Array.isArray(j.notifications) ? j.notifications[0] : null;
       if (!note) return;
-      showPortalNotice(note.message || 'Zm\u011bna v sekci dovolen\u00e9', () => markPortalNotificationSeen(note));
+      showPortalNotice(note.message || 'Zm\u011bna v sekci dovolen\u00e9', () => markPortalNotificationSeen(note), 'Ozn\u00e1men\u00ed', () => {
+        setTimeout(refreshPortalNotifications, 250);
+        setTimeout(refreshPortalMessages, 400);
+      });
     } catch(e) {}
   }
 
@@ -1669,6 +1789,37 @@
     setTimeout(refreshPortalNotifications, 600);
     setTimeout(refreshPortalNotifications, 1800);
     portalNoticeTimer = setInterval(refreshPortalNotifications, 60000);
+  }
+
+  async function dismissPortalMessage(msg) {
+    if (!msg?.id) return;
+    await fetch(`/api/messages/${encodeURIComponent(msg.id)}/dismiss`, { method: 'POST', credentials: 'include' });
+  }
+
+  async function refreshPortalMessages() {
+    if (!portalUser || portalNoticeOpen || portalUserMessageRefreshInFlight) return;
+    portalUserMessageRefreshInFlight = true;
+    try {
+      const r = await fetch('/api/messages', { credentials: 'include', cache: 'no-store' });
+      const j = r.ok ? await r.json() : null;
+      const msg = j && Array.isArray(j.messages) ? j.messages[0] : null;
+      if (!msg) return;
+      showPortalNotice(msg.content || 'Zpr\u00e1va', () => dismissPortalMessage(msg), 'Zpr\u00e1va', () => {
+        setTimeout(refreshPortalMessages, 250);
+        setTimeout(refreshPortalNotifications, 400);
+      });
+    } catch(e) {
+    } finally {
+      portalUserMessageRefreshInFlight = false;
+    }
+  }
+
+  function startPortalMessages() {
+    clearInterval(portalUserMessageTimer);
+    refreshPortalMessages();
+    setTimeout(refreshPortalMessages, 600);
+    setTimeout(refreshPortalMessages, 1800);
+    portalUserMessageTimer = setInterval(refreshPortalMessages, 10000);
   }
 
   window.addEventListener('message', e => {
@@ -1749,6 +1900,7 @@
     loadApp(window._portalRestoreUrl || portalDefaultUrl || visibleCards[0]?.href);
     setupMaintenanceControls();
     startMaintenancePolling();
+    startPortalMessages();
     startPortalNotifications();
   })();
 
