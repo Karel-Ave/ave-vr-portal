@@ -5014,6 +5014,73 @@ async function vacationTrySyncScheduleZMovements(db, scheduleKey, month, year, d
     return { ok: false, msg: 'Chyba synchronizace dovolene z rozpisu.' };
   }
 }
+
+async function applyVacationBaseFromSeptember2026Migration(pool) {
+  const migrationKey = 'vacation_base_from_2026_09_all_staff_v1';
+  const client = await pool.connect();
+  try {
+    await client.query('BEGIN');
+    await client.query(`
+      CREATE TABLE IF NOT EXISTS app_data_migrations (
+        key TEXT PRIMARY KEY,
+        applied_at TIMESTAMPTZ DEFAULT NOW()
+      )
+    `);
+    const marker = await client.query(
+      `INSERT INTO app_data_migrations (key)
+       VALUES ($1)
+       ON CONFLICT (key) DO NOTHING
+       RETURNING key`,
+      [migrationKey]
+    );
+    if (!marker.rows.length) {
+      await client.query('COMMIT');
+      return { applied: false };
+    }
+
+    const staffList = await loadRtPortalReceptionists(client);
+    const eligibleStaff = staffList.filter(s => vacationHasBalanceContract(s.contract));
+    let touched = 0;
+    for (const staff of eligibleStaff) {
+      const login = String(staff.login || '').trim().toUpperCase();
+      if (!login) continue;
+      const dayHours = vacationDayHoursByContract(staff.contract);
+      const baseDays = 20;
+      const baseHours = +(baseDays * dayHours).toFixed(2);
+      await client.query(
+        `INSERT INTO vacation_balance_settings
+         (staff_user_id, staff_login, staff_name, contract, base_days, base_hours, day_hours, base_from_month, base_from_year, updated_at)
+         VALUES ($1,$2,$3,$4,$5,$6,$7,9,2026,NOW())
+         ON CONFLICT (staff_login) DO UPDATE SET
+           staff_user_id = COALESCE(vacation_balance_settings.staff_user_id, EXCLUDED.staff_user_id),
+           staff_name = EXCLUDED.staff_name,
+           contract = EXCLUDED.contract,
+           day_hours = EXCLUDED.day_hours,
+           base_from_month = 9,
+           base_from_year = 2026,
+           updated_at = vacation_balance_settings.updated_at`,
+        [
+          staff.userId || null,
+          login,
+          staff.displayName || staff.name || login,
+          staff.contract || '',
+          baseDays,
+          baseHours,
+          dayHours
+        ]
+      );
+      touched++;
+    }
+    await client.query('COMMIT');
+    console.log(`Migrace dovolene: nastaveno pocitani od 09/2026 pro ${touched} recepcnich.`);
+    return { applied: true, touched };
+  } catch (err) {
+    try { await client.query('ROLLBACK'); } catch (e) {}
+    throw err;
+  } finally {
+    client.release();
+  }
+}
 app.post('/api/vacations/import-schedule', requireLogin, async (req, res) => {
   try {
     if (!await canManageVacationsServer(req.session.user)) return res.status(403).json({ ok: false, msg: 'Nemate opravneni.' });
@@ -7193,7 +7260,12 @@ app.post('/api/rt/log', requireLogin, requirePermDefault('raspis', 'log', false)
 
 // ── Start ─────────────────────────────────────────────────────────────────────
 init()
-  .then(() => {
+  .then(async () => {
+    try {
+      await applyVacationBaseFromSeptember2026Migration(getPool());
+    } catch (err) {
+      console.error('Chyba jednorazove migrace dovolene od 09/2026:', err.message);
+    }
     app.listen(PORT, () => console.log(`AVE Portál běží na portu ${PORT}`));
   })
   .catch(err => {
