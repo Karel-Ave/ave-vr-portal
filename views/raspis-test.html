@@ -1999,7 +1999,7 @@ body.hide-req-changes .sched-cell.req-changed {
   outline: none !important;
   box-shadow: none !important;
 }
-body.hide-req-changes .sched-cell[data-req-tip]:hover::after {
+body.hide-req-changes .sched-cell[data-req-tip]:not([data-dup-tip]):hover::after {
   display: none !important;
   content: none !important;
 }
@@ -9488,7 +9488,6 @@ function getRequirementDuplicateTip(si, ci) {
     if (!otherVal || SKIP_VALS.has(otherVal)) return;
     if (otherVal.toUpperCase() !== val.toUpperCase()) return;
     const meta = state.reqMeta?.[key];
-    if (!meta?.timestamp) return;
     const who = meta?.userName || meta?.username || '';
     const ts = meta?.timestamp ? Date.parse(meta.timestamp) : NaN;
     const when = Number.isFinite(ts) ? new Date(ts).toLocaleString('cs-CZ') : '';
@@ -10758,7 +10757,7 @@ function updateDuplicateClasses() {
       const key = `${si}_${ci}`;
       const isDupe = tblId !== 'public-rozpis-tbl' && dupeKeys.has(key);
       td.classList.toggle('cell-duplicate', isDupe);
-      if (isDupe && canManageRequirements() && isRequirementDuplicateWithFullMeta(si, ci)) {
+      if (isDupe && canManageRequirements()) {
         const tip = getRequirementDuplicateTip(si, ci);
         if (tip) td.dataset.dupTip = tip;
         else delete td.dataset.dupTip;
