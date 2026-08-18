@@ -2004,7 +2004,11 @@ body.hide-req-changes .sched-cell[data-req-tip]:not([data-dup-tip]):hover::after
   content: none !important;
 }
 .sched-cell[data-dup-tip]:hover::after {
-  content: attr(data-dup-tip);
+  display: none !important;
+  content: none !important;
+}
+.sched-cell .dup-tip-bubble {
+  display: none;
   position: absolute; top: calc(100% + 4px); left: 50%; transform: translateX(-50%);
   min-width: 210px; max-width: 300px;
   background: color-mix(in srgb, var(--surface) 88%, var(--accent) 12%);
@@ -2013,6 +2017,9 @@ body.hide-req-changes .sched-cell[data-req-tip]:not([data-dup-tip]):hover::after
   box-shadow: 0 8px 20px rgba(0,0,0,.22);
   padding: 6px 8px; border-radius: 7px;
   font-size: 10px; line-height: 1.4; white-space: pre-line; pointer-events: none; z-index: 300;
+}
+.sched-cell[data-dup-tip]:hover > .dup-tip-bubble {
+  display: block;
 }
 .sched-cell[data-dup-tip]:hover {
   z-index: 400;
@@ -9478,13 +9485,13 @@ function formatReqMeta(meta) {
     .join('\n');
 }
 
-function getRequirementDuplicateTip(si, ci) {
-  const val = String(state.schedule?.[`${si}_${ci}`] || '').trim();
+function getRequirementDuplicateTip(si, ci, schedule = state.schedule) {
+  const val = String(schedule?.[`${si}_${ci}`] || '').trim();
   if (!val || SKIP_VALS.has(val)) return '';
   const same = [];
   state.staff.forEach((s, otherSi) => {
     const key = `${otherSi}_${ci}`;
-    const otherVal = String(state.schedule?.[key] || '').trim();
+    const otherVal = String(schedule?.[key] || '').trim();
     if (!otherVal || SKIP_VALS.has(otherVal)) return;
     if (otherVal.toUpperCase() !== val.toUpperCase()) return;
     const meta = state.reqMeta?.[key];
@@ -9501,6 +9508,22 @@ function getRequirementDuplicateTip(si, ci) {
     return `${idx + 1}. ${item.person}${details ? ` - ${details}` : ''}`;
   });
   return [`Duplicitní směna: ${val}`, ...lines].join('\n');
+}
+
+function setDuplicateTip(td, tip) {
+  let bubble = td.querySelector(':scope > .dup-tip-bubble');
+  if (tip) {
+    td.dataset.dupTip = tip;
+    if (!bubble) {
+      bubble = document.createElement('span');
+      bubble.className = 'dup-tip-bubble';
+      td.appendChild(bubble);
+    }
+    bubble.textContent = tip;
+  } else {
+    delete td.dataset.dupTip;
+    if (bubble) bubble.remove();
+  }
 }
 
 function isRequirementDuplicateWithFullMeta(si, ci) {
@@ -10751,19 +10774,15 @@ function updateDuplicateClasses() {
   scheduleTableIds().forEach(tblId => {
     const tbl = document.getElementById(tblId);
     if (!tbl) return;
-    const dupeKeys = computeDuplicateCells(calCols, state.staff, scheduleMapForTable(tblId));
+    const schedule = scheduleMapForTable(tblId);
+    const dupeKeys = computeDuplicateCells(calCols, state.staff, schedule);
+    const canShowDuplicateTip = tblId === 'tvorba-tbl' || canManageRequirements();
     tbl.querySelectorAll('.sched-cell[data-si][data-ci]').forEach(td => {
       const si = +td.dataset.si, ci = +td.dataset.ci;
       const key = `${si}_${ci}`;
       const isDupe = tblId !== 'public-rozpis-tbl' && dupeKeys.has(key);
       td.classList.toggle('cell-duplicate', isDupe);
-      if (isDupe && canManageRequirements()) {
-        const tip = getRequirementDuplicateTip(si, ci);
-        if (tip) td.dataset.dupTip = tip;
-        else delete td.dataset.dupTip;
-      } else {
-        delete td.dataset.dupTip;
-      }
+      setDuplicateTip(td, isDupe && canShowDuplicateTip ? getRequirementDuplicateTip(si, ci, schedule) : '');
     });
   });
 }
