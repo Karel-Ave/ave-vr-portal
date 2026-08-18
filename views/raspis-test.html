@@ -6598,7 +6598,7 @@ function renderScheduleTable(tableId, editable) {
       if (!isPublicView && _dupeKeys.has(`${si}_${ci}`)) td.classList.add('cell-duplicate');
       if (!isPublicView && _pManyKeys.has(`${si}_${ci}`)) td.classList.add('cell-p-many');
       const val = state.schedule[`${si}_${ci}`] || '';
-      if (isPublicView || !_dupeKeys.has(`${si}_${ci}`)) applyRegularAndReqClasses(td, si, ci, col, val);
+      applyRegularAndReqClasses(td, si, ci, col, val);
 
       if (rowEditable) {
         const inp = document.createElement('input');
@@ -6905,8 +6905,8 @@ function renderCells(tableId, editable) {
       const span = td.querySelector('.cell-val');
       if (span) span.textContent = val;
     }
-    // Update cell state classes (skip duplicates — handled by updateDuplicateClasses)
-    if (!td.classList.contains('cell-duplicate') && col) {
+    // Update cell state classes; duplicate markers are maintained independently.
+    if (col) {
       applyRegularAndReqClasses(td, si, ci, col, val);
     }
   });

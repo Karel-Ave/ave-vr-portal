@@ -169,7 +169,7 @@ function maintenanceWantsJson(req) {
 function maintenanceEndLabel(value) {
   const date = value ? new Date(value) : null;
   if (!date || Number.isNaN(date.getTime())) return '';
-  return date.toLocaleTimeString('cs-CZ', { hour: '2-digit', minute: '2-digit' }) + ' hod.';
+  return date.toLocaleTimeString('cs-CZ', { hour: '2-digit', minute: '2-digit', timeZone: 'Europe/Prague' }) + ' hod.';
 }
 
 function maintenanceHtml(state) {
