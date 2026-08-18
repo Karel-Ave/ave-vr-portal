@@ -1865,7 +1865,21 @@ tbody tr.row-filtered { display: none; }
   outline-offset: -2px;
   box-shadow: inset 0 0 0 999px color-mix(in srgb, var(--col-req-miss-bg,#eadcff) 38%, transparent);
 }
+.sched-cell.cell-req-added {
+  background: var(--col-req-add-bg,#ddf4e4) !important;
+  outline: 2px solid var(--col-req-add-border,#54a96a) !important;
+  outline-offset: -2px;
+  box-shadow: inset 0 0 0 999px color-mix(in srgb, var(--col-req-add-bg,#ddf4e4) 34%, transparent);
+}
+.sched-cell.cell-req-changed {
+  background: var(--col-req-change-bg,#fff1ba) !important;
+  outline: 2px solid var(--col-req-change-border,#c99700) !important;
+  outline-offset: -2px;
+  box-shadow: inset 0 0 0 999px color-mix(in srgb, var(--col-req-change-bg,#fff1ba) 38%, transparent);
+}
 [data-theme="dark"] .sched-cell.cell-req-missing { background: var(--col-req-miss-bg,#33284e) !important; }
+[data-theme="dark"] .sched-cell.cell-req-added { background: var(--col-req-add-bg,#244632) !important; }
+[data-theme="dark"] .sched-cell.cell-req-changed { background: var(--col-req-change-bg,#51461d) !important; }
 [data-theme="dark"] #tab-tvorba .sched-cell.cell-regular-off,
 [data-theme="dark"] #tab-rozpis .sched-cell.cell-regular-off,
 [data-theme="dark"] #tab-public .sched-cell.cell-regular-off,
@@ -1878,6 +1892,20 @@ tbody tr.row-filtered { display: none; }
 [data-theme="dark"] #tab-public .sched-cell.cell-req-missing,
 [data-theme="dark"] #tab-pozadavky .sched-cell.cell-req-missing {
   background: var(--col-req-miss-bg,#eadcff) !important;
+  color: #111 !important;
+}
+[data-theme="dark"] #tab-tvorba .sched-cell.cell-req-added,
+[data-theme="dark"] #tab-rozpis .sched-cell.cell-req-added,
+[data-theme="dark"] #tab-public .sched-cell.cell-req-added,
+[data-theme="dark"] #tab-pozadavky .sched-cell.cell-req-added {
+  background: var(--col-req-add-bg,#ddf4e4) !important;
+  color: #111 !important;
+}
+[data-theme="dark"] #tab-tvorba .sched-cell.cell-req-changed,
+[data-theme="dark"] #tab-rozpis .sched-cell.cell-req-changed,
+[data-theme="dark"] #tab-public .sched-cell.cell-req-changed,
+[data-theme="dark"] #tab-pozadavky .sched-cell.cell-req-changed {
+  background: var(--col-req-change-bg,#fff1ba) !important;
   color: #111 !important;
 }
 .sched-tbl td.sched-cell,
@@ -1964,6 +1992,8 @@ tbody tr.row-filtered { display: none; }
   font-size: 10px; white-space: nowrap; pointer-events: none; z-index: 100;
 }
 body.hide-req-changes .sched-cell.cell-req-missing,
+body.hide-req-changes .sched-cell.cell-req-added,
+body.hide-req-changes .sched-cell.cell-req-changed,
 body.hide-req-changes .sched-cell.req-changed {
   background: inherit !important;
   outline: none !important;
@@ -6008,7 +6038,9 @@ function applyRegularAndReqClasses(td, si, ci, col, val) {
   const isPublicView = !!td.closest('#public-rozpis-tbl');
   const isRequirementsView = !!td.closest('#pozadavky-tbl');
   if (isRequirementsView) {
-    td.classList.remove('cell-regular-off', 'cell-unavailable-conflict');
+    td.classList.remove('cell-regular-off', 'cell-unavailable-conflict', 'cell-req-missing', 'cell-req-added', 'cell-req-changed');
+    delete td.dataset.reqTip;
+    return;
   }
   const s = state.staff[si];
   const holidaysList = parseHolidays(state.holidays);
@@ -6020,13 +6052,20 @@ function applyRegularAndReqClasses(td, si, ci, col, val) {
   const unavailable = !!(regOff || dateOff);
   // Requirements
   const req = state.requirements && state.requirements[`${si}_${ci}`];
-  const reqMissing = !!(req && !val);
+  const reqVal = String(req || '').trim();
+  const curVal = String(val || '').trim();
+  const reqMissing = !!(reqVal && !curVal);
+  const reqAdded = !!(!reqVal && curVal);
+  const reqChanged = !!(reqVal && curVal && reqVal !== curVal);
   const showReqDiff = isReqDiffVisibleForActiveTab();
 
   td.classList.toggle('cell-regular-off', !isPublicView && !isRequirementsView && !!(unavailable && !val));
   td.classList.toggle('cell-unavailable-conflict', !isPublicView && !isRequirementsView && !!(unavailable && val));
   td.classList.toggle('cell-req-missing', reqMissing && showReqDiff);
-  if (reqMissing && showReqDiff) td.dataset.reqTip = `Původně: ${req}`;
+  td.classList.toggle('cell-req-added', reqAdded && showReqDiff);
+  td.classList.toggle('cell-req-changed', reqChanged && showReqDiff);
+  if ((reqMissing || reqChanged) && showReqDiff) td.dataset.reqTip = `Původně: ${reqVal}`;
+  else if (reqAdded && showReqDiff) td.dataset.reqTip = 'Nově přidáno';
   else delete td.dataset.reqTip;
 }
 
