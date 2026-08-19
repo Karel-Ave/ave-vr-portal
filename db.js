@@ -727,6 +727,22 @@ async function init() {
   await db.query(`ALTER TABLE vacation_balance_settings ADD COLUMN IF NOT EXISTS base_from_month INTEGER`);
   await db.query(`ALTER TABLE vacation_balance_settings ADD COLUMN IF NOT EXISTS base_from_year INTEGER`);
   await db.query(`
+    CREATE TABLE IF NOT EXISTS vacation_contract_periods (
+      id            BIGSERIAL PRIMARY KEY,
+      staff_login   VARCHAR(100) NOT NULL,
+      contract      VARCHAR(50) NOT NULL,
+      from_month    INTEGER NOT NULL,
+      from_year     INTEGER NOT NULL,
+      to_month      INTEGER,
+      to_year       INTEGER,
+      created_by    INTEGER REFERENCES users(id) ON DELETE SET NULL,
+      created_at    TIMESTAMPTZ DEFAULT NOW(),
+      updated_by    INTEGER REFERENCES users(id) ON DELETE SET NULL,
+      updated_at    TIMESTAMPTZ DEFAULT NOW()
+    )
+  `);
+  await db.query(`CREATE INDEX IF NOT EXISTS idx_vacation_contract_periods_staff ON vacation_contract_periods (UPPER(staff_login), from_year, from_month)`);
+  await db.query(`
     CREATE TABLE IF NOT EXISTS vacation_movements (
       id            BIGSERIAL PRIMARY KEY,
       staff_user_id INTEGER REFERENCES users(id) ON DELETE SET NULL,
