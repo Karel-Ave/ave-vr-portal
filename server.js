@@ -4830,7 +4830,10 @@ async function vacationBalanceRows(db, user) {
   const manager = await canManageVacationsServer(user);
   const canManageBalances = await vacationCanManageBalances(user);
   const staffList = await loadRtPortalReceptionists(db);
-  const eligibleStaff = staffList.filter(s => vacationHasBalanceContract(s.contract));
+  const now = new Date();
+  const currentMonth = now.getMonth() + 1;
+  const currentYear = now.getFullYear();
+  const eligibleStaff = staffList.filter(s => vacationHasBalanceContract(s.contract) && rtIsStaffActiveForMonth(s, currentMonth, currentYear));
   const filteredStaff = (manager || canManageBalances) ? eligibleStaff : eligibleStaff.filter(s => {
     const login = String(user.username || user.login || '').trim().toUpperCase();
     return String(s.userId || '') === String(user.id) || String(s.login || '').trim().toUpperCase() === login;
