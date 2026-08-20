@@ -1593,14 +1593,16 @@ body[data-active-tab="pozadavky"] #schedule-legend .legend-item.schedule-dynamic
     --print-holiday-bg: color-mix(in srgb, var(--accent) 16%, #fff);
     --print-name-bg: var(--col-name-bg, #eeeeeb);
     --print-sum-bg: var(--col-sum-bg, #f6f6f3);
-    border-collapse: collapse !important;
+    border-collapse: separate !important;
     border-spacing: 0 !important;
+    border-top: .7px solid #777 !important;
+    border-left: .7px solid #777 !important;
     white-space: nowrap !important;
     table-layout: fixed !important;
     width: var(--print-root-w, 196mm) !important;
     min-width: var(--print-root-w, 196mm) !important;
     max-width: var(--print-root-w, 196mm) !important;
-    font-size: var(--print-font, 5.2px) !important;
+    font: 400 var(--print-font, 5.2px) Arial, Helvetica, sans-serif !important;
     background: var(--print-wd-bg) !important;
     -webkit-print-color-adjust: exact;
     print-color-adjust: exact;
@@ -1610,8 +1612,12 @@ body[data-active-tab="pozadavky"] #schedule-legend .legend-item.schedule-dynamic
     height: var(--print-row-h, 8px) !important;
     line-height: var(--print-row-h, 8px) !important;
     padding: 0 !important;
-    border: 1px solid #666 !important;
+    border: 0 !important;
+    border-right: .7px solid #777 !important;
+    border-bottom: .7px solid #777 !important;
     color: #000 !important;
+    font-weight: 400 !important;
+    font-family: Arial, Helvetica, sans-serif !important;
     box-shadow: none !important;
     outline: none !important;
     -webkit-print-color-adjust: exact;
@@ -1742,7 +1748,8 @@ body[data-active-tab="pozadavky"] #schedule-legend .legend-item.schedule-dynamic
   }
   body.print-schedule #print-root .sched-tbl .cell-val {
     font-size: var(--print-font, 6.5px) !important;
-    font-weight: 500 !important;
+    font-weight: 400 !important;
+    font-family: Arial, Helvetica, sans-serif !important;
     line-height: var(--print-row-h, 8px) !important;
     color: #000 !important;
   }
