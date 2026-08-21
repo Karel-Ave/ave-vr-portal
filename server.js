@@ -4549,7 +4549,6 @@ app.post('/api/vacations', requireLogin, async (req, res) => {
       days,
       days_count: daysCount
     });
-    if (manual) await vacationSyncApprovedRequestMovements(db, item, user);
     res.json({ ok: true, item });
   } catch (err) { console.error('Chyba POST /api/vacations:', err); res.status(500).json({ ok: false, msg: 'Chyba serveru.' }); }
 });
@@ -4627,12 +4626,7 @@ app.post('/api/vacations/:id/status', requireLogin, async (req, res) => {
       const { rows: fresh } = await db.query('SELECT * FROM vacation_requests WHERE id=$1', [item.id]);
       item = vacationParseRow(fresh[0] || rows[0]);
     }
-    if (status === 'approved') {
-      await db.query(`DELETE FROM vacation_movements WHERE source_key LIKE $1`, [vacationRequestSourceKey(item.id, '') + '%']);
-      await vacationSyncApprovedRequestMovements(db, item, user);
-    } else {
-      await db.query(`DELETE FROM vacation_movements WHERE source_key LIKE $1`, [vacationRequestSourceKey(item.id, '') + '%']);
-    }
+    await db.query(`DELETE FROM vacation_movements WHERE source_key LIKE $1`, [vacationRequestSourceKey(item.id, '') + '%']);
     res.json({ ok: true, item, synced });
   } catch (err) { console.error('Chyba POST /api/vacations/:id/status:', err); res.status(500).json({ ok: false, msg: 'Chyba serveru.' }); }
 });
@@ -4931,6 +4925,7 @@ async function vacationBalanceRows(db, user) {
        FROM vacation_balance_settings b
        LEFT JOIN vacation_movements m ON UPPER(m.staff_login) = UPPER(b.staff_login)
         AND (b.base_from_year IS NULL OR m.year > b.base_from_year OR (m.year = b.base_from_year AND COALESCE(m.month, 1) >= COALESCE(b.base_from_month, 1)))
+        AND m.movement_type <> 'request_approved'
         AND (m.movement_type <> 'schedule_import' OR EXISTS (
           SELECT 1 FROM rt_schedules rs WHERE m.source_key LIKE 'schedule:' || rs.key || ':%'
         ))
@@ -4946,8 +4941,9 @@ async function vacationBalanceRows(db, user) {
       `SELECT UPPER(staff_login) AS staff_login,
               COALESCE(SUM(days_delta), 0) AS moved_days,
               COALESCE(SUM(hours_delta), 0) AS moved_hours
-         FROM vacation_movements
+        FROM vacation_movements
         WHERE UPPER(staff_login) = ANY($1::text[])
+          AND movement_type <> 'request_approved'
           AND (movement_type <> 'schedule_import' OR EXISTS (
             SELECT 1 FROM rt_schedules rs WHERE vacation_movements.source_key LIKE 'schedule:' || rs.key || ':%'
           ))
@@ -5252,17 +5248,6 @@ async function vacationSyncScheduleZMovements(db, scheduleKey, month, year, data
     if (!balance) { kept++; continue; }
     const dayHours = vacationEffectiveDayHoursForMonth(s, balance, periodMap.get(info.login) || [], syncYear, syncMonth);
     const name = s.displayName || s.name || info.login;
-    const sameDay = await db.query(
-      `SELECT 1 FROM vacation_movements
-        WHERE UPPER(staff_login) = UPPER($1)
-          AND year = $2
-          AND month = $3
-          AND day = $4
-          AND movement_type = 'request_approved'
-        LIMIT 1`,
-      [info.login, syncYear, syncMonth, info.day]
-    );
-    if (sameDay.rows.length) { kept++; continue; }
     const ins = await db.query(
       `INSERT INTO vacation_movements
        (staff_user_id, staff_login, staff_name, year, month, day, movement_type, source_key, source_label, days_delta, hours_delta, note, created_by, created_name)
