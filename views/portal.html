@@ -1128,7 +1128,7 @@
   function maintenanceStartMessage(startsAt) {
     const date = startsAt ? new Date(startsAt) : null;
     const time = date && !Number.isNaN(date.getTime())
-      ? date.toLocaleTimeString('cs-CZ', { hour: '2-digit', minute: '2-digit' })
+      ? date.toLocaleTimeString('cs-CZ', { hour: '2-digit', minute: '2-digit', timeZone: 'Europe/Prague' })
       : '';
     return time
       ? `\u00dadr\u017eba za\u010dne p\u0159ibli\u017en\u011b v ${time}. Pros\u00edm ulo\u017ete si rozpracovan\u00e9 zm\u011bny.`
@@ -1148,14 +1148,11 @@
       : 'Předpokládaný čas ukončení bude upřesněn.';
   }
 
-  function maintenanceWarningMessage(startsAt, endsAt) {
+  function maintenanceWarningMessage(startsAt) {
     const start = maintenanceTimeLabel(startsAt);
-    const end = maintenanceTimeLabel(endsAt);
-    let message = start
-      ? `Pozor: Od ${start} bude probíhat údržba systému.`
-      : 'Pozor: Bude probíhat údržba systému.';
-    if (end) message += ` Předpokládaný čas dokončení: ${end}.`;
-    return `${message} Prosím uložte si rozpracované změny.`;
+    return start
+      ? `Pozor: Od ${start} bude probíhat údržba systému. Prosím uložte si rozpracované změny.`
+      : 'Pozor: Bude probíhat údržba systému. Prosím uložte si rozpracované změny.';
   }
 
   function maintenanceRemainingLabel(startsAt) {
@@ -1410,7 +1407,7 @@
     if (help) help.textContent = portalMaintenance.mode === 'on'
       ? '\u00dadr\u017eba je aktivn\u00ed. M\u016f\u017eete ji vypnout, nebo poslat novou zpr\u00e1vu.'
       : (portalMaintenance.mode === 'warning' ? 'Je aktivn\u00ed upozorn\u011bn\u00ed na \u00fadr\u017ebu. M\u016f\u017eete ho zru\u0161it, nebo zapnout \u00fadr\u017ebu.' : 'Vyberte akci.');
-    if (toggle) toggle.textContent = portalMaintenance.mode === 'on' ? 'Ukon\u010dit \u00fadr\u017ebu' : 'Zapnout \u00fadr\u017ebu hned';
+    if (toggle) toggle.textContent = portalMaintenance.mode === 'on' ? 'Ukon\u010dit \u00fadr\u017ebu' : 'Zah\u00e1jit \u00fadr\u017ebu';
     if (clear) clear.hidden = portalMaintenance.mode !== 'warning';
     loadAdminMessages();
     modal.classList.add('show');
@@ -1435,17 +1432,16 @@
     if (list) list.hidden = true;
     if (messageRow) messageRow.hidden = action !== 'message';
     if (startRow) startRow.hidden = action !== 'maintenance';
-    if (endRow) endRow.hidden = action !== 'maintenance';
+    if (endRow) endRow.hidden = true;
     if (help) help.textContent = action === 'message'
       ? 'Napi\u0161te vlastn\u00ed zpr\u00e1vu a vyberte skupiny, kter\u00fdm se zobraz\u00ed.'
-      : 'Vyberte orienta\u010dn\u00ed \u010das a skupiny, kter\u00fdm se zobraz\u00ed upozorn\u011bn\u00ed.';
+      : 'Vyberte orienta\u010dn\u00ed \u010das zah\u00e1jen\u00ed a skupiny, kter\u00fdm se zobraz\u00ed upozorn\u011bn\u00ed.';
     if (text) text.value = '';
     const now = new Date();
     const startDefault = new Date(now.getTime() + 10 * 60000);
-    const endDefault = new Date(now.getTime() + 45 * 60000);
     const fmt = d => `${String(d.getHours()).padStart(2, '0')}:${String(d.getMinutes()).padStart(2, '0')}`;
     if (startTime) startTime.value = fmt(startDefault);
-    if (endTime) endTime.value = fmt(endDefault);
+    if (endTime) endTime.value = '';
     setMaintenanceTargetDefaults();
     setTimeout(() => (action === 'message' ? text : startTime)?.focus(), 20);
   }
@@ -1484,7 +1480,6 @@
       }
       if (maintenanceAdminAction === 'maintenance') {
         const startValue = document.getElementById('maintenance-admin-start-time')?.value || '';
-        const endValue = document.getElementById('maintenance-admin-end-time')?.value || '';
         if (!startValue || !/^\d{2}:\d{2}$/.test(startValue)) {
           alert('Vyberte pros\u00edm \u010das zah\u00e1jen\u00ed \u00fadr\u017eby.');
           return;
@@ -1500,8 +1495,7 @@
           return d.toISOString();
         };
         const startsAt = toIso(startValue);
-        const endsAt = endValue && /^\d{2}:\d{2}$/.test(endValue) ? toIso(endValue, startsAt) : null;
-        await setMaintenanceMode('warning', { noticeType: 'maintenance', startsAt, endsAt, message: maintenanceWarningMessage(startsAt, endsAt), targetGroups });
+        await setMaintenanceMode('warning', { noticeType: 'maintenance', startsAt, message: maintenanceWarningMessage(startsAt), targetGroups });
         closeMaintenanceAdminModal();
       }
     } catch (err) {
@@ -1513,9 +1507,21 @@
     try {
       if (portalMaintenance.mode === 'on') {
         if (confirm('Ukon\u010dit re\u017eim \u00fadr\u017eby a znovu pustit u\u017eivatele na web?')) await setMaintenanceMode('off');
-      } else if (confirm('Opravdu zapnout \u00fadr\u017ebu hned? Ostatn\u00ed u\u017eivatel\u00e9 uvid\u00ed jen hl\u00e1\u0161en\u00ed o \u00fadr\u017eb\u011b.')) {
+      } else if (confirm('Opravdu zah\u00e1jit \u00fadr\u017ebu? Ostatn\u00ed u\u017eivatel\u00e9 uvid\u00ed jen hl\u00e1\u0161en\u00ed o \u00fadr\u017eb\u011b.')) {
         await refreshMaintenanceStatus();
-        await setMaintenanceMode('on', { endsAt: portalMaintenance.endsAt || null });
+        const defaultEnd = new Date(Date.now() + 45 * 60000);
+        const defaultValue = `${String(defaultEnd.getHours()).padStart(2, '0')}:${String(defaultEnd.getMinutes()).padStart(2, '0')}`;
+        const endValue = prompt('Zadejte p\u0159edpokl\u00e1dan\u00fd \u010das ukon\u010den\u00ed \u00fadr\u017eby (HH:MM).', defaultValue);
+        if (endValue === null) return;
+        if (!/^\d{2}:\d{2}$/.test(endValue)) {
+          alert('Zadejte pros\u00edm \u010das ve form\u00e1tu HH:MM.');
+          return;
+        }
+        const [h, m] = endValue.split(':').map(Number);
+        const endDate = new Date();
+        endDate.setHours(h, m, 0, 0);
+        if (endDate.getTime() <= Date.now()) endDate.setDate(endDate.getDate() + 1);
+        await setMaintenanceMode('on', { endsAt: endDate.toISOString() });
       }
       closeMaintenanceAdminModal();
     } catch (err) {

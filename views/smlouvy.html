@@ -773,8 +773,8 @@ function esc(s) {
 function fmtDate(iso) {
   if (!iso) return '—';
   const d = new Date(iso);
-  return d.toLocaleDateString('cs-CZ', { day:'numeric', month:'numeric', year:'numeric' })
-       + ' ' + d.toLocaleTimeString('cs-CZ', { hour:'2-digit', minute:'2-digit' });
+  return d.toLocaleDateString('cs-CZ', { day:'numeric', month:'numeric', year:'numeric', timeZone:'Europe/Prague' })
+       + ' ' + d.toLocaleTimeString('cs-CZ', { hour:'2-digit', minute:'2-digit', timeZone:'Europe/Prague' });
 }
 </script>
 </body>

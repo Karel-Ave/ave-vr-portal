@@ -708,6 +708,21 @@ async function init() {
   await db.query(`CREATE INDEX IF NOT EXISTS idx_vacation_requests_month ON vacation_requests (year, month, status)`);
   await db.query(`CREATE INDEX IF NOT EXISTS idx_vacation_requests_staff ON vacation_requests (staff_login, year, month)`);
   await db.query(`
+    CREATE TABLE IF NOT EXISTS vacation_request_events (
+      id            BIGSERIAL PRIMARY KEY,
+      request_id    BIGINT REFERENCES vacation_requests(id) ON DELETE CASCADE,
+      actor_user_id  INTEGER REFERENCES users(id) ON DELETE SET NULL,
+      actor_name     VARCHAR(100),
+      actor_role     VARCHAR(50),
+      event_type     VARCHAR(40) NOT NULL,
+      message        TEXT NOT NULL DEFAULT '',
+      days_json      TEXT NOT NULL DEFAULT '[]',
+      days_count     INTEGER NOT NULL DEFAULT 0,
+      created_at     TIMESTAMPTZ DEFAULT NOW()
+    )
+  `);
+  await db.query(`CREATE INDEX IF NOT EXISTS idx_vacation_request_events_request ON vacation_request_events (request_id, created_at, id)`);
+  await db.query(`
     CREATE TABLE IF NOT EXISTS vacation_balance_settings (
       id            BIGSERIAL PRIMARY KEY,
       staff_user_id INTEGER REFERENCES users(id) ON DELETE SET NULL,

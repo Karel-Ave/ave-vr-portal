@@ -147,7 +147,7 @@ async function saveMaintenanceState(input, user) {
     noticeType: input?.noticeType,
     message: input?.message,
     startsAt: input?.mode === 'warning' ? input?.startsAt : null,
-    endsAt: input?.mode === 'warning' || input?.mode === 'on' ? input?.endsAt : null,
+    endsAt: input?.mode === 'on' ? input?.endsAt : null,
     targetGroups: input?.targetGroups,
     updatedAt: now,
     updatedBy: user?.username || user?.name || user?.id || null
@@ -174,7 +174,7 @@ function maintenanceEndLabel(value) {
 
 function maintenanceHtml(state) {
   const endLabel = maintenanceEndLabel(state?.endsAt);
-  const message = (endLabel ? `Předpokládaný čas ukončení: ${endLabel}` : 'Předpokládaný čas ukončení bude upřesněn.')
+  const message = (endLabel ? `Předpokládaný čas ukončení: ${endLabel}` : MAINTENANCE_DEFAULT_MESSAGE)
     .replace(/&/g, '&amp;')
     .replace(/</g, '&lt;')
     .replace(/>/g, '&gt;')
@@ -679,7 +679,7 @@ app.post('/api/maintenance', requireLogin, requirePermDefault('admin', 'maintena
     const startsAtTime = req.body?.startsAt ? Date.parse(req.body.startsAt) : NaN;
     const endsAtTime = req.body?.endsAt ? Date.parse(req.body.endsAt) : NaN;
     const startsAt = mode === 'warning' && Number.isFinite(startsAtTime) ? new Date(startsAtTime).toISOString() : null;
-    const parsedEndsAt = (mode === 'warning' || mode === 'on') && Number.isFinite(endsAtTime) ? new Date(endsAtTime).toISOString() : null;
+    const parsedEndsAt = mode === 'on' && Number.isFinite(endsAtTime) ? new Date(endsAtTime).toISOString() : null;
     const endsAt = parsedEndsAt || (mode === 'on' ? previousState.endsAt : null);
     const noticeType = ['maintenance', 'message'].includes(req.body?.noticeType) ? req.body.noticeType : 'maintenance';
     const targetGroups = Array.isArray(req.body?.targetGroups)
@@ -3012,9 +3012,9 @@ app.get('/api/priplatky/export/xlsx', requireLogin, requirePermDefault('priplatk
       r.hotel||'', r.castka, r.poznamka||'',
       r.partner||'', r.klient||'', r.koho_skolil||'',
       r.vlozil||'',
-      r.vlozeno_kdy ? new Date(r.vlozeno_kdy).toLocaleString('cs-CZ') : '',
+      r.vlozeno_kdy ? new Date(r.vlozeno_kdy).toLocaleString('cs-CZ', { timeZone: 'Europe/Prague' }) : '',
       r.upravil||'',
-      r.upraveno_kdy ? new Date(r.upraveno_kdy).toLocaleString('cs-CZ') : '',
+      r.upraveno_kdy ? new Date(r.upraveno_kdy).toLocaleString('cs-CZ', { timeZone: 'Europe/Prague' }) : '',
     ]),
   ]);
   // B=1, C=2, D=3, I=8, J=9, L=11, N=13, O=14
@@ -4214,6 +4214,52 @@ function vacationParseRow(row) {
   return { ...row, days, days_count: Number(row.days_count || 0) };
 }
 
+function vacationParseEventRow(row) {
+  const days = (() => {
+    try { return typeof row.days_json === 'string' ? JSON.parse(row.days_json || '[]') : (row.days_json || []); }
+    catch (e) { return []; }
+  })();
+  return { ...row, days, days_count: Number(row.days_count || 0) };
+}
+
+async function vacationAddEvent(db, requestId, user, eventType, options = {}) {
+  if (!requestId || !eventType) return;
+  const days = Array.isArray(options.days) ? options.days : [];
+  await db.query(
+    `INSERT INTO vacation_request_events
+       (request_id, actor_user_id, actor_name, actor_role, event_type, message, days_json, days_count)
+     VALUES ($1,$2,$3,$4,$5,$6,$7,$8)`,
+    [
+      requestId,
+      user?.id || null,
+      user?.name || user?.username || user?.login || '',
+      user?.role || '',
+      eventType,
+      String(options.message || '').trim(),
+      JSON.stringify(days),
+      Math.max(0, Math.min(31, parseInt(options.days_count, 10) || 0))
+    ]
+  );
+}
+
+async function vacationLoadEvents(db, requestIds) {
+  const ids = [...new Set((requestIds || []).map(v => Number(v)).filter(Boolean))];
+  const map = new Map(ids.map(id => [id, []]));
+  if (!ids.length) return map;
+  const { rows } = await db.query(
+    `SELECT * FROM vacation_request_events
+      WHERE request_id = ANY($1::bigint[])
+      ORDER BY created_at ASC, id ASC`,
+    [ids]
+  );
+  for (const row of rows) {
+    const id = Number(row.request_id);
+    if (!map.has(id)) map.set(id, []);
+    map.get(id).push(vacationParseEventRow(row));
+  }
+  return map;
+}
+
 function vacationFormatDate(value) {
   const m = String(value || '').match(/^(\d{4})-(\d{2})-(\d{2})$/);
   if (!m) return String(value || '');
@@ -4348,6 +4394,7 @@ app.get('/api/vacations', requireLogin, async (req, res) => {
     const { rows } = await db.query(
       `SELECT * FROM vacation_requests ${where.length ? 'WHERE ' + where.join(' AND ') : ''}
        ORDER BY year DESC, month DESC, created_at DESC, id DESC`, params);
+    const eventMap = await vacationLoadEvents(db, rows.map(row => row.id));
     const userLogin = String(user.username || user.login || '').trim().toUpperCase();
     const canDelete = await vacationCanDelete(user);
     const items = rows.map(row => {
@@ -4357,6 +4404,7 @@ app.get('/api/vacations', requireLogin, async (req, res) => {
         || String(row.staff_login || '').toUpperCase() === userLogin;
       return {
         ...item,
+        events: eventMap.get(Number(row.id)) || [],
         canEdit: !manager && ['pending', 'needs_info'].includes(String(row.status || '')),
         canDelete
       };
@@ -4496,6 +4544,11 @@ app.post('/api/vacations', requireLogin, async (req, res) => {
       ]
     );
     let item = vacationParseRow(rows[0]);
+    await vacationAddEvent(db, item.id, user, manual ? 'manual_created' : 'request_created', {
+      message: note,
+      days,
+      days_count: daysCount
+    });
     if (manual) await vacationSyncApprovedRequestMovements(db, item, user);
     res.json({ ok: true, item });
   } catch (err) { console.error('Chyba POST /api/vacations:', err); res.status(500).json({ ok: false, msg: 'Chyba serveru.' }); }
@@ -4518,12 +4571,19 @@ app.patch('/api/vacations/:id', requireLogin, async (req, res) => {
     const days = vacationParseDays(req.body?.days, month, year);
     const daysCount = Math.max(0, Math.min(31, parseInt(req.body?.days_count, 10) || 0));
     if (!days.length && daysCount <= 0) return res.status(400).json({ ok: false, msg: 'Vyberte datum nebo pocet dni.' });
-    const nextStatus = (!manager && item.status === 'needs_info') ? 'pending' : item.status;
-    const note = String(req.body?.note || '').trim();
+    const isSupplementReply = !manager && item.status === 'needs_info';
+    const nextStatus = isSupplementReply ? 'pending' : item.status;
+    const noteInput = String(req.body?.note || '').trim();
+    const note = isSupplementReply ? String(item.note || '') : noteInput;
     const { rows: updated } = await db.query(
       `UPDATE vacation_requests SET month=$1, year=$2, days_json=$3, days_count=$4, note=$5, status=$6, updated_at=NOW(), resolved_by=NULL, resolved_name=NULL, resolved_at=NULL WHERE id=$7 RETURNING *`,
       [month, year, JSON.stringify(days), daysCount, note, nextStatus, req.params.id]
     );
+    await vacationAddEvent(db, req.params.id, user, isSupplementReply ? 'staff_reply' : 'request_updated', {
+      message: isSupplementReply ? noteInput : note,
+      days,
+      days_count: daysCount
+    });
     res.json({ ok: true, item: vacationParseRow(updated[0]) });
   } catch (err) { console.error('Chyba PATCH /api/vacations:', err); res.status(500).json({ ok: false, msg: 'Chyba serveru.' }); }
 });
@@ -4535,13 +4595,31 @@ app.post('/api/vacations/:id/status', requireLogin, async (req, res) => {
     if (!['pending', 'approved', 'rejected', 'needs_info'].includes(status)) return res.status(400).json({ ok: false, msg: 'Neplatny status.' });
     const db = getPool();
     const user = req.session.user;
+    const { rows: currentRows } = await db.query('SELECT * FROM vacation_requests WHERE id=$1', [req.params.id]);
+    if (!currentRows.length) return res.status(404).json({ ok: false, msg: 'Zadost nenalezena.' });
+    const current = vacationParseRow(currentRows[0]);
     const comment = String(req.body?.manager_comment || '').trim();
+    const hasAdjustedDays = status === 'approved' && Object.prototype.hasOwnProperty.call(req.body || {}, 'days');
+    const nextDays = hasAdjustedDays ? vacationParseDays(req.body?.days, current.month, current.year) : current.days;
+    const nextDaysCount = hasAdjustedDays
+      ? Math.max(0, Math.min(31, parseInt(req.body?.days_count, 10) || 0))
+      : current.days_count;
+    if (hasAdjustedDays && !nextDays.length && nextDaysCount <= 0) {
+      return res.status(400).json({ ok: false, msg: 'Vyberte datum nebo pocet dni.' });
+    }
     const { rows } = await db.query(
-      `UPDATE vacation_requests SET status=$1, manager_comment=$2, resolved_by=$3, resolved_name=$4, resolved_at=NOW(), updated_at=NOW() WHERE id=$5 RETURNING *`,
-      [status, comment, user.id, user.name, req.params.id]
+      `UPDATE vacation_requests
+          SET status=$1, manager_comment=$2, resolved_by=$3, resolved_name=$4, resolved_at=NOW(), updated_at=NOW(),
+              days_json=$5, days_count=$6
+        WHERE id=$7 RETURNING *`,
+      [status, comment, user.id, user.name, JSON.stringify(nextDays), nextDaysCount, req.params.id]
     );
-    if (!rows.length) return res.status(404).json({ ok: false, msg: 'Zadost nenalezena.' });
     let item = vacationParseRow(rows[0]);
+    await vacationAddEvent(db, item.id, user, status === 'approved' && hasAdjustedDays ? 'approved_adjusted' : status, {
+      message: comment,
+      days: item.days,
+      days_count: item.days_count
+    });
     let synced = false;
     if (status === 'approved' && req.body?.syncNote === true && await vacationCanSyncNote(user)) {
       const text = String(req.body?.sync_note_text || '').trim() || `Dovolena ${vacationFormatDays(item.days, item.month, item.year, item.days_count)}`;
@@ -4549,7 +4627,12 @@ app.post('/api/vacations/:id/status', requireLogin, async (req, res) => {
       const { rows: fresh } = await db.query('SELECT * FROM vacation_requests WHERE id=$1', [item.id]);
       item = vacationParseRow(fresh[0] || rows[0]);
     }
-    if (status === 'approved') await vacationSyncApprovedRequestMovements(db, item, user);
+    if (status === 'approved') {
+      await db.query(`DELETE FROM vacation_movements WHERE source_key LIKE $1`, [vacationRequestSourceKey(item.id, '') + '%']);
+      await vacationSyncApprovedRequestMovements(db, item, user);
+    } else {
+      await db.query(`DELETE FROM vacation_movements WHERE source_key LIKE $1`, [vacationRequestSourceKey(item.id, '') + '%']);
+    }
     res.json({ ok: true, item, synced });
   } catch (err) { console.error('Chyba POST /api/vacations/:id/status:', err); res.status(500).json({ ok: false, msg: 'Chyba serveru.' }); }
 });

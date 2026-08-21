@@ -6398,7 +6398,7 @@ let _iAmEditor = false;
 
 function formatLockTime(isoStr) {
   const d = new Date(isoStr);
-  return d.toLocaleTimeString('cs-CZ', {hour:'2-digit', minute:'2-digit'});
+  return d.toLocaleTimeString('cs-CZ', {hour:'2-digit', minute:'2-digit', timeZone:'Europe/Prague'});
 }
 
 async function acquireLock() {

@@ -1652,7 +1652,7 @@ function esc(s) { return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;'
 function fmtTs(iso) {
   if (!iso) return '';
   const d = new Date(iso);
-  return `${d.toLocaleDateString('cs-CZ')} ${d.toLocaleTimeString('cs-CZ',{hour:'2-digit',minute:'2-digit'})}`;
+  return `${d.toLocaleDateString('cs-CZ',{timeZone:'Europe/Prague'})} ${d.toLocaleTimeString('cs-CZ',{hour:'2-digit',minute:'2-digit',timeZone:'Europe/Prague'})}`;
 }
 
 // ═══ Koho školil — vlastní autocomplete dropdown ══════════════════════════════

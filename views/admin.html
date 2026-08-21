@@ -1376,8 +1376,8 @@
   function formatDateTime(iso) {
     if (!iso) return '—';
     const d = new Date(iso);
-    return d.toLocaleDateString('cs-CZ', { day: '2-digit', month: '2-digit', year: 'numeric' }) + ' ' +
-           d.toLocaleTimeString('cs-CZ', { hour: '2-digit', minute: '2-digit' });
+    return d.toLocaleDateString('cs-CZ', { day: '2-digit', month: '2-digit', year: 'numeric', timeZone: 'Europe/Prague' }) + ' ' +
+           d.toLocaleTimeString('cs-CZ', { hour: '2-digit', minute: '2-digit', timeZone: 'Europe/Prague' });
   }
 
   function formatLogDetails(action, details) {

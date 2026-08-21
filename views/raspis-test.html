@@ -9486,7 +9486,7 @@ function isRequirementXyLocked(ci) {
 function formatReqMeta(meta) {
   if (!meta) return '';
   const who = meta.userName || meta.username || '';
-  const when = meta.timestamp ? new Date(meta.timestamp).toLocaleString('cs-CZ') : '';
+  const when = meta.timestamp ? new Date(meta.timestamp).toLocaleString('cs-CZ', { timeZone: 'Europe/Prague' }) : '';
   return [meta.value ? `Směna: ${meta.value}` : '', who ? `Zapsal: ${who}` : '', when ? `Čas: ${when}` : '']
     .filter(Boolean)
     .join('\n');
@@ -9504,7 +9504,7 @@ function getRequirementDuplicateTip(si, ci, schedule = state.schedule) {
     const meta = state.reqMeta?.[key];
     const who = meta?.userName || meta?.username || '';
     const ts = meta?.timestamp ? Date.parse(meta.timestamp) : NaN;
-    const when = Number.isFinite(ts) ? new Date(ts).toLocaleString('cs-CZ') : '';
+    const when = Number.isFinite(ts) ? new Date(ts).toLocaleString('cs-CZ', { timeZone: 'Europe/Prague' }) : '';
     const person = s?.name || `Řádek ${otherSi + 1}`;
     same.push({ person, who, when, ts: Number.isFinite(ts) ? ts : Infinity });
   });
@@ -9917,7 +9917,7 @@ async function showRequirementsArchive() {
     }
     items.forEach(item => {
       const li = document.createElement('li');
-      const archived = item.archived_at ? new Date(item.archived_at).toLocaleString('cs-CZ') : '';
+      const archived = item.archived_at ? new Date(item.archived_at).toLocaleString('cs-CZ', { timeZone: 'Europe/Prague' }) : '';
       li.innerHTML = `
         <div class="trash-name">
           <strong>${item.label || item.key}</strong>
@@ -10263,7 +10263,7 @@ function isOwnLock(lock) {
 function formatLockSince(lock) {
   if (!lock || !lock.since) return '';
   try {
-    return new Date(lock.since).toLocaleTimeString('cs', {hour:'2-digit', minute:'2-digit'});
+    return new Date(lock.since).toLocaleTimeString('cs', {hour:'2-digit', minute:'2-digit', timeZone:'Europe/Prague'});
   } catch(e) { return ''; }
 }
 
@@ -13551,7 +13551,7 @@ async function showScheduleLog() {
     if (!rows || !rows.length) { empty.style.display = ''; return; }
     rows.forEach(row => {
       const tr = document.createElement('tr');
-      const ts = row.timestamp ? new Date(row.timestamp).toLocaleString('cs',{dateStyle:'short',timeStyle:'short'}) : '';
+      const ts = row.timestamp ? new Date(row.timestamp).toLocaleString('cs',{dateStyle:'short',timeStyle:'short',timeZone:'Europe/Prague'}) : '';
       const change = row.change_type === 'cell'
         ? `${row.staff_name}: den ${row.day}${row.dn||''} ${row.old_value||'—'} → ${row.new_value||'—'}`
         : `${row.change_type}: ${row.staff_name}`;
