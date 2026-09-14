@@ -5490,6 +5490,94 @@ async function vacationSyncScheduleZMovements(db, scheduleKey, month, year, data
   return { ok: true, key, month: syncMonth, year: syncYear, found, inserted, removed, kept, conflicts };
 }
 
+async function vacationSyncManualScheduleZRequests(db, scheduleKey, month, year, data, user) {
+  const parsed = vacationParseScheduleKey(scheduleKey);
+  const syncMonth = Number(month) || parsed.month;
+  const syncYear = Number(year) || parsed.year;
+  const key = String(scheduleKey || (syncMonth && syncYear ? vacationScheduleKey(syncMonth, syncYear) : '')).trim();
+  if (!key || !(syncMonth >= 1 && syncMonth <= 12) || !(syncYear >= 2000 && syncYear <= 2100)) {
+    return { ok: false, created: 0, skipped: 0 };
+  }
+  const { desired } = vacationCollectScheduleZDays(key, syncMonth, syncYear, data || {});
+  if (!desired.size) return { ok: true, created: 0, skipped: 0 };
+
+  const { rows: approvedRows } = await db.query(
+    `SELECT staff_login, days_json
+       FROM vacation_requests
+      WHERE status = 'approved'
+        AND month = $1
+        AND year = $2`,
+    [syncMonth, syncYear]
+  );
+  const approvedDates = new Set();
+  for (const row of approvedRows) {
+    const login = String(row.staff_login || '').trim().toUpperCase();
+    let days = [];
+    try { days = typeof row.days_json === 'string' ? JSON.parse(row.days_json || '[]') : (row.days_json || []); }
+    catch (e) { days = []; }
+    for (const dateText of days || []) {
+      if (login && dateText) approvedDates.add(`${login}|${dateText}`);
+    }
+  }
+
+  const byLogin = new Map();
+  let skipped = 0;
+  for (const [sourceKey, info] of desired.entries()) {
+    const login = String(info.login || '').trim().toUpperCase();
+    const dateText = `${syncYear}-${String(syncMonth).padStart(2, '0')}-${String(info.day).padStart(2, '0')}`;
+    if (!login || approvedDates.has(`${login}|${dateText}`)) { skipped++; continue; }
+
+    const movement = await db.query(
+      `SELECT 1
+         FROM vacation_movements
+        WHERE movement_type = 'schedule_import'
+          AND source_key = $1
+        LIMIT 1`,
+      [sourceKey]
+    );
+    if (!movement.rows.length) { skipped++; continue; }
+
+    if (!byLogin.has(login)) byLogin.set(login, { staff: info.staff || {}, login, days: [] });
+    byLogin.get(login).days.push(dateText);
+    approvedDates.add(`${login}|${dateText}`);
+  }
+
+  let created = 0;
+  for (const item of byLogin.values()) {
+    const staff = item.staff || {};
+    const days = [...new Set(item.days)].sort();
+    if (!days.length) continue;
+    const name = staff.displayName || staff.name || item.login;
+    const { rows } = await db.query(
+      `INSERT INTO vacation_requests
+       (staff_user_id, staff_login, staff_name, month, year, days_json, days_count, note, status, manual_entry, created_by, created_name, resolved_by, resolved_name, resolved_at, updated_at)
+       VALUES ($1,$2,$3,$4,$5,$6,$7,$8,'approved',true,$9,$10,$9,$10,NOW(),NOW())
+       RETURNING *`,
+      [
+        staff.userId || null,
+        item.login,
+        name,
+        syncMonth,
+        syncYear,
+        JSON.stringify(days),
+        days.length,
+        'Zadáno ručně v Rozpis VR',
+        user?.id || null,
+        user?.name || null
+      ]
+    );
+    const saved = vacationParseRow(rows[0]);
+    await vacationAddEvent(db, saved.id, user, 'manual_created', {
+      message: 'Zadáno ručně v Rozpis VR',
+      days,
+      days_count: days.length
+    });
+    await vacationSyncApprovedRequestMovements(db, saved, user);
+    created++;
+  }
+  return { ok: true, created, skipped };
+}
+
 async function vacationTrySyncScheduleZMovements(db, scheduleKey, month, year, data, user) {
   try {
     return await vacationSyncScheduleZMovements(db, scheduleKey, month, year, data, user);
@@ -5846,6 +5934,9 @@ app.post('/api/rt/schedules/publish', requireLogin, requirePermDefault('raspis',
       [key, month, year, label, JSON.stringify(data), req.session.user.name]
     );
     const vacationSync = await vacationTrySyncScheduleZMovements(db, key, month, year, data, req.session.user);
+    const vacationManualSync = vacationSync?.ok
+      ? await vacationSyncManualScheduleZRequests(db, key, month, year, data, req.session.user)
+      : { ok: false, created: 0, skipped: 0 };
     const parsedDraftId = parseInt(draftId, 10);
     if (parsedDraftId) {
       const draftRows = await db.query(
@@ -5862,7 +5953,7 @@ app.post('/api/rt/schedules/publish', requireLogin, requirePermDefault('raspis',
       }
     }
     broadcastWidgetUpdate();
-    res.json({ ok: true, key, knownHotelSync, vacationSync });
+    res.json({ ok: true, key, knownHotelSync, vacationSync, vacationManualSync });
   } catch (err) { console.error(err); res.json({ ok: false, msg: 'Chyba serveru.' }); }
 });
 
@@ -5929,8 +6020,11 @@ app.post('/api/rt/schedules/save-edits', requireLogin, requirePerm('raspis', 'ed
     await db.query('UPDATE rt_schedules SET data = $1 WHERE key = $2', [JSON.stringify(data), key]);
     const parsedVacationKey = vacationParseScheduleKey(key);
     const vacationSync = await vacationTrySyncScheduleZMovements(db, key, data.month || parsedVacationKey.month, data.year || parsedVacationKey.year, data, req.session.user);
+    const vacationManualSync = vacationSync?.ok
+      ? await vacationSyncManualScheduleZRequests(db, key, data.month || parsedVacationKey.month, data.year || parsedVacationKey.year, data, req.session.user)
+      : { ok: false, created: 0, skipped: 0 };
     broadcastWidgetUpdate();
-    res.json({ ok: true, knownHotelSync, vacationSync });
+    res.json({ ok: true, knownHotelSync, vacationSync, vacationManualSync });
   } catch (err) { console.error(err); res.json({ ok: false }); }
 });
 
@@ -7402,6 +7496,7 @@ app.post('/api/rt/requirements/import-vacations', requireLogin, async (req, res)
       const conflicts = [];
       const undated = [];
       const missingStaff = [];
+      const overwrittenCells = [];
       let inserted = 0;
       let overwritten = 0;
       let kept = 0;
@@ -7444,6 +7539,13 @@ app.post('/api/rt/requirements/import-vacations', requireLogin, async (req, res)
           } else if (lower === 'x' || lower === 'y') {
             data.schedule[cellKey] = 'z';
             overwritten++;
+            overwrittenCells.push({
+              name,
+              login,
+              date: dateLabel(dateText),
+              shift: dn === 'n' ? 'noc' : 'den',
+              value: current
+            });
           } else {
             conflicts.push({
               name,
@@ -7457,7 +7559,7 @@ app.post('/api/rt/requirements/import-vacations', requireLogin, async (req, res)
       }
 
       await client.query('COMMIT');
-      res.json({ ok: true, inserted, overwritten, kept, conflicts, undated, missingStaff, schedule: targetSchedule });
+      res.json({ ok: true, inserted, overwritten, kept, overwrittenCells, conflicts, undated, missingStaff, schedule: targetSchedule });
     } catch (err) {
       try { await client.query('ROLLBACK'); } catch (e) {}
       throw err;

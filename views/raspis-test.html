@@ -12048,6 +12048,9 @@ async function importVacationsToRequirements() {
       `již bylo z: ${d.kept || 0}`
     ];
     const notes = [];
+    if (Array.isArray(d.overwrittenCells) && d.overwrittenCells.length) {
+      notes.push(`Přepsáno x/y na z:\n${d.overwrittenCells.slice(0, 30).map(c => `${c.name}: ${c.date} ${c.shift} z "${c.value}" na "z"`).join('\n')}${d.overwrittenCells.length > 30 ? `\n... a další (${d.overwrittenCells.length - 30})` : ''}`);
+    }
     if (Array.isArray(d.conflicts) && d.conflicts.length) {
       notes.push(`Konflikty - nepřepsáno:\n${d.conflicts.slice(0, 20).map(c => `${c.name}: ${c.date} ${c.shift} má "${c.value}"`).join('\n')}${d.conflicts.length > 20 ? `\n... a další (${d.conflicts.length - 20})` : ''}`);
     }
