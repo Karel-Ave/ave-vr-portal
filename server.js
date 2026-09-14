@@ -1460,6 +1460,38 @@ app.get('/api/widget-today', requireLogin, async (req, res) => {
 
     const dayCol = (day - 1) * 2;
     const nightCol = dayCol + 1;
+
+    const findQHolder = (srcData, srcDay, preferNight = false) => {
+      const srcStaff = Array.isArray(srcData?.staff) ? srcData.staff : [];
+      const srcSchedule = srcData?.schedule || {};
+      const srcDayCol = (srcDay - 1) * 2;
+      const cols = preferNight ? [srcDayCol + 1, srcDayCol] : [srcDayCol, srcDayCol + 1];
+      for (const col of cols) {
+        for (let si = 0; si < srcStaff.length; si += 1) {
+          const val = String(srcSchedule[`${si}_${col}`] || '').trim().toUpperCase();
+          if (val !== 'Q') continue;
+          const name = cleanWidgetName(srcStaff[si]?.name || '');
+          if (name) return name;
+        }
+      }
+      return '';
+    };
+
+    const currentQHolder = findQHolder(data, day, false);
+    const prevDate = new Date(year, month - 1, day - 1);
+    const prevDay = prevDate.getDate();
+    const prevMonth = prevDate.getMonth() + 1;
+    const prevYear = prevDate.getFullYear();
+    let prevData = data;
+    if (prevMonth !== month || prevYear !== year) {
+      const prevKey = `RT:${String(prevMonth).padStart(2, '0')}/${prevYear}`;
+      const prevRows = await db.query('SELECT data FROM rt_schedules WHERE key = $1', [prevKey]);
+      const prevRaw = prevRows.rows.length ? prevRows.rows[0].data : {};
+      prevData = typeof prevRaw === 'string' ? JSON.parse(prevRaw || '{}') : (prevRaw || {});
+      prevData = await augmentRtDataWithActiveReceptionists(prevData, db);
+    }
+    const prevQHolder = findQHolder(prevData, prevDay, true);
+
     staff.forEach((s, si) => {
       const rawStaffName = String(s.name || '').trim();
       const name = cleanWidgetName(rawStaffName);
@@ -1473,6 +1505,10 @@ app.get('/api/widget-today', requireLogin, async (req, res) => {
       if (hotelMap[dayVal] && !hotelMap[dayVal].day && !(dayVal === 'P' && isStandbyPlaceholder) && !(dayVal === 'J' && isTheatrinoPlaceholder)) hotelMap[dayVal].day = name;
       if (hotelMap[nightVal] && !hotelMap[nightVal].night && !(nightVal === 'P' && isStandbyPlaceholder) && !(nightVal === 'J' && isTheatrinoPlaceholder)) hotelMap[nightVal].night = name;
     });
+
+    if (hotelMap.Q && currentQHolder && prevQHolder && currentQHolder !== prevQHolder) {
+      hotelMap.Q.handoffFrom = prevQHolder;
+    }
 
     res.json({
       ok: true,

@@ -2916,6 +2916,15 @@ body.hide-req-changes .sched-cell[data-req-tip]:not([data-dup-tip]):hover::after
   color: var(--text-muted);
   font-style: italic;
 }
+.daily-q-handoff {
+  margin-left: 8px;
+  color: #b33a2f;
+  font-size: 0.88em;
+  font-weight: 700;
+}
+[data-theme="dark"] .daily-q-handoff {
+  color: #ff9b8f;
+}
 .daily-hotel-legend {
   display: flex;
   flex-wrap: wrap;
@@ -14080,7 +14089,13 @@ function openDailyDatePicker() {
 function dailyCellHtml(letter, value, isNight, info) {
   const dayOnly = !!info?.dayOnly;
   if (isNight && dayOnly) return '';
-  if (value) return rtHtml(value);
+  if (value) {
+    let html = rtHtml(value);
+    if (!isNight && letter === 'Q' && info?.handoffFrom) {
+      html += ` <span class="daily-q-handoff">(až od 7:00 hod., do 7:00 hod. ${rtHtml(info.handoffFrom)})</span>`;
+    }
+    return html;
+  }
   return '<span class="daily-missing">-</span>';
 }
 
