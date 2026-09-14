@@ -7369,6 +7369,13 @@ app.post('/api/rt/requirements/import-vacations', requireLogin, async (req, res)
       const targetSchedule = monthData.schedule && typeof monthData.schedule === 'object'
         ? monthData.schedule
         : (data.schedule && typeof data.schedule === 'object' ? data.schedule : {});
+      const incomingSchedule = req.body?.schedule && typeof req.body.schedule === 'object'
+        ? req.body.schedule
+        : null;
+      if (incomingSchedule) {
+        Object.keys(targetSchedule).forEach(k => delete targetSchedule[k]);
+        Object.entries(incomingSchedule).forEach(([k, v]) => { targetSchedule[k] = v; });
+      }
       monthData.schedule = targetSchedule;
       data.monthlyData[monthKey] = monthData;
       data.schedule = targetSchedule;
@@ -7449,23 +7456,8 @@ app.post('/api/rt/requirements/import-vacations', requireLogin, async (req, res)
         }
       }
 
-      const { rowCount } = await client.query(
-        `UPDATE rt_requirements
-         SET data = $2, updated_at = NOW(), updated_by = $3
-         WHERE key = $1`,
-        [key, JSON.stringify(data), req.session.user.name]
-      );
-      if (!rowCount) {
-        await client.query('ROLLBACK');
-        return res.json({ ok: false, msg: 'Požadavky nejsou nalezené.' });
-      }
-      await client.query(
-        `INSERT INTO rt_requirements_log (req_key, user_id, user_name, action, details)
-         VALUES ($1,$2,$3,'import_vacations',$4)`,
-        [key, req.session.user.id, req.session.user.name, JSON.stringify({ inserted, overwritten, kept, conflicts, undated, missingStaff })]
-      );
       await client.query('COMMIT');
-      res.json({ ok: true, inserted, overwritten, kept, conflicts, undated, missingStaff });
+      res.json({ ok: true, inserted, overwritten, kept, conflicts, undated, missingStaff, schedule: targetSchedule });
     } catch (err) {
       try { await client.query('ROLLBACK'); } catch (e) {}
       throw err;

@@ -12007,6 +12007,7 @@ async function importVacationsToRequirements() {
     alert('Nejdřív klikněte na Editovat. Dovolené lze načíst pouze v režimu editace požadavků.');
     return;
   }
+  if (!syncScheduleInputsToState('pozadavky-tbl')) return;
   if (!confirm('Dopsat schválené dovolené do aktuálních požadavků?\n\nPrázdná pole a x/y se přepíší na z. Již napsané směny hotelů zůstanou beze změny a zobrazí se jako konflikty.')) return;
 
   const key = currentReqKey;
@@ -12016,14 +12017,30 @@ async function importVacationsToRequirements() {
       method: 'POST',
       credentials: 'include',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ key })
+      body: JSON.stringify({ key, schedule: state.schedule || {} })
     });
     const d = await r.json();
     if (!r.ok || !d.ok) {
       toast(d.msg || 'Dovolené se nepodařilo načíst.', true);
       return;
     }
-    await loadRequirement(key);
+    if (d.schedule && typeof d.schedule === 'object') {
+      state.schedule = d.schedule;
+      const currentKey = `${state.year}-${state.month}`;
+      state.monthlyData = state.monthlyData && typeof state.monthlyData === 'object' ? state.monthlyData : {};
+      state.monthlyData[currentKey] = {
+        ...(state.monthlyData[currentKey] || {}),
+        schedule: JSON.parse(JSON.stringify(state.schedule))
+      };
+      renderScheduleTable('pozadavky-tbl', true);
+      updateDuplicateClasses();
+      updateCoverageRows();
+      updateRequirementClasses();
+      updatePManyCells();
+      buildHotelFilterButtons();
+      applyRowFilters();
+      updateRequirementsStatus(currentReqEntry);
+    }
 
     const summary = [
       `Dopsáno: ${d.inserted || 0}`,
