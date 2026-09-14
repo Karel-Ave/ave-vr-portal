@@ -4858,6 +4858,23 @@ function vacationDateSourceKey(scheduleKey, staffLogin, year, month, day) {
   return `schedule:${scheduleKey}:${String(staffLogin || '').toUpperCase()}:${year}-${String(month).padStart(2,'0')}-${String(day).padStart(2,'0')}`;
 }
 
+function vacationParseScheduleSourceKey(sourceKey) {
+  const text = String(sourceKey || '');
+  if (!text.startsWith('schedule:')) return null;
+  const tail = text.slice('schedule:'.length);
+  const dateSep = tail.lastIndexOf(':');
+  if (dateSep < 0) return null;
+  const date = tail.slice(dateSep + 1);
+  const beforeDate = tail.slice(0, dateSep);
+  const loginSep = beforeDate.lastIndexOf(':');
+  if (loginSep < 0 || !/^\d{4}-\d{2}-\d{2}$/.test(date)) return null;
+  return {
+    scheduleKey: beforeDate.slice(0, loginSep),
+    login: beforeDate.slice(loginSep + 1).trim().toUpperCase(),
+    date
+  };
+}
+
 function vacationRequestSourceKey(requestId, suffix) {
   return `request:${requestId}:${suffix}`;
 }
@@ -5403,6 +5420,9 @@ async function vacationSyncScheduleZMovements(db, scheduleKey, month, year, data
   const existing = new Set(existingRows.rows.map(r => String(r.source_key || '')));
   const desiredKeys = new Set(desired.keys());
   const toRemove = [...existing].filter(k => !desiredKeys.has(k));
+  const removedDates = toRemove
+    .map(vacationParseScheduleSourceKey)
+    .filter(info => info && info.scheduleKey === key && info.login && info.date);
   const periodMap = await vacationContractPeriodsMap(db, [...new Set([...desired.values()].map(info => info.login))]);
   let removed = 0;
   if (toRemove.length) {
@@ -5487,10 +5507,71 @@ async function vacationSyncScheduleZMovements(db, scheduleKey, month, year, data
     );
     if (ins.rows.length) inserted++; else kept++;
   }
-  return { ok: true, key, month: syncMonth, year: syncYear, found, inserted, removed, kept, conflicts };
+  return { ok: true, key, month: syncMonth, year: syncYear, found, inserted, removed, kept, conflicts, removedDates };
 }
 
-async function vacationSyncManualScheduleZRequests(db, scheduleKey, month, year, data, user) {
+async function vacationSyncRemovedScheduleZRequests(db, month, year, removedDates, user) {
+  const grouped = new Map();
+  for (const info of removedDates || []) {
+    const login = String(info?.login || '').trim().toUpperCase();
+    const date = String(info?.date || '').trim();
+    const m = date.match(/^(\d{4})-(\d{2})-(\d{2})$/);
+    if (!login || !m || Number(m[1]) !== Number(year) || Number(m[2]) !== Number(month)) continue;
+    if (!grouped.has(login)) grouped.set(login, new Set());
+    grouped.get(login).add(date);
+  }
+  let adjusted = 0;
+  let deleted = 0;
+  let removed = 0;
+  for (const [login, dateSet] of grouped.entries()) {
+    const { rows } = await db.query(
+      `SELECT *
+         FROM vacation_requests
+        WHERE status = 'approved'
+          AND month = $1
+          AND year = $2
+          AND UPPER(staff_login) = UPPER($3)
+        ORDER BY id ASC`,
+      [month, year, login]
+    );
+    for (const row of rows) {
+      const item = vacationParseRow(row);
+      const oldDays = (item.days || []).filter(Boolean).sort();
+      const hitDays = oldDays.filter(day => dateSet.has(day));
+      if (!hitDays.length) continue;
+      const nextDays = oldDays.filter(day => !dateSet.has(day));
+      removed += hitDays.length;
+      await db.query(`DELETE FROM vacation_movements WHERE source_key LIKE $1`, [vacationRequestSourceKey(item.id, '') + '%']);
+      if (nextDays.length) {
+        const oldText = vacationFormatDays(oldDays, item.month, item.year, item.days_count);
+        const actor = user?.name || user?.username || user?.login || 'uživatel';
+        const { rows: updated } = await db.query(
+          `UPDATE vacation_requests
+              SET days_json = $1,
+                  days_count = $2,
+                  updated_at = NOW()
+            WHERE id = $3
+            RETURNING *`,
+          [JSON.stringify(nextDays), nextDays.length, item.id]
+        );
+        const saved = vacationParseRow(updated[0]);
+        await vacationAddEvent(db, saved.id, user, 'schedule_adjusted', {
+          message: `původně ${oldText}, editoval ${actor}`,
+          days: saved.days,
+          days_count: saved.days_count
+        });
+        await vacationSyncApprovedRequestMovements(db, saved, user);
+        adjusted++;
+      } else {
+        await db.query(`DELETE FROM vacation_requests WHERE id = $1`, [item.id]);
+        deleted++;
+      }
+    }
+  }
+  return { adjusted, deleted, removed };
+}
+
+async function vacationSyncManualScheduleZRequests(db, scheduleKey, month, year, data, user, scheduleSync = null) {
   const parsed = vacationParseScheduleKey(scheduleKey);
   const syncMonth = Number(month) || parsed.month;
   const syncYear = Number(year) || parsed.year;
@@ -5498,8 +5579,9 @@ async function vacationSyncManualScheduleZRequests(db, scheduleKey, month, year,
   if (!key || !(syncMonth >= 1 && syncMonth <= 12) || !(syncYear >= 2000 && syncYear <= 2100)) {
     return { ok: false, created: 0, skipped: 0 };
   }
+  const removedSync = await vacationSyncRemovedScheduleZRequests(db, syncMonth, syncYear, scheduleSync?.removedDates || [], user);
   const { desired } = vacationCollectScheduleZDays(key, syncMonth, syncYear, data || {});
-  if (!desired.size) return { ok: true, created: 0, skipped: 0 };
+  if (!desired.size) return { ok: true, created: 0, skipped: 0, ...removedSync };
 
   const { rows: approvedRows } = await db.query(
     `SELECT staff_login, days_json
@@ -5575,7 +5657,7 @@ async function vacationSyncManualScheduleZRequests(db, scheduleKey, month, year,
     await vacationSyncApprovedRequestMovements(db, saved, user);
     created++;
   }
-  return { ok: true, created, skipped };
+  return { ok: true, created, skipped, ...removedSync };
 }
 
 async function vacationTrySyncScheduleZMovements(db, scheduleKey, month, year, data, user) {
@@ -5935,7 +6017,7 @@ app.post('/api/rt/schedules/publish', requireLogin, requirePermDefault('raspis',
     );
     const vacationSync = await vacationTrySyncScheduleZMovements(db, key, month, year, data, req.session.user);
     const vacationManualSync = vacationSync?.ok
-      ? await vacationSyncManualScheduleZRequests(db, key, month, year, data, req.session.user)
+      ? await vacationSyncManualScheduleZRequests(db, key, month, year, data, req.session.user, vacationSync)
       : { ok: false, created: 0, skipped: 0 };
     const parsedDraftId = parseInt(draftId, 10);
     if (parsedDraftId) {
@@ -6021,7 +6103,7 @@ app.post('/api/rt/schedules/save-edits', requireLogin, requirePerm('raspis', 'ed
     const parsedVacationKey = vacationParseScheduleKey(key);
     const vacationSync = await vacationTrySyncScheduleZMovements(db, key, data.month || parsedVacationKey.month, data.year || parsedVacationKey.year, data, req.session.user);
     const vacationManualSync = vacationSync?.ok
-      ? await vacationSyncManualScheduleZRequests(db, key, data.month || parsedVacationKey.month, data.year || parsedVacationKey.year, data, req.session.user)
+      ? await vacationSyncManualScheduleZRequests(db, key, data.month || parsedVacationKey.month, data.year || parsedVacationKey.year, data, req.session.user, vacationSync)
       : { ok: false, created: 0, skipped: 0 };
     broadcastWidgetUpdate();
     res.json({ ok: true, knownHotelSync, vacationSync, vacationManualSync });
