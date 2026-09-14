@@ -7361,7 +7361,17 @@ app.post('/api/rt/requirements/import-vacations', requireLogin, async (req, res)
       data.year = data.year || year;
       data = await augmentRtDataWithActiveReceptionists(data, client);
       data = await augmentRtDataWithSpecialStaff(data, req.session.user.id, client);
-      data.schedule = data.schedule && typeof data.schedule === 'object' ? data.schedule : {};
+      data.monthlyData = data.monthlyData && typeof data.monthlyData === 'object' ? data.monthlyData : {};
+      const monthKey = `${year}-${month}`;
+      const monthData = data.monthlyData[monthKey] && typeof data.monthlyData[monthKey] === 'object'
+        ? data.monthlyData[monthKey]
+        : {};
+      const targetSchedule = monthData.schedule && typeof monthData.schedule === 'object'
+        ? monthData.schedule
+        : (data.schedule && typeof data.schedule === 'object' ? data.schedule : {});
+      monthData.schedule = targetSchedule;
+      data.monthlyData[monthKey] = monthData;
+      data.schedule = targetSchedule;
 
       const { rows: vacationRows } = await client.query(
         `SELECT *

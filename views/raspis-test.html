@@ -12003,15 +12003,13 @@ async function importVacationsToRequirements() {
     toast('Nemáte oprávnění načítat dovolené do požadavků.', true);
     return;
   }
+  if (!reqEditMode) {
+    alert('Nejdřív klikněte na Editovat. Dovolené lze načíst pouze v režimu editace požadavků.');
+    return;
+  }
   if (!confirm('Dopsat schválené dovolené do aktuálních požadavků?\n\nPrázdná pole a x/y se přepíší na z. Již napsané směny hotelů zůstanou beze změny a zobrazí se jako konflikty.')) return;
 
   const key = currentReqKey;
-  if (reqEditMode) {
-    const saved = await saveCurrentRequirementData({ silent: false, confirmDuplicates: true });
-    if (!saved) return;
-    reqEditMode = false;
-    updateRequirementsStatus(currentReqEntry);
-  }
 
   try {
     const r = await fetch('/api/rt/requirements/import-vacations', {
@@ -12042,11 +12040,7 @@ async function importVacationsToRequirements() {
     if (Array.isArray(d.missingStaff) && d.missingStaff.length) {
       notes.push(`Nenalezený řádek v požadavcích:\n${d.missingStaff.map(u => `${u.name}: ${u.days.join(', ')}`).join('\n')}`);
     }
-    if (notes.length) {
-      alert(`${summary.join(', ')}.\n\n${notes.join('\n\n')}`);
-    } else {
-      toast(`${summary.join(', ')}.`);
-    }
+    alert(`Načtení dovolených dokončeno.\n\n${summary.join(', ')}.${notes.length ? `\n\n${notes.join('\n\n')}` : ''}`);
   } catch (e) {
     console.warn('importVacationsToRequirements:', e);
     toast('Chyba načítání dovolených.', true);
