@@ -331,6 +331,15 @@ body[data-active-tab="pozadavky"] #tb-right-actions { display: none; }
   background: color-mix(in srgb, var(--accent-h) 82%, #000);
   color: #fff;
 }
+#tb-act-pozadavky #btn-req-toggle-edit,
+#tb-act-pozadavky #btn-req-load-vacations,
+#tb-act-pozadavky #btn-req-send-tvorba {
+  min-height: 28px;
+  height: 28px;
+  padding: 4px 8px;
+  font-size: 11px;
+  line-height: 1;
+}
 .req-create-grid {
   display: grid;
   grid-template-columns: 1fr 1fr;
@@ -2428,7 +2437,6 @@ body.hide-req-changes .sched-cell[data-req-tip]:not([data-dup-tip]):hover::after
   #btn-req-edit,
   #btn-req-cancel,
   #btn-req-toggle-edit,
-  #btn-req-paste-excel,
   #btn-req-load-vacations,
   #btn-req-send-tvorba,
   #btn-req-delete,
@@ -2453,7 +2461,6 @@ body.hide-req-changes .sched-cell[data-req-tip]:not([data-dup-tip]):hover::after
   #btn-req-cancel::after { content: attr(data-mobile-label); }
   #btn-req-create::after { content: "Nové"; }
   #btn-req-toggle-edit::after { content: attr(data-mobile-label); }
-  #btn-req-paste-excel::after { content: "XLS"; }
   #btn-req-load-vacations::after { content: "Dov."; }
   #btn-req-send-tvorba::after { content: "Do Tvorby"; }
   #btn-paste-excel::after,
@@ -2471,7 +2478,6 @@ body.hide-req-changes .sched-cell[data-req-tip]:not([data-dup-tip]):hover::after
   #btn-req-edit::after,
   #btn-req-cancel::after,
   #btn-req-toggle-edit::after,
-  #btn-req-paste-excel::after,
   #btn-req-load-vacations::after,
   #btn-req-send-tvorba::after,
   #btn-req-delete::after,
@@ -3202,7 +3208,6 @@ body.hide-req-changes .sched-cell[data-req-tip]:not([data-dup-tip]):hover::after
     <button class="tb-btn" id="btn-req-edit" data-mobile-label="Edituj požadavky">Editovat</button>
     <button class="tb-btn" id="btn-req-cancel" data-mobile-label="Zrušit" style="display:none">Zrušit</button>
     <button class="tb-btn" id="btn-req-toggle-edit" data-mobile-label="Povolit Editaci">Povolit editaci</button>
-    <button class="tb-btn" id="btn-req-paste-excel">Vložit XLS</button>
     <button class="tb-btn" id="btn-req-load-vacations">Načíst dovolené</button>
     <button class="tb-btn" id="btn-req-send-tvorba">Odeslat do Tvorba</button>
     <button class="tb-btn" id="btn-req-print">Tisk</button>
@@ -5576,7 +5581,6 @@ function applyRaspisPermissions() {
   setPermHidden(document.getElementById('btn-req-edit'), !(canManageRequirements() || rtCan('req_edit', true)));
   setPermHidden(document.getElementById('btn-req-cancel'), !(canManageRequirements() || rtCan('req_edit', true)));
   setPermVisibleById('btn-req-toggle-edit', 'req_toggle_reception', canManageRequirements());
-  setPermVisibleById('btn-req-paste-excel', 'paste_excel', canManageRequirements());
   setPermVisibleById('btn-req-load-vacations', 'req_load_vacations', canManageRequirements());
   setPermVisibleById('btn-req-send-tvorba', 'req_send_tvorba', canManageRequirements());
   setPermVisibleById('btn-req-delete', 'req_delete', false);
@@ -9590,7 +9594,6 @@ function updateRequirementsStatus(entry) {
   const editBtn = document.getElementById('btn-req-edit');
   const cancelBtn = document.getElementById('btn-req-cancel');
   const toggleBtn = document.getElementById('btn-req-toggle-edit');
-  const pasteBtn = document.getElementById('btn-req-paste-excel');
   const loadVacBtn = document.getElementById('btn-req-load-vacations');
   const sendBtn = document.getElementById('btn-req-send-tvorba');
   const act = document.getElementById('tb-act-pozadavky');
@@ -9601,7 +9604,6 @@ function updateRequirementsStatus(entry) {
   if (act) act.classList.toggle('req-has-entry', manager);
   if (createBtn) createBtn.style.display = (manager && !reqPreviewMode) ? '' : 'none';
   if (toggleBtn) toggleBtn.style.display = (manager && entry && !reqPreviewMode) ? '' : 'none';
-  if (pasteBtn) pasteBtn.style.display = (manager && entry && !reqPreviewMode) ? '' : 'none';
   if (loadVacBtn) loadVacBtn.style.display = (rtCan('req_load_vacations', manager) && entry && !reqPreviewMode) ? '' : 'none';
   if (sendBtn) sendBtn.style.display = (manager && entry && !reqPreviewMode) ? '' : 'none';
   if (deleteBtn) deleteBtn.style.display = (manager && entry && !reqPreviewMode) ? '' : 'none';
@@ -9613,7 +9615,6 @@ function updateRequirementsStatus(entry) {
     if (editBtn) editBtn.style.display = 'none';
     if (cancelBtn) cancelBtn.style.display = 'none';
     if (toggleBtn) toggleBtn.style.display = 'none';
-    if (pasteBtn) pasteBtn.style.display = 'none';
     if (loadVacBtn) loadVacBtn.style.display = 'none';
     if (sendBtn) sendBtn.style.display = 'none';
     updateRequirementsFundsInfo(null);
@@ -14860,7 +14861,6 @@ document.addEventListener('DOMContentLoaded', async () => {
   document.getElementById('btn-req-edit')?.addEventListener('click', toggleRequirementsEditWindow);
   document.getElementById('btn-req-cancel')?.addEventListener('click', cancelRequirementsEdit);
   document.getElementById('btn-req-toggle-edit')?.addEventListener('click', toggleRequirementsReceptionistEdit);
-  document.getElementById('btn-req-paste-excel')?.addEventListener('click', pasteRequirementsFromExcel);
   document.getElementById('btn-req-load-vacations')?.addEventListener('click', importVacationsToRequirements);
   document.getElementById('btn-req-send-tvorba')?.addEventListener('click', openRequirementsSendModal);
   document.getElementById('req-send-submit')?.addEventListener('click', sendRequirementsToTvorba);
