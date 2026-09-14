@@ -779,6 +779,17 @@ async function init() {
   `);
   await db.query(`CREATE INDEX IF NOT EXISTS idx_vacation_movements_staff ON vacation_movements (staff_login, year, month)`);
   await db.query(`
+    DELETE FROM vacation_movements vm
+     WHERE vm.movement_type = 'request_approved'
+       AND NOT EXISTS (
+         SELECT 1
+           FROM vacation_requests vr
+          WHERE vr.id::text = split_part(vm.source_key, ':', 2)
+            AND vr.status = 'approved'
+            AND COALESCE(vr.days_json, '[]')::jsonb ? split_part(vm.source_key, ':', 4)
+       )
+  `);
+  await db.query(`
     CREATE TABLE IF NOT EXISTS user_notification_reads (
       user_id           INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
       notification_type VARCHAR(50) NOT NULL,

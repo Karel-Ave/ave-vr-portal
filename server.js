@@ -4883,6 +4883,18 @@ function vacationStaffSort(a, b) {
   return String(a.staff_name || a.name || '').localeCompare(String(b.staff_name || b.name || ''), 'cs', { sensitivity: 'base' });
 }
 
+function vacationValidRequestMovementCondition(alias = 'vm') {
+  return `
+    EXISTS (
+      SELECT 1
+        FROM vacation_requests vr
+       WHERE vr.id::text = split_part(${alias}.source_key, ':', 2)
+         AND vr.status = 'approved'
+         AND COALESCE(vr.days_json, '[]')::jsonb ? split_part(${alias}.source_key, ':', 4)
+    )
+  `;
+}
+
 function vacationBalanceMovementSubquery() {
   return `
     SELECT staff_login, year, month, day, movement_type, source_key, days_delta, hours_delta
@@ -4901,8 +4913,11 @@ function vacationBalanceMovementSubquery() {
            )
            AND (
              vm.movement_type <> 'request_approved'
-             OR (vm.year > ${VACATION_APPROVED_MOVEMENTS_FROM_YEAR}
+             OR (
+               (vm.year > ${VACATION_APPROVED_MOVEMENTS_FROM_YEAR}
                  OR (vm.year = ${VACATION_APPROVED_MOVEMENTS_FROM_YEAR} AND vm.month >= ${VACATION_APPROVED_MOVEMENTS_FROM_MONTH}))
+               AND ${vacationValidRequestMovementCondition('vm')}
+             )
            )
          ORDER BY UPPER(vm.staff_login), vm.year, vm.month, vm.day,
                   CASE vm.movement_type WHEN 'schedule_import' THEN 0 ELSE 1 END,
@@ -4985,6 +5000,24 @@ async function vacationSyncApprovedRequestMovements(db, item, user) {
   return { inserted, skipped };
 }
 
+async function vacationBackfillApprovedRequestMovements(db, user) {
+  const { rows } = await db.query(`
+    SELECT *
+      FROM vacation_requests
+     WHERE status = 'approved'
+       AND COALESCE(days_json, '[]') <> '[]'
+     ORDER BY id
+  `);
+  let inserted = 0;
+  let skipped = 0;
+  for (const row of rows) {
+    const result = await vacationSyncApprovedRequestMovements(db, vacationParseRow(row), user);
+    inserted += Number(result.inserted || 0);
+    skipped += Number(result.skipped || 0);
+  }
+  return { inserted, skipped };
+}
+
 async function vacationValidateApprovalCapacity(db, item, user) {
   const login = String(item?.staff_login || '').trim().toUpperCase();
   if (!login || String(item?.status || '') !== 'approved') return { ok: true };
@@ -5061,6 +5094,10 @@ async function vacationValidateApprovalCapacity(db, item, user) {
                WHERE vm.source_key LIKE 'schedule:' || rs.key || ':%'
             )
           )
+          AND (
+            vm.movement_type <> 'request_approved'
+            OR ${vacationValidRequestMovementCondition('vm')}
+          )
         LIMIT 1`,
       params
     );
@@ -5105,6 +5142,7 @@ async function vacationEnsureBalance(db, staff, user) {
 }
 
 async function vacationBalanceRows(db, user) {
+  await vacationBackfillApprovedRequestMovements(db, user);
   const manager = await canManageVacationsServer(user);
   const canManageBalances = await vacationCanManageBalances(user);
   const staffList = await loadRtPortalReceptionists(db);
@@ -5324,6 +5362,7 @@ app.get('/api/vacations/movements', requireLogin, async (req, res) => {
     where.push(`(movement_type <> 'schedule_import' OR EXISTS (
       SELECT 1 FROM rt_schedules rs WHERE vacation_movements.source_key LIKE 'schedule:' || rs.key || ':%'
     ))`);
+    where.push(`(movement_type <> 'request_approved' OR ${vacationValidRequestMovementCondition('vacation_movements')})`);
     if (!manager) {
       const login = String(user.username || user.login || '').trim().toUpperCase();
       where.push(`UPPER(staff_login) = ${add(login)}`);
@@ -5467,6 +5506,10 @@ async function vacationSyncScheduleZMovements(db, scheduleKey, month, year, data
               SELECT 1 FROM rt_schedules rs
                WHERE vm.source_key LIKE 'schedule:' || rs.key || ':%'
             )
+          )
+          AND (
+            vm.movement_type <> 'request_approved'
+            OR ${vacationValidRequestMovementCondition('vm')}
           )
         LIMIT 1`,
       [info.login, syncYear, syncMonth, info.day, sourceKey]
