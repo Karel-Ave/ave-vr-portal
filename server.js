@@ -5561,14 +5561,14 @@ async function vacationSyncManualScheduleZRequests(db, scheduleKey, month, year,
         syncYear,
         JSON.stringify(days),
         days.length,
-        'Zadáno ručně v Rozpis VR',
+        'zadáno zpětně',
         user?.id || null,
         user?.name || null
       ]
     );
     const saved = vacationParseRow(rows[0]);
     await vacationAddEvent(db, saved.id, user, 'manual_created', {
-      message: 'Zadáno ručně v Rozpis VR',
+      message: 'zadáno zpětně',
       days,
       days_count: days.length
     });
