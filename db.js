@@ -271,7 +271,7 @@ async function init() {
       filters: true, show_qualified: true, mark: true, undo_redo: true, colors: true,
       fonds: true, paste_excel: true, import: true, unmatched: true, publish: true,
       delete: true, trash: true, edit: true, archive: true, log: true, export: true,
-      req_create: true, req_edit: true, req_toggle_reception: true, req_send_tvorba: true, req_delete: true, req_archive: true,
+      req_create: true, req_edit: true, req_toggle_reception: true, req_send_tvorba: true, req_delete: true, req_archive: true, req_view_sent: true,
       hotel_manager: true, settings_monthly: true, settings_add_staff: true, settings_clear_overrides: true
     } },
     priplatky: { enabled: true, visible: true, buttons: { viewAll: true, add: true, edit: true, delete: true, export: true, template: true, settings: true, manageReceptionists: true, manageTexts: true, internalNote: true, trainingTab: true } },
@@ -285,7 +285,7 @@ async function init() {
       filters: true, show_qualified: true, mark: true, undo_redo: true, colors: false,
       fonds: true, paste_excel: true, import: false, unmatched: true, publish: true,
       delete: false, trash: false, edit: true, archive: false, log: false, export: true,
-      req_create: true, req_edit: true, req_toggle_reception: true, req_send_tvorba: true, req_delete: false, req_archive: true,
+      req_create: true, req_edit: true, req_toggle_reception: true, req_send_tvorba: true, req_delete: false, req_archive: true, req_view_sent: true,
       hotel_manager: false, settings_monthly: true, settings_add_staff: true, settings_clear_overrides: false
     } },
     priplatky: { enabled: true, visible: true, buttons: { viewAll: false, add: true, edit: true, delete: false, export: true, template: false, settings: false, manageReceptionists: false, manageTexts: false, internalNote: true, trainingTab: true } },
@@ -299,7 +299,7 @@ async function init() {
       filters: false, show_qualified: false, mark: false, undo_redo: false, colors: false,
       fonds: false, paste_excel: false, import: false, unmatched: false, publish: false,
       delete: false, trash: false, edit: false, archive: false, log: false, export: false,
-      req_create: false, req_edit: false, req_toggle_reception: false, req_send_tvorba: false, req_delete: false, req_archive: false,
+      req_create: false, req_edit: false, req_toggle_reception: false, req_send_tvorba: false, req_delete: false, req_archive: false, req_view_sent: false,
       hotel_manager: false, settings_monthly: false, settings_add_staff: false, settings_clear_overrides: false
     } },
     priplatky: { enabled: false, visible: false, buttons: { viewAll: false, add: false, edit: false, delete: false, export: false, template: false, settings: false, manageReceptionists: false, manageTexts: false, internalNote: false, trainingTab: false } },
@@ -313,7 +313,7 @@ async function init() {
       filters: true, show_qualified: false, mark: false, undo_redo: false, colors: false,
       fonds: false, paste_excel: false, import: false, unmatched: false, publish: false,
       delete: false, trash: false, edit: false, archive: false, log: false, export: false,
-      req_create: false, req_edit: false, req_toggle_reception: false, req_send_tvorba: false, req_delete: false, req_archive: false,
+      req_create: false, req_edit: false, req_toggle_reception: false, req_send_tvorba: false, req_delete: false, req_archive: false, req_view_sent: false,
       hotel_manager: false, settings_monthly: false, settings_add_staff: false, settings_clear_overrides: false
     } },
     priplatky: { enabled: true, visible: true, buttons: { viewAll: false, add: true, edit: true, delete: false, export: true, template: false, settings: false, manageReceptionists: false, manageTexts: false, internalNote: false, trainingTab: false } },
@@ -327,7 +327,7 @@ async function init() {
       filters: true, show_qualified: false, mark: false, undo_redo: false, colors: false,
       fonds: false, paste_excel: false, import: false, unmatched: false, publish: false,
       delete: false, trash: false, edit: false, archive: false, log: false, export: false,
-      req_create: false, req_edit: true, req_toggle_reception: false, req_send_tvorba: false, req_delete: false, req_archive: false,
+      req_create: false, req_edit: true, req_toggle_reception: false, req_send_tvorba: false, req_delete: false, req_archive: false, req_view_sent: false,
       hotel_manager: false, settings_monthly: false, settings_add_staff: false, settings_clear_overrides: false
     } },
     priplatky: { enabled: false, visible: false, buttons: { viewAll: false, add: false, edit: false, delete: false, export: false, template: false, settings: false, manageReceptionists: false, manageTexts: false, internalNote: false, trainingTab: false } },

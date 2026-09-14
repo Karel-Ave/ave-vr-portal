@@ -3201,6 +3201,7 @@ body.hide-req-changes .sched-cell[data-req-tip]:not([data-dup-tip]):hover::after
     </div>
     <div id="req-actions-right">
       <button class="tb-btn" id="btn-req-delete">Smazat</button>
+      <button class="tb-btn" id="btn-req-last-sent">Odeslané požadavky</button>
       <button class="tb-btn" id="btn-req-archive">Archiv</button>
     </div>
   </div>
@@ -5565,6 +5566,7 @@ function applyRaspisPermissions() {
   setPermVisibleById('btn-req-paste-excel', 'paste_excel', canManageRequirements());
   setPermVisibleById('btn-req-send-tvorba', 'req_send_tvorba', canManageRequirements());
   setPermVisibleById('btn-req-delete', 'req_delete', false);
+  setPermVisibleById('btn-req-last-sent', 'req_view_sent', canManageRequirements());
   setPermVisibleById('btn-req-archive', 'req_archive', canManageRequirements());
 
   setPermVisibleById('btn-hotel-manager', 'hotel_manager', false);
@@ -9218,6 +9220,7 @@ let currentReqEntry = null;
 let reqItemsCache = [];
 let requirementsLoadedKey = null;
 let reqEditMode = false;
+let reqPreviewMode = false;
 let reqSaveTimer = null;
 let reqEditSnapshot = null;
 const REQ_RECEPTION_CLOSED_MSG = 'Období pro editaci požadavků ještě nezačalo, nebo již skončilo.';
@@ -9558,15 +9561,17 @@ function updateRequirementsStatus(entry) {
   const sendBtn = document.getElementById('btn-req-send-tvorba');
   const act = document.getElementById('tb-act-pozadavky');
   const deleteBtn = document.getElementById('btn-req-delete');
+  const lastSentBtn = document.getElementById('btn-req-last-sent');
   const archiveBtn = document.getElementById('btn-req-archive');
   const manager = canManageRequirements();
   if (act) act.classList.toggle('req-has-entry', manager);
-  if (createBtn) createBtn.style.display = manager ? '' : 'none';
-  if (toggleBtn) toggleBtn.style.display = (manager && entry) ? '' : 'none';
-  if (pasteBtn) pasteBtn.style.display = (manager && entry) ? '' : 'none';
-  if (sendBtn) sendBtn.style.display = (manager && entry) ? '' : 'none';
-  if (deleteBtn) deleteBtn.style.display = (manager && entry) ? '' : 'none';
-  if (archiveBtn) archiveBtn.style.display = manager ? '' : 'none';
+  if (createBtn) createBtn.style.display = (manager && !reqPreviewMode) ? '' : 'none';
+  if (toggleBtn) toggleBtn.style.display = (manager && entry && !reqPreviewMode) ? '' : 'none';
+  if (pasteBtn) pasteBtn.style.display = (manager && entry && !reqPreviewMode) ? '' : 'none';
+  if (sendBtn) sendBtn.style.display = (manager && entry && !reqPreviewMode) ? '' : 'none';
+  if (deleteBtn) deleteBtn.style.display = (manager && entry && !reqPreviewMode) ? '' : 'none';
+  if (lastSentBtn) lastSentBtn.style.display = rtCan('req_view_sent', manager) ? '' : 'none';
+  if (archiveBtn) archiveBtn.style.display = (manager && !reqPreviewMode) ? '' : 'none';
   if (!entry) {
     if (title) title.textContent = 'Žádné požadavky';
     if (el) el.textContent = '';
@@ -9578,9 +9583,11 @@ function updateRequirementsStatus(entry) {
     updateRequirementsFundsInfo(null);
     return;
   }
-  if (title) title.textContent = entry.label || entry.key || '';
+  if (title) title.textContent = reqPreviewMode ? `Odeslané požadavky: ${entry.label || entry.key || ''}` : (entry.label || entry.key || '');
   if (el) {
-    el.textContent = manager
+    el.textContent = reqPreviewMode
+      ? 'Pouze náhled - bez možnosti úprav.'
+      : manager
       ? ''
       : entry.status === 'open'
         ? ''
@@ -9589,7 +9596,7 @@ function updateRequirementsStatus(entry) {
   if (editBtn) {
     editBtn.textContent = reqEditMode ? 'Uložit' : (manager ? 'Editovat' : 'Edituj požadavky');
     editBtn.dataset.mobileLabel = reqEditMode ? 'Uložit' : (manager ? 'Editovat' : 'Edituj požadavky');
-    editBtn.style.display = (manager || entry.status === 'open') ? '' : 'none';
+    editBtn.style.display = (!reqPreviewMode && (manager || entry.status === 'open')) ? '' : 'none';
     editBtn.classList.toggle('primary', reqEditMode);
     if (!reqEditMode && !manager) editBtn.dataset.mobileLabel = editBtn.textContent;
   }
@@ -9634,6 +9641,7 @@ function updateRequirementsFundsInfo(entry) {
 }
 
 async function loadRequirementsList(preferredKey = currentReqKey, shouldLoad = true) {
+  reqPreviewMode = false;
   const sel = document.getElementById('req-sel');
   if (!sel) return;
   const previousOptions = sel.innerHTML;
@@ -9694,6 +9702,7 @@ async function loadRequirementsList(preferredKey = currentReqKey, shouldLoad = t
 
 async function loadRequirement(key) {
   if (!key) return;
+  reqPreviewMode = false;
   const spinner = document.getElementById('requests-spinner');
   const tbl = document.getElementById('pozadavky-tbl');
   if (spinner) spinner.style.display = '';
@@ -9732,6 +9741,47 @@ async function loadRequirement(key) {
   } catch(e) {
     toast('Pozadavky se nepodarilo nacist', true);
     showRequestsEmpty(true);
+  } finally {
+    if (spinner) spinner.style.display = 'none';
+  }
+}
+
+async function loadLastSentRequirementPreview() {
+  if (reqEditMode) {
+    const leave = confirm('Ukončit aktuální editaci požadavků bez uložení a zobrazit odeslané požadavky?');
+    if (!leave) return;
+  }
+  const spinner = document.getElementById('requests-spinner');
+  const tbl = document.getElementById('pozadavky-tbl');
+  if (spinner) spinner.style.display = '';
+  if (tbl) tbl.style.display = 'none';
+  showRequestsEmpty(false);
+  try {
+    const r = await fetch('/api/rt/requirements/last-sent', { credentials: 'include', cache: 'no-store' });
+    const d = await r.json();
+    if (!r.ok || !d.ok) throw new Error(d.msg || r.status);
+    applyData(d.entry.data || {});
+    activeScheduleSource = 'requirements-preview';
+    currentReqKey = null;
+    requirementsLoadedKey = null;
+    currentReqEntry = d.entry;
+    reqEditMode = false;
+    reqEditSnapshot = null;
+    reqPreviewMode = true;
+    const sel = document.getElementById('req-sel');
+    if (sel) sel.value = '';
+    updateRequirementsStatus(d.entry);
+    renderScheduleTable('pozadavky-tbl', false);
+    updateDuplicateClasses();
+    updateCoverageRows();
+    updateRequirementClasses();
+    updatePManyCells();
+    buildHotelFilterButtons();
+    applyRowFilters();
+    showRequestsEmpty(false);
+  } catch(e) {
+    toast(e.message || 'Odeslané požadavky se nepodařilo načíst', true);
+    if (!currentReqEntry) showRequestsEmpty(true);
   } finally {
     if (spinner) spinner.style.display = 'none';
   }
@@ -14713,6 +14763,7 @@ document.addEventListener('DOMContentLoaded', async () => {
     // Zavírání klikem na pozadí je vypnuté; použijte explicitní tlačítka.
   });
   document.getElementById('btn-req-delete')?.addEventListener('click', archiveCurrentRequirement);
+  document.getElementById('btn-req-last-sent')?.addEventListener('click', loadLastSentRequirementPreview);
   document.getElementById('btn-req-archive')?.addEventListener('click', showRequirementsArchive);
   document.getElementById('btn-req-print')?.addEventListener('click', () => printScheduleTab('pozadavky'));
   document.getElementById('req-archive-close')?.addEventListener('click', closeRequirementsArchive);

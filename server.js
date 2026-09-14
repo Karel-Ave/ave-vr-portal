@@ -1103,6 +1103,7 @@ app.get('/api/my-permissions', requireLogin, async (req, res) => {
         req_send_tvorba: isManager,
         req_delete: isAdm,
         req_archive: isManager,
+        req_view_sent: isManager,
         hotel_manager: isAdm,
         settings_monthly: isManager,
         settings_add_staff: isManager,
@@ -7077,6 +7078,27 @@ app.get('/api/rt/requirements/archive', requireLogin, requirePermDefault('raspis
   } catch (err) {
     console.error('GET /api/rt/requirements/archive:', err);
     res.status(500).json({ ok: false, items: [] });
+  }
+});
+
+app.get('/api/rt/requirements/last-sent', requireLogin, requirePermDefault('raspis', 'req_view_sent', false), async (req, res) => {
+  try {
+    const db = getPool();
+    const { rows } = await db.query(
+      `SELECT *
+       FROM rt_requirements
+       WHERE sent_to_tvorba_at IS NOT NULL
+       ORDER BY sent_to_tvorba_at DESC, archived_at DESC NULLS LAST, updated_at DESC
+       LIMIT 1`
+    );
+    if (!rows.length) return res.status(404).json({ ok: false, msg: 'Žádné odeslané požadavky nejsou k dispozici.' });
+    const entry = rows[0];
+    let parsed = {};
+    try { parsed = typeof entry.data === 'string' ? JSON.parse(entry.data) : entry.data; } catch(e) { parsed = {}; }
+    res.json({ ok: true, entry: { ...entry, data: parsed } });
+  } catch (err) {
+    console.error('GET /api/rt/requirements/last-sent:', err);
+    res.status(500).json({ ok: false, msg: 'Chyba serveru.' });
   }
 });
 
