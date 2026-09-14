@@ -5869,6 +5869,24 @@ function toast(msg, isErr, dur) {
   _toastTimer = setTimeout(() => el.classList.remove('show'), dur || 2800);
 }
 
+function showVacationSyncConflicts(sync) {
+  const conflicts = Array.isArray(sync?.conflicts) ? sync.conflicts : [];
+  if (!conflicts.length) return;
+  const lines = conflicts.slice(0, 8).map(c => {
+    const date = `${Number(c.day || 0)}.${Number(c.month || 0)}.${Number(c.year || 0)}`;
+    const days = Number(c.remaining_days || 0).toLocaleString('cs-CZ', { maximumFractionDigits: 2 });
+    const hours = Number(c.remaining_hours || 0).toLocaleString('cs-CZ', { maximumFractionDigits: 2 });
+    return `${c.name || c.login || 'Recepční'} - ${date}, zbývá ${days} dní / ${hours} h`;
+  });
+  const rest = conflicts.length > lines.length ? `\n... a další ${conflicts.length - lines.length}` : '';
+  alert(
+    'Některé dovolené nebyly započítány do zůstatků, protože by šly do mínusu:\n\n' +
+    lines.join('\n') +
+    rest +
+    '\n\nRozpis byl uložen, ale tyto konflikty je potřeba vyřešit ručně.'
+  );
+}
+
 /* ══════════════════════════════════════════════════════════════════════════════
    UNDO / REDO
 ══════════════════════════════════════════════════════════════════════════════ */
@@ -9036,6 +9054,7 @@ async function publishSchedule() {
     publishedScheduleCache.set(key, JSON.parse(JSON.stringify(data)));
     currentPubKey = key;
     activeScheduleSource = 'published';
+    showVacationSyncConflicts(response.vacationSync);
     toast('Rozpis publikován');
     currentDraftId = null;
     dirtyFlag = false;
@@ -13690,6 +13709,7 @@ async function saveViewEdits(options = {}) {
       renderScheduleTable('public-rozpis-tbl', false);
       await releaseLock();
       updateLockUI();
+      showVacationSyncConflicts(d.vacationSync);
       toast(auto ? 'Editace automaticky uložena po neaktivitě' : 'Uloženo do rozpisu VR');
     } else toast('Chyba uložení', true);
   } catch(e) { toast('Chyba uložení', true); }

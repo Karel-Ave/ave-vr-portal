@@ -4558,6 +4558,20 @@ app.post('/api/vacations', requireLogin, async (req, res) => {
     if (!days.length && daysCount <= 0) return res.status(400).json({ ok: false, msg: 'Vyberte datum nebo pocet dni.' });
     const note = String(req.body?.note || '').trim();
     const status = manual ? 'approved' : 'pending';
+    if (manual) {
+      const capacity = await vacationValidateApprovalCapacity(db, {
+        id: null,
+        staff_user_id: staff.userId || null,
+        staff_login: String(staff.login || '').trim().toUpperCase(),
+        staff_name: staff.displayName || staff.name || staff.login,
+        month,
+        year,
+        days,
+        days_count: daysCount,
+        status
+      }, user);
+      if (!capacity.ok) return res.status(400).json({ ok: false, msg: capacity.msg });
+    }
     const { rows } = await db.query(
       `INSERT INTO vacation_requests
        (staff_user_id, staff_login, staff_name, month, year, days_json, days_count, note, status, manual_entry, created_by, created_name, resolved_by, resolved_name, resolved_at, updated_at)
@@ -4586,6 +4600,7 @@ app.post('/api/vacations', requireLogin, async (req, res) => {
       days,
       days_count: daysCount
     });
+    if (manual) await vacationSyncApprovedRequestMovements(db, item, user);
     res.json({ ok: true, item });
   } catch (err) { console.error('Chyba POST /api/vacations:', err); res.status(500).json({ ok: false, msg: 'Chyba serveru.' }); }
 });
@@ -4643,6 +4658,15 @@ app.post('/api/vacations/:id/status', requireLogin, async (req, res) => {
     if (hasAdjustedDays && !nextDays.length && nextDaysCount <= 0) {
       return res.status(400).json({ ok: false, msg: 'Vyberte datum nebo pocet dni.' });
     }
+    if (status === 'approved') {
+      const capacity = await vacationValidateApprovalCapacity(db, {
+        ...current,
+        status,
+        days: nextDays,
+        days_count: nextDaysCount
+      }, user);
+      if (!capacity.ok) return res.status(400).json({ ok: false, msg: capacity.msg });
+    }
     const { rows } = await db.query(
       `UPDATE vacation_requests
           SET status=$1, manager_comment=$2, resolved_by=$3, resolved_name=$4, resolved_at=NOW(), updated_at=NOW(),
@@ -4664,6 +4688,7 @@ app.post('/api/vacations/:id/status', requireLogin, async (req, res) => {
       item = vacationParseRow(fresh[0] || rows[0]);
     }
     await db.query(`DELETE FROM vacation_movements WHERE source_key LIKE $1`, [vacationRequestSourceKey(item.id, '') + '%']);
+    if (status === 'approved') await vacationSyncApprovedRequestMovements(db, item, user);
     res.json({ ok: true, item, synced });
   } catch (err) { console.error('Chyba POST /api/vacations/:id/status:', err); res.status(500).json({ ok: false, msg: 'Chyba serveru.' }); }
 });
@@ -4677,6 +4702,7 @@ app.delete('/api/vacations/:id', requireLogin, async (req, res) => {
     const item = rows[0];
     const canDelete = await vacationCanDelete(user);
     if (!canDelete) return res.status(403).json({ ok: false, msg: 'Tuto zadost nemuzete smazat.' });
+    await db.query(`DELETE FROM vacation_movements WHERE source_key LIKE $1`, [vacationRequestSourceKey(item.id, '') + '%']);
     await db.query('DELETE FROM vacation_requests WHERE id = $1', [req.params.id]);
     res.json({ ok: true });
   } catch (err) { console.error('Chyba DELETE /api/vacations:', err); res.status(500).json({ ok: false, msg: 'Chyba serveru.' }); }
@@ -4690,8 +4716,22 @@ app.post('/api/vacations/bulk-delete', requireLogin, async (req, res) => {
     if (!valid.length) return res.status(400).json({ ok: false, msg: 'Vyberte mesice ke smazani.' });
     const params = [];
     const clauses = valid.map(m => { params.push(m.year, m.month); return `(year = $${params.length - 1} AND month = $${params.length})`; });
-    const { rowCount } = await getPool().query(`DELETE FROM vacation_requests WHERE ${clauses.join(' OR ')}`, params);
-    res.json({ ok: true, deleted: rowCount });
+    const client = await getPool().connect();
+    try {
+      await client.query('BEGIN');
+      const { rows } = await client.query(`SELECT id FROM vacation_requests WHERE ${clauses.join(' OR ')}`, params);
+      for (const row of rows) {
+        await client.query(`DELETE FROM vacation_movements WHERE source_key LIKE $1`, [vacationRequestSourceKey(row.id, '') + '%']);
+      }
+      await client.query(`DELETE FROM vacation_requests WHERE ${clauses.join(' OR ')}`, params);
+      await client.query('COMMIT');
+      res.json({ ok: true, deleted: rows.length });
+    } catch (err) {
+      await client.query('ROLLBACK');
+      throw err;
+    } finally {
+      client.release();
+    }
   } catch (err) { console.error('Chyba POST /api/vacations/bulk-delete:', err); res.status(500).json({ ok: false, msg: 'Chyba serveru.' }); }
 });
 // Kompletně separátní data od Raspis VR (vlastní tabulky rt_drafts, rt_schedules)
@@ -4718,6 +4758,13 @@ function vacationDayHoursByContract(contract) {
 
 function vacationMonthIndex(year, month) {
   return Number(year) * 12 + Number(month);
+}
+
+const VACATION_APPROVED_MOVEMENTS_FROM_YEAR = 2026;
+const VACATION_APPROVED_MOVEMENTS_FROM_MONTH = 10;
+
+function vacationCountsApprovedRequestMonth(year, month) {
+  return vacationMonthIndex(year, month) >= vacationMonthIndex(VACATION_APPROVED_MOVEMENTS_FROM_YEAR, VACATION_APPROVED_MOVEMENTS_FROM_MONTH);
 }
 
 function vacationPeriodCovers(period, year, month) {
@@ -4818,6 +4865,39 @@ function vacationStaffSort(a, b) {
   return String(a.staff_name || a.name || '').localeCompare(String(b.staff_name || b.name || ''), 'cs', { sensitivity: 'base' });
 }
 
+function vacationBalanceMovementSubquery() {
+  return `
+    SELECT staff_login, year, month, day, movement_type, source_key, days_delta, hours_delta
+      FROM (
+        SELECT DISTINCT ON (UPPER(vm.staff_login), vm.year, vm.month, vm.day)
+               vm.staff_login, vm.year, vm.month, vm.day, vm.movement_type, vm.source_key, vm.days_delta, vm.hours_delta, vm.id
+          FROM vacation_movements vm
+         WHERE vm.day IS NOT NULL
+           AND vm.movement_type IN ('schedule_import','request_approved')
+           AND (
+             vm.movement_type <> 'schedule_import'
+             OR EXISTS (
+               SELECT 1 FROM rt_schedules rs
+                WHERE vm.source_key LIKE 'schedule:' || rs.key || ':%'
+             )
+           )
+           AND (
+             vm.movement_type <> 'request_approved'
+             OR (vm.year > ${VACATION_APPROVED_MOVEMENTS_FROM_YEAR}
+                 OR (vm.year = ${VACATION_APPROVED_MOVEMENTS_FROM_YEAR} AND vm.month >= ${VACATION_APPROVED_MOVEMENTS_FROM_MONTH}))
+           )
+         ORDER BY UPPER(vm.staff_login), vm.year, vm.month, vm.day,
+                  CASE vm.movement_type WHEN 'schedule_import' THEN 0 ELSE 1 END,
+                  vm.id
+      ) day_moves
+    UNION ALL
+    SELECT vm.staff_login, vm.year, vm.month, vm.day, vm.movement_type, vm.source_key, vm.days_delta, vm.hours_delta
+      FROM vacation_movements vm
+     WHERE NOT (vm.day IS NOT NULL AND vm.movement_type IN ('schedule_import','request_approved'))
+       AND vm.movement_type <> 'request_approved'
+  `;
+}
+
 async function vacationSyncApprovedRequestMovements(db, item, user) {
   if (!item || String(item.status || '') !== 'approved') return { inserted: 0, skipped: 0 };
   const login = String(item.staff_login || '').trim().toUpperCase();
@@ -4844,6 +4924,7 @@ async function vacationSyncApprovedRequestMovements(db, item, user) {
       if (!m) continue;
       const moveYear = Number(m[1]);
       const moveMonth = Number(m[2]);
+      if (!vacationCountsApprovedRequestMonth(moveYear, moveMonth)) continue;
       const dayHours = vacationEffectiveDayHoursForMonth(staff, balance, periods, moveYear, moveMonth);
       desired.push({
         sourceKey: vacationRequestSourceKey(item.id, `date:${dateText}`),
@@ -4856,38 +4937,10 @@ async function vacationSyncApprovedRequestMovements(db, item, user) {
         note: `Schvalena dovolena ${vacationFormatDate(dateText)}`
       });
     }
-  } else {
-    const count = Number(item.days_count || 0);
-    if (count > 0) {
-      const dayHours = vacationEffectiveDayHoursForMonth(staff, balance, periods, Number(item.year), Number(item.month));
-      desired.push({
-        sourceKey: vacationRequestSourceKey(item.id, `count:${item.year}-${String(item.month).padStart(2, '0')}`),
-        year: Number(item.year),
-        month: Number(item.month),
-        day: null,
-        daysDelta: -count,
-        hoursDelta: -(count * dayHours),
-        label: `Schvalena dovolena ${item.month}/${item.year}`,
-        note: `Schvalena dovolena: ${count} dni (${item.month}/${item.year})`
-      });
-    }
   }
   let inserted = 0;
   let skipped = 0;
   for (const move of desired) {
-    if (move.day) {
-      const { rows: sameDay } = await db.query(
-        `SELECT 1 FROM vacation_movements
-          WHERE UPPER(staff_login) = UPPER($1)
-            AND year = $2
-            AND month = $3
-            AND day = $4
-            AND movement_type IN ('schedule_import', 'request_approved')
-          LIMIT 1`,
-        [login, move.year, move.month, move.day]
-      );
-      if (sameDay.length) { skipped++; continue; }
-    }
     const { rows } = await db.query(
       `INSERT INTO vacation_movements
        (staff_user_id, staff_login, staff_name, year, month, day, movement_type, source_key, source_label, days_delta, hours_delta, note, created_by, created_name)
@@ -4912,6 +4965,99 @@ async function vacationSyncApprovedRequestMovements(db, item, user) {
     if (rows.length) inserted++; else skipped++;
   }
   return { inserted, skipped };
+}
+
+async function vacationValidateApprovalCapacity(db, item, user) {
+  const login = String(item?.staff_login || '').trim().toUpperCase();
+  if (!login || String(item?.status || '') !== 'approved') return { ok: true };
+  const days = (Array.isArray(item.days) ? item.days : [])
+    .map(v => String(v || '').trim())
+    .filter(v => /^\d{4}-\d{2}-\d{2}$/.test(v))
+    .filter(v => {
+      const [, y, m] = v.match(/^(\d{4})-(\d{2})-\d{2}$/) || [];
+      return vacationCountsApprovedRequestMonth(Number(y), Number(m));
+    });
+  if (!days.length) return { ok: true };
+
+  const staff = (await loadRtPortalReceptionists(db)).find(s =>
+    String(s.login || '').trim().toUpperCase() === login ||
+    String(s.userId || '') === String(item.staff_user_id || '')
+  ) || {
+    userId: item.staff_user_id || null,
+    login,
+    displayName: item.staff_name || login,
+    contract: ''
+  };
+  if (!vacationHasBalanceContract(staff.contract)) return { ok: true };
+  const balance = await vacationEnsureBalance(db, { ...staff, login, displayName: staff.displayName || item.staff_name || login }, user);
+  if (!balance) return { ok: true };
+
+  const allBalances = await vacationBalanceRows(db, user);
+  const current = (allBalances.balances || []).find(row => String(row.staff_login || '').trim().toUpperCase() === login);
+  const requestPrefix = item.id ? vacationRequestSourceKey(item.id, '') + '%' : null;
+  let currentRequestDays = 0;
+  let currentRequestHours = 0;
+  if (requestPrefix) {
+    const { rows } = await db.query(
+      `SELECT COALESCE(SUM(days_delta), 0) AS days_delta,
+              COALESCE(SUM(hours_delta), 0) AS hours_delta
+         FROM vacation_movements
+        WHERE movement_type = 'request_approved'
+          AND source_key LIKE $1`,
+      [requestPrefix]
+    );
+    currentRequestDays = Number(rows[0]?.days_delta || 0);
+    currentRequestHours = Number(rows[0]?.hours_delta || 0);
+  }
+  const availableDays = Number(current?.remaining_days ?? balance.base_days ?? 0) - currentRequestDays;
+  const availableHours = Number(current?.remaining_hours ?? balance.base_hours ?? 0) - currentRequestHours;
+  const periodMap = await vacationContractPeriodsMap(db, [login]);
+  const periods = periodMap.get(login) || [];
+
+  let neededDays = 0;
+  let neededHours = 0;
+  for (const dateText of days) {
+    const m = dateText.match(/^(\d{4})-(\d{2})-(\d{2})$/);
+    const year = Number(m[1]);
+    const month = Number(m[2]);
+    const day = Number(m[3]);
+    const params = [login, year, month, day];
+    let sourceFilter = '';
+    if (requestPrefix) {
+      params.push(requestPrefix);
+      sourceFilter = `AND source_key NOT LIKE $${params.length}`;
+    }
+    const { rows: existingRows } = await db.query(
+      `SELECT 1
+         FROM vacation_movements vm
+        WHERE UPPER(vm.staff_login) = UPPER($1)
+          AND vm.year = $2
+          AND vm.month = $3
+          AND vm.day = $4
+          AND vm.movement_type IN ('schedule_import','request_approved')
+          ${sourceFilter}
+          AND (
+            vm.movement_type <> 'schedule_import'
+            OR EXISTS (
+              SELECT 1 FROM rt_schedules rs
+               WHERE vm.source_key LIKE 'schedule:' || rs.key || ':%'
+            )
+          )
+        LIMIT 1`,
+      params
+    );
+    if (existingRows.length) continue;
+    neededDays += 1;
+    neededHours += vacationEffectiveDayHoursForMonth(staff, balance, periods, year, month);
+  }
+  if (neededDays <= 0) return { ok: true };
+  if (availableDays + 0.0001 < neededDays || availableHours + 0.0001 < neededHours) {
+    return {
+      ok: false,
+      msg: `Nedostatek dovolene: ${staff.displayName || staff.name || item.staff_name || login} ma zbyva ${availableDays.toFixed(2).replace('.', ',')} dni / ${availableHours.toFixed(2).replace('.', ',')} h, schvalovana dovolena potrebuje ${neededDays.toFixed(2).replace('.', ',')} dni / ${neededHours.toFixed(2).replace('.', ',')} h.`
+    };
+  }
+  return { ok: true };
 }
 
 async function vacationEnsureBalance(db, staff, user) {
@@ -4960,12 +5106,8 @@ async function vacationBalanceRows(db, user) {
             COALESCE(SUM(m.days_delta), 0) AS moved_days,
             COALESCE(SUM(m.hours_delta), 0) AS moved_hours
        FROM vacation_balance_settings b
-       LEFT JOIN vacation_movements m ON UPPER(m.staff_login) = UPPER(b.staff_login)
+       LEFT JOIN (${vacationBalanceMovementSubquery()}) m ON UPPER(m.staff_login) = UPPER(b.staff_login)
         AND (b.base_from_year IS NULL OR m.year > b.base_from_year OR (m.year = b.base_from_year AND COALESCE(m.month, 1) >= COALESCE(b.base_from_month, 1)))
-        AND m.movement_type <> 'request_approved'
-        AND (m.movement_type <> 'schedule_import' OR EXISTS (
-          SELECT 1 FROM rt_schedules rs WHERE m.source_key LIKE 'schedule:' || rs.key || ':%'
-        ))
       WHERE UPPER(b.staff_login) = ANY($1::text[])
       GROUP BY b.id`,
     [logins]
@@ -4978,12 +5120,8 @@ async function vacationBalanceRows(db, user) {
       `SELECT UPPER(staff_login) AS staff_login,
               COALESCE(SUM(days_delta), 0) AS moved_days,
               COALESCE(SUM(hours_delta), 0) AS moved_hours
-        FROM vacation_movements
+        FROM (${vacationBalanceMovementSubquery()}) movement_rows
         WHERE UPPER(staff_login) = ANY($1::text[])
-          AND movement_type <> 'request_approved'
-          AND (movement_type <> 'schedule_import' OR EXISTS (
-            SELECT 1 FROM rt_schedules rs WHERE vacation_movements.source_key LIKE 'schedule:' || rs.key || ':%'
-          ))
         GROUP BY UPPER(staff_login)`,
       [missingLogins]
     );
@@ -5277,6 +5415,15 @@ async function vacationSyncScheduleZMovements(db, scheduleKey, month, year, data
   }
   let inserted = 0;
   let kept = 0;
+  const conflicts = [];
+  const allBalances = await vacationBalanceRows(db, user);
+  const availableByLogin = new Map((allBalances.balances || []).map(row => [
+    String(row.staff_login || '').trim().toUpperCase(),
+    {
+      days: Number(row.remaining_days || 0),
+      hours: Number(row.remaining_hours || 0)
+    }
+  ]));
   for (const [sourceKey, info] of desired.entries()) {
     if (existing.has(sourceKey)) { kept++; continue; }
     const s = info.staff || {};
@@ -5284,6 +5431,51 @@ async function vacationSyncScheduleZMovements(db, scheduleKey, month, year, data
     const balance = await vacationEnsureBalance(db, s, user);
     if (!balance) { kept++; continue; }
     const dayHours = vacationEffectiveDayHoursForMonth(s, balance, periodMap.get(info.login) || [], syncYear, syncMonth);
+    const { rows: alreadyCountedRows } = await db.query(
+      `SELECT 1
+         FROM vacation_movements vm
+        WHERE UPPER(vm.staff_login) = UPPER($1)
+          AND vm.year = $2
+          AND vm.month = $3
+          AND vm.day = $4
+          AND vm.movement_type IN ('schedule_import','request_approved')
+          AND vm.source_key <> $5
+          AND (
+            vm.movement_type <> 'schedule_import'
+            OR EXISTS (
+              SELECT 1 FROM rt_schedules rs
+               WHERE vm.source_key LIKE 'schedule:' || rs.key || ':%'
+            )
+          )
+        LIMIT 1`,
+      [info.login, syncYear, syncMonth, info.day, sourceKey]
+    );
+    if (!alreadyCountedRows.length) {
+      if (!availableByLogin.has(info.login)) {
+        availableByLogin.set(info.login, {
+          days: Number(balance.base_days || 0),
+          hours: Number(balance.base_hours || 0)
+        });
+      }
+      const available = availableByLogin.get(info.login);
+      if (available.days + 0.0001 < 1 || available.hours + 0.0001 < dayHours) {
+        conflicts.push({
+          login: info.login,
+          name: s.displayName || s.name || info.login,
+          day: info.day,
+          month: syncMonth,
+          year: syncYear,
+          remaining_days: +available.days.toFixed(2),
+          remaining_hours: +available.hours.toFixed(2),
+          needed_days: 1,
+          needed_hours: +dayHours.toFixed(2)
+        });
+        kept++;
+        continue;
+      }
+      available.days -= 1;
+      available.hours -= dayHours;
+    }
     const name = s.displayName || s.name || info.login;
     const ins = await db.query(
       `INSERT INTO vacation_movements
@@ -5294,7 +5486,7 @@ async function vacationSyncScheduleZMovements(db, scheduleKey, month, year, data
     );
     if (ins.rows.length) inserted++; else kept++;
   }
-  return { ok: true, key, month: syncMonth, year: syncYear, found, inserted, removed, kept };
+  return { ok: true, key, month: syncMonth, year: syncYear, found, inserted, removed, kept, conflicts };
 }
 
 async function vacationTrySyncScheduleZMovements(db, scheduleKey, month, year, data, user) {
