@@ -1101,6 +1101,7 @@ app.get('/api/my-permissions', requireLogin, async (req, res) => {
         req_edit_all: isManager,
         req_toggle_reception: isManager,
         req_send_tvorba: isManager,
+        req_load_vacations: isManager,
         req_delete: isAdm,
         req_archive: isManager,
         req_view_sent: isManager,
@@ -6990,6 +6991,11 @@ async function canManageRequirementsServer(req) {
     || (await hasButtonPerm(user, 'raspis', 'req_send_tvorba', false));
 }
 
+async function canLoadVacationsToRequirementsServer(req) {
+  const manager = await canManageRequirementsServer(req);
+  return hasButtonPerm(req.session.user, 'raspis', 'req_load_vacations', manager);
+}
+
 function parseRequirementStaffIndex(value) {
   if (value === null || value === undefined || value === '') return null;
   const n = Number(value);
@@ -7326,6 +7332,138 @@ app.get('/api/rt/requirements/last-sent', requireLogin, requirePermDefault('rasp
     res.json({ ok: true, entry: { ...entry, data: parsed } });
   } catch (err) {
     console.error('GET /api/rt/requirements/last-sent:', err);
+    res.status(500).json({ ok: false, msg: 'Chyba serveru.' });
+  }
+});
+
+app.post('/api/rt/requirements/import-vacations', requireLogin, async (req, res) => {
+  const key = String(req.body?.key || '').trim();
+  if (!key) return res.json({ ok: false, msg: 'Chybí požadavky.' });
+  try {
+    if (!await canLoadVacationsToRequirementsServer(req)) {
+      return res.status(403).json({ ok: false, msg: 'Nemáte oprávnění pro tuto akci.' });
+    }
+    const db = getPool();
+    const client = await db.connect();
+    try {
+      await client.query('BEGIN');
+      const existing = await client.query('SELECT * FROM rt_requirements WHERE key = $1 AND archived_at IS NULL FOR UPDATE', [key]);
+      if (!existing.rows.length) {
+        await client.query('ROLLBACK');
+        return res.json({ ok: false, msg: 'Požadavky nejsou nalezené.' });
+      }
+      const entry = existing.rows[0];
+      const month = Number(entry.month);
+      const year = Number(entry.year);
+      let data = {};
+      try { data = typeof entry.data === 'string' ? JSON.parse(entry.data) : (entry.data || {}); } catch (e) { data = {}; }
+      data.month = data.month || month;
+      data.year = data.year || year;
+      data = await augmentRtDataWithActiveReceptionists(data, client);
+      data = await augmentRtDataWithSpecialStaff(data, req.session.user.id, client);
+      data.schedule = data.schedule && typeof data.schedule === 'object' ? data.schedule : {};
+
+      const { rows: vacationRows } = await client.query(
+        `SELECT *
+         FROM vacation_requests
+         WHERE status = 'approved'
+           AND month = $1
+           AND year = $2
+         ORDER BY staff_name, id`,
+        [month, year]
+      );
+
+      const staff = Array.isArray(data.staff) ? data.staff : [];
+      const staffByLogin = new Map();
+      staff.forEach((s, si) => {
+        const login = String(s?.login || s?.username || '').trim().toUpperCase();
+        if (login && rtIsReceptionistType(s?.type) && rtIsStaffActiveForMonth(s, month, year)) {
+          staffByLogin.set(login, { row: s, si });
+        }
+      });
+
+      const conflicts = [];
+      const undated = [];
+      const missingStaff = [];
+      let inserted = 0;
+      let overwritten = 0;
+      let kept = 0;
+
+      const dateLabel = (dateText) => {
+        const m = String(dateText || '').match(/^(\d{4})-(\d{2})-(\d{2})$/);
+        return m ? `${Number(m[3])}.${Number(m[2])}.${m[1]}` : String(dateText || '');
+      };
+
+      for (const row of vacationRows) {
+        const item = vacationParseRow(row);
+        const login = String(item.staff_login || '').trim().toUpperCase();
+        const staffInfo = staffByLogin.get(login);
+        const name = String(item.staff_name || staffInfo?.row?.name || login || '').trim() || login;
+        const validDays = (item.days || []).filter(dateText => {
+          const m = String(dateText || '').match(/^(\d{4})-(\d{2})-(\d{2})$/);
+          return m && Number(m[1]) === year && Number(m[2]) === month;
+        });
+        if (!validDays.length) {
+          if (Number(item.days_count || 0) > 0) undated.push({ name, login, daysCount: Number(item.days_count || 0) });
+          continue;
+        }
+        if (!staffInfo) {
+          missingStaff.push({ name, login, days: validDays.map(dateLabel) });
+          continue;
+        }
+        const typeKey = rtNormalizeStaffName(staffInfo.row.type || '');
+        const dn = typeKey === 'nocni' ? 'n' : 'd';
+        for (const dateText of validDays) {
+          const day = Number(String(dateText).slice(8, 10));
+          const ci = rtCellIndexForDayShift(day, dn);
+          const cellKey = `${staffInfo.si}_${ci}`;
+          const current = String(data.schedule[cellKey] || '').trim();
+          const lower = current.toLowerCase();
+          if (!current) {
+            data.schedule[cellKey] = 'z';
+            inserted++;
+          } else if (lower === 'z') {
+            kept++;
+          } else if (lower === 'x' || lower === 'y') {
+            data.schedule[cellKey] = 'z';
+            overwritten++;
+          } else {
+            conflicts.push({
+              name,
+              login,
+              date: dateLabel(dateText),
+              shift: dn === 'n' ? 'noc' : 'den',
+              value: current
+            });
+          }
+        }
+      }
+
+      const { rowCount } = await client.query(
+        `UPDATE rt_requirements
+         SET data = $2, updated_at = NOW(), updated_by = $3
+         WHERE key = $1`,
+        [key, JSON.stringify(data), req.session.user.name]
+      );
+      if (!rowCount) {
+        await client.query('ROLLBACK');
+        return res.json({ ok: false, msg: 'Požadavky nejsou nalezené.' });
+      }
+      await client.query(
+        `INSERT INTO rt_requirements_log (req_key, user_id, user_name, action, details)
+         VALUES ($1,$2,$3,'import_vacations',$4)`,
+        [key, req.session.user.id, req.session.user.name, JSON.stringify({ inserted, overwritten, kept, conflicts, undated, missingStaff })]
+      );
+      await client.query('COMMIT');
+      res.json({ ok: true, inserted, overwritten, kept, conflicts, undated, missingStaff });
+    } catch (err) {
+      try { await client.query('ROLLBACK'); } catch (e) {}
+      throw err;
+    } finally {
+      client.release();
+    }
+  } catch (err) {
+    console.error('POST /api/rt/requirements/import-vacations:', err);
     res.status(500).json({ ok: false, msg: 'Chyba serveru.' });
   }
 });

@@ -2429,6 +2429,7 @@ body.hide-req-changes .sched-cell[data-req-tip]:not([data-dup-tip]):hover::after
   #btn-req-cancel,
   #btn-req-toggle-edit,
   #btn-req-paste-excel,
+  #btn-req-load-vacations,
   #btn-req-send-tvorba,
   #btn-req-delete,
   #btn-req-archive {
@@ -2453,6 +2454,7 @@ body.hide-req-changes .sched-cell[data-req-tip]:not([data-dup-tip]):hover::after
   #btn-req-create::after { content: "Nové"; }
   #btn-req-toggle-edit::after { content: attr(data-mobile-label); }
   #btn-req-paste-excel::after { content: "XLS"; }
+  #btn-req-load-vacations::after { content: "Dov."; }
   #btn-req-send-tvorba::after { content: "Do Tvorby"; }
   #btn-paste-excel::after,
   #btn-import-unmatched::after,
@@ -2470,6 +2472,7 @@ body.hide-req-changes .sched-cell[data-req-tip]:not([data-dup-tip]):hover::after
   #btn-req-cancel::after,
   #btn-req-toggle-edit::after,
   #btn-req-paste-excel::after,
+  #btn-req-load-vacations::after,
   #btn-req-send-tvorba::after,
   #btn-req-delete::after,
   #btn-req-archive::after {
@@ -3200,6 +3203,7 @@ body.hide-req-changes .sched-cell[data-req-tip]:not([data-dup-tip]):hover::after
     <button class="tb-btn" id="btn-req-cancel" data-mobile-label="Zrušit" style="display:none">Zrušit</button>
     <button class="tb-btn" id="btn-req-toggle-edit" data-mobile-label="Povolit Editaci">Povolit editaci</button>
     <button class="tb-btn" id="btn-req-paste-excel">Vložit XLS</button>
+    <button class="tb-btn" id="btn-req-load-vacations">Načíst dovolené</button>
     <button class="tb-btn" id="btn-req-send-tvorba">Odeslat do Tvorba</button>
     <button class="tb-btn" id="btn-req-print">Tisk</button>
     <select id="req-sel" class="tb-btn" style="display:none"></select>
@@ -5573,6 +5577,7 @@ function applyRaspisPermissions() {
   setPermHidden(document.getElementById('btn-req-cancel'), !(canManageRequirements() || rtCan('req_edit', true)));
   setPermVisibleById('btn-req-toggle-edit', 'req_toggle_reception', canManageRequirements());
   setPermVisibleById('btn-req-paste-excel', 'paste_excel', canManageRequirements());
+  setPermVisibleById('btn-req-load-vacations', 'req_load_vacations', canManageRequirements());
   setPermVisibleById('btn-req-send-tvorba', 'req_send_tvorba', canManageRequirements());
   setPermVisibleById('btn-req-delete', 'req_delete', false);
   setPermVisibleById('btn-req-last-sent', 'req_view_sent', canManageRequirements());
@@ -9586,6 +9591,7 @@ function updateRequirementsStatus(entry) {
   const cancelBtn = document.getElementById('btn-req-cancel');
   const toggleBtn = document.getElementById('btn-req-toggle-edit');
   const pasteBtn = document.getElementById('btn-req-paste-excel');
+  const loadVacBtn = document.getElementById('btn-req-load-vacations');
   const sendBtn = document.getElementById('btn-req-send-tvorba');
   const act = document.getElementById('tb-act-pozadavky');
   const deleteBtn = document.getElementById('btn-req-delete');
@@ -9596,6 +9602,7 @@ function updateRequirementsStatus(entry) {
   if (createBtn) createBtn.style.display = (manager && !reqPreviewMode) ? '' : 'none';
   if (toggleBtn) toggleBtn.style.display = (manager && entry && !reqPreviewMode) ? '' : 'none';
   if (pasteBtn) pasteBtn.style.display = (manager && entry && !reqPreviewMode) ? '' : 'none';
+  if (loadVacBtn) loadVacBtn.style.display = (rtCan('req_load_vacations', manager) && entry && !reqPreviewMode) ? '' : 'none';
   if (sendBtn) sendBtn.style.display = (manager && entry && !reqPreviewMode) ? '' : 'none';
   if (deleteBtn) deleteBtn.style.display = (manager && entry && !reqPreviewMode) ? '' : 'none';
   if (lastSentBtn) lastSentBtn.style.display = rtCan('req_view_sent', manager) ? '' : 'none';
@@ -9607,6 +9614,7 @@ function updateRequirementsStatus(entry) {
     if (cancelBtn) cancelBtn.style.display = 'none';
     if (toggleBtn) toggleBtn.style.display = 'none';
     if (pasteBtn) pasteBtn.style.display = 'none';
+    if (loadVacBtn) loadVacBtn.style.display = 'none';
     if (sendBtn) sendBtn.style.display = 'none';
     updateRequirementsFundsInfo(null);
     return;
@@ -11978,6 +11986,69 @@ async function pasteRequirementsFromExcel() {
   } catch(e) {
     console.warn('pasteRequirementsFromExcel:', e);
     toast('Vložení požadavků z Excelu selhalo', true);
+  }
+}
+
+async function importVacationsToRequirements() {
+  if (!currentReqKey) {
+    toast('Nejdřív vytvořte nebo otevřete požadavky.', true);
+    return;
+  }
+  if (reqPreviewMode) {
+    toast('V náhledu odeslaných požadavků nelze dovolené dopisovat.', true);
+    return;
+  }
+  if (!rtCan('req_load_vacations', canManageRequirements())) {
+    toast('Nemáte oprávnění načítat dovolené do požadavků.', true);
+    return;
+  }
+  if (!confirm('Dopsat schválené dovolené do aktuálních požadavků?\n\nPrázdná pole a x/y se přepíší na z. Již napsané směny hotelů zůstanou beze změny a zobrazí se jako konflikty.')) return;
+
+  const key = currentReqKey;
+  if (reqEditMode) {
+    const saved = await saveCurrentRequirementData({ silent: false, confirmDuplicates: true });
+    if (!saved) return;
+    reqEditMode = false;
+    updateRequirementsStatus(currentReqEntry);
+  }
+
+  try {
+    const r = await fetch('/api/rt/requirements/import-vacations', {
+      method: 'POST',
+      credentials: 'include',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ key })
+    });
+    const d = await r.json();
+    if (!r.ok || !d.ok) {
+      toast(d.msg || 'Dovolené se nepodařilo načíst.', true);
+      return;
+    }
+    await loadRequirement(key);
+
+    const summary = [
+      `Dopsáno: ${d.inserted || 0}`,
+      `přepsáno x/y: ${d.overwritten || 0}`,
+      `již bylo z: ${d.kept || 0}`
+    ];
+    const notes = [];
+    if (Array.isArray(d.conflicts) && d.conflicts.length) {
+      notes.push(`Konflikty - nepřepsáno:\n${d.conflicts.slice(0, 20).map(c => `${c.name}: ${c.date} ${c.shift} má "${c.value}"`).join('\n')}${d.conflicts.length > 20 ? `\n... a další (${d.conflicts.length - 20})` : ''}`);
+    }
+    if (Array.isArray(d.undated) && d.undated.length) {
+      notes.push(`Dovolené bez konkrétních dat - doplňte ručně:\n${d.undated.map(u => `${u.name}: ${u.daysCount} dnů`).join('\n')}`);
+    }
+    if (Array.isArray(d.missingStaff) && d.missingStaff.length) {
+      notes.push(`Nenalezený řádek v požadavcích:\n${d.missingStaff.map(u => `${u.name}: ${u.days.join(', ')}`).join('\n')}`);
+    }
+    if (notes.length) {
+      alert(`${summary.join(', ')}.\n\n${notes.join('\n\n')}`);
+    } else {
+      toast(`${summary.join(', ')}.`);
+    }
+  } catch (e) {
+    console.warn('importVacationsToRequirements:', e);
+    toast('Chyba načítání dovolených.', true);
   }
 }
 
@@ -14790,6 +14861,7 @@ document.addEventListener('DOMContentLoaded', async () => {
   document.getElementById('btn-req-cancel')?.addEventListener('click', cancelRequirementsEdit);
   document.getElementById('btn-req-toggle-edit')?.addEventListener('click', toggleRequirementsReceptionistEdit);
   document.getElementById('btn-req-paste-excel')?.addEventListener('click', pasteRequirementsFromExcel);
+  document.getElementById('btn-req-load-vacations')?.addEventListener('click', importVacationsToRequirements);
   document.getElementById('btn-req-send-tvorba')?.addEventListener('click', openRequirementsSendModal);
   document.getElementById('req-send-submit')?.addEventListener('click', sendRequirementsToTvorba);
   document.getElementById('req-send-close')?.addEventListener('click', closeRequirementsSendModal);
