@@ -5085,6 +5085,14 @@ function closeMobileKeypad() {
   setMobileKeypadHeight(false);
 }
 
+function closeFloatingPickers() {
+  ['regular-picker', 'dates-picker', 'extra-popup', 'size-panel'].forEach(id => {
+    const el = document.getElementById(id);
+    if (el) el.classList.remove('show');
+  });
+  if (typeof sizePanelOpen !== 'undefined') sizePanelOpen = false;
+}
+
 function mobileScheduleLabel(si, ci) {
   const s = state.staff[si];
   const col = getCalCols(state.month, state.year)[ci];
@@ -6090,6 +6098,7 @@ function isRegularOff(col, month, year, regular, holidaysList, staff = null) {
   if (!parsed.size) return false;
   const m = col.nextYear ? 1 : month;
   const y = col.nextYear ? year + 1 : year;
+  if (staff && !regularRangeApplies(staff, y, m, col.day)) return false;
   const dow = new Date(y, m - 1, col.day).getDay();
   if (parsed.has('sv') && isHoliday(col, month, year, holidaysList)) {
     return staff ? staffTypeAllowsColumn(staff, col) : true;
@@ -7636,6 +7645,9 @@ function makeScheduleStaffFromSettings(s) {
     contract: s.contract || '',
     maxHrs: s.maxHrs || '',
     regular: s.regular || '',
+    regularFrom: s.regularFrom || '',
+    regularTo: s.regularTo || '',
+    regularOpen: normalizeRegularOpen(s.regularOpen),
     dates: s.dates || '',
     noteM: s.noteM || '',
     noteP: s.noteP || '',
@@ -8070,6 +8082,7 @@ function buildSaveData() {
         pcd[s.userId] = {
           maxHrs: s.maxHrs || '', noteM: s.noteM || '', noteP: s.noteP || '',
           x: s.x || '', xa: s.xa || '', dates: s.dates || '', regular: s.regular || '',
+          regularFrom: s.regularFrom || '', regularTo: s.regularTo || '', regularOpen: normalizeRegularOpen(s.regularOpen),
           hotel: s.hotel || '', hotelSkills: Array.isArray(s.hotelSkills) ? [...s.hotelSkills] : [],
           noStandby: !!s.noStandby,
           reqXLimit: Number.isFinite(Number(s.reqXLimit)) ? Number(s.reqXLimit) : 7,
@@ -8127,6 +8140,9 @@ function applyData(data) {
     s.xa     = custom.xa     || '';
     s.dates  = custom.dates  || '';
     s.regular = custom.regular || '';
+    s.regularFrom = custom.regularFrom || '';
+    s.regularTo = custom.regularTo || '';
+    s.regularOpen = normalizeRegularOpen(custom.regularOpen);
     s.hotel  = custom.hotel  || '';
     s.hotelSkills = Array.isArray(custom.hotelSkills) ? [...custom.hotelSkills] : [];
     s.noStandby = !!custom.noStandby || !!s.noStandby;
@@ -13288,6 +13304,8 @@ function copySettingsFields(source, target) {
       target[field] = source[field] ? JSON.parse(JSON.stringify(source[field])) : {};
     } else if (field === 'noStandby') {
       target[field] = !!source[field];
+    } else if (field === 'regularOpen') {
+      target[field] = normalizeRegularOpen(source[field]);
     } else if (field === 'reqXLimit' || field === 'reqYLimit') {
       const fallback = field === 'reqXLimit' ? 7 : 0;
       target[field] = Number.isFinite(Number(source[field])) ? Number(source[field]) : fallback;
@@ -13310,6 +13328,9 @@ function syncPortalCustomDataFrom(source) {
     xa: source.xa || '',
     dates: source.dates || '',
     regular: source.regular || '',
+    regularFrom: source.regularFrom || '',
+    regularTo: source.regularTo || '',
+    regularOpen: normalizeRegularOpen(source.regularOpen),
     hotel: source.hotel || '',
     hotelSkills: Array.isArray(source.hotelSkills) ? [...source.hotelSkills] : [],
     noStandby: !!source.noStandby,
@@ -13332,6 +13353,9 @@ function portalStaffSettingsPayload(s) {
     xa: custom.xa ?? '',
     dates: custom.dates ?? '',
     regular: custom.regular ?? '',
+    regularFrom: custom.regularFrom ?? '',
+    regularTo: custom.regularTo ?? '',
+    regularOpen: normalizeRegularOpen(custom.regularOpen),
     hotel: custom.hotel ?? '',
     monthlyOverrides: custom.monthlyOverrides ? JSON.parse(JSON.stringify(custom.monthlyOverrides)) : {}
   };
@@ -14416,6 +14440,7 @@ function bindTopbarTabButtons() {
 
 function switchTab(name) {
   closeMobileKeypad();
+  closeFloatingPickers();
   if (name === 'tvorba' && isMobileLike()) name = mobileTabFallback();
   if (isMobileLike()) mobileControlsOpen = false;
   const previousTab = document.body.dataset.activeTab;

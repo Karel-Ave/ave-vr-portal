@@ -6227,6 +6227,8 @@ function normalizeRtStaffSettings(input = {}) {
       out.monthlyOverrides = data.monthlyOverrides && typeof data.monthlyOverrides === 'object'
         ? data.monthlyOverrides
         : {};
+    } else if (field === 'regularOpen') {
+      out.regularOpen = data.regularOpen === true || data.regularOpen === 'true' || data.regularOpen === '1' || data.regularOpen === 1;
     } else {
       out[field] = data[field] == null ? '' : String(data[field]);
     }
@@ -6253,6 +6255,9 @@ function applyRtStaffSettings(target, settings) {
   target.xa = settings.xa || '';
   target.dates = settings.dates || '';
   target.regular = settings.regular || '';
+  target.regularFrom = settings.regularFrom || '';
+  target.regularTo = settings.regularTo || '';
+  target.regularOpen = !!settings.regularOpen;
   target.hotel = settings.hotel || '';
   target.monthlyOverrides = settings.monthlyOverrides && typeof settings.monthlyOverrides === 'object'
     ? JSON.parse(JSON.stringify(settings.monthlyOverrides))
@@ -6748,6 +6753,9 @@ async function augmentRtDataWithActiveReceptionists(data, db = getPool()) {
         xa: s.xa,
         dates: s.dates,
         regular: s.regular,
+        regularFrom: s.regularFrom,
+        regularTo: s.regularTo,
+        regularOpen: s.regularOpen,
         hotel: s.hotel,
         monthlyOverrides: s.monthlyOverrides
       });
@@ -6775,6 +6783,9 @@ async function augmentRtDataWithActiveReceptionists(data, db = getPool()) {
         xa: s.xa || '',
         dates: s.dates || '',
         regular: s.regular || '',
+        regularFrom: s.regularFrom || '',
+        regularTo: s.regularTo || '',
+        regularOpen: !!s.regularOpen,
         hotel: s.hotel || '',
         hotelSkills: Array.isArray(s.hotelSkills) ? s.hotelSkills : (Array.isArray(current.hotelSkills) ? current.hotelSkills : []),
         noStandby: !!s.noStandby,
