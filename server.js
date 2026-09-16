@@ -6214,7 +6214,7 @@ function rtReqLimit(value, fallback) {
 }
 
 const RT_STAFF_SETTINGS_FIELDS = [
-  'maxHrs', 'noteM', 'noteP', 'x', 'xa', 'dates', 'regular', 'hotel',
+  'maxHrs', 'noteM', 'noteP', 'x', 'xa', 'dates', 'regular', 'regularFrom', 'regularTo', 'regularOpen', 'hotel',
   'monthlyOverrides'
 ];
 
@@ -6477,6 +6477,9 @@ async function loadRtSpecialStaffForUser(db, userId) {
     contract: s.contract || '',
     maxHrs: s.maxHrs || '',
     regular: s.regular || '',
+    regularFrom: s.regularFrom || '',
+    regularTo: s.regularTo || '',
+    regularOpen: !!s.regularOpen,
     dates: s.dates || '',
     noteM: s.noteM || '',
     noteP: s.noteP || '',
@@ -6500,6 +6503,9 @@ function normalizeRtSpecialStaffList(parsed) {
     contract: s.contract || '',
     maxHrs: s.maxHrs || '',
     regular: s.regular || '',
+    regularFrom: s.regularFrom || '',
+    regularTo: s.regularTo || '',
+    regularOpen: !!s.regularOpen,
     dates: s.dates || '',
     noteM: s.noteM || '',
     noteP: s.noteP || '',

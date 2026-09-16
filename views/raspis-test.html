@@ -1940,7 +1940,7 @@ tbody tr.row-filtered { display: none; }
   position: fixed; z-index: 3000; background: var(--surface);
   border: 1px solid var(--border); border-radius: 8px;
   padding: 10px 12px; box-shadow: 0 6px 24px rgba(0,0,0,.25);
-  min-width: 220px; display: none;
+  min-width: 282px; display: none;
 }
 #regular-picker.show { display: block; }
 .rp-title { font-size: 10px; font-weight: 700; text-transform: uppercase;
@@ -2933,6 +2933,22 @@ body.hide-req-changes .sched-cell[data-req-tip]:not([data-dup-tip]):hover::after
 }
 [data-theme="dark"] .daily-q-handoff {
   color: #ff9b8f;
+}
+@media (max-width: 760px) {
+  .daily-schedule-table tr.daily-row-q-handoff td.daily-day {
+    height: auto;
+    min-height: 25px;
+    white-space: normal;
+    overflow: visible;
+    text-overflow: clip;
+    line-height: 1.15;
+    padding-top: 6px;
+    padding-bottom: 6px;
+  }
+  .daily-schedule-table tr.daily-row-q-handoff .daily-q-handoff {
+    display: inline;
+    white-space: normal;
+  }
 }
 .daily-hotel-legend {
   display: flex;
@@ -6022,6 +6038,41 @@ function parseRegular(regular) {
   return result;
 }
 
+function normalizeRegularOpen(value) {
+  return value === true || value === 'true' || value === '1' || value === 1;
+}
+
+function regularRangeApplies(staff, year, month, day) {
+  if (!staff) return true;
+  const from = String(staff.regularFrom || '').trim();
+  const to = String(staff.regularTo || '').trim();
+  const open = normalizeRegularOpen(staff.regularOpen);
+  const current = String(year) + '-' + String(month).padStart(2, '0') + '-' + String(day).padStart(2, '0');
+  if (from && current < from) return false;
+  if (!open && to && current > to) return false;
+  return true;
+}
+
+function regularRangeText(staff) {
+  if (!staff) return '';
+  const from = String(staff.regularFrom || '').trim();
+  const to = String(staff.regularTo || '').trim();
+  const open = normalizeRegularOpen(staff.regularOpen);
+  if (!from && !to && !open) return '';
+  const fmt = iso => {
+    const m = String(iso || '').match(/^(\d{4})-(\d{2})-(\d{2})$/);
+    return m ? (Number(m[3]) + '. ' + Number(m[2]) + '. ' + m[1]) : iso;
+  };
+  if (from && open) return ' (od ' + fmt(from) + ' neurčito)';
+  if (from && to) return ' (od ' + fmt(from) + ' do ' + fmt(to) + ')';
+  if (from) return ' (od ' + fmt(from) + ')';
+  if (to) return ' (do ' + fmt(to) + ')';
+  return open ? ' (neurčito)' : '';
+}
+
+function regularButtonTitle(staff, regularVal) {
+  return regularVal ? 'Stálé volno: ' + regularVal + regularRangeText(staff) : '';
+}
 function isRegularOff(col, month, year, regular, holidaysList, staff = null) {
   if (!col || !Number.isFinite(Number(col.day))) return false;
   if (!regular) return false;
@@ -7752,7 +7803,7 @@ function renderStaffTable() {
     const regBtn = document.createElement('button');
     regBtn.className = 'btn-ind-pick' + (regularVal ? ' btn-ind-active' : '');
     regBtn.textContent = regularVal ? '●' : '○';
-    regBtn.title = regularVal ? `Stálé volno: ${regularVal}` : '';
+    regBtn.title = regularButtonTitle(s, regularVal);
     regBtn.addEventListener('click', ev => {
       ev.stopPropagation();
       const _uid = s.userId;
@@ -8385,7 +8436,7 @@ function addUnmatchedToOstalni(ui) {
     type:     'Speciální',
     login:    '',
     contract: '',
-    maxHrs: '', noteM: '', noteP: '', x: '', xa: '', dates: '', regular: '', hotel: '', hotelSkills: [], noStandby: false,
+    maxHrs: '', noteM: '', noteP: '', x: '', xa: '', dates: '', regular: '', regularFrom: '', regularTo: '', regularOpen: false, hotel: '', hotelSkills: [], noStandby: false,
     reqXLimit: 7, reqYLimit: 0,
     activeFrom: { month: now.getMonth() + 1, year: now.getFullYear() },
     monthlyOverrides: {}
@@ -8541,7 +8592,7 @@ async function confirmAddWebUser() {
             type: as.type || '', contract: as.contract || '',
             maxHrs: as.maxHrs ?? custom.maxHrs ?? '', noteM: as.noteM ?? custom.noteM ?? '', noteP: as.noteP ?? custom.noteP ?? '',
             x: as.x ?? custom.x ?? '', xa: as.xa ?? custom.xa ?? '', dates: as.dates ?? custom.dates ?? '',
-            regular: as.regular ?? custom.regular ?? '', hotel: as.hotel ?? custom.hotel ?? '',
+            regular: as.regular ?? custom.regular ?? '', regularFrom: as.regularFrom ?? custom.regularFrom ?? '', regularTo: as.regularTo ?? custom.regularTo ?? '', regularOpen: normalizeRegularOpen(as.regularOpen ?? custom.regularOpen ?? false), hotel: as.hotel ?? custom.hotel ?? '',
             hotelSkills: Array.isArray(skills) ? [...skills] : (Array.isArray(custom.hotelSkills) ? [...custom.hotelSkills] : []),
             noStandby: !!as.noStandby,
             reqXLimit: Number.isFinite(Number(as.reqXLimit ?? custom.reqXLimit)) ? Number(as.reqXLimit ?? custom.reqXLimit) : 7,
@@ -11646,6 +11697,9 @@ function pasteScheduleTextIntoTvorba(text, startSi = null, startCi = 0) {
               xa: '',
               dates: '',
               regular: '',
+              regularFrom: '',
+              regularTo: '',
+              regularOpen: false,
               hotel: '',
               monthlyOverrides: {},
               unmatchedXls: true
@@ -11768,6 +11822,9 @@ function pasteScheduleTextIntoTvorba(text, startSi = null, startCi = 0) {
               xa: '',
               dates: '',
               regular: '',
+              regularFrom: '',
+              regularTo: '',
+              regularOpen: false,
               hotel: '',
               monthlyOverrides: {},
               unmatchedXls: true
@@ -11912,6 +11969,9 @@ async function pasteRequirementsFromExcel() {
               xa: '',
               dates: '',
               regular: '',
+              regularFrom: '',
+              regularTo: '',
+              regularOpen: false,
               hotel: '',
               monthlyOverrides: {},
               unmatchedXls: true
@@ -12241,7 +12301,10 @@ async function pasteScheduleFromExcel() {
                 xa: '',
                 dates: '',
                 regular: '',
-                hotel: '',
+              regularFrom: '',
+              regularTo: '',
+              regularOpen: false,
+              hotel: '',
                 monthlyOverrides: {},
                 unmatchedXls: true
               };
@@ -13184,7 +13247,7 @@ function getEffectiveForSchedule(s, field) {
   return s[field] || '';
 }
 
-const SETTINGS_SYNC_FIELDS = ['maxHrs','noteM','noteP','x','xa','dates','regular','hotel','hotelSkills','noStandby','reqXLimit','reqYLimit','monthlyOverrides'];
+const SETTINGS_SYNC_FIELDS = ['maxHrs','noteM','noteP','x','xa','dates','regular','regularFrom','regularTo','regularOpen','hotel','hotelSkills','noStandby','reqXLimit','reqYLimit','monthlyOverrides'];
 
 function copySettingsFields(source, target) {
   if (!source || !target) return;
@@ -13246,7 +13309,7 @@ function portalStaffSettingsPayload(s) {
 
 function hasPortalStaffSettingsValue(data) {
   if (!data || typeof data !== 'object') return false;
-  return ['maxHrs','noteM','noteP','x','xa','dates','regular','hotel'].some(k => String(data[k] || '').trim())
+  return ['maxHrs','noteM','noteP','x','xa','dates','regular','regularFrom','regularTo','hotel'].some(k => String(data[k] || '').trim()) || normalizeRegularOpen(data.regularOpen)
     || (data.monthlyOverrides && Object.keys(data.monthlyOverrides).length > 0);
 }
 
@@ -13978,7 +14041,7 @@ function handleXlsImport(e) {
             type: '',
             login: '',
             contract: '',
-            maxHrs: '', noteM: '', noteP: '', x: '', xa: '', dates: '', regular: '', hotel: '', hotelSkills: [], noStandby: false,
+            maxHrs: '', noteM: '', noteP: '', x: '', xa: '', dates: '', regular: '', regularFrom: '', regularTo: '', regularOpen: false, hotel: '', hotelSkills: [], noStandby: false,
             reqXLimit: 7, reqYLimit: 0,
             monthlyOverrides: {},
             unmatchedXls: true
@@ -14243,7 +14306,7 @@ function renderDailySchedule(data) {
   }
   const rows = order.map(letter => {
     const item = map[letter] || {};
-    const cls = letter === 'P' ? ' daily-row-p' : letter === 'Q' ? ' daily-row-q' : '';
+    const cls = (letter === 'P' ? ' daily-row-p' : letter === 'Q' ? ' daily-row-q' : '') + (letter === 'Q' && item.handoffFrom ? ' daily-row-q-handoff' : '');
     const nightDisabled = !!item.dayOnly;
     return `<tr class="${cls.trim()}">
       <td class="daily-code">${rtHtml(letter)}</td>
