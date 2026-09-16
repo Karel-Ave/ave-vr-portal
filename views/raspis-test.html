@@ -1960,6 +1960,7 @@ tbody tr.row-filtered { display: none; }
   font-family: inherit; cursor: pointer; }
 .btn-rp-ok { background: var(--accent); color: #fff; }
 .btn-rp-cancel { background: var(--surface-alt); color: var(--text); border: 1px solid var(--border); }
+.btn-rp-default { background: var(--surface-alt); color: var(--text); border: 1px solid var(--border); }
 /* Indicator pick buttons (stálé volno & nemůže aktuálně) */
 .btn-ind-pick {
   padding: 1px 5px; border: 1px solid var(--border); border-radius: 4px;
@@ -4232,6 +4233,7 @@ body.hide-req-changes .sched-cell[data-req-tip]:not([data-dup-tip]):hover::after
     <label><input type="checkbox" id="rp-sv"> Svátky</label>
     <label><input type="checkbox" id="rp-hols"> Víkendy</label>
     <div style="flex:1"></div>
+    <button class="btn-rp btn-rp-default" id="rp-default">Výchozí</button>
     <button class="btn-rp btn-rp-ok" id="rp-apply">OK</button>
     <button class="btn-rp btn-rp-cancel" id="rp-cancel">✕</button>
   </div>
@@ -12609,6 +12611,25 @@ function _closePickerOnOutside(e) {
   }
 }
 
+function resetRegularPickerToDefault() {
+  const picker = document.getElementById('regular-picker');
+  if (!picker) return;
+  picker.querySelectorAll('input[data-dow]').forEach(chk => { chk.checked = false; });
+  const sv = document.getElementById('rp-sv');
+  const wk = document.getElementById('rp-hols');
+  const fromEl = document.getElementById('rp-from');
+  const toEl = document.getElementById('rp-to');
+  const openEl = document.getElementById('rp-open');
+  if (sv) sv.checked = false;
+  if (wk) wk.checked = false;
+  if (fromEl) fromEl.value = '';
+  if (toEl) {
+    toEl.value = '';
+    toEl.disabled = false;
+  }
+  if (openEl) openEl.checked = false;
+}
+
 function applyRegularPicker() {
   if (!_rpStaff && _rpSi === null) return;
   const picker = document.getElementById('regular-picker');
@@ -15249,6 +15270,7 @@ document.addEventListener('DOMContentLoaded', async () => {
   };
 
   // ── Regular picker ──
+  document.getElementById('rp-default').addEventListener('click', resetRegularPickerToDefault);
   document.getElementById('rp-apply').addEventListener('click', applyRegularPicker);
   document.getElementById('rp-cancel').addEventListener('click', () => {
     document.getElementById('regular-picker').classList.remove('show');
