@@ -6063,10 +6063,39 @@ function normalizeRegularOpen(value) {
 function normalizeRegularDateValue(value) {
   const raw = String(value || '').trim();
   if (!raw) return '';
-  const iso = raw.match(/^(\d{4})-(\d{1,2})-(\d{1,2})$/);
+  const iso = raw.match(/^(\d{4})-(\d{1,2})-(\d{1,2})(?:$|[T\s])/);
   if (iso) return iso[1] + '-' + String(iso[2]).padStart(2, '0') + '-' + String(iso[3]).padStart(2, '0');
-  const cz = raw.match(/^(\d{1,2})\.(\d{1,2})\.(\d{4})$/);
+  const cz = raw.match(/^(\d{1,2})\.\s*(\d{1,2})\.\s*(\d{4})$/);
   if (cz) return cz[3] + '-' + String(cz[2]).padStart(2, '0') + '-' + String(cz[1]).padStart(2, '0');
+  const slash = raw.match(/^(\d{1,2})\/(\d{1,2})\/(\d{4})$/);
+  if (slash) return slash[3] + '-' + String(slash[2]).padStart(2, '0') + '-' + String(slash[1]).padStart(2, '0');
+  return '';
+}
+
+function getRegularDateValueForPicker(staff, field) {
+  const values = [];
+  if (staff) {
+    values.push(getEffective(staff, field).val, staff[field]);
+    if (staff.userId && state.portalCustomData?.[staff.userId]) values.push(state.portalCustomData[staff.userId][field]);
+    const nameKey = normalizeStaffName(staff.name || '');
+    const loginKey = String(staff.login || '').trim().toLowerCase();
+    [state.staff, state.allPortalUsers, state.allSpecialStaff].forEach(list => {
+      (list || []).forEach(item => {
+        if (!item) return;
+        const sameUser = staff.userId && item.userId && String(item.userId) === String(staff.userId);
+        const sameLogin = loginKey && String(item.login || '').trim().toLowerCase() === loginKey;
+        const sameName = nameKey && normalizeStaffName(item.name || '') === nameKey;
+        if (!sameUser && !sameLogin && !sameName) return;
+        values.push(item[field]);
+        const ov = item.monthlyOverrides?.[getMonthKey()];
+        if (ov && ov[field] !== undefined) values.push(ov[field]);
+      });
+    });
+  }
+  for (const value of values) {
+    const normalized = normalizeRegularDateValue(value);
+    if (normalized) return normalized;
+  }
   return '';
 }
 
@@ -12547,8 +12576,8 @@ function openRegularPicker(si, labelEl, triggerEl, staffObj = null) {
   const toEl = document.getElementById('rp-to');
   const openEl = document.getElementById('rp-open');
   if (fromEl && toEl && openEl) {
-    fromEl.value = normalizeRegularDateValue(getEffective(s, 'regularFrom').val);
-    toEl.value = normalizeRegularDateValue(getEffective(s, 'regularTo').val);
+    fromEl.value = getRegularDateValueForPicker(s, 'regularFrom');
+    toEl.value = getRegularDateValueForPicker(s, 'regularTo');
     openEl.checked = normalizeRegularOpen(getEffective(s, 'regularOpen').val);
     toEl.disabled = openEl.checked;
     openEl.onchange = () => {
