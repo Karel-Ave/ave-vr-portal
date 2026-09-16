@@ -6060,10 +6060,20 @@ function normalizeRegularOpen(value) {
   return value === true || value === 'true' || value === '1' || value === 1;
 }
 
+function normalizeRegularDateValue(value) {
+  const raw = String(value || '').trim();
+  if (!raw) return '';
+  const iso = raw.match(/^(\d{4})-(\d{1,2})-(\d{1,2})$/);
+  if (iso) return iso[1] + '-' + String(iso[2]).padStart(2, '0') + '-' + String(iso[3]).padStart(2, '0');
+  const cz = raw.match(/^(\d{1,2})\.(\d{1,2})\.(\d{4})$/);
+  if (cz) return cz[3] + '-' + String(cz[2]).padStart(2, '0') + '-' + String(cz[1]).padStart(2, '0');
+  return '';
+}
+
 function regularRangeApplies(staff, year, month, day) {
   if (!staff) return true;
-  const from = String(staff.regularFrom || '').trim();
-  const to = String(staff.regularTo || '').trim();
+  const from = normalizeRegularDateValue(staff.regularFrom);
+  const to = normalizeRegularDateValue(staff.regularTo);
   const open = normalizeRegularOpen(staff.regularOpen);
   const current = String(year) + '-' + String(month).padStart(2, '0') + '-' + String(day).padStart(2, '0');
   if (from && current < from) return false;
@@ -6073,8 +6083,8 @@ function regularRangeApplies(staff, year, month, day) {
 
 function regularRangeText(staff) {
   if (!staff) return '';
-  const from = String(staff.regularFrom || '').trim();
-  const to = String(staff.regularTo || '').trim();
+  const from = normalizeRegularDateValue(staff.regularFrom);
+  const to = normalizeRegularDateValue(staff.regularTo);
   const open = normalizeRegularOpen(staff.regularOpen);
   if (!from && !to && !open) return '';
   const fmt = iso => {
@@ -12537,8 +12547,8 @@ function openRegularPicker(si, labelEl, triggerEl, staffObj = null) {
   const toEl = document.getElementById('rp-to');
   const openEl = document.getElementById('rp-open');
   if (fromEl && toEl && openEl) {
-    fromEl.value = String(getEffective(s, 'regularFrom').val || '');
-    toEl.value = String(getEffective(s, 'regularTo').val || '');
+    fromEl.value = normalizeRegularDateValue(getEffective(s, 'regularFrom').val);
+    toEl.value = normalizeRegularDateValue(getEffective(s, 'regularTo').val);
     openEl.checked = normalizeRegularOpen(getEffective(s, 'regularOpen').val);
     toEl.disabled = openEl.checked;
     openEl.onchange = () => {
@@ -12582,9 +12592,9 @@ function applyRegularPicker() {
   const fromEl = document.getElementById('rp-from');
   const toEl = document.getElementById('rp-to');
   const openEl = document.getElementById('rp-open');
-  setFieldValue(staff, 'regularFrom', fromEl ? String(fromEl.value || '') : '');
+  setFieldValue(staff, 'regularFrom', fromEl ? normalizeRegularDateValue(fromEl.value) : '');
   setFieldValue(staff, 'regularOpen', openEl && openEl.checked ? true : false);
-  setFieldValue(staff, 'regularTo', openEl && openEl.checked ? '' : (toEl ? String(toEl.value || '') : ''));
+  setFieldValue(staff, 'regularTo', openEl && openEl.checked ? '' : (toEl ? normalizeRegularDateValue(toEl.value) : ''));
   if (_rpLabel) {
     _rpLabel.textContent = val ? '●' : '○';
     _rpLabel.classList.toggle('btn-ind-active', !!val);
