@@ -308,8 +308,9 @@ app.use(async (req, res, next) => {
     const now = Date.now();
     const lastActivity = Number(req.session.lastActivityAt || req.session.loginAt || now);
     if (minutes !== 0 && now - lastActivity > minutes * 60 * 1000) {
+      // Vyprseni necinnosti se tyka jen aktualni relace/zarizeni.
+      // Ostatni aktivni prihlaseni stejneho uzivatele nesmi spadnout.
       releaseUserLocks(user.id);
-      await destroyAllSessionsForUser(user.id);
       return req.session.destroy(() => sessionExpiredResponse(req, res));
     }
 
