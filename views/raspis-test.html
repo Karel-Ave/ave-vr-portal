@@ -7693,6 +7693,7 @@ function makeScheduleStaffFromSettings(s) {
     noteM: s.noteM || '',
     noteP: s.noteP || '',
     hotelSkills: Array.isArray(s.hotelSkills) ? [...s.hotelSkills] : (Array.isArray(s.hotels) ? [...s.hotels] : []),
+    hotelSkillModes: cloneHotelSkillModes(s.hotelSkillModes),
     noStandby: !!s.noStandby,
     reqXLimit: Number.isFinite(Number(s.reqXLimit)) ? Number(s.reqXLimit) : 7,
     reqYLimit: Number.isFinite(Number(s.reqYLimit)) ? Number(s.reqYLimit) : 0,
@@ -8125,6 +8126,7 @@ function buildSaveData() {
           x: s.x || '', xa: s.xa || '', dates: s.dates || '', regular: s.regular || '',
           regularFrom: s.regularFrom || '', regularTo: s.regularTo || '', regularOpen: normalizeRegularOpen(s.regularOpen),
           hotel: s.hotel || '', hotelSkills: Array.isArray(s.hotelSkills) ? [...s.hotelSkills] : [],
+          hotelSkillModes: cloneHotelSkillModes(s.hotelSkillModes),
           noStandby: !!s.noStandby,
           reqXLimit: Number.isFinite(Number(s.reqXLimit)) ? Number(s.reqXLimit) : 7,
           reqYLimit: Number.isFinite(Number(s.reqYLimit)) ? Number(s.reqYLimit) : 0,
@@ -8503,7 +8505,7 @@ function addUnmatchedToOstalni(ui) {
     type:     'Speciální',
     login:    '',
     contract: '',
-    maxHrs: '', noteM: '', noteP: '', x: '', xa: '', dates: '', regular: '', regularFrom: '', regularTo: '', regularOpen: false, hotel: '', hotelSkills: [], noStandby: false,
+    maxHrs: '', noteM: '', noteP: '', x: '', xa: '', dates: '', regular: '', regularFrom: '', regularTo: '', regularOpen: false, hotel: '', hotelSkills: [], hotelSkillModes: {}, noStandby: false,
     reqXLimit: 7, reqYLimit: 0,
     activeFrom: { month: now.getMonth() + 1, year: now.getFullYear() },
     monthlyOverrides: {}
@@ -8661,6 +8663,7 @@ async function confirmAddWebUser() {
             x: as.x ?? custom.x ?? '', xa: as.xa ?? custom.xa ?? '', dates: as.dates ?? custom.dates ?? '',
             regular: as.regular ?? custom.regular ?? '', regularFrom: as.regularFrom ?? custom.regularFrom ?? '', regularTo: as.regularTo ?? custom.regularTo ?? '', regularOpen: normalizeRegularOpen(as.regularOpen ?? custom.regularOpen ?? false), hotel: as.hotel ?? custom.hotel ?? '',
             hotelSkills: Array.isArray(skills) ? [...skills] : (Array.isArray(custom.hotelSkills) ? [...custom.hotelSkills] : []),
+        hotelSkillModes: Object.keys(cloneHotelSkillModes(as.hotelSkillModes)).length ? cloneHotelSkillModes(as.hotelSkillModes) : cloneHotelSkillModes(custom.hotelSkillModes),
             noStandby: !!as.noStandby,
             reqXLimit: Number.isFinite(Number(as.reqXLimit ?? custom.reqXLimit)) ? Number(as.reqXLimit ?? custom.reqXLimit) : 7,
             reqYLimit: Number.isFinite(Number(as.reqYLimit ?? custom.reqYLimit)) ? Number(as.reqYLimit ?? custom.reqYLimit) : 0,
@@ -8685,6 +8688,7 @@ async function confirmAddWebUser() {
               x: newApiEntry.x ?? custom.x ?? '', xa: newApiEntry.xa ?? custom.xa ?? '', dates: newApiEntry.dates ?? custom.dates ?? '',
               regular: newApiEntry.regular ?? custom.regular ?? '', hotel: newApiEntry.hotel ?? custom.hotel ?? '',
               hotelSkills: Array.isArray(skills) ? [...skills] : (Array.isArray(custom.hotelSkills) ? [...custom.hotelSkills] : []),
+              hotelSkillModes: Object.keys(cloneHotelSkillModes(newApiEntry.hotelSkillModes)).length ? cloneHotelSkillModes(newApiEntry.hotelSkillModes) : cloneHotelSkillModes(custom.hotelSkillModes),
               noStandby: !!newApiEntry.noStandby,
               reqXLimit: Number.isFinite(Number(newApiEntry.reqXLimit ?? custom.reqXLimit)) ? Number(newApiEntry.reqXLimit ?? custom.reqXLimit) : 7,
               reqYLimit: Number.isFinite(Number(newApiEntry.reqYLimit ?? custom.reqYLimit)) ? Number(newApiEntry.reqYLimit ?? custom.reqYLimit) : 0,
@@ -8787,6 +8791,7 @@ async function syncRaspisStaff() {
         regular:  as.regular ?? custom.regular ?? '',
         hotel:    as.hotel  ?? custom.hotel  ?? '',
         hotelSkills: Array.isArray(skills) ? [...skills] : (Array.isArray(custom.hotelSkills) ? [...custom.hotelSkills] : []),
+        hotelSkillModes: Object.keys(cloneHotelSkillModes(as.hotelSkillModes)).length ? cloneHotelSkillModes(as.hotelSkillModes) : cloneHotelSkillModes(custom.hotelSkillModes),
         noStandby: !!as.noStandby,
         reqXLimit: Number.isFinite(Number(as.reqXLimit ?? custom.reqXLimit)) ? Number(as.reqXLimit ?? custom.reqXLimit) : 7,
         reqYLimit: Number.isFinite(Number(as.reqYLimit ?? custom.reqYLimit)) ? Number(as.reqYLimit ?? custom.reqYLimit) : 0,
@@ -11268,12 +11273,56 @@ function refreshCoverageSticky() {
   });
 }
 
-function staffCanWorkSelectedHotels(s) {
+function cloneHotelSkillModes(source) {
+  const out = {};
+  if (!source || typeof source !== 'object' || Array.isArray(source)) return out;
+  Object.entries(source).forEach(([key, value]) => {
+    const hotel = String(key || '').trim().toUpperCase();
+    const mode = String(value || '').trim().toLowerCase();
+    if (hotel && (mode === 'day' || mode === 'night')) out[hotel] = mode;
+  });
+  return out;
+}
+
+function hotelSkillModeFor(s, hotel) {
+  const modes = cloneHotelSkillModes(s?.hotelSkillModes);
+  return modes[String(hotel || '').toUpperCase()] || '';
+}
+
+function staffCanWorkShift(s, dn = null) {
+  const shift = String(dn || '').toLowerCase();
+  if (!shift) return true;
+  if (shift === 'd') return !isNightOnlyStaff(s);
+  if (shift === 'n') return !isDayOnlyStaff(s);
+  return true;
+}
+
+function staffCanWorkHotelShift(s, hotel, dn = null) {
+  if (!s || !hotel) return false;
+  const letter = String(hotel || '').toUpperCase();
+  if (letter === 'P') return staffCanWorkShift(s, dn) && staffCanTakeStandby(s);
+  const skills = Array.isArray(s.hotelSkills) ? s.hotelSkills.map(h => String(h || '').toUpperCase()) : [];
+  if (!skills.includes(letter)) return false;
+  if (!staffCanWorkShift(s, dn)) return false;
+  const mode = hotelSkillModeFor(s, letter);
+  const shift = String(dn || '').toLowerCase();
+  if (mode === 'day' && shift === 'n') return false;
+  if (mode === 'night' && shift === 'd') return false;
+  return true;
+}
+
+function selectedShiftDnFilter() {
+  if (availableSlotFilter?.dn) return availableSlotFilter.dn;
+  if (filterShift === 'day') return 'd';
+  if (filterShift === 'night') return 'n';
+  return null;
+}
+
+function staffCanWorkSelectedHotels(s, dn = selectedShiftDnFilter()) {
   if (!s || filterHotels.size === 0) return false;
-  const skills = Array.isArray(s.hotelSkills) ? s.hotelSkills : [];
-  if (!skills.length) return false;
-  const known = new Set(skills.map(h => String(h).toUpperCase()));
-  return Array.from(filterHotels).some(h => String(h).toUpperCase() !== 'P' && known.has(String(h).toUpperCase()));
+  const hotels = selectedRealHotels();
+  if (!hotels.length) return false;
+  return hotels.some(h => staffCanWorkHotelShift(s, h, dn));
 }
 
 function selectedRealHotels() {
@@ -11306,6 +11355,21 @@ function rowHasSelectedHotel(tblId, si, selectedHotels, tr = null) {
   const hotels = (selectedHotels || []).map(h => String(h || '').toUpperCase()).filter(Boolean);
   if (!hotels.length) return false;
   return rowFilterValues(tblId, si, tr).some(value => hotels.includes(String(value || '').toUpperCase()));
+}
+
+function rowHasSelectedHotelShift(tblId, si, selectedHotels, dn, tr = null) {
+  const hotels = (selectedHotels || []).map(h => String(h || '').toUpperCase()).filter(Boolean);
+  const wantedShift = String(dn || '').toLowerCase();
+  if (!hotels.length || (wantedShift !== 'd' && wantedShift !== 'n')) return rowHasSelectedHotel(tblId, si, hotels, tr);
+  const row = tr || document.getElementById(tblId)?.querySelector(`tbody tr[data-si="${si}"]`);
+  if (row) {
+    return Array.from(row.querySelectorAll(`td.sched-cell[data-dn="${wantedShift}"]`))
+      .some(cell => hotels.includes(String(cellDisplayValue(cell) || '').toUpperCase()));
+  }
+  return getCalCols(state.month, state.year).some((col, ci) => {
+    if (col.dn !== wantedShift) return false;
+    return hotels.includes(String(state.schedule[`${si}_${ci}`] || '').trim().toUpperCase());
+  });
 }
 function normalizedStaffType(s) {
   return String(s?.type || '').normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase().trim();
@@ -11380,7 +11444,7 @@ function rowFilterRank(si, s, tblId = '') {
   const hasHotel = rowHasSelectedHotel(tblId, si, selectedForPresence);
   if (hasHotel) return 0;
   if (isTvorbaTbl && filterHotels.has('P') && staffCanTakeStandby(s) && !staffHasHotelShift(si, 'P', tblId)) return 0;
-  if (showQualifiedWorkers && realHotels.length && staffCanWorkSelectedHotels(s)) return 1;
+  if (showQualifiedWorkers && realHotels.length && staffCanWorkSelectedHotels(s, selectedShiftDnFilter())) return 1;
   if (markedWorkers.has(si)) return 2;
   return 9;
 }
@@ -11407,19 +11471,24 @@ function applyRowFilters() {
         const selectedHotels = isTvorbaTbl
           ? selectedRealHotels()
           : Array.from(filterHotels).map(h => String(h).toUpperCase());
-        const hasHotel = rowHasSelectedHotel(tblId, si, selectedHotels, tr);
-        const canWorkHotel = showQualifiedWorkers && selectedHotels.length && staffCanWorkSelectedHotels(s);
+        const shiftFilter = selectedShiftDnFilter();
+        const hasHotel = shiftFilter
+          ? rowHasSelectedHotelShift(tblId, si, selectedHotels, shiftFilter, tr)
+          : rowHasSelectedHotel(tblId, si, selectedHotels, tr);
+        const canWorkHotel = showQualifiedWorkers && selectedHotels.length && staffCanWorkSelectedHotels(s, shiftFilter);
         const missingStandby = isTvorbaTbl && filterHotels.has('P') && staffCanTakeStandby(s) && !rowFilterValues(tblId, si, tr).some(value => String(value || '').trim().toUpperCase() === 'P');
         if (!hasHotel && !canWorkHotel && !missingStandby && !markedWorkers.has(si)) hide = true;
       }
       if (!hide && filterShift === 'day') {
-        hide = isNightOnlyStaff(s);
+        hide = !staffCanWorkShift(s, 'd');
       } else if (!hide && filterShift === 'night') {
-        hide = isDayOnlyStaff(s);
+        hide = !staffCanWorkShift(s, 'n');
       }
       if (!hide && availableSlotFilter && !isReqTbl) {
         const slotVal = String(state.schedule[`${si}_${availableSlotFilter.ci}`] || '').trim().toUpperCase();
-        hide = !isReceptionStaffType(s) || !!(slotVal && slotVal !== 'P');
+        const realHotels = selectedRealHotels();
+        const canSelectedHotelShift = !realHotels.length || realHotels.some(h => staffCanWorkHotelShift(s, h, availableSlotFilter.dn));
+        hide = !isReceptionStaffType(s) || !staffCanWorkShift(s, availableSlotFilter.dn) || !canSelectedHotelShift || !!(slotVal && slotVal !== 'P');
       }
       if (isPublicTbl && filterHotels.size > 0 && publicShowLeadRowsWithFilter && isSystemLeadStaff(s)) hide = false;
       if ((isPublicTbl || isReqTbl) && isCurrentUserStaff(s)) hide = false;
@@ -13393,6 +13462,7 @@ function syncPortalCustomDataFrom(source) {
     regularOpen: normalizeRegularOpen(source.regularOpen),
     hotel: source.hotel || '',
     hotelSkills: Array.isArray(source.hotelSkills) ? [...source.hotelSkills] : [],
+    hotelSkillModes: cloneHotelSkillModes(source.hotelSkillModes),
     noStandby: !!source.noStandby,
     reqXLimit: Number.isFinite(Number(source.reqXLimit)) ? Number(source.reqXLimit) : 7,
     reqYLimit: Number.isFinite(Number(source.reqYLimit)) ? Number(source.reqYLimit) : 0,
@@ -14155,7 +14225,7 @@ function handleXlsImport(e) {
             type: '',
             login: '',
             contract: '',
-            maxHrs: '', noteM: '', noteP: '', x: '', xa: '', dates: '', regular: '', regularFrom: '', regularTo: '', regularOpen: false, hotel: '', hotelSkills: [], noStandby: false,
+            maxHrs: '', noteM: '', noteP: '', x: '', xa: '', dates: '', regular: '', regularFrom: '', regularTo: '', regularOpen: false, hotel: '', hotelSkills: [], hotelSkillModes: {}, noStandby: false,
             reqXLimit: 7, reqYLimit: 0,
             monthlyOverrides: {},
             unmatchedXls: true
@@ -14504,6 +14574,11 @@ function switchTab(name) {
   if (name === 'tvorba' && isMobileLike()) name = mobileTabFallback();
   if (isMobileLike()) mobileControlsOpen = false;
   const previousTab = document.body.dataset.activeTab;
+  if (previousTab === 'tvorba' && name !== 'tvorba' && window.aveHasUnsavedTvorbaDraft?.()) {
+    const leave = confirm('Tvorba obsahuje neuložené změny. Přepnout bez uložení?');
+    if (!leave) return;
+    window.aveDiscardTvorbaChanges?.();
+  }
   if (previousTab && ['tvorba', 'rozpis', 'public', 'pozadavky'].includes(previousTab)) saveStbState();
   if (previousTab === 'tvorba' && activeScheduleSource === 'draft') {
     captureTvorbaDraftSnapshot();

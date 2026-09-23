@@ -131,6 +131,9 @@
     display:flex; align-items:center; justify-content:center; gap:4px; cursor:pointer;
   }
   .hotel-skill-grid input { width:auto; margin:0; accent-color:var(--accent); }
+  .hotel-skill-item { min-width:112px; align-items:flex-start !important; flex-direction:column; }
+  .hotel-skill-top { display:flex; align-items:center; gap:4px; }
+  .hotel-skill-mode { width:100%; min-height:26px; padding:2px 4px; font-size:11px; border-radius:5px; }
 
   /* Modals */
   .overlay { display: none; position: fixed; inset: 0; background: var(--overlay-bg); z-index: 1000; align-items: center; justify-content: center; }
@@ -1514,21 +1517,53 @@
     document.getElementById('raspis-no-standby').checked = false;
     document.getElementById('raspis-req-x-limit').value = 7;
     document.getElementById('raspis-req-y-limit').value = 0;
-    renderRaspisHotelSkills([]);
+    renderRaspisHotelSkills([], {});
   }
 
-  function renderRaspisHotelSkills(selected) {
+  function renderRaspisHotelSkills(selected, modes = {}) {
     const grid = document.getElementById('raspis-hotels-grid');
     if (!grid) return;
     const sel = new Set((selected || []).map(h => String(h).toUpperCase()));
-    grid.innerHTML = RASPIS_HOTEL_LETTERS.map(h =>
-      `<label><input type="checkbox" class="raspis-hotel-skill" value="${h}" ${sel.has(h) ? 'checked' : ''}>${h}</label>`
-    ).join('');
+    const modeMap = modes && typeof modes === 'object' ? modes : {};
+    grid.innerHTML = RASPIS_HOTEL_LETTERS.map(h => {
+      const checked = sel.has(h);
+      const mode = String(modeMap[h] || '').toLowerCase();
+      const modeAny = mode !== 'day' && mode !== 'night';
+      return '<label class="hotel-skill-item">'
+        + '<span class="hotel-skill-top"><input type="checkbox" class="raspis-hotel-skill" value="' + h + '" ' + (checked ? 'checked' : '') + '>' + h + '</span>'
+        + '<select class="hotel-skill-mode raspis-hotel-mode" data-hotel="' + h + '" ' + (checked ? '' : 'disabled') + '>'
+        + '<option value="" ' + (modeAny ? 'selected' : '') + '>den/noc</option>'
+        + '<option value="day" ' + (mode === 'day' ? 'selected' : '') + '>pouze denní</option>'
+        + '<option value="night" ' + (mode === 'night' ? 'selected' : '') + '>pouze noční</option>'
+        + '</select>'
+        + '</label>';
+    }).join('');
+    grid.querySelectorAll('.raspis-hotel-skill').forEach(ch => {
+      ch.addEventListener('change', () => {
+        const hotel = String(ch.value || '').toUpperCase();
+        const select = grid.querySelector('.raspis-hotel-mode[data-hotel="' + hotel + '"]');
+        if (select) {
+          select.disabled = !ch.checked;
+          if (!ch.checked) select.value = '';
+        }
+      });
+    });
   }
 
   function getSelectedRaspisHotels() {
     return Array.from(document.querySelectorAll('.raspis-hotel-skill:checked'))
       .map(ch => ch.value.toUpperCase());
+  }
+
+  function getSelectedRaspisHotelModes() {
+    const selected = new Set(getSelectedRaspisHotels());
+    const out = {};
+    document.querySelectorAll('.raspis-hotel-mode').forEach(sel => {
+      const hotel = String(sel.dataset.hotel || '').toUpperCase();
+      const mode = String(sel.value || '').toLowerCase();
+      if (selected.has(hotel) && (mode === 'day' || mode === 'night')) out[hotel] = mode;
+    });
+    return out;
   }
 
   function getRaspisNoStandby() {
@@ -1564,7 +1599,7 @@
       document.getElementById('raspis-until-month').value = '';
       document.getElementById('raspis-until-year').value  = '';
     }
-    renderRaspisHotelSkills(rs.hotels || rs.hotelSkills || []);
+    renderRaspisHotelSkills(rs.hotels || rs.hotelSkills || [], rs.hotelSkillModes || rs.hotelModes || {});
     if (rs.active) {
       document.getElementById('raspis-active-track').classList.add('on');
       document.getElementById('raspis-body').style.display = '';
@@ -1622,6 +1657,7 @@
         type:        document.getElementById('raspis-type').value,
         contract:    document.getElementById('raspis-contract').value,
         hotels:      getSelectedRaspisHotels(),
+        hotelSkillModes: getSelectedRaspisHotelModes(),
         noStandby:   getRaspisNoStandby(),
         reqXLimit,
         reqYLimit,

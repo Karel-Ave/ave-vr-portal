@@ -290,13 +290,6 @@ async function touchUserActivity(req, force = false) {
   }
 }
 
-async function destroyAllSessionsForUser(userId) {
-  const db = getPool();
-  await db.query(
-    `DELETE FROM session WHERE sess::json->'user'->>'id' = $1`,
-    [String(userId)]
-  );
-}
 
 app.use(async (req, res, next) => {
   const user = req.session.user;
@@ -774,16 +767,6 @@ app.get('/logout', async (req, res) => {
     Object.keys(locks).forEach(k => {
       if (locks[k]?.userId === userId) delete locks[k];
     });
-    // Smaž VŠECHNY session tohoto uživatele z DB (odhlášení ze všech zařízení)
-    try {
-      const db = getPool();
-      await db.query(
-        `DELETE FROM session WHERE sess::json->'user'->>'id' = $1`,
-        [String(userId)]
-      );
-    } catch(e) {
-      console.error('Global logout error:', e.message);
-    }
   }
   req.session.destroy(() => res.redirect('/'));
 });
@@ -6214,9 +6197,20 @@ function rtReqLimit(value, fallback) {
   return Number.isFinite(n) && n >= 0 ? n : fallback;
 }
 
+function rtHotelSkillModes(source = {}) {
+  const out = {};
+  if (!source || typeof source !== 'object' || Array.isArray(source)) return out;
+  for (const [key, value] of Object.entries(source)) {
+    const hotel = String(key || '').trim().toUpperCase();
+    const mode = String(value || '').trim().toLowerCase();
+    if (hotel && (mode === 'day' || mode === 'night')) out[hotel] = mode;
+  }
+  return out;
+}
+
 const RT_STAFF_SETTINGS_FIELDS = [
   'maxHrs', 'noteM', 'noteP', 'x', 'xa', 'dates', 'regular', 'regularFrom', 'regularTo', 'regularOpen', 'hotel',
-  'monthlyOverrides'
+  'hotelSkills', 'hotelSkillModes', 'noStandby', 'reqXLimit', 'reqYLimit', 'monthlyOverrides'
 ];
 
 function normalizeRtStaffSettings(input = {}) {
@@ -6227,8 +6221,16 @@ function normalizeRtStaffSettings(input = {}) {
       out.monthlyOverrides = data.monthlyOverrides && typeof data.monthlyOverrides === 'object'
         ? data.monthlyOverrides
         : {};
+    } else if (field === 'hotelSkills') {
+      out.hotelSkills = Array.isArray(data.hotelSkills) ? data.hotelSkills.map(h => String(h || '').trim().toUpperCase()).filter(Boolean) : [];
+    } else if (field === 'hotelSkillModes') {
+      out.hotelSkillModes = rtHotelSkillModes(data.hotelSkillModes);
     } else if (field === 'regularOpen') {
       out.regularOpen = data.regularOpen === true || data.regularOpen === 'true' || data.regularOpen === '1' || data.regularOpen === 1;
+    } else if (field === 'noStandby') {
+      out.noStandby = !!data.noStandby;
+    } else if (field === 'reqXLimit' || field === 'reqYLimit') {
+      out[field] = rtReqLimit(data[field], field === 'reqXLimit' ? 7 : 0);
     } else {
       out[field] = data[field] == null ? '' : String(data[field]);
     }
@@ -6339,7 +6341,8 @@ async function loadRtPortalReceptionists(db) {
       login: rs.login || u.username || '',
       type: rs.type || '',
       contract: rs.contract || '',
-      hotelSkills: Array.isArray(rs.hotels) ? rs.hotels : [],
+      hotelSkills: Array.isArray(rs.hotels) ? rs.hotels : (Array.isArray(rs.hotelSkills) ? rs.hotelSkills : []),
+      hotelSkillModes: rtHotelSkillModes(rs.hotelSkillModes),
       noStandby: !!rs.noStandby,
       reqXLimit: rtReqLimit(rs.reqXLimit, 7),
       reqYLimit: rtReqLimit(rs.reqYLimit, 0),
@@ -6490,6 +6493,7 @@ async function loadRtSpecialStaffForUser(db, userId) {
     noteM: s.noteM || '',
     noteP: s.noteP || '',
     hotelSkills: Array.isArray(s.hotelSkills) ? s.hotelSkills : (Array.isArray(s.hotels) ? s.hotels : []),
+    hotelSkillModes: rtHotelSkillModes(s.hotelSkillModes),
     noStandby: !!s.noStandby,
     reqXLimit: rtReqLimit(s.reqXLimit, 7),
     reqYLimit: rtReqLimit(s.reqYLimit, 0),
@@ -6516,6 +6520,7 @@ function normalizeRtSpecialStaffList(parsed) {
     noteM: s.noteM || '',
     noteP: s.noteP || '',
     hotelSkills: Array.isArray(s.hotelSkills) ? s.hotelSkills : (Array.isArray(s.hotels) ? s.hotels : []),
+    hotelSkillModes: rtHotelSkillModes(s.hotelSkillModes),
     noStandby: !!s.noStandby,
     reqXLimit: rtReqLimit(s.reqXLimit, 7),
     reqYLimit: rtReqLimit(s.reqYLimit, 0),
@@ -6625,6 +6630,7 @@ function ensureRtLeadRowsWithAutoQ(data) {
       noteM: '',
       noteP: '',
       hotelSkills: [],
+      hotelSkillModes: {},
       noStandby: false,
       reqXLimit: 7,
       reqYLimit: 0,
@@ -6788,6 +6794,7 @@ async function augmentRtDataWithActiveReceptionists(data, db = getPool()) {
         regularOpen: !!s.regularOpen,
         hotel: s.hotel || '',
         hotelSkills: Array.isArray(s.hotelSkills) ? s.hotelSkills : (Array.isArray(current.hotelSkills) ? current.hotelSkills : []),
+        hotelSkillModes: Object.keys(rtHotelSkillModes(s.hotelSkillModes)).length ? rtHotelSkillModes(s.hotelSkillModes) : rtHotelSkillModes(current.hotelSkillModes),
         noStandby: !!s.noStandby,
         reqXLimit: rtReqLimit(s.reqXLimit, rtReqLimit(current.reqXLimit, 7)),
         reqYLimit: rtReqLimit(s.reqYLimit, rtReqLimit(current.reqYLimit, 0)),
@@ -7296,6 +7303,7 @@ function rtRefreshRequirementStaffRow(row, live) {
     type: live.type || current.type || '',
     contract: live.contract || current.contract || '',
     hotelSkills: Array.isArray(live.hotelSkills) ? live.hotelSkills : (Array.isArray(current.hotelSkills) ? current.hotelSkills : []),
+    hotelSkillModes: Object.keys(rtHotelSkillModes(live.hotelSkillModes)).length ? rtHotelSkillModes(live.hotelSkillModes) : rtHotelSkillModes(current.hotelSkillModes),
     noStandby: !!live.noStandby,
     reqXLimit: rtReqLimit(live.reqXLimit, rtReqLimit(current.reqXLimit, 7)),
     reqYLimit: rtReqLimit(live.reqYLimit, rtReqLimit(current.reqYLimit, 0)),

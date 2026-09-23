@@ -177,7 +177,7 @@
 
   function normalizeAutoLogoutMinutes(value) {
     var n = Number(value);
-    return [0, 30, 60, 720].indexOf(n) >= 0 ? n : 60;
+    return [0, 30, 60, 360].indexOf(n) >= 0 ? n : 60;
   }
 
   function markAutoLogoutActivity() {
@@ -187,7 +187,7 @@
     if (now - autoLogoutLastPing > 60000) {
       autoLogoutLastPing = now;
       try {
-        checkSessionAlive();
+        sendAutoLogoutActivity();
       } catch (e) {}
     }
     scheduleAutoLogoutCheck();
@@ -239,6 +239,16 @@
       return r.json();
     }).then(function (data) {
       if (data && data.ok === false) window.location.href = '/';
+    }).catch(function () {});
+  }
+
+  function sendAutoLogoutActivity() {
+    return fetch('/api/session/activity', { method: 'POST', credentials: 'include', cache: 'no-store' }).then(function (r) {
+      if (r.status === 401) {
+        window.location.href = '/';
+        return null;
+      }
+      return r.ok ? r.json() : null;
     }).catch(function () {});
   }
 
