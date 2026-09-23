@@ -124,16 +124,16 @@
   .rt-badge.inactive { background: #f6eeee; color: #9b3d3d; border-color: #e2baba; }
   [data-theme="dark"] .rt-badge.inactive { background: #351f1f; color: #e08686; border-color: #684242; }
   tr.user-inactive td { color: var(--text-muted); }
-  .hotel-skill-grid { display:flex; flex-wrap:wrap; gap:6px; }
+  .hotel-skill-grid { display:grid; grid-template-columns:repeat(3, minmax(0, 1fr)); gap:5px; }
   .hotel-skill-grid label {
-    min-width:36px; padding:5px 7px; border:1px solid var(--input-border); border-radius:6px;
+    min-width:0; padding:4px 5px; border:1px solid var(--input-border); border-radius:6px;
     background:var(--input-bg); font-size:12px; font-weight:700; color:var(--text);
     display:flex; align-items:center; justify-content:center; gap:4px; cursor:pointer;
   }
   .hotel-skill-grid input { width:auto; margin:0; accent-color:var(--accent); }
-  .hotel-skill-item { min-width:112px; align-items:flex-start !important; flex-direction:column; }
-  .hotel-skill-top { display:flex; align-items:center; gap:4px; }
-  .hotel-skill-mode { width:100%; min-height:26px; padding:2px 4px; font-size:11px; border-radius:5px; }
+  .hotel-skill-item { align-items:stretch !important; flex-direction:column; }
+  .hotel-skill-top { display:flex; align-items:center; justify-content:space-between; gap:3px; width:100%; }
+  .hotel-skill-mode { width:100%; min-height:24px; padding:1px 3px; font-size:10px; border-radius:5px; }
 
   /* Modals */
   .overlay { display: none; position: fixed; inset: 0; background: var(--overlay-bg); z-index: 1000; align-items: center; justify-content: center; }
