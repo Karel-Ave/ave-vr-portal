@@ -2852,6 +2852,53 @@ app.post('/api/priplatky/zaznamy', requireLogin, requirePermDefault('priplatky',
   }
 });
 
+app.post('/api/priplatky/zaznamy-batch', requireLogin, requirePermDefault('priplatky', 'add', true), async (req, res) => {
+  const { den, mesic, rok, mesicDatum, rokDatum, sekce, logins, hotel, castka,
+          poznamka, internal_note, partner, klient, koho_skolil } = req.body;
+  const cleanLogins = [...new Set((Array.isArray(logins) ? logins : [])
+    .map(v => String(v || '').trim())
+    .filter(Boolean))];
+  if (!cleanLogins.length) return res.status(400).json({ ok: false, msg: 'Chybí recepční.' });
+
+  const db = getPool();
+  for (const login of cleanLogins) {
+    if (!(await canTouchPriplatkyLogin(req, login))) {
+      return res.status(403).json({ ok: false, msg: `Nemáte oprávnění přidat záznam pro ${login}.` });
+    }
+  }
+
+  const dM = mesicDatum || mesic;
+  const dR = rokDatum   || rok;
+  const datum = `${dR}-${String(dM).padStart(2,'0')}-${String(den).padStart(2,'0')}`;
+  const client = await db.connect();
+  try {
+    const savedInternalNote = (await canUsePriplatkyInternalNote(req.session.user)) ? (internal_note || null) : null;
+    const ids = [];
+    await client.query('BEGIN');
+    for (const login of cleanLogins) {
+      const r = await client.query(
+        `INSERT INTO priplatky_zaznamy
+           (rok,mesic,sekce,login,datum,hotel,castka,poznamka,internal_note,partner,klient,koho_skolil,vlozil)
+         VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13) RETURNING id`,
+        [rok, mesic, sekce, login, datum, hotel||null, castka||0,
+         poznamka||null, savedInternalNote, partner||null, klient||null, koho_skolil||null,
+         req.session.user.username]
+      );
+      ids.push(r.rows[0].id);
+    }
+    await client.query('COMMIT');
+    await logEvent(req.session.user.id, req.session.user.username,
+      'priplatky_add_batch', { ids, logins: cleanLogins, sekce })
+      .catch(err => console.error('priplatky_add_batch log error:', err.message));
+    res.json({ ok: true, ids });
+  } catch (err) {
+    await client.query('ROLLBACK').catch(() => {});
+    res.status(400).json({ ok: false, msg: err.message });
+  } finally {
+    client.release();
+  }
+});
+
 app.patch('/api/priplatky/zaznamy/:id', requireLogin, requirePermDefault('priplatky', 'edit', true), async (req, res) => {
   const { den, mesic, rok, mesicDatum, rokDatum, sekce, login, hotel, castka,
           poznamka, internal_note, partner, klient, koho_skolil } = req.body;

@@ -196,6 +196,12 @@ label.btn { display: inline-flex; align-items: center; cursor: pointer; }
 .btn-secondary { background: var(--surface); color: var(--text); }
 .btn-danger { background: #e74c3c; color: #fff; }
 .btn-sm { padding: 5px 10px; font-size: 12px; }
+.field-label-row { display:flex; align-items:center; justify-content:space-between; gap:8px; }
+.btn-link-small { border:0; background:none; color:var(--accent); cursor:pointer; font:inherit; font-size:12px; font-weight:700; padding:2px 0; }
+.multi-recepni-list { display:grid; gap:8px; margin-top:8px; }
+.multi-recepni-row { display:grid; grid-template-columns:24px minmax(0,1fr) 28px; align-items:start; gap:6px; }
+.multi-recepni-index { color:var(--text-muted); font-size:12px; line-height:34px; text-align:right; }
+.multi-recepni-remove { width:28px; height:34px; padding:0; }
 
 /* Fill status */
 #fill-status { font-size: 11px; color: var(--text-muted); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 80px; }
@@ -499,7 +505,10 @@ table.dtbl { width: 100%; border-collapse: collapse; table-layout: fixed; font-s
       <!-- Recepční — autocomplete -->
       <div class="fields-2">
         <div class="field field-full" id="field-login-ac">
-          <label>Recepční *</label>
+          <div class="field-label-row">
+            <label>Recepční *</label>
+            <button type="button" class="btn-link-small hidden" id="btn-recenze-more">více</button>
+          </div>
           <div class="ac-wrap">
             <input type="text" id="inp-ac" autocomplete="off" autocorrect="off" autocapitalize="off"
                    placeholder="Příjmení nebo jméno…"
@@ -509,6 +518,7 @@ table.dtbl { width: 100%; border-collapse: collapse; table-layout: fixed; font-s
             <div id="ac-list" class="ac-list hidden"></div>
           </div>
           <input type="hidden" name="login" id="inp-login-hidden">
+          <div id="multi-recenze-wrap" class="multi-recepni-list hidden"></div>
         </div>
 
         <!-- Hotel -->
@@ -556,6 +566,23 @@ table.dtbl { width: 100%; border-collapse: collapse; table-layout: fixed; font-s
         </div>
       </div>
 
+      <!-- Recenze: partner + klient -->
+      <div class="fields-2 hidden" id="fields-recenze">
+        <div class="field">
+          <label>Partner</label>
+          <select name="partner" id="sel-partner">
+            <option value="">—</option>
+            <option value="BOO">BOO</option>
+            <option value="EXD">EXD</option>
+            <option value="Google">Google</option>
+          </select>
+        </div>
+        <div class="field">
+          <label>Jméno klienta</label>
+          <input type="text" name="klient" placeholder="Příjmení Jméno">
+        </div>
+      </div>
+
       <!-- Částka: recenze dropdown -->
       <div class="field hidden" id="field-castka-select">
         <label>Částka *</label>
@@ -591,23 +618,6 @@ table.dtbl { width: 100%; border-collapse: collapse; table-layout: fixed; font-s
       <div class="field hidden" id="field-castka-input">
         <label id="lbl-castka-input">Částka (Kč) *</label>
         <input type="number" name="castkaInput" id="inp-castka-input" min="0" placeholder="Kč" class="no-spin">
-      </div>
-
-      <!-- Recenze: partner + klient -->
-      <div class="fields-2 hidden" id="fields-recenze">
-        <div class="field">
-          <label>Partner</label>
-          <select name="partner" id="sel-partner">
-            <option value="">—</option>
-            <option value="BOO">BOO</option>
-            <option value="EXD">EXD</option>
-            <option value="Google">Google</option>
-          </select>
-        </div>
-        <div class="field">
-          <label>Jméno klienta</label>
-          <input type="text" name="klient" placeholder="Příjmení Jméno">
-        </div>
       </div>
 
       <!-- Školení: koho školil (custom autocomplete z minulých záznamů) -->
@@ -710,6 +720,7 @@ let duvodyBrani  = [];   // DB entries typ='brani'
 let duvodyObecne = [];   // DB entries typ='obecne'
 let canViewAllPriplatky = false;
 let priplatkyButtons = {};
+let multiRecenzeRows = [];
 
 const MESICE = ['','Leden','Únor','Březen','Duben','Květen','Červen',
                 'Červenec','Srpen','Září','Říjen','Listopad','Prosinec'];
@@ -925,6 +936,119 @@ function acSetValue(login, name) {
   document.getElementById('inp-ac').disabled = false;
   document.getElementById('inp-ac').value    = name ? `${login} – ${name}` : login;
   document.getElementById('inp-login-hidden').value = login;
+}
+
+function recenzeAmountForPartner(partner) {
+  if (partner === 'EXD') return '200';
+  if (partner === 'Google') return '100';
+  return '400';
+}
+
+function setRecenzeAmountForPartner() {
+  const sel = document.getElementById('sel-castka');
+  const partner = document.getElementById('sel-partner')?.value || 'BOO';
+  if (sel) sel.value = recenzeAmountForPartner(partner);
+  document.getElementById('inp-castka-input').value = '';
+  updateFormConds();
+}
+
+function multiRecenzeReset() {
+  multiRecenzeRows = [];
+  const wrap = document.getElementById('multi-recenze-wrap');
+  if (wrap) {
+    wrap.innerHTML = '';
+    wrap.classList.add('hidden');
+  }
+  const btn = document.getElementById('btn-recenze-more');
+  if (btn) btn.textContent = 'více';
+}
+
+function multiRecenzeActiveLogins() {
+  return [
+    document.getElementById('inp-login-hidden')?.value || '',
+    ...multiRecenzeRows.map(r => r.login || ''),
+  ].map(v => String(v || '').trim()).filter(Boolean);
+}
+
+function multiRecenzeRender() {
+  const wrap = document.getElementById('multi-recenze-wrap');
+  if (!wrap) return;
+  if (!multiRecenzeRows.length) {
+    wrap.innerHTML = '';
+    wrap.classList.add('hidden');
+    return;
+  }
+  wrap.classList.remove('hidden');
+  wrap.innerHTML = multiRecenzeRows.map((row, idx) => `
+    <div class="multi-recepni-row" data-row="${idx}">
+      <div class="multi-recepni-index">${idx + 2}.</div>
+      <div class="ac-wrap">
+        <input type="text" autocomplete="off" autocorrect="off" autocapitalize="off"
+          placeholder="Další recepční…"
+          value="${attrEsc(row.label)}"
+          oninput="multiRecenzeFilter(${idx}, this.value)"
+          onfocus="multiRecenzeFilter(${idx}, this.value)"
+          onblur="setTimeout(() => multiRecenzeClose(${idx}), 200)">
+        <div id="multi-recenze-list-${idx}" class="ac-list hidden"></div>
+      </div>
+      <button type="button" class="btn btn-secondary multi-recepni-remove" onclick="multiRecenzeRemove(${idx})" title="Odebrat">×</button>
+    </div>
+  `).join('');
+}
+
+function multiRecenzeAdd() {
+  if (multiRecenzeRows.length >= 3) return;
+  multiRecenzeRows.push({ login: '', label: '' });
+  multiRecenzeRender();
+  const row = document.querySelector(`#multi-recenze-wrap [data-row="${multiRecenzeRows.length - 1}"] input`);
+  if (row) row.focus();
+}
+
+function multiRecenzeRemove(idx) {
+  multiRecenzeRows.splice(idx, 1);
+  multiRecenzeRender();
+}
+
+function multiRecenzeFilter(idx, val) {
+  const row = multiRecenzeRows[idx];
+  if (!row) return;
+  row.label = val;
+  row.login = '';
+  const listEl = document.getElementById(`multi-recenze-list-${idx}`);
+  const v = acNorm(val).trim();
+  if (!listEl || !v) { if (listEl) { listEl.innerHTML = ''; listEl.classList.add('hidden'); } return; }
+
+  const used = new Set(multiRecenzeActiveLogins().map(v => v.toLowerCase()));
+  const filtered = recepniAll.filter(r => r.active && !used.has(String(r.login || '').toLowerCase())).filter(r => {
+    const loginL = acNorm(r.login);
+    const fullName = acNorm(r.full_name);
+    const nameParts = fullName.split(/\s+/).filter(Boolean);
+    return loginL.startsWith(v) || fullName.includes(v) || nameParts.some(part => part.startsWith(v));
+  }).slice(0, 12);
+
+  if (!filtered.length) { listEl.innerHTML = ''; listEl.classList.add('hidden'); return; }
+  listEl.innerHTML = filtered.map(r =>
+    `<div class="ac-item" onmousedown="multiRecenzeSelect(${idx}, '${esc(r.login)}', '${esc(r.full_name).replace(/'/g,"&#39;")}')"
+     ><strong>${esc(r.login)}</strong> – ${esc(r.full_name)}</div>`
+  ).join('');
+  listEl.classList.remove('hidden');
+}
+
+function multiRecenzeSelect(idx, login, name) {
+  const row = multiRecenzeRows[idx];
+  if (!row) return;
+  row.login = login;
+  row.label = `${login} – ${name}`;
+  multiRecenzeRender();
+  if (idx === multiRecenzeRows.length - 1 && multiRecenzeRows.length < 3) multiRecenzeAdd();
+}
+
+function multiRecenzeClose(idx) {
+  document.getElementById(`multi-recenze-list-${idx}`)?.classList.add('hidden');
+}
+
+function multiRecenzeSelectedLogins() {
+  return multiRecenzeRows.map(r => String(r.login || '').trim()).filter(Boolean);
 }
 
 // ═══ Důvody / Poznámky dropdowns ══════════════════════════════════════════════
@@ -1167,6 +1291,8 @@ function initFormConds() {
   document.getElementById('sel-castka').addEventListener('change', updateFormConds);
   document.getElementById('sel-castka-brani').addEventListener('change', updateFormConds);
   document.getElementById('sel-castka-skoleni').addEventListener('change', updateFormConds);
+  document.getElementById('sel-partner').addEventListener('change', setRecenzeAmountForPartner);
+  document.getElementById('btn-recenze-more').addEventListener('click', multiRecenzeAdd);
 }
 function updateFormConds() {
   const s         = document.getElementById('sel-sekce').value;
@@ -1203,9 +1329,16 @@ function updateFormConds() {
 
   // Partner: u recenze předvol BOO pouze u nového záznamu
   document.getElementById('fields-recenze').classList.toggle('hidden', !isRecenze);
+  const editId = document.querySelector('#zaznam-form [name=editId]').value;
+  document.getElementById('btn-recenze-more').classList.toggle('hidden', !(isRecenze && !editId));
   if (isRecenze) {
-    const editId = document.querySelector('#zaznam-form [name=editId]').value;
-    if (!editId) document.getElementById('sel-partner').value = 'BOO';
+    const partnerSel = document.getElementById('sel-partner');
+    if (!editId && !partnerSel.value) {
+      partnerSel.value = 'BOO';
+      document.getElementById('sel-castka').value = recenzeAmountForPartner(partnerSel.value);
+    }
+  } else {
+    multiRecenzeReset();
   }
 
   document.getElementById('field-skoleni').classList.toggle('hidden', !isSkoleni);
@@ -1236,6 +1369,7 @@ function resetForm() {
   document.getElementById('zaznam-form').reset();
   document.querySelector('#zaznam-form [name=editId]').value = '';
   acReset();
+  multiRecenzeReset();
   rebuildBraniDuvodSel();
   rebuildPoznamkaPreset();
   // Reset datum display
@@ -1303,8 +1437,17 @@ document.getElementById('btn-zaznam-save').addEventListener('click', async () =>
     poznamka = d.poznamka || null;
   }
 
+  const incompleteMulti = multiRecenzeRows.some(r => String(r.label || '').trim() && !String(r.login || '').trim());
+  if (sekce === 'recenze' && !d.editId && incompleteMulti) {
+    alert('U dalších recepčních vyberte jméno z nabídky, nebo prázdný řádek odeberte.');
+    return;
+  }
+  const targetLogins = (sekce === 'recenze' && !d.editId)
+    ? [...new Set([loginFinal, ...multiRecenzeSelectedLogins()])]
+    : [loginFinal];
+
   const payload = {
-    sekce, login: loginFinal,
+    sekce,
     hotel: d.hotel || null,
     // Skutečné datum záznamu
     den, mesicDatum, rokDatum,
@@ -1322,9 +1465,23 @@ document.getElementById('btn-zaznam-save').addEventListener('click', async () =>
   const url    = editId ? `/api/priplatky/zaznamy/${editId}` : '/api/priplatky/zaznamy';
   const method = editId ? 'PATCH' : 'POST';
   try {
-    const resp = await fetch(url, { method, headers:{'Content-Type':'application/json'}, body: JSON.stringify(payload) });
-    const j = await resp.json();
-    if (!j.ok) throw new Error(j.msg);
+    if (targetLogins.length > 1) {
+      const resp = await fetch('/api/priplatky/zaznamy-batch', {
+        method: 'POST',
+        headers:{'Content-Type':'application/json'},
+        body: JSON.stringify({ ...payload, logins: targetLogins }),
+      });
+      const j = await resp.json();
+      if (!j.ok) throw new Error(j.msg);
+    } else {
+      const resp = await fetch(url, {
+        method,
+        headers:{'Content-Type':'application/json'},
+        body: JSON.stringify({ ...payload, login: targetLogins[0] }),
+      });
+      const j = await resp.json();
+      if (!j.ok) throw new Error(j.msg);
+    }
     closeOverlay('modal-form');
     closeOverlay('modal-detail');
     loadPrehled();
@@ -1649,6 +1806,7 @@ document.querySelectorAll('[data-close]').forEach(btn => {
 
 // ═══ Utility ══════════════════════════════════════════════════════════════════
 function esc(s) { return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;'); }
+function attrEsc(s) { return esc(s).replace(/"/g, '&quot;'); }
 function fmtTs(iso) {
   if (!iso) return '';
   const d = new Date(iso);

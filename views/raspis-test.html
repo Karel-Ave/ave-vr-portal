@@ -14445,7 +14445,7 @@ function dailyCellHtml(letter, value, isNight, info) {
   if (value) {
     let html = rtHtml(value);
     if (!isNight && letter === 'Q' && info?.handoffFrom) {
-      html += ` <span class="daily-q-handoff">(až od 7:00 hod., do 7:00 hod. ${rtHtml(info.handoffFrom)})</span>`;
+      html += ` <span class="daily-q-handoff">(až od 7:00 hod., do 7:00 hod. ráno stále ještě ${rtHtml(info.handoffFrom)})</span>`;
     }
     return html;
   }
