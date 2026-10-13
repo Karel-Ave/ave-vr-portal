@@ -11105,12 +11105,11 @@ function applyPublicDefaultHotel(force = false) {
   applyRowFilters();
 }
 
-async function filterByHotel(letter) {
+function filterByHotel(letter) {
   const activeTab = document.querySelector('.tb-tab.active')?.dataset.tab;
   if (activeTab === 'public') {
     publicHotelFilterTouched = true;
   }
-  if (activeTab === 'tvorba' || activeTab === 'pozadavky') await syncRaspisStaff();
   showMarkedOnly = false;
   const wasEmpty = filterHotels.size === 0;
   if (filterHotels.has(letter)) {
@@ -11518,25 +11517,29 @@ function applyRowFilters() {
     const staffTbody = tbl.querySelector('.staff-tbody');
     if (!staffTbody) return;
     const allRows = Array.from(staffTbody.querySelectorAll('tr[data-si]'));
+    // Read each row once; sorting must not repeatedly scan schedule cells.
+    const sortKeys = new Map(allRows.map(tr => {
+      const si = +tr.dataset.si;
+      const own = (isPublicTbl || isReqTbl) && isCurrentUserStaff(state.staff[si]) ? -1 : 0;
+      return [tr, { si, own, rank: filterHotels.size ? rowFilterRank(si, state.staff[si], tblId) : 0 }];
+    }));
+    const previousOrder = [...allRows];
     if (filterHotels.size > 0) {
       allRows.sort((a, b) => {
-        const aSi = +a.dataset.si;
-        const bSi = +b.dataset.si;
-        const aOwn = (isPublicTbl || isReqTbl) && isCurrentUserStaff(state.staff[aSi]) ? -1 : 0;
-        const bOwn = (isPublicTbl || isReqTbl) && isCurrentUserStaff(state.staff[bSi]) ? -1 : 0;
-        return aOwn - bOwn || rowFilterRank(aSi, state.staff[aSi], tblId) - rowFilterRank(bSi, state.staff[bSi], tblId) || aSi - bSi;
+        const aKey = sortKeys.get(a), bKey = sortKeys.get(b);
+        return aKey.own - bKey.own || aKey.rank - bKey.rank || aKey.si - bKey.si;
       });
-      allRows.forEach(tr => staffTbody.appendChild(tr));
     } else {
       // Restore original order by si index
       allRows.sort((a, b) => {
-        const aSi = +a.dataset.si;
-        const bSi = +b.dataset.si;
-        const aOwn = (isPublicTbl || isReqTbl) && isCurrentUserStaff(state.staff[aSi]) ? -1 : 0;
-        const bOwn = (isPublicTbl || isReqTbl) && isCurrentUserStaff(state.staff[bSi]) ? -1 : 0;
-        return aOwn - bOwn || aSi - bSi;
+        const aKey = sortKeys.get(a), bKey = sortKeys.get(b);
+        return aKey.own - bKey.own || aKey.si - bKey.si;
       });
-      allRows.forEach(tr => staffTbody.appendChild(tr));
+    }
+    if (allRows.some((tr, idx) => tr !== previousOrder[idx])) {
+      const fragment = document.createDocumentFragment();
+      allRows.forEach(tr => fragment.appendChild(tr));
+      staffTbody.appendChild(fragment);
     }
   });
   if (isMobileLike() && mobileControlsOpen) {

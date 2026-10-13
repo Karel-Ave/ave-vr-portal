@@ -1141,7 +1141,7 @@ function renderSkoleni(data) {
       <div><span class="label">Hotel</span>${esc(z.hotel || '-')}</div>
       <div><span class="label">Školil</span>${esc(trainer)}</div>
       <div><span class="label">Koho školil</span>${esc(z.koho_skolil || '-')}</div>
-      <div class="note"><span class="label">Poznámka</span>${esc(z.poznamka || '-')}</div>
+      <div class="note"><span class="label">Čas školení</span>${esc(z.poznamka || '-')}</div>
     </div>`;
   }).join('')}</div>`;
 }
@@ -1348,6 +1348,7 @@ function updateFormConds() {
   document.getElementById('field-pozn-brani-jine').classList.toggle('hidden',
     !(isBrani && document.getElementById('sel-brani-duvod').value === 'Jiné'));
   document.getElementById('field-poznamka').classList.toggle('hidden', isBrani);
+  document.querySelector('#field-poznamka > label').textContent = isSkoleni ? 'Čas školení' : 'Poznámka';
 }
 function toggleBraniJine() {
   const isJine = document.getElementById('sel-brani-duvod').value === 'Jiné';
