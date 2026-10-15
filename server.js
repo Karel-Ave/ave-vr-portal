@@ -4,6 +4,7 @@ const bcrypt      = require('bcryptjs');
 const path        = require('path');
 const PDFDocument = require('pdfkit');
 const { getPool, init } = require('./db');
+const { registerNikotin } = require('./nikotin');
 
 const app  = express();
 const PORT = process.env.PORT || 8080;
@@ -1046,6 +1047,8 @@ app.delete('/api/admin/logs', requireLogin, requirePermDefault('admin', 'logs_de
   }
 });
 
+registerNikotin(app, { getPool, getUserEffectivePerms });
+
 app.get('/api/my-permissions', requireLogin, async (req, res) => {
   try {
     const db   = getPool();
@@ -1125,6 +1128,7 @@ app.get('/api/my-permissions', requireLogin, async (req, res) => {
         history: isManager,
         history_delete: isAdm
       } },
+      nikotin: { enabled: isAdm, visible: isAdm, buttons: {} },
       admin: { enabled: isAdm, visible: isAdm, buttons: {
         users_add: isAdm,
         users_edit: isAdm,
@@ -1154,6 +1158,8 @@ app.get('/api/my-permissions', requireLogin, async (req, res) => {
       if (isAdm && appKey === 'priplatky') buttons.viewAll = true;
       result[appKey] = { enabled, visible, buttons };
     }
+    // Module permissions can never grant nicotine diary access to another role.
+    if (!isAdm) result.nikotin = { enabled: false, visible: false, buttons: {} };
     result.__defaultApp = userOv.__defaultApp || groupPerms.__defaultApp ||
       (['admin', 'vedoucí', 'recepční', 'pb6'].includes(user.role) ? 'raspis' : null);
     result.requirementsProxy = {
@@ -1887,7 +1893,7 @@ app.post('/api/user-prefs/default-public-hotel', requireLogin, async (req, res) 
 });
 
 app.post('/api/user-prefs/default-views', requireLogin, async (req, res) => {
-  const allowedApps = new Set(['raspis', 'priplatky', 'dovolene', 'blacklist', 'admin']);
+  const allowedApps = new Set(['raspis', 'priplatky', 'dovolene', 'blacklist', 'admin', 'nikotin']);
   const allowedTabs = new Set(['nastaveni', 'tvorba', 'rozpis', 'public', 'denni', 'pozadavky', 'dovolene']);
   const raw = req.body && req.body.default_views && typeof req.body.default_views === 'object'
     ? req.body.default_views
