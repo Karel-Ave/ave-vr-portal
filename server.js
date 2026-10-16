@@ -2832,6 +2832,9 @@ app.get('/api/priplatky/zaznamy', requireLogin, async (req, res) => {
 app.post('/api/priplatky/zaznamy', requireLogin, requirePermDefault('priplatky', 'add', true), async (req, res) => {
   const { den, mesic, rok, mesicDatum, rokDatum, sekce, login, hotel, castka,
           poznamka, internal_note, partner, klient, koho_skolil } = req.body;
+  if (sekce === 'školení' && (typeof poznamka !== 'string' || !poznamka.trim())) {
+    return res.status(400).json({ ok: false, msg: 'Vyplňte čas školení.' });
+  }
   const db = getPool();
   if (!(await canTouchPriplatkyLogin(req, login))) {
     return res.status(403).json({ ok: false, msg: 'Můžete přidat jen vlastní záznam.' });
@@ -2861,6 +2864,9 @@ app.post('/api/priplatky/zaznamy', requireLogin, requirePermDefault('priplatky',
 app.post('/api/priplatky/zaznamy-batch', requireLogin, requirePermDefault('priplatky', 'add', true), async (req, res) => {
   const { den, mesic, rok, mesicDatum, rokDatum, sekce, logins, hotel, castka,
           poznamka, internal_note, partner, klient, koho_skolil } = req.body;
+  if (sekce === 'školení' && (typeof poznamka !== 'string' || !poznamka.trim())) {
+    return res.status(400).json({ ok: false, msg: 'Vyplňte čas školení.' });
+  }
   const cleanLogins = [...new Set((Array.isArray(logins) ? logins : [])
     .map(v => String(v || '').trim())
     .filter(Boolean))];
@@ -2908,6 +2914,9 @@ app.post('/api/priplatky/zaznamy-batch', requireLogin, requirePermDefault('pripl
 app.patch('/api/priplatky/zaznamy/:id', requireLogin, requirePermDefault('priplatky', 'edit', true), async (req, res) => {
   const { den, mesic, rok, mesicDatum, rokDatum, sekce, login, hotel, castka,
           poznamka, internal_note, partner, klient, koho_skolil } = req.body;
+  if (sekce === 'školení' && (typeof poznamka !== 'string' || !poznamka.trim())) {
+    return res.status(400).json({ ok: false, msg: 'Vyplňte čas školení.' });
+  }
   const db = getPool();
   if (!(await canTouchPriplatkyRecord(req, db, req.params.id)) || !(await canTouchPriplatkyLogin(req, login))) {
     return res.status(403).json({ ok: false, msg: 'Nemáte oprávnění upravit tento záznam.' });

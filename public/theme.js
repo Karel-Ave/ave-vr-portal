@@ -280,7 +280,33 @@
     });
   }
 
+  // Save actions can be inserted or renamed after opening an editor.
+  function setupSaveActions() {
+    function updateButton(button) {
+      var label = [button.textContent, button.value, button.title, button.getAttribute('aria-label')].join(' ');
+      var save = /(?:^|[^a-zá-ž])uložit(?:$|[^a-zá-ž])/i.test(label);
+      if (button.classList.contains('ave-save-action') !== save) button.classList.toggle('ave-save-action', save);
+    }
+    function scan(node) {
+      var element = node.nodeType === 1 ? node : node.parentElement;
+      if (!element) return;
+      var button = element.closest('button, input[type="submit"], input[type="button"]');
+      if (button) updateButton(button);
+      element.querySelectorAll('button, input[type="submit"], input[type="button"]').forEach(updateButton);
+    }
+    scan(document.body);
+    new MutationObserver(function (records) {
+      records.forEach(function (record) {
+        var target = record.target.nodeType === 1 ? record.target : record.target.parentElement;
+        var button = target && target.closest('button, input[type="submit"], input[type="button"]');
+        if (button) updateButton(button);
+        record.addedNodes.forEach(scan);
+      });
+    }).observe(document.body, {childList:true, subtree:true, characterData:true, attributes:true, attributeFilter:['title','aria-label','value']});
+  }
+
   function setup() {
+    setupSaveActions();
     var btn = document.getElementById('btn-theme');
     if (btn && !btn.dataset.themeBound) {
       btn.dataset.themeBound = '1';

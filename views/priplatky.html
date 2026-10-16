@@ -1348,7 +1348,8 @@ function updateFormConds() {
   document.getElementById('field-pozn-brani-jine').classList.toggle('hidden',
     !(isBrani && document.getElementById('sel-brani-duvod').value === 'Jiné'));
   document.getElementById('field-poznamka').classList.toggle('hidden', isBrani);
-  document.querySelector('#field-poznamka > label').textContent = isSkoleni ? 'Čas školení' : 'Poznámka';
+  document.querySelector('#field-poznamka > label').textContent = isSkoleni ? 'Čas školení *' : 'Poznámka';
+  document.querySelector('[name="poznamka"]').required = isSkoleni;
 }
 function toggleBraniJine() {
   const isJine = document.getElementById('sel-brani-duvod').value === 'Jiné';
@@ -1368,6 +1369,8 @@ document.getElementById('btn-add').addEventListener('click', () => {
 });
 function resetForm() {
   document.getElementById('zaznam-form').reset();
+  document.querySelector('[name="poznamka"]').required = false;
+  document.querySelector('#field-poznamka > label').textContent = 'Poznámka';
   document.querySelector('#zaznam-form [name=editId]').value = '';
   acReset();
   multiRecenzeReset();
@@ -1407,6 +1410,11 @@ document.getElementById('btn-zaznam-save').addEventListener('click', async () =>
   if (!loginFinal) { alert('Vyplňte recepčního.'); return; }
   const sekce = d.sekce;
   if (!sekce) { alert('Vyberte sekci.'); return; }
+  if (sekce === 'školení' && !String(d.poznamka || '').trim()) {
+    alert('Vyplňte čas školení.');
+    form.querySelector('[name="poznamka"]').focus();
+    return;
+  }
 
   // Datum z nového single date inputu
   const dateParts = (d.datumForm || '').split('-');
