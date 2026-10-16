@@ -11,6 +11,7 @@
 <link rel="icon" type="image/png" href="/static/logo.png">
 <link rel="apple-touch-icon" href="/apple-touch-icon.png">
 <script src="/static/theme.js"></script>
+<script src="/static/requirements-vacations.js"></script>
 <link rel="stylesheet" href="/static/theme.css">
 <script src="https://cdn.sheetjs.com/xlsx-0.20.3/package/dist/xlsx.full.min.js"></script>
 <style>
@@ -1942,7 +1943,7 @@ tbody tr.row-filtered { display: none; }
   padding: 10px 12px; box-shadow: 0 6px 24px rgba(0,0,0,.25);
   min-width: 282px; display: none;
 }
-#regular-picker.show { display: block; }
+#regular-picker.show { display: block; max-height: calc(100dvh - 16px); overflow-y: auto; }
 .rp-title { font-size: 10px; font-weight: 700; text-transform: uppercase;
   letter-spacing: .05em; color: var(--text-muted); margin-bottom: 8px; }
 .rp-table { border-collapse: collapse; font-size: 11px; width: 100%; }
@@ -4234,6 +4235,11 @@ body.hide-req-changes .sched-cell[data-req-tip]:not([data-dup-tip]):hover::after
     <label><span>Do</span><input type="date" id="rp-to"></label>
     <label class="rp-open"><input type="checkbox" id="rp-open"> neurčito</label>
   </div>
+  <div class="rp-range">
+    <strong style="grid-column:1/-1">Výjimka</strong>
+    <label><span>Od</span><input type="date" id="rp-exception-from"></label>
+    <label><span>Do</span><input type="date" id="rp-exception-to"></label>
+  </div>
   <div class="rp-footer">
     <label><input type="checkbox" id="rp-sv"> Svátky</label>
     <label><input type="checkbox" id="rp-hols"> Víkendy</label>
@@ -5017,6 +5023,7 @@ function renderScheduleLegend() {
   items.push(makeLegendItem('z = dovolená'));
   items.push(makeLegendItem('ž = školení'));
 
+  if (activeTab === 'pozadavky' || activeTab === 'public') items.push(makeLegendItem('Nemůže', 'legend-unavail'));
   if (activeTab === 'pozadavky') {
     items.push(makeLegendItem('Duplicitní směna', 'legend-dup'));
   } else if (activeTab === 'public') {
@@ -6108,10 +6115,13 @@ function getRegularDateValueForPicker(staff, field) {
 
 function regularRangeApplies(staff, year, month, day) {
   if (!staff) return true;
-  const from = normalizeRegularDateValue(staff.regularFrom);
-  const to = normalizeRegularDateValue(staff.regularTo);
-  const open = normalizeRegularOpen(staff.regularOpen);
+  const from = normalizeRegularDateValue(getEffectiveForSchedule(staff, 'regularFrom'));
+  const to = normalizeRegularDateValue(getEffectiveForSchedule(staff, 'regularTo'));
+  const open = normalizeRegularOpen(getEffectiveForSchedule(staff, 'regularOpen'));
   const current = String(year) + '-' + String(month).padStart(2, '0') + '-' + String(day).padStart(2, '0');
+  const exceptionFrom = normalizeRegularDateValue(getEffectiveForSchedule(staff, 'regularExceptionFrom'));
+  const exceptionTo = normalizeRegularDateValue(getEffectiveForSchedule(staff, 'regularExceptionTo'));
+  if (exceptionFrom && exceptionTo && current >= exceptionFrom && current <= exceptionTo) return false;
   if (from && current < from) return false;
   if (!open && to && current > to) return false;
   return true;
@@ -6205,11 +6215,9 @@ function regularToString(checks, sv, wk) {
 function applyRegularAndReqClasses(td, si, ci, col, val) {
   const isPublicView = !!td.closest('#public-rozpis-tbl');
   const isRequirementsView = !!td.closest('#pozadavky-tbl');
-  if (isRequirementsView) {
-    td.classList.remove('cell-regular-off', 'cell-unavailable-conflict', 'cell-req-missing', 'cell-req-added', 'cell-req-changed');
-    delete td.dataset.reqTip;
-    return;
-  }
+  if (isRequirementsView && isAutomaticVacationCell(si, ci)) td.title = 'Schválená dovolená – termín se mění v Dovolených';
+  else if (td.title === 'Schválená dovolená – termín se mění v Dovolených') td.removeAttribute('title');
+
   const s = state.staff[si];
   const holidaysList = parseHolidays(state.holidays);
   // Regular off
@@ -6225,10 +6233,10 @@ function applyRegularAndReqClasses(td, si, ci, col, val) {
   const reqMissing = !!(reqVal && !curVal);
   const reqAdded = !!(!reqVal && curVal);
   const reqChanged = !!(reqVal && curVal && reqVal !== curVal);
-  const showReqDiff = isReqDiffVisibleForActiveTab();
+  const showReqDiff = !isRequirementsView && isReqDiffVisibleForActiveTab();
 
-  td.classList.toggle('cell-regular-off', !isPublicView && !isRequirementsView && !!(unavailable && !val));
-  td.classList.toggle('cell-unavailable-conflict', !isPublicView && !isRequirementsView && !!(unavailable && val));
+  td.classList.toggle('cell-regular-off', !!(unavailable && !val));
+  td.classList.toggle('cell-unavailable-conflict', !!(unavailable && val));
   td.classList.toggle('cell-req-missing', reqMissing && showReqDiff);
   td.classList.toggle('cell-req-added', reqAdded && showReqDiff);
   td.classList.toggle('cell-req-changed', reqChanged && showReqDiff);
@@ -6238,9 +6246,9 @@ function applyRegularAndReqClasses(td, si, ci, col, val) {
 }
 
 function clearRequirementsUnavailableClasses(root = document) {
-  root
-    .querySelectorAll('#pozadavky-tbl .cell-regular-off, #pozadavky-tbl .cell-unavailable-conflict')
-    .forEach(td => td.classList.remove('cell-regular-off', 'cell-unavailable-conflict'));
+  // Remove only schedule-difference marks; unavailable days belong in requests too.
+  root.querySelectorAll('#pozadavky-tbl .cell-req-missing, #pozadavky-tbl .cell-req-added, #pozadavky-tbl .cell-req-changed')
+    .forEach(td => td.classList.remove('cell-req-missing', 'cell-req-added', 'cell-req-changed'));
 }
 
 function updateRequirementClasses() {
@@ -7348,6 +7356,7 @@ function validateRequirementCellValue(si, ci, val) {
     toastDisallowedScheduleValue(val);
     return false;
   }
+  if (getActiveScheduleTableId() === 'pozadavky-tbl' && isAutomaticVacationCell(si, ci)) return String(val || '').trim().toLowerCase() === 'z';
   if (getActiveScheduleTableId() !== 'pozadavky-tbl' || canManageRequirements()) return true;
   const raw = String(val || '').trim();
   if (!raw) return true;
@@ -7695,7 +7704,7 @@ function makeScheduleStaffFromSettings(s) {
     maxHrs: s.maxHrs || '',
     regular: s.regular || '',
     regularFrom: s.regularFrom || '',
-    regularTo: s.regularTo || '',
+    regularTo: s.regularTo || '', regularExceptionFrom: s.regularExceptionFrom || '', regularExceptionTo: s.regularExceptionTo || '',
     regularOpen: normalizeRegularOpen(s.regularOpen),
     dates: s.dates || '',
     noteM: s.noteM || '',
@@ -8132,7 +8141,7 @@ function buildSaveData() {
         pcd[s.userId] = {
           maxHrs: s.maxHrs || '', noteM: s.noteM || '', noteP: s.noteP || '',
           x: s.x || '', xa: s.xa || '', dates: s.dates || '', regular: s.regular || '',
-          regularFrom: s.regularFrom || '', regularTo: s.regularTo || '', regularOpen: normalizeRegularOpen(s.regularOpen),
+          regularFrom: s.regularFrom || '', regularTo: s.regularTo || '', regularExceptionFrom: s.regularExceptionFrom || '', regularExceptionTo: s.regularExceptionTo || '', regularOpen: normalizeRegularOpen(s.regularOpen),
           hotel: s.hotel || '', hotelSkills: Array.isArray(s.hotelSkills) ? [...s.hotelSkills] : [],
           hotelSkillModes: cloneHotelSkillModes(s.hotelSkillModes),
           noStandby: !!s.noStandby,
@@ -8143,6 +8152,7 @@ function buildSaveData() {
       });
       return pcd;
     })(),
+    automaticVacations: JSON.parse(JSON.stringify(state.automaticVacations || [])),
     // Aktuální měsíc na root úrovni (zpětná kompatibilita)
     schedule: JSON.parse(JSON.stringify(state.schedule)),
     extras: JSON.parse(JSON.stringify(state.extras)),
@@ -8166,6 +8176,7 @@ function buildSaveData() {
 
 function applyData(data) {
   if (!data) return;
+  state.automaticVacations = JSON.parse(JSON.stringify(data.automaticVacations || []));
 
   state.coverageCounts = data.coverageCounts && typeof data.coverageCounts === 'object' ? data.coverageCounts : null;
 
@@ -8193,6 +8204,8 @@ function applyData(data) {
     s.regular = custom.regular || '';
     s.regularFrom = custom.regularFrom || '';
     s.regularTo = custom.regularTo || '';
+    s.regularExceptionFrom = custom.regularExceptionFrom || '';
+    s.regularExceptionTo = custom.regularExceptionTo || '';
     s.regularOpen = normalizeRegularOpen(custom.regularOpen);
     s.hotel  = custom.hotel  || '';
     s.hotelSkills = Array.isArray(custom.hotelSkills) ? [...custom.hotelSkills] : [];
@@ -8513,7 +8526,7 @@ function addUnmatchedToOstalni(ui) {
     type:     'Speciální',
     login:    '',
     contract: '',
-    maxHrs: '', noteM: '', noteP: '', x: '', xa: '', dates: '', regular: '', regularFrom: '', regularTo: '', regularOpen: false, hotel: '', hotelSkills: [], hotelSkillModes: {}, noStandby: false,
+    maxHrs: '', noteM: '', noteP: '', x: '', xa: '', dates: '', regular: '', regularFrom: '', regularTo: '', regularExceptionFrom: '', regularExceptionTo: '', regularOpen: false, hotel: '', hotelSkills: [], hotelSkillModes: {}, noStandby: false,
     reqXLimit: 7, reqYLimit: 0,
     activeFrom: { month: now.getMonth() + 1, year: now.getFullYear() },
     monthlyOverrides: {}
@@ -8669,7 +8682,7 @@ async function confirmAddWebUser() {
             type: as.type || '', contract: as.contract || '',
             maxHrs: as.maxHrs ?? custom.maxHrs ?? '', noteM: as.noteM ?? custom.noteM ?? '', noteP: as.noteP ?? custom.noteP ?? '',
             x: as.x ?? custom.x ?? '', xa: as.xa ?? custom.xa ?? '', dates: as.dates ?? custom.dates ?? '',
-            regular: as.regular ?? custom.regular ?? '', regularFrom: as.regularFrom ?? custom.regularFrom ?? '', regularTo: as.regularTo ?? custom.regularTo ?? '', regularOpen: normalizeRegularOpen(as.regularOpen ?? custom.regularOpen ?? false), hotel: as.hotel ?? custom.hotel ?? '',
+            regular: as.regular ?? custom.regular ?? '', regularFrom: as.regularFrom ?? custom.regularFrom ?? '', regularTo: as.regularTo ?? custom.regularTo ?? '', regularExceptionFrom: as.regularExceptionFrom ?? custom.regularExceptionFrom ?? '', regularExceptionTo: as.regularExceptionTo ?? custom.regularExceptionTo ?? '', regularOpen: normalizeRegularOpen(as.regularOpen ?? custom.regularOpen ?? false), hotel: as.hotel ?? custom.hotel ?? '',
             hotelSkills: Array.isArray(skills) ? [...skills] : (Array.isArray(custom.hotelSkills) ? [...custom.hotelSkills] : []),
         hotelSkillModes: Object.keys(cloneHotelSkillModes(as.hotelSkillModes)).length ? cloneHotelSkillModes(as.hotelSkillModes) : cloneHotelSkillModes(custom.hotelSkillModes),
             noStandby: !!as.noStandby,
@@ -8694,6 +8707,11 @@ async function confirmAddWebUser() {
               contract: newApiEntry.contract || '',
               maxHrs: newApiEntry.maxHrs ?? custom.maxHrs ?? '', noteM: newApiEntry.noteM ?? custom.noteM ?? '', noteP: newApiEntry.noteP ?? custom.noteP ?? '',
               x: newApiEntry.x ?? custom.x ?? '', xa: newApiEntry.xa ?? custom.xa ?? '', dates: newApiEntry.dates ?? custom.dates ?? '',
+              regularFrom: newApiEntry.regularFrom ?? custom.regularFrom ?? '',
+              regularTo: newApiEntry.regularTo ?? custom.regularTo ?? '',
+              regularOpen: normalizeRegularOpen(newApiEntry.regularOpen ?? custom.regularOpen),
+              regularExceptionFrom: newApiEntry.regularExceptionFrom ?? custom.regularExceptionFrom ?? '',
+              regularExceptionTo: newApiEntry.regularExceptionTo ?? custom.regularExceptionTo ?? '',
               regular: newApiEntry.regular ?? custom.regular ?? '', hotel: newApiEntry.hotel ?? custom.hotel ?? '',
               hotelSkills: Array.isArray(skills) ? [...skills] : (Array.isArray(custom.hotelSkills) ? [...custom.hotelSkills] : []),
               hotelSkillModes: Object.keys(cloneHotelSkillModes(newApiEntry.hotelSkillModes)).length ? cloneHotelSkillModes(newApiEntry.hotelSkillModes) : cloneHotelSkillModes(custom.hotelSkillModes),
@@ -8797,6 +8815,11 @@ async function syncRaspisStaff() {
         xa:       as.xa     ?? custom.xa     ?? '',
         dates:    as.dates  ?? custom.dates  ?? '',
         regular:  as.regular ?? custom.regular ?? '',
+        regularFrom: as.regularFrom ?? custom.regularFrom ?? '',
+        regularTo: as.regularTo ?? custom.regularTo ?? '',
+        regularOpen: normalizeRegularOpen(as.regularOpen ?? custom.regularOpen),
+        regularExceptionFrom: as.regularExceptionFrom ?? custom.regularExceptionFrom ?? '',
+        regularExceptionTo: as.regularExceptionTo ?? custom.regularExceptionTo ?? '',
         hotel:    as.hotel  ?? custom.hotel  ?? '',
         hotelSkills: Array.isArray(skills) ? [...skills] : (Array.isArray(custom.hotelSkills) ? [...custom.hotelSkills] : []),
         hotelSkillModes: Object.keys(cloneHotelSkillModes(as.hotelSkillModes)).length ? cloneHotelSkillModes(as.hotelSkillModes) : cloneHotelSkillModes(custom.hotelSkillModes),
@@ -9735,7 +9758,7 @@ function updateRequirementsStatus(entry) {
   if (act) act.classList.toggle('req-has-entry', manager);
   if (createBtn) createBtn.style.display = (manager && !reqPreviewMode) ? '' : 'none';
   if (toggleBtn) toggleBtn.style.display = (manager && entry && !reqPreviewMode) ? '' : 'none';
-  if (loadVacBtn) loadVacBtn.style.display = (rtCan('req_load_vacations', manager) && entry && !reqPreviewMode) ? '' : 'none';
+  if (loadVacBtn) loadVacBtn.style.display = 'none';
   if (sendBtn) sendBtn.style.display = (manager && entry && !reqPreviewMode) ? '' : 'none';
   if (deleteBtn) deleteBtn.style.display = (manager && entry && !reqPreviewMode) ? '' : 'none';
   if (lastSentBtn) lastSentBtn.style.display = rtCan('req_view_sent', manager) ? '' : 'none';
@@ -9869,6 +9892,7 @@ async function loadRequirementsList(preferredKey = currentReqKey, shouldLoad = t
 }
 
 async function loadRequirement(key) {
+  reqVacationEpoch++;
   if (!key) return;
   reqPreviewMode = false;
   const spinner = document.getElementById('requests-spinner');
@@ -10257,6 +10281,65 @@ function syncScheduleInputsToState(tableId = getActiveScheduleTableId()) {
   return ok;
 }
 
+let reqVacationEpoch = 0;
+let reqVacationRefreshPending = false;
+let reqVacationSavePending = false;
+
+function isAutomaticVacationCell(si, ci) {
+  const key = si + '_' + ci;
+  return (state.automaticVacations || []).some(record => window.AveRequirementVacations.cellKey(state, record) === key);
+}
+
+async function refreshAutomaticRequirementVacations() {
+  if (reqVacationRefreshPending || reqVacationSavePending || reqPreviewMode || !currentReqKey || activeScheduleSource !== 'requirements') return;
+  const key = currentReqKey;
+  const epoch = reqVacationEpoch;
+  const targetState = state.schedule;
+  reqVacationRefreshPending = true;
+  try {
+    const response = await fetch('/api/rt/requirements/' + encodeURIComponent(key), {credentials:'include', cache:'no-store'});
+    const result = await response.json();
+    if (!response.ok || !result.ok || result.hidden || result.entry?.archived_at || !result.entry?.data || key !== currentReqKey || epoch !== reqVacationEpoch || state.schedule !== targetState || reqPreviewMode || activeScheduleSource !== 'requirements' || reqVacationSavePending) return;
+    const incoming = result.entry.data;
+    if (Number(incoming.month) !== Number(state.month) || Number(incoming.year) !== Number(state.year)) return;
+    if (JSON.stringify(state.automaticVacations || []) === JSON.stringify(incoming.automaticVacations || [])) return;
+    const helper = window.AveRequirementVacations;
+    const changed = new Set();
+    for (const record of state.automaticVacations || []) {
+      const cell = helper.cellKey(state, record);
+      if (cell && String(state.schedule[cell] || '').toLowerCase() === 'z') {
+        if (record.value) state.schedule[cell] = record.value;
+        else delete state.schedule[cell];
+        changed.add(cell);
+      }
+    }
+    state.automaticVacations = [];
+    for (const record of incoming.automaticVacations || []) {
+      const cell = helper.cellKey(state, record);
+      if (!cell) continue;
+      state.automaticVacations.push({...record, value:state.schedule[cell] || ''});
+      state.schedule[cell] = 'z';
+      changed.add(cell);
+    }
+    const monthKey = state.year + '-' + state.month;
+    state.monthlyData[monthKey] = {...(state.monthlyData[monthKey] || {}), schedule:{...state.schedule}};
+    // Patch only vacation cells, preserving pending edits, focus and the row order.
+    const rows = new Set();
+    for (const cell of changed) {
+      const [si, ci] = cell.split('_').map(Number);
+      rows.add(si);
+      const td = document.querySelector('#pozadavky-tbl .sched-cell[data-si="' + si + '"][data-ci="' + ci + '"]');
+      const input = td?.querySelector('input');
+      const span = td?.querySelector('.cell-val');
+      if (input) input.value = state.schedule[cell] || '';
+      if (span) span.textContent = state.schedule[cell] || '';
+    }
+    rows.forEach(si => updateSumRow(si));
+    updateRequirementClasses(); updateCoverageRows(); updateDuplicateClasses();
+  } catch (error) { console.warn('Obnovení dovolených v požadavcích:', error); }
+  finally { reqVacationRefreshPending = false; }
+}
+
 async function saveCurrentRequirementData(options = {}) {
   if (!currentReqKey) return;
   clearTimeout(reqSaveTimer);
@@ -10274,6 +10357,8 @@ async function saveCurrentRequirementData(options = {}) {
   const data = buildSaveData();
   const staffIndex = getCurrentRequirementStaffIndexForSave();
   const payload = { key: currentReqKey, data, confirmDuplicates };
+  reqVacationSavePending = true;
+  reqVacationEpoch++;
   if (staffIndex !== null) payload.staffIndex = staffIndex;
   try {
     const r = await fetch('/api/rt/requirements/save', {
@@ -10301,7 +10386,7 @@ async function saveCurrentRequirementData(options = {}) {
   } catch(e) {
     if (!silent) toast('Chyba ukládání požadavků', true);
     return false;
-  }
+  } finally { reqVacationSavePending = false; }
 }
 
 function openRequirementsHolidays() {
@@ -10321,6 +10406,7 @@ function cancelRequirementsEdit() {
   updateRequirementClasses();
   applyRowFilters();
   toast('Editace zrušena');
+  refreshAutomaticRequirementVacations();
 }
 
 async function toggleRequirementsEditWindow() {
@@ -11845,7 +11931,7 @@ function pasteScheduleTextIntoTvorba(text, startSi = null, startCi = 0) {
               dates: '',
               regular: '',
               regularFrom: '',
-              regularTo: '',
+              regularTo: '', regularExceptionFrom: '', regularExceptionTo: '',
               regularOpen: false,
               hotel: '',
               monthlyOverrides: {},
@@ -11970,7 +12056,7 @@ function pasteScheduleTextIntoTvorba(text, startSi = null, startCi = 0) {
               dates: '',
               regular: '',
               regularFrom: '',
-              regularTo: '',
+              regularTo: '', regularExceptionFrom: '', regularExceptionTo: '',
               regularOpen: false,
               hotel: '',
               monthlyOverrides: {},
@@ -12117,7 +12203,7 @@ async function pasteRequirementsFromExcel() {
               dates: '',
               regular: '',
               regularFrom: '',
-              regularTo: '',
+              regularTo: '', regularExceptionFrom: '', regularExceptionTo: '',
               regularOpen: false,
               hotel: '',
               monthlyOverrides: {},
@@ -12449,7 +12535,7 @@ async function pasteScheduleFromExcel() {
                 dates: '',
                 regular: '',
               regularFrom: '',
-              regularTo: '',
+              regularTo: '', regularExceptionFrom: '', regularExceptionTo: '',
               regularOpen: false,
               hotel: '',
                 monthlyOverrides: {},
@@ -12652,6 +12738,8 @@ function openRegularPicker(si, labelEl, triggerEl, staffObj = null) {
     const dn = chk.dataset.dn;
     chk.checked = parsed.has(`${dow}-${dn}`);
   });
+  document.getElementById('rp-exception-from').value = normalizeRegularDateValue(getEffective(s, 'regularExceptionFrom').val);
+  document.getElementById('rp-exception-to').value = normalizeRegularDateValue(getEffective(s, 'regularExceptionTo').val);
   document.getElementById('rp-sv').checked = parsed.has('sv');
   document.getElementById('rp-hols').checked = parsed.has('wk');
   const fromEl = document.getElementById('rp-from');
@@ -12673,6 +12761,8 @@ function openRegularPicker(si, labelEl, triggerEl, staffObj = null) {
   picker.style.top = (rect.bottom + 4) + 'px';
   picker.style.left = Math.min(rect.left, window.innerWidth - 250) + 'px';
   picker.classList.add('show');
+  picker.style.top = Math.max(8, Math.min(rect.bottom + 4, window.innerHeight - picker.offsetHeight - 8)) + 'px';
+  picker.style.left = Math.max(8, Math.min(rect.left, window.innerWidth - picker.offsetWidth - 8)) + 'px';
 
   // Close on outside click
   setTimeout(() => {
@@ -12708,6 +12798,8 @@ function resetRegularPickerToDefault() {
     toEl.disabled = false;
   }
   if (openEl) openEl.checked = false;
+  document.getElementById('rp-exception-from').value = '';
+  document.getElementById('rp-exception-to').value = '';
 }
 
 function applyRegularPicker() {
@@ -12716,9 +12808,17 @@ function applyRegularPicker() {
   const checks = Array.from(picker.querySelectorAll('input[data-dow]'));
   const sv = document.getElementById('rp-sv').checked;
   const wk = document.getElementById('rp-hols').checked;
+  const exceptionFrom = document.getElementById('rp-exception-from').value;
+  const exceptionTo = document.getElementById('rp-exception-to').value;
+  if ((exceptionFrom && !exceptionTo) || (!exceptionFrom && exceptionTo) || (exceptionFrom && exceptionTo < exceptionFrom)) {
+    alert('U výjimky vyplňte Od i Do. Konec nesmí být před začátkem.');
+    return;
+  }
   const val = regularToString(checks, sv, wk);
   const staff = _rpStaff || state.staff[_rpSi];
   setFieldValue(staff, 'regular', val);
+  setFieldValue(staff, 'regularExceptionFrom', exceptionFrom);
+  setFieldValue(staff, 'regularExceptionTo', exceptionTo);
   const fromEl = document.getElementById('rp-from');
   const toEl = document.getElementById('rp-to');
   const openEl = document.getElementById('rp-open');
@@ -13433,7 +13533,7 @@ function getEffectiveForSchedule(s, field) {
   return s[field] || '';
 }
 
-const SETTINGS_SYNC_FIELDS = ['maxHrs','noteM','noteP','x','xa','dates','regular','regularFrom','regularTo','regularOpen','hotel','hotelSkills','noStandby','reqXLimit','reqYLimit','monthlyOverrides'];
+const SETTINGS_SYNC_FIELDS = ['maxHrs','noteM','noteP','x','xa','dates','regular','regularFrom','regularTo','regularExceptionFrom','regularExceptionTo','regularOpen','hotel','hotelSkills','noStandby','reqXLimit','reqYLimit','monthlyOverrides'];
 
 function copySettingsFields(source, target) {
   if (!source || !target) return;
@@ -13469,7 +13569,7 @@ function syncPortalCustomDataFrom(source) {
     dates: source.dates || '',
     regular: source.regular || '',
     regularFrom: source.regularFrom || '',
-    regularTo: source.regularTo || '',
+    regularTo: source.regularTo || '', regularExceptionFrom: source.regularExceptionFrom || '', regularExceptionTo: source.regularExceptionTo || '',
     regularOpen: normalizeRegularOpen(source.regularOpen),
     hotel: source.hotel || '',
     hotelSkills: Array.isArray(source.hotelSkills) ? [...source.hotelSkills] : [],
@@ -13495,7 +13595,7 @@ function portalStaffSettingsPayload(s) {
     dates: custom.dates ?? '',
     regular: custom.regular ?? '',
     regularFrom: custom.regularFrom ?? '',
-    regularTo: custom.regularTo ?? '',
+    regularTo: custom.regularTo ?? '', regularExceptionFrom: custom.regularExceptionFrom || '', regularExceptionTo: custom.regularExceptionTo || '',
     regularOpen: normalizeRegularOpen(custom.regularOpen),
     hotel: custom.hotel ?? '',
     monthlyOverrides: custom.monthlyOverrides ? JSON.parse(JSON.stringify(custom.monthlyOverrides)) : {}
@@ -13504,7 +13604,7 @@ function portalStaffSettingsPayload(s) {
 
 function hasPortalStaffSettingsValue(data) {
   if (!data || typeof data !== 'object') return false;
-  return ['maxHrs','noteM','noteP','x','xa','dates','regular','regularFrom','regularTo','hotel'].some(k => String(data[k] || '').trim()) || normalizeRegularOpen(data.regularOpen)
+  return ['maxHrs','noteM','noteP','x','xa','dates','regular','regularFrom','regularTo','regularExceptionFrom','regularExceptionTo','hotel'].some(k => String(data[k] || '').trim()) || normalizeRegularOpen(data.regularOpen)
     || (data.monthlyOverrides && Object.keys(data.monthlyOverrides).length > 0);
 }
 
@@ -14236,7 +14336,7 @@ function handleXlsImport(e) {
             type: '',
             login: '',
             contract: '',
-            maxHrs: '', noteM: '', noteP: '', x: '', xa: '', dates: '', regular: '', regularFrom: '', regularTo: '', regularOpen: false, hotel: '', hotelSkills: [], hotelSkillModes: {}, noStandby: false,
+            maxHrs: '', noteM: '', noteP: '', x: '', xa: '', dates: '', regular: '', regularFrom: '', regularTo: '', regularExceptionFrom: '', regularExceptionTo: '', regularOpen: false, hotel: '', hotelSkills: [], hotelSkillModes: {}, noStandby: false,
             reqXLimit: 7, reqYLimit: 0,
             monthlyOverrides: {},
             unmatchedXls: true
@@ -14712,6 +14812,7 @@ function switchTab(name) {
       applyRowFilters();
       refreshCoverageSticky();
     }
+    if (!window._initRendering) refreshAutomaticRequirementVacations();
   } else if (name === 'dovolene') {
     rtMarkVacationSeen();
     if (!window._initRendering) {
@@ -14731,7 +14832,7 @@ function switchTab(name) {
 ══════════════════════════════════════════════════════════════════════════════ */
 
 window.addEventListener('message', e => {
-  if (e.data && e.data.type === 'vacations-changed') { rtRefreshVacationBadge(); rtRefreshNotifications(); setTimeout(rtRefreshVacationBadge, 700); setTimeout(rtRefreshNotifications, 900); return; }
+  if (e.origin === location.origin && e.data && e.data.type === 'vacations-changed') { refreshAutomaticRequirementVacations(); rtRefreshVacationBadge(); rtRefreshNotifications(); setTimeout(rtRefreshVacationBadge, 700); setTimeout(rtRefreshNotifications, 900); return; }
   if (e.data && e.data.type === 'ave-notification-seen' && e.data.notificationType === 'vacations') {
     if (rtVacationSummary) rtVacationSummary.unseen = false;
     rtClearVacationBadge();
@@ -14793,6 +14894,9 @@ document.addEventListener('DOMContentLoaded', async () => {
   setTimeout(rtRefreshVacationBadge, 1500);
   setTimeout(rtRefreshNotifications, 1800);
   setInterval(rtRefreshVacationBadge, 60000);
+  setInterval(() => { if (!document.hidden && document.body.dataset.activeTab === 'pozadavky') refreshAutomaticRequirementVacations(); }, 30000);
+  window.addEventListener('focus', refreshAutomaticRequirementVacations);
+  document.addEventListener('visibilitychange', () => { if (!document.hidden) refreshAutomaticRequirementVacations(); });
   setInterval(rtRefreshNotifications, 60000);
   await loadUserPrefs();
 

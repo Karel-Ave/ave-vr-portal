@@ -5,6 +5,7 @@ const path        = require('path');
 const PDFDocument = require('pdfkit');
 const { getPool, init } = require('./db');
 const { registerNikotin } = require('./nikotin');
+const { projectVacations, prepareVacationSave, findStaffIndex: findVacationStaffIndex } = require('./public/requirements-vacations');
 
 const app  = express();
 const PORT = process.env.PORT || 8080;
@@ -4687,13 +4688,16 @@ app.patch('/api/vacations/:id', requireLogin, async (req, res) => {
 });
 
 app.post('/api/vacations/:id/status', requireLogin, async (req, res) => {
+  let transactionDb;
+  let committed = false;
   try {
     if (!await canManageVacationsServer(req.session.user)) return res.status(403).json({ ok: false, msg: 'Nemate opravneni.' });
     const status = String(req.body?.status || '').trim();
     if (!['pending', 'approved', 'rejected', 'needs_info'].includes(status)) return res.status(400).json({ ok: false, msg: 'Neplatny status.' });
-    const db = getPool();
+    const db = transactionDb = await getPool().connect();
+    await db.query('BEGIN');
     const user = req.session.user;
-    const { rows: currentRows } = await db.query('SELECT * FROM vacation_requests WHERE id=$1', [req.params.id]);
+    const { rows: currentRows } = await db.query('SELECT * FROM vacation_requests WHERE id=$1 FOR UPDATE', [req.params.id]);
     if (!currentRows.length) return res.status(404).json({ ok: false, msg: 'Zadost nenalezena.' });
     const current = vacationParseRow(currentRows[0]);
     const comment = String(req.body?.manager_comment || '').trim();
@@ -4736,8 +4740,12 @@ app.post('/api/vacations/:id/status', requireLogin, async (req, res) => {
     }
     await db.query(`DELETE FROM vacation_movements WHERE source_key LIKE $1`, [vacationRequestSourceKey(item.id, '') + '%']);
     if (status === 'approved') await vacationSyncApprovedRequestMovements(db, item, user);
+    await rtSyncApprovedVacationRequirements(db, item.month, item.year);
+    await db.query('COMMIT');
+    committed = true;
     res.json({ ok: true, item, synced });
   } catch (err) { console.error('Chyba POST /api/vacations/:id/status:', err); res.status(500).json({ ok: false, msg: 'Chyba serveru.' }); }
+  finally { if (transactionDb) { if (!committed) await transactionDb.query('ROLLBACK').catch(() => {}); transactionDb.release(); } }
 });
 
 app.delete('/api/vacations/:id', requireLogin, async (req, res) => {
@@ -6271,7 +6279,7 @@ function rtHotelSkillModes(source = {}) {
 }
 
 const RT_STAFF_SETTINGS_FIELDS = [
-  'maxHrs', 'noteM', 'noteP', 'x', 'xa', 'dates', 'regular', 'regularFrom', 'regularTo', 'regularOpen', 'hotel',
+  'maxHrs', 'noteM', 'noteP', 'x', 'xa', 'dates', 'regular', 'regularFrom', 'regularTo', 'regularExceptionFrom', 'regularExceptionTo', 'regularOpen', 'hotel',
   'hotelSkills', 'hotelSkillModes', 'noStandby', 'reqXLimit', 'reqYLimit', 'monthlyOverrides'
 ];
 
@@ -6321,6 +6329,8 @@ function applyRtStaffSettings(target, settings) {
   target.regular = settings.regular || '';
   target.regularFrom = settings.regularFrom || '';
   target.regularTo = settings.regularTo || '';
+  target.regularExceptionFrom = settings.regularExceptionFrom || '';
+  target.regularExceptionTo = settings.regularExceptionTo || '';
   target.regularOpen = !!settings.regularOpen;
   target.hotel = settings.hotel || '';
   target.monthlyOverrides = settings.monthlyOverrides && typeof settings.monthlyOverrides === 'object'
@@ -6550,6 +6560,8 @@ async function loadRtSpecialStaffForUser(db, userId) {
     regular: s.regular || '',
     regularFrom: s.regularFrom || '',
     regularTo: s.regularTo || '',
+    regularExceptionFrom: s.regularExceptionFrom || '',
+    regularExceptionTo: s.regularExceptionTo || '',
     regularOpen: !!s.regularOpen,
     dates: s.dates || '',
     noteM: s.noteM || '',
@@ -6577,6 +6589,8 @@ function normalizeRtSpecialStaffList(parsed) {
     regular: s.regular || '',
     regularFrom: s.regularFrom || '',
     regularTo: s.regularTo || '',
+    regularExceptionFrom: s.regularExceptionFrom || '',
+    regularExceptionTo: s.regularExceptionTo || '',
     regularOpen: !!s.regularOpen,
     dates: s.dates || '',
     noteM: s.noteM || '',
@@ -6823,18 +6837,20 @@ async function augmentRtDataWithActiveReceptionists(data, db = getPool()) {
         regular: s.regular,
         regularFrom: s.regularFrom,
         regularTo: s.regularTo,
+        regularExceptionFrom: s.regularExceptionFrom || '',
+        regularExceptionTo: s.regularExceptionTo || '',
         regularOpen: s.regularOpen,
         hotel: s.hotel,
         monthlyOverrides: s.monthlyOverrides
       });
     }
-    const idKey = s.userId ? String(s.userId) : '';
     const nameKey = rtNormalizeStaffName(s.name);
-    const existingIdx = data.staff.findIndex(row => {
-      if (!row) return false;
-      if (idKey && row.userId && String(row.userId) === idKey) return true;
-      return nameKey && rtNormalizeStaffName(row.name) === nameKey;
-    });
+    let existingIdx = findVacationStaffIndex(data.staff, s);
+    if (existingIdx < 0 && nameKey) {
+      const legacyMatches = data.staff.map((row, index) => ({row, index}))
+        .filter(({row}) => row && !row.userId && !row.login && !row.username && rtNormalizeStaffName(row.name) === nameKey);
+      if (legacyMatches.length === 1) existingIdx = legacyMatches[0].index;
+    }
     if (existingIdx >= 0) {
       const current = data.staff[existingIdx] || {};
       const refreshed = {
@@ -6853,6 +6869,8 @@ async function augmentRtDataWithActiveReceptionists(data, db = getPool()) {
         regular: s.regular || '',
         regularFrom: s.regularFrom || '',
         regularTo: s.regularTo || '',
+        regularExceptionFrom: s.regularExceptionFrom || '',
+        regularExceptionTo: s.regularExceptionTo || '',
         regularOpen: !!s.regularOpen,
         hotel: s.hotel || '',
         hotelSkills: Array.isArray(s.hotelSkills) ? s.hotelSkills : (Array.isArray(current.hotelSkills) ? current.hotelSkills : []),
@@ -7392,6 +7410,7 @@ function validateRequirementStaffRowValues(currentData, incomingSchedule, si, so
     const up = val.toUpperCase();
     if (up === 'X') { xCount += 1; continue; }
     if (up === 'Y') { yCount += 1; continue; }
+    if (up === 'Z' && String(currentData.schedule?.[si + '_' + key.split('_')[1]] || '').trim().toUpperCase() === 'Z') continue;
     if (up === 'Z' || up === 'Ž') return 'Nemáte oprávnění psát z ani ž.';
     if (/^[A-Z]$/.test(up)) {
       if (hotelLetters.size && !hotelLetters.has(up)) return `Hotel ${up} není v požadavcích povolený.`;
@@ -7416,8 +7435,11 @@ function mergeRequirementStaffRow(currentData, incomingData, user, requestedStaf
   const allowed = allowedStaffIndexes instanceof Set
     ? allowedStaffIndexes
     : (Array.isArray(allowedStaffIndexes) ? new Set(allowedStaffIndexes) : null);
-  const si = requestedStaffIndex !== null ? requestedStaffIndex : ownSi;
-  let sourceSi = si;
+  const requestedRow = requestedStaffIndex !== null ? incoming.staff?.[requestedStaffIndex] : null;
+  const si = requestedRow && (requestedRow.userId || requestedRow.login)
+    ? findVacationStaffIndex(staff, requestedRow)
+    : (requestedStaffIndex !== null ? requestedStaffIndex : ownSi);
+  let sourceSi = staff[si] && (staff[si].userId || staff[si].login) ? findVacationStaffIndex(incoming.staff, staff[si]) : si;
   if (si < 0) return { error: 'V požadavcích nemám přiřazený váš řádek.' };
   if (!staff[si] || sourceSi < 0 || (allowed && !allowed.has(si))) {
     return { error: 'Tento radek pozadavku nemuzete ulozit.' };
@@ -7430,10 +7452,7 @@ function mergeRequirementStaffRow(currentData, incomingData, user, requestedStaf
   const incomingSchedule = incoming.schedule && typeof incoming.schedule === 'object' ? incoming.schedule : {};
   const prefix = `${si}_`;
   let sourcePrefix = `${sourceSi}_`;
-  if (sourceSi !== si && !Object.keys(incomingSchedule).some(key => key.startsWith(sourcePrefix))) {
-    sourceSi = si;
-    sourcePrefix = prefix;
-  }
+
   const validationError = validateRequirementStaffRowValues(merged, incomingSchedule, si, sourceSi);
   if (validationError) return { error: validationError };
   for (const [key, val] of Object.entries(incomingSchedule)) {
@@ -7504,7 +7523,10 @@ function mergeRequirementStaffRows(currentData, incomingData, user, staffIndexes
   let mergedData = currentData;
   const allowed = new Set(indexes);
   for (const si of indexes) {
-    const merged = mergeRequirementStaffRow(mergedData, incomingData, user, si, liveStaff, allowed);
+    const row = mergedData.staff?.[si];
+    const sourceIndex = row && (row.userId || row.login) ? findVacationStaffIndex(incomingData.staff, row) : si;
+    if (sourceIndex < 0) return { error: 'Řádek recepčního se nepodařilo jednoznačně přiřadit.' };
+    const merged = mergeRequirementStaffRow(mergedData, incomingData, user, sourceIndex, liveStaff, allowed);
     if (merged.error) return merged;
     mergedData = merged.data;
   }
@@ -7785,6 +7807,23 @@ app.post('/api/rt/requirements/import-vacations', requireLogin, async (req, res)
   }
 });
 
+async function rtApplyApprovedVacations(data, db) {
+  const { rows } = await db.query("SELECT * FROM vacation_requests WHERE status = 'approved' AND month = $1 AND year = $2", [data.month, data.year]);
+  return projectVacations(data, rows);
+}
+
+async function rtSyncApprovedVacationRequirements(db, month, year) {
+  const { rows } = await db.query('SELECT key, data FROM rt_requirements WHERE month = $1 AND year = $2 AND archived_at IS NULL FOR UPDATE', [month, year]);
+  for (const entry of rows) {
+    const data = typeof entry.data === 'string' ? JSON.parse(entry.data) : entry.data;
+    if (!data || typeof data !== 'object') throw new Error('Neplatná data požadavků.');
+    data.month = Number(month); data.year = Number(year);
+    const before = JSON.stringify(data);
+    await rtApplyApprovedVacations(data, db);
+    if (before !== JSON.stringify(data)) await db.query('UPDATE rt_requirements SET data = $2, updated_at = NOW() WHERE key = $1', [entry.key, JSON.stringify(data)]);
+  }
+}
+
 app.get('/api/rt/requirements/:key', requireLogin, async (req, res) => {
   const key = decodeURIComponent(req.params.key);
   try {
@@ -7812,6 +7851,7 @@ app.get('/api/rt/requirements/:key', requireLogin, async (req, res) => {
     try { parsed = typeof entry.data === 'string' ? JSON.parse(entry.data) : entry.data; } catch(e) { parsed = {}; }
     parsed = await augmentRtDataWithActiveReceptionists(parsed, db);
     parsed = await augmentRtDataWithSpecialStaff(parsed, req.session.user.id, db);
+    if (!entry.archived_at) await rtApplyApprovedVacations(parsed, db);
     res.json({ ok: true, entry: { ...entry, data: parsed } });
   } catch (err) {
     console.error('GET /api/rt/requirements/:key:', err);
@@ -7845,6 +7885,7 @@ app.post('/api/rt/requirements/create', requireLogin, requirePermDefault('raspis
     const sourceData = typeof raw === 'string' ? JSON.parse(raw) : (raw || {});
     let data = await augmentRtDataWithActiveReceptionists(buildInitialRequirementsData(sourceData, month, year, reqSettings), db);
     data = await augmentRtDataWithSpecialStaff(data, req.session.user.id, db);
+    await rtApplyApprovedVacations(data, db);
     const label = reqLabel(month, year);
     await db.query(
       `INSERT INTO rt_requirements (key, month, year, label, data, status, allow_duplicates, xy_locks, created_by, updated_by)
@@ -7988,13 +8029,16 @@ app.post('/api/rt/requirements/send-to-tvorba', requireLogin, requirePermDefault
     data.year = data.year || year;
     data = await augmentRtDataWithActiveReceptionists(data, db);
     data = await augmentRtDataWithSpecialStaff(data, req.session.user.id, db);
+    await rtApplyApprovedVacations(data, db);
     const autoFillSummary = rtAutoFillMonthlySchedule(data, prevData, req.body.autoFill || {});
+    await rtApplyApprovedVacations(data, db);
     const mKey = `${year}-${month}`;
     const draftData = JSON.parse(JSON.stringify(data || {}));
     draftData.month = month;
     draftData.year = year;
     draftData.schedule = draftData.schedule && typeof draftData.schedule === 'object' ? draftData.schedule : {};
     draftData.extras = draftData.extras && typeof draftData.extras === 'object' ? draftData.extras : {};
+    delete draftData.automaticVacations;
     draftData.requirements = JSON.parse(JSON.stringify(draftData.schedule));
     draftData.monthlyData = draftData.monthlyData && typeof draftData.monthlyData === 'object' ? draftData.monthlyData : {};
     const monthData = draftData.monthlyData[mKey] && typeof draftData.monthlyData[mKey] === 'object'
@@ -8026,10 +8070,11 @@ app.post('/api/rt/requirements/send-to-tvorba', requireLogin, requirePermDefault
            sent_to_tvorba_at = NOW(),
            archived_at = NOW(),
            archived_by = $2,
+           data = $3,
            updated_at = NOW(),
            updated_by = $2
        WHERE key = $1`,
-      [key, req.session.user.name]
+      [key, req.session.user.name, JSON.stringify(data)]
     );
     await db.query(
       `INSERT INTO rt_requirements_log (req_key, user_id, user_name, action, details)
@@ -8058,7 +8103,7 @@ app.post('/api/rt/requirements/save', requireLogin, async (req, res) => {
       await client.query('ROLLBACK');
       return res.json(payload);
     };
-    const existing = await client.query('SELECT status, data, allow_duplicates FROM rt_requirements WHERE key = $1 AND archived_at IS NULL FOR UPDATE', [key]);
+    const existing = await client.query('SELECT status, data, allow_duplicates, month, year FROM rt_requirements WHERE key = $1 AND archived_at IS NULL FOR UPDATE', [key]);
     if (!existing.rows.length) {
       return rollbackJson({ ok: false, msg: 'Nenalezeno.' });
     }
@@ -8066,6 +8111,11 @@ app.post('/api/rt/requirements/save', requireLogin, async (req, res) => {
     let currentData = typeof raw === 'string' ? JSON.parse(raw) : (raw || {});
     currentData = await augmentRtDataWithActiveReceptionists(currentData, client);
     currentData = await augmentRtDataWithSpecialStaff(currentData, req.session.user.id, client);
+    if (Number(data.month) !== Number(existing.rows[0].month) || Number(data.year) !== Number(existing.rows[0].year)) return rollbackJson({ ok: false, msg: 'Měsíc požadavků se neshoduje.' });
+    const { rows: approvedVacations } = await client.query("SELECT * FROM vacation_requests WHERE status = 'approved' AND month = $1 AND year = $2", [data.month, data.year]);
+    projectVacations(currentData, approvedVacations);
+    prepareVacationSave(data, currentData);
+    projectVacations(data, approvedVacations, currentData);
     let saveData = data;
     let logScope = 'full-data';
     let staffIndex = null;
@@ -8097,6 +8147,7 @@ app.post('/api/rt/requirements/save', requireLogin, async (req, res) => {
       }
       logScope = 'own-row';
     }
+    projectVacations(saveData, approvedVacations);
     saveData = updateRequirementMeta(currentData, saveData, req.session.user, staffScope);
     const { rowCount } = await client.query(
       `UPDATE rt_requirements
