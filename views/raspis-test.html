@@ -11,6 +11,7 @@
 <link rel="icon" type="image/png" href="/static/logo.png">
 <link rel="apple-touch-icon" href="/apple-touch-icon.png">
 <script src="/static/theme.js"></script>
+<script src="/static/requirement-xy-locks.js"></script>
 <script src="/static/requirements-vacations.js"></script>
 <link rel="stylesheet" href="/static/theme.css">
 <script src="https://cdn.sheetjs.com/xlsx-0.20.3/package/dist/xlsx.full.min.js"></script>
@@ -3405,7 +3406,8 @@ body.hide-req-changes .sched-cell[data-req-tip]:not([data-dup-tip]):hover::after
         </div>
         <div class="field field-wide">
           <label>Zákaz x/y pro recepční</label>
-          <textarea id="req-create-xy-locks" placeholder="např. 3d, 3n, 12d nebo 5-7 n"></textarea>
+          <textarea id="req-create-xy-locks" placeholder="např. 10n, 24d, 24n, 31d, 31n, 1.1.2027d" aria-describedby="req-create-xy-help"></textarea>
+          <small id="req-create-xy-help">d = denní, n = noční. Číslo dne platí pro vybraný měsíc. Pro 1. leden v prosincových požadavcích napište celé datum, např. 1.1.2027d.</small>
         </div>
         <div class="field field-wide">
           <label>Duplicitní směny</label>
@@ -9654,27 +9656,11 @@ function canEditCellInTable(si, tableId) {
 }
 
 function parseRequirementXyLocks(raw) {
-  const text = String(raw || '').trim();
-  const cells = new Set();
-  const addRange = (from, to, dn) => {
-    const a = Math.max(1, Math.min(31, parseInt(from, 10)));
-    const b = Math.max(1, Math.min(31, parseInt(to || from, 10)));
-    for (let day = Math.min(a, b); day <= Math.max(a, b); day++) cells.add(`${day}-${dn}`);
-  };
-  text.split(/[,;\n]+/).map(p => p.trim().toLowerCase()).filter(Boolean).forEach(part => {
-    let m = part.match(/^(\d{1,2})(?:\s*[-–]\s*(\d{1,2}))?\s*[-\s]?(d|n)$/);
-    if (m) { addRange(m[1], m[2], m[3]); return; }
-    m = part.match(/^(d|n)\s*(\d{1,2})(?:\s*[-–]\s*(\d{1,2}))?$/);
-    if (m) addRange(m[2], m[3], m[1]);
-  });
-  return { raw: text, cells: Array.from(cells) };
+  return window.AveRequirementXyLocks.parse(raw);
 }
 
 function isRequirementXyLocked(ci) {
-  const col = getCalCols(state.month, state.year)[ci];
-  if (!col) return false;
-  const cells = Array.isArray(state.reqXyLocks?.cells) ? state.reqXyLocks.cells : [];
-  return cells.includes(`${col.day}-${col.dn}`);
+  return window.AveRequirementXyLocks.isLocked(state.reqXyLocks, state.month, state.year, ci);
 }
 
 function formatReqMeta(meta) {
@@ -10010,7 +9996,14 @@ async function createRequirementsMonth() {
   const fondHpp = document.getElementById('req-create-fond-hpp')?.value.trim() || '';
   const fondZpp = document.getElementById('req-create-fond-zpp')?.value.trim() || '';
   const holidays = document.getElementById('req-create-holidays')?.value.trim() || '';
-  const xyLocks = parseRequirementXyLocks(document.getElementById('req-create-xy-locks')?.value || '');
+  let xyLocks;
+  try {
+    xyLocks = parseRequirementXyLocks(document.getElementById('req-create-xy-locks')?.value || '');
+  } catch (error) {
+    toast(error.message, true);
+    document.getElementById('req-create-xy-locks')?.focus();
+    return;
+  }
   const allowDuplicates = document.getElementById('req-create-allow-duplicates')?.value !== 'false';
   if (!month || !year) {
     toast('Měsíc se nepodařilo rozpoznat', true);

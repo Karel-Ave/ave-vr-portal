@@ -5,6 +5,7 @@ const path        = require('path');
 const PDFDocument = require('pdfkit');
 const { getPool, init } = require('./db');
 const { registerNikotin } = require('./nikotin');
+const requirementXyLocks = require('./public/requirement-xy-locks');
 const { projectVacations, prepareVacationSave, findStaffIndex: findVacationStaffIndex } = require('./public/requirements-vacations');
 
 const app  = express();
@@ -7286,20 +7287,11 @@ function rtAutoFillMonthlySchedule(data, prevData, rawOptions = {}) {
 }
 
 function normalizeReqXyLocks(raw) {
-  const locks = raw && typeof raw === 'object' ? raw : {};
-  const cells = Array.isArray(locks.cells) ? locks.cells : [];
-  const set = new Set();
-  cells.forEach(item => {
-    const m = String(item || '').trim().toLowerCase().match(/^(\d{1,2})-(d|n)$/);
-    if (m) set.add(`${parseInt(m[1], 10)}-${m[2]}`);
-  });
-  return { raw: String(locks.raw || ''), cells: Array.from(set) };
+  return requirementXyLocks.normalize(raw);
 }
 
 function isReqXyLocked(data, ci) {
-  const locks = normalizeReqXyLocks(data && data.reqXyLocks);
-  const col = getReqCalCols(parseInt(data.month, 10), parseInt(data.year, 10))[ci];
-  return !!(col && locks.cells.includes(`${col.day}-${col.dn}`));
+  return requirementXyLocks.isLocked(data?.reqXyLocks, data?.month, data?.year, ci);
 }
 
 const REQ_RECEPTION_CLOSED_MSG = 'Období pro editaci požadavků ještě nezačalo, nebo již skončilo.';
