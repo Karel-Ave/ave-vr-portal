@@ -5196,15 +5196,26 @@ async function vacationEnsureBalance(db, staff, user) {
   return rows[0];
 }
 
-async function vacationBalanceRows(db, user) {
+function vacationStaffMatchesBalancePeriod(staff, filter = {}, now = new Date()) {
+  const requestedYear = Number(filter.year);
+  const year = Number.isInteger(requestedYear) && requestedYear >= 2020 && requestedYear <= 2100
+    ? requestedYear : now.getFullYear();
+  if (filter.month === 'all') {
+    return Array.from({ length: 12 }, (_, index) => index + 1)
+      .some(month => rtIsStaffActiveForMonth(staff, month, year));
+  }
+  const requestedMonth = Number(filter.month);
+  const month = Number.isInteger(requestedMonth) && requestedMonth >= 1 && requestedMonth <= 12
+    ? requestedMonth : now.getMonth() + 1;
+  return rtIsStaffActiveForMonth(staff, month, year);
+}
+
+async function vacationBalanceRows(db, user, filter = {}) {
   await vacationBackfillApprovedRequestMovements(db, user);
   const manager = await canManageVacationsServer(user);
   const canManageBalances = await vacationCanManageBalances(user);
   const staffList = await loadRtPortalReceptionists(db);
-  const now = new Date();
-  const currentMonth = now.getMonth() + 1;
-  const currentYear = now.getFullYear();
-  const eligibleStaff = staffList.filter(s => vacationHasBalanceContract(s.contract) && rtIsStaffActiveForMonth(s, currentMonth, currentYear));
+  const eligibleStaff = staffList.filter(s => vacationHasBalanceContract(s.contract) && vacationStaffMatchesBalancePeriod(s, filter));
   const filteredStaff = (manager || canManageBalances) ? eligibleStaff : eligibleStaff.filter(s => {
     const login = String(user.username || user.login || '').trim().toUpperCase();
     return String(s.userId || '') === String(user.id) || String(s.login || '').trim().toUpperCase() === login;
@@ -5280,7 +5291,7 @@ async function vacationBalanceRows(db, user) {
 app.get('/api/vacations/balances', requireLogin, async (req, res) => {
   try {
     const db = getPool();
-    const result = await vacationBalanceRows(db, req.session.user);
+    const result = await vacationBalanceRows(db, req.session.user, req.query);
     res.json({ ok: true, ...result });
   } catch (err) {
     console.error('Chyba GET /api/vacations/balances:', err);
