@@ -149,3 +149,18 @@ test('A BB forged full-row save cannot change another person cells or PR; explic
  assert.equal((await f.call('/api/bb/requests',{month:12,year:2026,revision:read.revision,rowVersion:read.requirements.rowVersions?.[1]||0,data},1)).ok,true);assert.equal(f.state.months['2026-12'].requirements.cells['2-10'],'x');assert.equal(f.state.months['2026-12'].requirements.notes[2],'Cizí PR');assert.equal(f.state.months['2026-12'].requirements.notes[1],'Moje PR');
  read=await f.call('/api/bb/month',{month:12,year:2026},99,'GET');assert.equal((await f.call('/api/bb/requests',{month:12,year:2026,revision:read.revision,data},1,'POST',{overrides:{bb:{buttons:{requests_edit_all:true}}}})).ok,true);assert.equal(f.state.months['2026-12'].requirements.cells['2-10'],'W');assert.equal(f.state.months['2026-12'].requirements.notes[2],'Přepsaná PR');
 });
+
+
+test('BB holidays use the receptionist fixed calendar, including 31 Dec and next-year Jan 1; extras are month-local',()=>{
+ const fs=require('node:fs'),source=fs.readFileSync(require.resolve('../views/raspis-test.html'),'utf8');const match=source.match(/const STATIC_HOLIDAYS\s*=\s*(\{[\s\S]*?\});/);assert(match);const fixed=require('node:vm').runInNewContext('('+match[1]+')');
+ for(let month=1;month<=12;month++)for(let day=1;day<=31;day++)assert.equal(availability.isHoliday(month,day),(fixed[month]||[]).includes(day));
+ assert.equal(availability.isHoliday(12,31),true);assert.equal(availability.isHoliday(1,1),true);assert.equal(availability.isHoliday(4,15,[15,16]),true);assert.equal(availability.isHoliday(4,14,[15,16]),false);assert.equal(availability.isUnavailable({regular:'sv'},2027,4,15,[15,16]),true);
+ assert.deepEqual(bbCalendar.normalizeExtraHolidays('16, 15, 16',2027,4),[15,16]);assert.deepEqual(bbCalendar.normalizeExtraHolidays('',2027,4),[]);for(const input of ['31','15x','0','1.5'])assert.throws(()=>bbCalendar.normalizeExtraHolidays(input,2027,4));
+});
+
+test('Extra holidays persist through creation, own saves and publication without leaking to another month',async()=>{
+ const f=fixture();assert.equal((await f.call('/api/bb/create',{month:4,year:2027,extraHolidays:'15, 16',funds:{hpp:'150'}})).ok,true);let entry=f.state.months['2027-4'];assert.deepEqual(entry.requirements.extraHolidays,[15,16]);await f.call('/api/bb/status',{month:4,year:2027,status:'open'});
+ assert.equal((await f.call('/api/bb/requests',{month:4,year:2027,data:{cells:{'1-1':'W'},extraHolidays:[20]}},1)).ok,true);assert.deepEqual(f.state.months['2027-4'].requirements.extraHolidays,[15,16]);await f.call('/api/bb/status',{month:4,year:2027,status:'closed'});entry=f.state.months['2027-4'];assert.equal((await f.call('/api/bb/publish',{month:4,year:2027,revision:entry.revision,publishedRevision:entry.published_revision})).ok,true);assert.deepEqual(f.state.months['2027-4'].published.extraHolidays,[15,16]);
+ let before=clone(f.state);entry=f.state.months['2027-4'];assert.equal((await f.call('/api/bb/requests',{month:4,year:2027,revision:entry.revision,data:{...entry.requirements,extraHolidays:'31'}})).status,400);assert.deepEqual(f.state,before);
+ assert.equal((await f.call('/api/bb/create',{month:5,year:2027})).ok,true);assert.deepEqual(f.state.months['2027-5'].requirements.extraHolidays,[]);before=clone(f.state);assert.equal((await f.call('/api/bb/create',{month:2,year:2027,extraHolidays:'29'})).status,400);assert.deepEqual(f.state,before);
+});

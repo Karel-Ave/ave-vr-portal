@@ -19,12 +19,13 @@
     if(v.regularExceptionFrom&&v.regularExceptionTo<v.regularExceptionFrom)throw Error('Konec výjimky nesmí být před jejím začátkem.');
     return v;
   }
+  function isHoliday(month,day,extraHolidays=[]){return (holidays[month]||[]).includes(Number(day))||extraHolidays.includes(Number(day));}
   function isUnavailable(value,year,month,day,extraHolidays=[]){
     const v=normalize(value),text=year+'-'+String(month).padStart(2,'0')+'-'+String(day).padStart(2,'0');if(!iso(text)||!v.regular)return false;
     if(v.regularFrom&&text<v.regularFrom)return false;if(!v.regularOpen&&v.regularTo&&text>v.regularTo)return false;
     if(v.regularExceptionFrom&&v.regularExceptionTo&&text>=v.regularExceptionFrom&&text<=v.regularExceptionTo)return false;
     const dow=new Date(text+'T00:00:00Z').getUTCDay(),tokens=new Set(v.regular.split(','));
-    return tokens.has(weekdays[(dow+6)%7]+'-d') || (tokens.has('wk')&&(dow===0||dow===6)) || (tokens.has('sv')&&((holidays[month]||[]).includes(Number(day))||extraHolidays.includes(Number(day))));
+    return tokens.has(weekdays[(dow+6)%7]+'-d') || (tokens.has('wk')&&(dow===0||dow===6)) || (tokens.has('sv')&&isHoliday(month,day,extraHolidays));
   }
-  return {fields,weekdays,normalize,validate,isUnavailable};
+  return {fields,weekdays,normalize,validate,isHoliday,isUnavailable};
 });
