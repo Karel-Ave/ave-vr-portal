@@ -14656,7 +14656,7 @@ function renderDailySchedule(data) {
     return;
   }
   const bbRow = '<tr class="daily-bb-mobile-row"><td class="daily-code">BB</td><td class="daily-day">'+dailyCellHtml('BB',map.C?.bb,false,{})+'</td><td class="daily-code daily-code-empty"></td><td class="daily-night daily-night-disabled"></td></tr>';
-  const bbBefore = order.includes('U')?'U':order.includes('P')?'P':order.includes('Q')?'Q':null;
+  const bbBefore = order.includes('P')?'P':order.includes('Q')?'Q':null;
   const rows = order.map(letter => {
     const item = map[letter] || {};
     const cls = (letter === 'P' ? ' daily-row-p' : letter === 'Q' ? ' daily-row-q' : '') + (letter === 'Q' && item.handoffFrom ? ' daily-row-q-handoff' : '');
