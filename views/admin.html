@@ -291,6 +291,7 @@
       <button class="sublist-btn active" onclick="selectSublist('VR')">VR</button>
       <button class="sublist-btn" onclick="selectSublist('PB6')">PB6</button>
       <button class="sublist-btn" onclick="selectSublist('Recepční')">Recepční</button>
+      <button class="sublist-btn" onclick="selectSublist('Bagážisté')">Bagážisté</button>
       <button class="sublist-btn" onclick="selectSublist('Hotely')">Hotely</button>
       <button class="sublist-btn" onclick="selectSublist('Speciální')">Speciální</button>
       <button class="sublist-btn" onclick="selectSublist('Neaktivní')">Neaktivní</button>
@@ -479,6 +480,7 @@
       <select id="new-group-sublist">
         <option value="VR">VR</option>
         <option value="PB6">PB6</option>
+        <option value="Bagážisté">Bagážisté</option>
         <option value="Recepční">Recepční</option>
         <option value="Hotely">Hotely</option>
         <option value="Speciální">Speciální</option>
@@ -761,8 +763,8 @@
 
   function renderUsersTable() {
     const tbody = document.getElementById('users-tbody');
-    // Skupiny patřící do aktuálního podlistu
-    const sublistGroups = new Set(allGroups.filter(g => (g.sublist || 'VR') === currentSublist).map(g => g.name));
+    // The BB group always belongs to its dedicated user list.
+    const sublistGroups = new Set(allGroups.filter(g => (g.name === 'bagazista' ? 'Bagážisté' : g.sublist || 'VR') === currentSublist).map(g => g.name));
     // Pokud žádné skupiny v podlistu, zobraz prázdno
     const filtered = allUsers
       .filter(u => currentSublist === 'Neaktivní' ? isRaspisInactive(u) : sublistGroups.has(u.role) && !isRaspisInactive(u))
@@ -889,6 +891,7 @@
     const phone = formatPhoneInput(phoneInput.value);
     phoneInput.value = phone || '+420 ';
     const role = document.getElementById('u-role').value;
+    BbAdmin.sync();
     if (role === 'bagazista') {
       document.getElementById('raspis-type').value = 'Bagážista';
     }
@@ -911,7 +914,10 @@
     try { if (userId) await saveRaspisOverride(userId); }
     catch(e) { currentUserId = userId; setMsg(msg, 'err', e.message || 'Nastavení se nepodařilo uložit.'); return; }
     closeUserModal();
-    loadUsers();
+    await loadUsers();
+    const savedUser = allUsers.find(u => Number(u.id) === Number(userId));
+    const group = allGroups.find(g => g.name === role);
+    selectSublist(savedUser && isRaspisInactive(savedUser) ? 'Neaktivní' : (role === 'bagazista' ? 'Bagážisté' : group?.sublist || 'VR'));
   }
 
   function parseYearMonthInput(value) {
@@ -1629,6 +1635,7 @@
       document.getElementById('raspis-body').style.display = '';
       document.getElementById('raspis-expand').classList.add('open');
     }
+    BbAdmin.sync();
   }
 
   function toggleRaspisActive(e) {
