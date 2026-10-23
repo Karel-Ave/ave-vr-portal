@@ -17,7 +17,7 @@ function ownRow(uid){const p=pageState.result.permissions;return pageState.view=
 function duplicates(){const map=new Map();for(const [key,value]of Object.entries(pageState.data?.cells||{})){if(value!=='W')continue;const [uid,day]=key.split('-').map(Number);if(!map.has(day))map.set(day,[]);map.get(day).push(uid);}return map;}
 function duplicateTitle(day){return (duplicates().get(day)||[]).map(id=>{const peer=pageState.result.staff.find(s=>s.userId===id);const meta=pageState.data.meta?.[id+'-'+day];return {name:peer?.name||id,...meta};}).sort((a,b)=>(Number(a.order)&&Number(b.order)?Number(a.order)-Number(b.order):String(a.at||'').localeCompare(String(b.at||'')))).map((x,i)=>`${i+1}. ${x.name}${x.author?' (zapsal '+x.author+')':''}${x.at?' — '+new Date(x.at).toLocaleString('cs-CZ'):''}`).join('\n');}
 function refreshCoverageHeaders(coverage=duplicates()){
- document.querySelectorAll('th[data-bb-day]').forEach(th=>{const missing=pageState.view==='schedule'&&!(coverage.get(Number(th.dataset.bbDay))?.length);th.classList.toggle('unassigned',missing);th.setAttribute('aria-label',th.dataset.date+(missing?' — Neobsazená směna BB':''));});
+ document.querySelectorAll('th[data-bb-day]').forEach(th=>{const missing=!(coverage.get(Number(th.dataset.bbDay))?.length);th.classList.toggle('unassigned',missing);th.setAttribute('aria-label',th.dataset.date+(missing?' — Neobsazená směna BB':''));});
 }
 function refreshEditedCells(){
  const dupes=duplicates();refreshCoverageHeaders(dupes);
