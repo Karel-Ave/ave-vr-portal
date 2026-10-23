@@ -2,6 +2,12 @@
   'use strict';
   const daysInMonth=(year,month)=>new Date(Date.UTC(Number(year),Number(month),0)).getUTCDate();
   const iso=(year,month,day)=>`${year}-${String(month).padStart(2,'0')}-${String(day).padStart(2,'0')}`;
+  function defaultPeriod(view,now=new Date()){
+    const parts=new Intl.DateTimeFormat('en-US',{timeZone:'Europe/Prague',year:'numeric',month:'numeric'}).formatToParts(now);
+    let year=Number(parts.find(p=>p.type==='year').value),month=Number(parts.find(p=>p.type==='month').value);
+    if(view==='requests'&&++month===13){month=1;year++;}
+    return {month,year};
+  }
   function columns(year,month){
     year=Number(year);month=Number(month);
     const result=Array.from({length:daysInMonth(year,month)},(_,i)=>({index:i+1,day:i+1,month,year,spill:false,date:iso(year,month,i+1)}));
@@ -32,5 +38,5 @@
     const format=n=>String(n).replace('.',',');
     return format(Math.round(hours/12*10)/10)+' směn / '+format(hours)+' h';
   }
-  return {columns,cellDate,dayIndex,countShifts,normalizeFunds,normalizeExtraHolidays,formatFund};
+  return {defaultPeriod,columns,cellDate,dayIndex,countShifts,normalizeFunds,normalizeExtraHolidays,formatFund};
 });

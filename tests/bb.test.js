@@ -179,3 +179,16 @@ test('Only Admin/VR can change or remove BB hour corrections, even with a custom
  r=await f.call('/api/bb/month',{month:12,year:2026},99,'GET');before=clone(f.state);assert.equal((await f.call('/api/bb/schedule',{month:12,year:2026,revision:r.publishedRevision,data:{...r.published,adjustments:{1:[{val:1,date:'2026-02-30'}]}}})).status,400);assert.deepEqual(f.state,before);
  assert.equal((await f.call('/api/bb/schedule',{month:12,year:2026,revision:r.publishedRevision,data:{...r.published,adjustments:{}}})).ok,true);assert.deepEqual(f.state.months['2026-12'].published.adjustments,{});
 });
+
+
+test('Existing requirements include newly active BB by ID without changing saved cells, notes, funds or revisions on reads',async()=>{
+ const f=fixture();await f.create();await f.save({staffIds:[1,2],cells:{'1-5':'W','2-7':'x'},notes:{1:'Keep PR'},funds:{hpp:'157,5',zpp:'94,5',dpc:'60'}});await f.call('/api/bb/create',{month:11,year:2026});const stale=clone(f.state.months['2026-12'].requirements),before=clone(f.state);f.users[2].role='bagazista';f.users[2].name='Kejda Adam';f.users.push({id:3,role:'bagazista',name:'Future',perm_overrides:JSON.stringify({raspis_staff:{active:true,activeFrom:{month:1,year:2027}}})});
+ for(const month of [11,12]){const read=await f.call('/api/bb/month',{month,year:2026},10,'GET');assert(read.requirements.staffIds.includes(10));assert(!read.requirements.staffIds.includes(3));}assert.deepEqual(f.state,before);
+ assert.equal((await f.save(stale)).ok,true);assert(f.state.months['2026-12'].requirements.staffIds.includes(10));assert.deepEqual(f.state.months['2026-12'].requirements.cells,stale.cells);assert.deepEqual(f.state.months['2026-12'].requirements.notes,stale.notes);assert.deepEqual(f.state.months['2026-12'].requirements.funds,stale.funds);
+ await f.call('/api/bb/status',{month:11,year:2026,status:'open'});assert.equal((await f.call('/api/bb/requests',{month:11,year:2026,data:{cells:{'10-4':'W','1-2':'W'},notes:{10:'Own PR',1:'Foreign PR'}}},10)).ok,true);assert.equal(f.state.months['2026-11'].requirements.cells['10-4'],'W');assert.equal(f.state.months['2026-11'].requirements.cells['1-2'],undefined);assert.equal(f.state.months['2026-11'].requirements.notes[10],'Own PR');assert.equal(f.state.months['2026-11'].requirements.notes[1],undefined);
+});
+
+test('Publishing unsaved requirements adds active BB automatically and default request month follows Prague month/year',async()=>{
+ const f=fixture();await f.create();f.users[2].role='bagazista';assert.equal((await f.publish()).ok,true);assert(f.state.months['2026-12'].published.staffIds.includes(10));
+ assert.deepEqual(bbCalendar.defaultPeriod('requests',new Date('2026-10-23T12:00:00Z')),{month:11,year:2026});assert.deepEqual(bbCalendar.defaultPeriod('schedule',new Date('2026-10-23T12:00:00Z')),{month:10,year:2026});assert.deepEqual(bbCalendar.defaultPeriod('requests',new Date('2026-12-15T12:00:00Z')),{month:1,year:2027});assert.deepEqual(bbCalendar.defaultPeriod('requests',new Date('2026-10-31T23:30:00Z')),{month:12,year:2026});
+});

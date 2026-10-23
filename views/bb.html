@@ -8,7 +8,7 @@
 const $=id=>document.getElementById(id),esc=v=>String(v??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 const pageState={view:new URLSearchParams(location.search).get('view')==='schedule'?'schedule':'requests',result:null,data:null,editing:false,dirty:false,loading:false,saving:false,epoch:0};
 const names=['Leden','Únor','Březen','Duben','Květen','Červen','Červenec','Srpen','Září','Říjen','Listopad','Prosinec'];
-$('month').innerHTML=names.map((n,i)=>`<option value="${i+1}">${n}</option>`).join('');const now=new Date();$('month').value=now.getMonth()+1;$('year').value=now.getFullYear();
+$('month').innerHTML=names.map((n,i)=>`<option value="${i+1}">${n}</option>`).join('');const initialPeriod=BbCalendar.defaultPeriod(pageState.view);$('month').value=initialPeriod.month;$('year').value=initialPeriod.year;
 function msg(text,error=false){$('status').hidden=!text;$('status').textContent=text;$('status').classList.toggle('error',error);}
 async function api(url,body){const r=await fetch(url,{credentials:'include',cache:'no-store',...(body?{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(body)}:{})});const j=await r.json();if(!r.ok||!j.ok)throw Object.assign(new Error(j.msg||'Operace selhala.'),{duplicates:j.duplicates});return j;}
 function period(){return {month:Number($('month').value),year:Number($('year').value)};}

@@ -1061,6 +1061,7 @@ async function init() {
 
   await require('./remove-nikotin').removeNikotin(db);
   await require('./bb').migrateBb(db);
+  await require('./bb-october-2026-cleanup').removeAccidentalOctoberRequests(db);
   console.log('Databáze připravena.');
 }
 
