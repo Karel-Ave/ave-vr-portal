@@ -4,7 +4,6 @@ const bcrypt      = require('bcryptjs');
 const path        = require('path');
 const PDFDocument = require('pdfkit');
 const { getPool, init } = require('./db');
-const { registerNikotin } = require('./nikotin');
 const { createBbService } = require('./bb');
 const bbService = createBbService({ getPool, getUserEffectivePerms });
 const requirementXyLocks = require('./public/requirement-xy-locks');
@@ -1051,7 +1050,6 @@ app.delete('/api/admin/logs', requireLogin, requirePermDefault('admin', 'logs_de
   }
 });
 
-registerNikotin(app, { getPool, getUserEffectivePerms });
 bbService.register(app);
 
 app.get('/api/my-permissions', requireLogin, async (req, res) => {
@@ -1133,7 +1131,6 @@ app.get('/api/my-permissions', requireLogin, async (req, res) => {
         history: isManager,
         history_delete: isAdm
       } },
-      nikotin: { enabled: isAdm, visible: isAdm, buttons: {} },
       admin: { enabled: isAdm, visible: isAdm, buttons: {
         users_add: isAdm,
         users_edit: isAdm,
@@ -1165,8 +1162,6 @@ app.get('/api/my-permissions', requireLogin, async (req, res) => {
     }
     const bbPermissions = await bbService.permissions(user);
     result.bb = {enabled:bbPermissions.enabled, visible:bbPermissions.visible, buttons:Object.fromEntries(Object.entries(bbPermissions).filter(([key])=>!['enabled','visible'].includes(key)))};
-    // Module permissions can never grant nicotine diary access to another role.
-    if (!isAdm) result.nikotin = { enabled: false, visible: false, buttons: {} };
     result.__defaultApp = userOv.__defaultApp || groupPerms.__defaultApp ||
       (['admin', 'vedoucí', 'recepční', 'pb6'].includes(user.role) ? 'raspis' : null);
     result.requirementsProxy = {
@@ -1907,7 +1902,7 @@ app.post('/api/user-prefs/default-public-hotel', requireLogin, async (req, res) 
 });
 
 app.post('/api/user-prefs/default-views', requireLogin, async (req, res) => {
-  const allowedApps = new Set(['bb', 'raspis', 'priplatky', 'dovolene', 'blacklist', 'admin', 'nikotin']);
+  const allowedApps = new Set(['bb', 'raspis', 'priplatky', 'dovolene', 'blacklist', 'admin']);
   const allowedTabs = new Set(['nastaveni', 'tvorba', 'rozpis', 'public', 'denni', 'pozadavky', 'dovolene', 'bb-requests', 'bb-schedule']);
   const raw = req.body && req.body.default_views && typeof req.body.default_views === 'object'
     ? req.body.default_views

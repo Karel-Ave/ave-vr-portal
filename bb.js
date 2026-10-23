@@ -83,7 +83,7 @@ async function migrateBb(db) {
   await db.query(`CREATE TABLE IF NOT EXISTS bb_audit (
     id BIGSERIAL PRIMARY KEY, year INTEGER NOT NULL, month INTEGER NOT NULL, user_id INTEGER,
     action TEXT NOT NULL, details JSONB NOT NULL DEFAULT '{}', created_at TIMESTAMPTZ NOT NULL DEFAULT NOW())`);
-  const perms={__defaultApp:'bb',bb:{enabled:true,visible:true,buttons:{requests_view:true,requests_edit_own:true,requests_edit_all:false,requests_open:false,create:false,publish:false,schedule_view:true,schedule_edit:false,add_staff:false}},raspis:{enabled:true,visible:true,buttons:{tab_nastaveni:false,tab_tvorba:false,tab_rozpis_vr:false,tab_rozpis:false,tab_denni:true,tab_pozadavky:false,filters:false,publish:false,edit:false,req_create:false,req_edit:false,req_edit_all:false,req_toggle_reception:false,req_send_tvorba:false,settings_monthly:false,settings_add_staff:false}},priplatky:{enabled:true,visible:true,buttons:{viewAll:false,add:false,edit:false,delete:false,export:false,settings:false}},dovolene:{enabled:false,visible:false},blacklist:{enabled:false,visible:false},admin:{enabled:false,visible:false},nikotin:{enabled:false,visible:false}};
+  const perms={__defaultApp:'bb',bb:{enabled:true,visible:true,buttons:{requests_view:true,requests_edit_own:true,requests_edit_all:false,requests_open:false,create:false,publish:false,schedule_view:true,schedule_edit:false,add_staff:false}},raspis:{enabled:true,visible:true,buttons:{tab_nastaveni:false,tab_tvorba:false,tab_rozpis_vr:false,tab_rozpis:false,tab_denni:true,tab_pozadavky:false,filters:false,publish:false,edit:false,req_create:false,req_edit:false,req_edit_all:false,req_toggle_reception:false,req_send_tvorba:false,settings_monthly:false,settings_add_staff:false}},priplatky:{enabled:true,visible:true,buttons:{viewAll:false,add:false,edit:false,delete:false,export:false,settings:false}},dovolene:{enabled:false,visible:false},blacklist:{enabled:false,visible:false},admin:{enabled:false,visible:false}};
   await db.query("INSERT INTO permission_groups(name,display_name,sublist,perms) VALUES ('bagazista','Bagážisté','VR',$1) ON CONFLICT(name) DO NOTHING",[JSON.stringify(perms)]);
 }
 function createBbService({getPool,getUserEffectivePerms}) {
@@ -216,8 +216,9 @@ function createBbService({getPool,getUserEffectivePerms}) {
     app.get('/bb',async(req,res,next)=>{try{if(!req.session?.user)return res.redirect('/');const p=await permissions(req.session.user);if(!p.enabled||(!p.requests_view&&!p.schedule_view))return res.status(403).send('Nemáte přístup k BB.');if(!req.query.view)return res.redirect('/raspis-test?tab='+(p.schedule_view?'bb-schedule':'bb-requests'));res.sendFile(path.join(__dirname,'views','bb.html'));}catch(e){next(e);}});
     endpoint('get','/api/bb/month',async(req,p)=>{const {month,year}=period(req.query.month,req.query.year);if(!p.requests_view&&!p.schedule_view)fail('Nemáte oprávnění.',403);const db=getPool(),entry=await readMonth(db,month,year),all=await people(db),shifts=await assignments(db,month,year,true,false);const activeBb=all.filter(s=>isBb(s)&&active(s,month,year));const reqData=hasRequirements(entry)?copy(json(entry.requirements)):null,pub=entry?.published?copy(json(entry.published)):((shifts.length||activeBb.length)?{staffIds:[],cells:{}}:null);
       if(pub)pub.staffIds=[...new Set([...(pub.staffIds||[]),...activeBb.map(s=>s.userId),...shifts.map(s=>s.userId)])];
-      const viewAll=p.requests_edit_all||p.requests_open||p.publish;
-      if(reqData&&!viewAll){reqData.notes=Object.fromEntries(Object.entries(reqData.notes||{}).filter(([uid])=>Number(uid)===Number(req.session.user.id)));}
+      const viewAll=p.requests_edit_all||p.requests_open||p.publish||p.schedule_edit;
+      if(pub&&entry?.published&&!pub.notes)pub.notes=copy(json(entry.requirements).notes||{});
+      if(!viewAll)for(const data of [reqData,pub])if(data)data.notes=Object.fromEntries(Object.entries(data.notes||{}).filter(([uid])=>Number(uid)===Number(req.session.user.id)));
       const ids=new Set([...(reqData?.staffIds||[]),...(pub?.staffIds||[]),...shifts.map(s=>s.userId)]);
       const roster=all.filter(s=>ids.has(s.userId));
       return {month,year,permissions:p,canManageAbsence:manager(req.session.user),userId:req.session.user.id,status:entry?.status||'closed',revision:entry?.revision||0,publishedRevision:entry?.published_revision||0,assignmentVersion:assignmentVersion(shifts),requirements:p.requests_view?reqData:null,published:p.schedule_view?pub:null,shifts:p.schedule_view?shifts:[],staff:roster,available:p.add_staff?all.filter(s=>active(s,month,year)&&(isReceptionist(s)||isBb(s))):[],duplicates:p.requests_view&&reqData?duplicateRequests(reqData,roster):[]};});
@@ -255,7 +256,8 @@ function createBbService({getPool,getUserEffectivePerms}) {
       await updateVrRows(db,shifts,removed,all);
       for(const old of removed)await db.query('DELETE FROM bb_assignments WHERE day=$1 AND user_id=$2',[old.date,old.userId]);
       for(const shift of shifts)await putAssignment(db,shift,req.session.user);
-      const published={staffIds:[...roster],cells:data.cells||{},funds:normalizeFunds(data.funds??json(entry.published).funds)}; // PR and request timestamps never enter the published snapshot.
+      const notes=editing?(json(entry.published).notes??json(entry.requirements).notes??{}):(data.notes||{});
+      const published={staffIds:[...roster],cells:data.cells||{},funds:normalizeFunds(data.funds??json(entry.published).funds),notes:copy(notes)}; // Monthly PR is preserved for display; request timestamps stay private.
       await db.query("UPDATE bb_months SET published=$3,published_revision=published_revision+1,status='closed',revision=revision+1,updated_at=NOW() WHERE year=$1 AND month=$2",[year,month,JSON.stringify(published)]);if(month===12)await db.query('UPDATE bb_months SET published_revision=published_revision+1 WHERE year=$1 AND month=$2',[year+1,1]);
       if(month===1)await db.query('UPDATE bb_months SET published_revision=published_revision+1 WHERE year=$1 AND month=$2',[year-1,12]);
       await audit(db,month,year,req.session.user,editing?'published_edit':'publish',{shifts});return {};});}

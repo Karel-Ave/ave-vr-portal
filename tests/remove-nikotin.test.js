@@ -1,0 +1,21 @@
+'use strict';
+const {test}=require('node:test'),assert=require('node:assert/strict');
+const {removeNikotin,cleanPermissions,cleanPreferences}=require('../remove-nikotin');
+test('Removing Nikotin settings preserves all other permissions, notes and device preferences',()=>{
+ const other={raspis:{enabled:true,buttons:{edit:false}},bb:{buttons:{requests_edit_all:true}},raspis_staff:{login:'ABC',noteP:'nikotin v textu ponechat'}};
+ assert.deepEqual(JSON.parse(cleanPermissions(JSON.stringify({...other,nikotin:{enabled:true},__defaultApp:'nikotin'}))),{...other,__defaultApp:'raspis'});
+ assert.equal(cleanPermissions(JSON.stringify({...other,__defaultApp:'bb'})),null);assert.equal(cleanPermissions('invalid'),null);
+ const row={app_order:JSON.stringify(['raspis','nikotin','bb','admin']),default_views:JSON.stringify({desktop:{app:'nikotin',tab:'denni'},mobile:{app:'bb',hotel:'C'}})};
+ const cleaned=cleanPreferences(row);assert.deepEqual(JSON.parse(cleaned.order),['raspis','bb','admin']);assert.deepEqual(JSON.parse(cleaned.views),{desktop:{app:'raspis',tab:'denni'},mobile:{app:'bb',hotel:'C'}});
+ assert.deepEqual(cleanPreferences({app_order:'invalid',default_views:'invalid'}),{order:null,views:null});
+});
+function fixture(fail=false){
+ const initial={tables:{nikotin_days:[{note:'remove'}],nikotin_plans:[{id:1}],rt_requirements:[{data:'keep'}],bb_months:[{data:'keep'}],vacation_requests:[{id:1}]},users:[{id:1,perm_overrides:JSON.stringify({nikotin:{enabled:true},bb:{enabled:true},__defaultApp:'nikotin'})},{id:2,perm_overrides:'{"raspis_staff":{"noteP":"nikotin"}}'}],groups:[{name:'admin',perms:'{"nikotin":{},"raspis":{"enabled":true}}'}],prefs:[{user_id:1,app_order:'["nikotin","raspis"]',default_views:'{"desktop":{"app":"nikotin"},"mobile":{"app":"bb"}}'}]};let state=structuredClone(initial),backup,released=0;const queries=[];
+ const db={release(){released++},async query(sql,args=[]){queries.push(sql);if(sql==='BEGIN')backup=structuredClone(state);else if(sql==='COMMIT'){}else if(sql==='ROLLBACK')state=backup;else if(sql==='DROP TABLE IF EXISTS nikotin_days')delete state.tables.nikotin_days;else if(sql==='DROP TABLE IF EXISTS nikotin_plans'){if(fail)throw Error('simulated failure');delete state.tables.nikotin_plans;}else if(sql.startsWith('SELECT id,'))return {rows:state.users};else if(sql.startsWith('SELECT name,'))return {rows:state.groups};else if(sql.startsWith('SELECT user_id,'))return {rows:state.prefs};else if(sql.startsWith('UPDATE users '))state.users.find(u=>u.id===args[1]).perm_overrides=args[0];else if(sql.startsWith('UPDATE permission_groups '))state.groups.find(g=>g.name===args[1]).perms=args[0];else if(sql.startsWith('UPDATE user_preferences SET app_order'))state.prefs.find(p=>p.user_id===args[1]).app_order=args[0];else if(sql.startsWith('UPDATE user_preferences SET default_views'))state.prefs.find(p=>p.user_id===args[1]).default_views=args[0];else throw Error('Unexpected SQL '+sql);return {rows:[]};}};
+ return {pool:{connect:async()=>db},initial,get state(){return state},queries,get released(){return released}};
+}
+test('Removal drops only the two Nikotin tables, cleans only its keys, and is repeatable',async()=>{
+ const f=fixture();await removeNikotin(f.pool);assert.deepEqual(f.state.tables,{rt_requirements:[{data:'keep'}],bb_months:[{data:'keep'}],vacation_requests:[{id:1}]});assert.deepEqual(JSON.parse(f.state.users[0].perm_overrides),{bb:{enabled:true},__defaultApp:'raspis'});assert.equal(f.state.users[1].perm_overrides,f.initial.users[1].perm_overrides);assert.deepEqual(JSON.parse(f.state.groups[0].perms),{raspis:{enabled:true}});assert.deepEqual(JSON.parse(f.state.prefs[0].app_order),['raspis']);assert.deepEqual(JSON.parse(f.state.prefs[0].default_views),{desktop:{app:'raspis'},mobile:{app:'bb'}});
+ const before=structuredClone(f.state);await removeNikotin(f.pool);assert.deepEqual(f.state,before);assert(!f.queries.some(q=>/CASCADE|TRUNCATE|DELETE FROM/i.test(q)));assert.equal(f.released,2);
+});
+test('Failure rolls back Nikotin deletion and releases the connection',async()=>{const f=fixture(true);await assert.rejects(removeNikotin(f.pool),/simulated failure/);assert.deepEqual(f.state,f.initial);assert.equal(f.queries.at(-1),'ROLLBACK');assert.equal(f.released,1);});
