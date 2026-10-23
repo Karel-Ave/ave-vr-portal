@@ -1,0 +1,31 @@
+(function(root,factory){const api=factory();if(typeof module==='object'&&module.exports)module.exports=api;else root.BbCalendar=api;})(typeof globalThis!=='undefined'?globalThis:this,function(){
+  'use strict';
+  const daysInMonth=(year,month)=>new Date(Date.UTC(Number(year),Number(month),0)).getUTCDate();
+  const iso=(year,month,day)=>`${year}-${String(month).padStart(2,'0')}-${String(day).padStart(2,'0')}`;
+  function columns(year,month){
+    year=Number(year);month=Number(month);
+    const result=Array.from({length:daysInMonth(year,month)},(_,i)=>({index:i+1,day:i+1,month,year,spill:false,date:iso(year,month,i+1)}));
+    if(month===12)result.push({index:32,day:1,month:1,year:year+1,spill:true,date:iso(year+1,1,1)});
+    return result;
+  }
+  function cellDate(year,month,index){return columns(year,month).find(c=>c.index===Number(index))?.date||null;}
+  function dayIndex(year,month,date){return columns(year,month).find(c=>c.date===date)?.index??null;}
+  function countShifts(cells,userId,year,month){return columns(year,month).filter(c=>!c.spill&&cells?.[userId+'-'+c.index]==='W').length;}
+  function normalizeFunds(value={}){
+    const result={};
+    for(const [key,label]of [['hpp','HPP'],['zpp','ZPP'],['dpc','DPČ']]){
+      const raw=String(value?.[key]??'').trim();
+      if(!raw){result[key]='';continue;}
+      if(!/^\d+(?:[.,]\d+)?$/.test(raw)||!Number.isFinite(Number(raw.replace(',','.'))))throw Error('Fond '+label+' musí být nezáporný počet hodin.');
+      result[key]=String(Number(raw.replace(',','.')));
+    }
+    return result;
+  }
+  function formatFund(raw){
+    if(raw==null||String(raw).trim()==='')return '-';
+    const hours=Number(String(raw).replace(',','.'));if(!Number.isFinite(hours)||hours<0)return '-';
+    const format=n=>String(n).replace('.',',');
+    return format(Math.round(hours/12*10)/10)+' směn / '+format(hours)+' h';
+  }
+  return {columns,cellDate,dayIndex,countShifts,normalizeFunds,formatFund};
+});

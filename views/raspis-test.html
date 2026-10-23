@@ -14655,7 +14655,7 @@ function renderDailySchedule(data) {
     if (updatedPanel) updatedPanel.textContent = '';
     return;
   }
-  const bbRow = '<tr class="daily-bb-mobile-row"><td class="daily-code">BB</td><td class="daily-day">'+rtHtml(map.C?.bb || '')+'</td><td class="daily-code daily-code-empty"></td><td class="daily-night daily-night-disabled"></td></tr>';
+  const bbRow = '<tr class="daily-bb-mobile-row"><td class="daily-code">BB</td><td class="daily-day">'+dailyCellHtml('BB',map.C?.bb,false,{})+'</td><td class="daily-code daily-code-empty"></td><td class="daily-night daily-night-disabled"></td></tr>';
   const bbBefore = order.includes('U')?'U':order.includes('P')?'P':order.includes('Q')?'Q':null;
   const rows = order.map(letter => {
     const item = map[letter] || {};
@@ -14663,7 +14663,7 @@ function renderDailySchedule(data) {
     const nightDisabled = !!item.dayOnly;
     return `${letter === bbBefore && map.C ? bbRow : ''}<tr class="${cls.trim()}">
       <td class="daily-code">${rtHtml(letter)}</td>
-      <td class="daily-day">${letter === 'C' ? '<div class="daily-c-assignment"><span class="daily-c-reception">'+dailyCellHtml(letter,item.day,false,item)+'</span>'+(item.bb?'<span class="daily-bb-inline"><strong>BB</strong> '+rtHtml(item.bb)+'</span>':'')+'</div>' : dailyCellHtml(letter,item.day,false,item)}</td>
+      <td class="daily-day">${letter === 'C' ? '<div class="daily-c-assignment"><span class="daily-c-reception">'+dailyCellHtml(letter,item.day,false,item)+'</span>'+'<span class="daily-bb-inline"><strong>BB</strong> '+dailyCellHtml('BB',item.bb,false,{})+'</span>'+'</div>' : dailyCellHtml(letter,item.day,false,item)}</td>
       <td class="daily-code ${nightDisabled ? 'daily-code-empty' : ''}">${dailyCodeHtml(letter, true, item)}</td>
       <td class="daily-night ${nightDisabled ? 'daily-night-disabled' : ''}">${dailyCellHtml(letter, item.night, true, item)}</td>
     </tr>`;
