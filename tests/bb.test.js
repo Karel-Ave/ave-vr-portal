@@ -106,3 +106,31 @@ test('Publishing earlier-created blank January requests preserves a Jan 1 BB shi
 test('December spill also detects a legacy Jan 1 receptionist W already published in next January VR',async()=>{
  const f=fixture();await f.create();f.state.schedules['RT:01/2027']=f.vr({'1_0':'W'},undefined,1,2027);await f.save({staffIds:[1,2],cells:{'1-32':'W'}});const before=clone(f.state);assert.equal((await f.publish()).status,409);assert.deepEqual(f.state,before);assert.equal(f.state.schedules['RT:01/2027'].schedule['1_0'],'W');
 });
+
+
+test('Active BB appear in a standalone schedule by month without creating or changing stored data',async()=>{
+ const f=fixture();const add=(id,from,until,enabled=true)=>f.users.push({id,name:'BB '+id,role:'bagazista',perm_overrides:JSON.stringify({raspis_staff:{active:enabled,type:'Bagážista',activeFrom:from,activeUntil:until}})});
+ add(3,{month:10,year:2026});add(4,{month:11,year:2026});add(5,null,{month:9,year:2026});add(6,null,null,false);
+ f.state.schedules['RT:10/2026']=f.vr({'0_4':'W','1_6':'C'},undefined,10,2026);const before=clone(f.state);
+ const r=await f.call('/api/bb/month',{month:10,year:2026},99,'GET');assert.equal(r.requirements,null);assert.deepEqual(r.published.staffIds,[1,2,3,10]);assert.equal(r.shifts[0].userId,10);assert.equal(r.publishedRevision,0);assert.deepEqual(f.state,before);
+ const november=await f.call('/api/bb/create',{month:11,year:2026,funds:{hpp:'157,5',zpp:'94,5',dpc:'60'}});assert.equal(november.ok,true);assert.deepEqual(f.state.months['2026-11'].requirements.staffIds,[1,2,3,4]);assert.deepEqual(f.state.schedules,before.schedules);
+});
+
+test('Standalone schedule save preserves linked receptionist shifts and allows later requirements creation without replacing publication',async()=>{
+ const f=fixture();f.state.schedules['RT:10/2026']=f.vr({'0_4':'W','1_6':'C'},undefined,10,2026);const read=await f.call('/api/bb/month',{month:10,year:2026},99,'GET');const data={staffIds:read.published.staffIds,cells:{'10-3':'W','1-5':'W','2-6':'x'}};
+ const saved=await f.call('/api/bb/schedule',{month:10,year:2026,revision:read.publishedRevision,assignmentVersion:read.assignmentVersion,data});assert.equal(saved.ok,true);assert.equal(f.state.assignments['2026-10-03'].userId,10);assert.equal(f.state.assignments['2026-10-05'].userId,1);assert.equal(f.state.schedules['RT:10/2026'].schedule['0_4'],'W');assert.equal(f.state.schedules['RT:10/2026'].schedule['1_6'],'C');
+ const published=clone(f.state.months['2026-10'].published);let result=await f.call('/api/bb/month',{month:10,year:2026},99,'GET');assert.equal(result.requirements,null);assert.equal((await f.call('/api/bb/status',{month:10,year:2026,status:'open'})).status,404);assert.equal((await f.call('/api/bb/requests',{month:10,year:2026,data})).status,404);assert.equal((await f.call('/api/bb/publish',{month:10,year:2026})).status,404);
+ assert.equal((await f.call('/api/bb/create',{month:10,year:2026,funds:{hpp:'157,5',zpp:'94,5',dpc:'60'}})).ok,true);assert.deepEqual(f.state.months['2026-10'].published,published);assert.deepEqual(f.state.months['2026-10'].requirements.staffIds,[1,2]);const before=clone(f.state);assert.equal((await f.call('/api/bb/create',{month:10,year:2026})).status,409);assert.deepEqual(f.state,before);
+ f.users.push({id:3,name:'Nový BB',role:'bagazista',perm_overrides:JSON.stringify({raspis_staff:{active:true,type:'Bagážista'}})});result=await f.call('/api/bb/month',{month:10,year:2026},99,'GET');assert(result.published.staffIds.includes(3));assert.deepEqual(f.state,before);
+});
+
+test('First standalone save rejects changed VR shifts, unauthorized editors and invalid cells without creating a month',async()=>{
+ const f=fixture();let read=await f.call('/api/bb/month',{month:10,year:2026},99,'GET');f.state.schedules['RT:10/2026']=f.vr({'0_4':'W'},undefined,10,2026);let before=clone(f.state);
+ let result=await f.call('/api/bb/schedule',{month:10,year:2026,revision:0,assignmentVersion:read.assignmentVersion,data:read.published});assert.equal(result.status,409);assert.deepEqual(f.state,before);
+ read=await f.call('/api/bb/month',{month:10,year:2026},99,'GET');const body={month:10,year:2026,revision:0,assignmentVersion:read.assignmentVersion,data:{staffIds:[1,2,10],cells:{'10-3':'W','1-5':'I'}}};assert.equal((await f.call('/api/bb/schedule',body)).status,400);assert.deepEqual(f.state,before);assert.equal((await f.call('/api/bb/schedule',body,1)).status,403);assert.deepEqual(f.state,before);
+ body.data.cells={'10-3':'W','1-5':'W'};assert.equal((await f.call('/api/bb/schedule',body)).ok,true);before=clone(f.state);assert.equal((await f.call('/api/bb/schedule',body)).status,409);assert.deepEqual(f.state,before);
+});
+
+test('Automatic active BB and linked receptionist rows do not require manual add-staff permission',async()=>{
+ const f=fixture();f.state.schedules['RT:10/2026']=f.vr({'0_4':'W'},undefined,10,2026);const rights={bb:{enabled:true,buttons:{schedule_edit:true,add_staff:false}}};const read=await f.call('/api/bb/month',{month:10,year:2026},99,'GET');const result=await f.call('/api/bb/schedule',{month:10,year:2026,revision:0,assignmentVersion:read.assignmentVersion,data:{staffIds:read.published.staffIds,cells:{'10-3':'W','1-5':'W'}}},99,'POST',{overrides:rights});assert.equal(result.ok,true);
+});

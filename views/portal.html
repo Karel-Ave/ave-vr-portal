@@ -1038,7 +1038,6 @@
   // ── Card definitions ──────────────────────────────────────────────────────
   // ── Všechny karty aplikací (jednotný seznam) ─────────────────────────────
   const ALL_CARDS = [
-    { id: 'bb', title: 'Bagážisté – požadavky a rozpis', href: '/raspis-test?tab=bb-schedule', permKey: 'bb' },
     { id: 'raspis',      title: 'Rozpis a požadavky', href: '/raspis-test',  permKey: 'raspis' },
     { id: 'priplatky',   title: 'Příplatky a pokuty', href: '/priplatky',    permKey: 'priplatky' },
     { id: 'blacklist',   title: 'Blacklist',          href: '/blacklist',    permKey: 'blacklist' },
@@ -1611,12 +1610,14 @@
     const views = normalizedDefaultViews();
     const devicePref = views[portalDeviceKey()]?.app;
     if (devicePref) {
-      const picked = cards.find(c => c.id === devicePref && c.href);
+      const picked = cards.find(c => c.id === (devicePref==='bb'?'raspis':devicePref) && c.href);
+      if (picked && devicePref==='bb') return picked.href+'?tab=bb-schedule';
       if (picked) return picked.href;
     }
     const defaultRoles = ['admin', 'vedoucí', 'recepční'];
     const preferredId = perms?.__defaultApp || (defaultRoles.includes(user?.role) ? 'raspis' : null);
-    const preferred = preferredId ? cards.find(c => c.id === preferredId && c.href) : null;
+    const preferred = preferredId ? cards.find(c => c.id === (preferredId==='bb'?'raspis':preferredId) && c.href) : null;
+    if (preferred && preferredId==='bb') return preferred.href+'?tab=bb-schedule';
     return preferred?.href || cards.find(c => c.href)?.href || null;
   }
 
