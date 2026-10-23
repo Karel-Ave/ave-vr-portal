@@ -1328,8 +1328,11 @@ tbody tr.row-hidden { display: none !important; }
 #subtoolbar.tab-rozpis #btn-copy-xls {
   display: inline-flex;
 }
-#stb-toggle-public-leads {
+#stb-toggle-public-leads, #stb-toggle-public-bb {
   display: none;
+}
+#subtoolbar.tab-public.public-bb-toggle-visible #stb-toggle-public-bb {
+  display: inline-flex;
 }
 #subtoolbar.tab-public.public-leads-toggle-visible #stb-toggle-public-leads {
   display: inline-flex;
@@ -3529,6 +3532,7 @@ body.hide-req-changes .sched-cell[data-req-tip]:not([data-dup-tip]):hover::after
     <button class="stb-btn" id="stb-save-req">Zapamatuj požadavky</button>
     <button class="stb-btn" id="stb-toggle-req-diff" type="button">Zobrazit změny</button>
     <button class="stb-btn" id="stb-toggle-public-leads" type="button">Zobrazit vedoucí</button>
+    <button class="stb-btn" id="stb-toggle-public-bb" type="button">Zobrazit BB</button>
     <button class="stb-btn" id="btn-copy-xls" type="button">Kopírovat do Excelu</button>
   </div>
   <div class="stb-row stb-row-tools">
@@ -5659,7 +5663,7 @@ function applyRaspisPermissions() {
   setPermVisibleById('btn-clear-month-overrides', 'settings_clear_overrides', false);
   setPermVisibleById('btn-add-staff', 'settings_add_staff', canManageRequirements());
 
-  ['stb-vse','stb-hide-hotels','stb-day-only','stb-night-only','stb-cols-day','stb-cols-night','stb-toggle-public-leads','btn-show-hidden'].forEach(id => setPermVisibleById(id, 'filters', true));
+  ['stb-vse','stb-hide-hotels','stb-day-only','stb-night-only','stb-cols-day','stb-cols-night','stb-toggle-public-leads','stb-toggle-public-bb','btn-show-hidden'].forEach(id => setPermVisibleById(id, 'filters', true));
   setPermVisibleById('stb-show-qualified', 'show_qualified', canManageRequirements());
   setPermVisibleById('stb-mark-sel', 'mark', canManageRequirements());
   setPermVisibleById('stb-show-selected', 'mark', canManageRequirements());
@@ -5929,10 +5933,14 @@ function restorePrintStaffAlphaOrder(clone) {
   rows.sort((a, b) => {
     const aStaff = state.staff[+a.dataset.si] || {};
     const bStaff = state.staff[+b.dataset.si] || {};
-    return (aStaff.name || '').localeCompare(bStaff.name || '', 'cs', { sensitivity: 'base' }) ||
+    return Number(isSystemLeadStaff(aStaff)) - Number(isSystemLeadStaff(bStaff)) ||
+      (aStaff.name || '').localeCompare(bStaff.name || '', 'cs', { sensitivity: 'base' }) ||
       (+a.dataset.si) - (+b.dataset.si);
   });
   rows.forEach(tr => staffTbody.appendChild(tr));
+  // Sorting receptionist rows must not leave the projected BB rows above them.
+  const firstLead = rows.find(tr => isSystemLeadStaff(state.staff[+tr.dataset.si]));
+  staffTbody.querySelectorAll('.bb-public-row').forEach(tr => staffTbody.insertBefore(tr, firstLead || null));
 }
 
 let _toastTimer = null;
@@ -10712,6 +10720,7 @@ let filterShift  = null;  // null | 'day' | 'night'
 let colShiftMode = 'all'; // 'all' | 'day' | 'night'
 let showHotels   = false;
 let publicShowLeadRowsWithFilter = false;
+let publicShowBbRowsWithFilter = false;
 // ── Copy/paste mode ──
 let _copyMode    = false;
 
@@ -10768,7 +10777,23 @@ function applyStbStateUi() {
   applyRowFilters();
 }
 
+function updatePublicBbToggleButton() {
+  const onlyC = filterHotels.size === 1 && filterHotels.has('C');
+  if (!onlyC) publicShowBbRowsWithFilter = false;
+  document.getElementById('subtoolbar')?.classList.toggle('public-bb-toggle-visible', document.body.dataset.activeTab === 'public' && onlyC);
+  const btn = document.getElementById('stb-toggle-public-bb');
+  if (!btn) return;
+  btn.textContent = publicShowBbRowsWithFilter ? 'Skrýt BB' : 'Zobrazit BB';
+  btn.classList.toggle('active', publicShowBbRowsWithFilter);
+  btn.setAttribute('aria-pressed', String(publicShowBbRowsWithFilter));
+}
+function togglePublicBbRows() {
+  publicShowBbRowsWithFilter = !publicShowBbRowsWithFilter;
+  applyRowFilters();
+}
+document.getElementById('stb-toggle-public-bb')?.addEventListener('click', togglePublicBbRows);
 function updatePublicLeadToggleButton() {
+  updatePublicBbToggleButton();
   const btn = document.getElementById('stb-toggle-public-leads');
   const stb = document.getElementById('subtoolbar');
   if (!btn) return;
@@ -11579,7 +11604,7 @@ function renderBbPublicRows() {
   if (!table) return;
   table.querySelectorAll('.bb-public-row').forEach(row => row.remove());
   const body = table.querySelector('.staff-tbody');
-  if (!body || !filterHotels.has('C') || filterShift === 'night' || showMarkedOnly) return;
+  if (!body || !publicShowBbRowsWithFilter || filterHotels.size !== 1 || !filterHotels.has('C') || filterShift === 'night' || showMarkedOnly) return;
   const before = Array.from(body.querySelectorAll('tr[data-si]')).find(row => isSystemLeadStaff(state.staff[Number(row.dataset.si)]));
   const cols = getCalCols(state.month, state.year);
   for (const person of state.bbDisplayRows || []) {
@@ -11592,7 +11617,8 @@ function renderBbPublicRows() {
       const value = col.dn === 'd' ? person.cells?.[y+'-'+String(m).padStart(2,'0')+'-'+String(col.day).padStart(2,'0')] || '' : '';
       td.textContent = value; if (value === 'W' && !col.nextYear) count++; row.appendChild(td);
     });
-    Array.from({length:7}).forEach((_, idx) => {const td = document.createElement('td'); td.className = 'sum-cell';td.dataset.sumIdx=idx;if(idx===6)td.classList.add('sum-hrs');if(idx===5)td.classList.add('sum-pm');if(idx===0||idx===6)td.classList.add('sum-bold');td.textContent=idx===0?count:idx===6?count*12:'';row.appendChild(td);});
+    const correction=(person.adjustments||[]).reduce((sum,a)=>sum+(Number(a.val)||0),0);
+    Array.from({length:7}).forEach((_, idx) => {const td = document.createElement('td'); td.className = 'sum-cell';td.dataset.sumIdx=idx;if(idx===6)td.classList.add('sum-hrs');if(idx===5)td.classList.add('sum-pm');if(idx===0||idx===6)td.classList.add('sum-bold');td.textContent=idx===0?count:idx===5?(correction||''):idx===6?Math.round((count*12+correction)*1e6)/1e6:'';row.appendChild(td);});
     body.insertBefore(row, before || null);
   }
 }

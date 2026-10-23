@@ -2,6 +2,7 @@
 const path = require('path');
 const availability = require('./public/bb-availability');
 const calendar = require('./public/bb-calendar');
+const adjustments = require('./public/bb-adjustments');
 function normalizeFunds(value){try{return calendar.normalizeFunds(value);}catch(e){fail(e.message,400);}}
 function normalizeExtraHolidays(value,year,month){try{return calendar.normalizeExtraHolidays(value,year,month);}catch(e){fail(e.message,400);}}
 const clean = value => String(value || '').normalize('NFD').replace(/[\u0300-\u036f]/g, '').trim().toLowerCase();
@@ -145,7 +146,7 @@ function createBbService({getPool,getUserEffectivePerms}) {
     setSchedule(data,cells);
     const {rows}=await db.query('SELECT published FROM bb_months WHERE year=$1 AND month=$2',[data.year,data.month]);
     const pub=rows[0]?.published?json(rows[0].published):null;
-    data.bbDisplayRows=(pub?.staffIds||[]).map(uid=>allPeople.find(p=>p.userId===Number(uid))).filter(p=>p&&isBb(p)).map(p=>({...p,cells:{...Object.fromEntries(Object.entries(pub.cells||{}).filter(([key,value])=>key.startsWith(p.userId+'-')&&['x','z'].includes(value)).map(([key,value])=>[calendar.cellDate(data.year,data.month,Number(key.split('-')[1])),value])),...Object.fromEntries(linked.filter(s=>s.userId===p.userId).map(s=>[s.date,'W']))}}));
+    data.bbDisplayRows=(pub?.staffIds||[]).map(uid=>allPeople.find(p=>p.userId===Number(uid))).filter(p=>p&&isBb(p)).map(p=>({...p,adjustments:copy(pub.adjustments?.[p.userId]||[]),cells:{...Object.fromEntries(Object.entries(pub.cells||{}).filter(([key,value])=>key.startsWith(p.userId+'-')&&['x','z'].includes(value)).map(([key,value])=>[calendar.cellDate(data.year,data.month,Number(key.split('-')[1])),value])),...Object.fromEntries(linked.filter(s=>s.userId===p.userId).map(s=>[s.date,'W']))}}));
     return data;
   }
   async function putAssignment(db,shift,user) {
@@ -222,7 +223,7 @@ function createBbService({getPool,getUserEffectivePerms}) {
       if(!viewAll)for(const data of [reqData,pub])if(data)data.notes=Object.fromEntries(Object.entries(data.notes||{}).filter(([uid])=>Number(uid)===Number(req.session.user.id)));
       const ids=new Set([...(reqData?.staffIds||[]),...(pub?.staffIds||[]),...shifts.map(s=>s.userId)]);
       const roster=all.filter(s=>ids.has(s.userId));
-      return {month,year,permissions:p,canManageAbsence:manager(req.session.user),userId:req.session.user.id,status:entry?.status||'closed',revision:entry?.revision||0,publishedRevision:entry?.published_revision||0,assignmentVersion:assignmentVersion(shifts),requirements:p.requests_view?reqData:null,published:p.schedule_view?pub:null,shifts:p.schedule_view?shifts:[],staff:roster,available:p.add_staff?all.filter(s=>active(s,month,year)&&(isReceptionist(s)||isBb(s))):[],duplicates:p.requests_view&&reqData?duplicateRequests(reqData,roster):[]};});
+      return {month,year,permissions:p,canManageAbsence:manager(req.session.user),canManageHours:manager(req.session.user),userId:req.session.user.id,status:entry?.status||'closed',revision:entry?.revision||0,publishedRevision:entry?.published_revision||0,assignmentVersion:assignmentVersion(shifts),requirements:p.requests_view?reqData:null,published:p.schedule_view?pub:null,shifts:p.schedule_view?shifts:[],staff:roster,available:p.add_staff?all.filter(s=>active(s,month,year)&&(isReceptionist(s)||isBb(s))):[],duplicates:p.requests_view&&reqData?duplicateRequests(reqData,roster):[]};});
     endpoint('post','/api/bb/create',async(req,p)=>{if(!p.create)fail('Nemáte oprávnění vytvářet požadavky BB.',403);const {month,year}=period(req.body.month,req.body.year);return transaction(async db=>{if(month===1)await lock(db,12,year-1);else await lock(db,month,year);const entry=await readMonth(db,month,year);if(hasRequirements(entry))fail('Požadavky BB už existují.');const allPeople=await people(db);const roster=allPeople.filter(s=>isBb(s)&&active(s,month,year));const data={staffIds:roster.map(s=>s.userId),cells:{},notes:{},meta:{},rowVersions:{},funds:normalizeFunds(req.body.funds),extraHolidays:normalizeExtraHolidays(req.body.extraHolidays,year,month)};
       if(month===1){const december=await readMonth(db,12,year-1);const published=december?.published?copy(json(december.published)):null;const linked=await assignments(db,12,year-1,true,false);const firstDay=linked.filter(s=>s.date===date(year,1,1));uniqueAssignments(firstDay);const eligible=new Map(allPeople.filter(s=>isBb(s)||isReceptionist(s)).map(s=>[s.userId,s]));
         for(const [key,value]of Object.entries(published?.cells||{})){const match=key.match(/^(\d+)-32$/);if(!match||!eligible.has(Number(match[1]))||value==='W'||!value)continue;const uid=Number(match[1]);if(!data.staffIds.includes(uid))data.staffIds.push(uid);data.cells[uid+'-1']=normalizeBbCell(value);}
@@ -258,8 +259,15 @@ function createBbService({getPool,getUserEffectivePerms}) {
       await updateVrRows(db,shifts,removed,all);
       for(const old of removed)await db.query('DELETE FROM bb_assignments WHERE day=$1 AND user_id=$2',[old.date,old.userId]);
       for(const shift of shifts)await putAssignment(db,shift,req.session.user);
+      let hourAdjustments;
+      try {hourAdjustments=adjustments.normalize(json(entry.published).adjustments||{},[...roster,...(json(entry.published).staffIds||[])]);
+        if(editing&&data.adjustments!==undefined){const incoming=adjustments.normalize(data.adjustments,[...roster,...(json(entry.published).staffIds||[])]);
+          if(!manager(req.session.user)&&JSON.stringify(incoming)!==JSON.stringify(hourAdjustments))fail('Korekce hodin může měnit pouze admin nebo VR.',403);
+          if(manager(req.session.user)){for(const [uid,list]of Object.entries(incoming))for(const adj of list)if(!(hourAdjustments[uid]||[]).some(old=>JSON.stringify(old)===JSON.stringify(adj)))adj.login=req.session.user.username||req.session.user.name||'';hourAdjustments=incoming;}
+        }
+      }catch(error){if(error.status)throw error;fail(error.message,400);}
       const notes=editing?(json(entry.published).notes??json(entry.requirements).notes??{}):(data.notes||{});
-      const published={staffIds:[...roster],cells:data.cells||{},funds:normalizeFunds(data.funds??json(entry.published).funds),notes:copy(notes),extraHolidays:normalizeExtraHolidays(data.extraHolidays??json(entry.published).extraHolidays,year,month)}; // Monthly PR is preserved for display; request timestamps stay private.
+      const published={staffIds:[...roster],cells:data.cells||{},funds:normalizeFunds(data.funds??json(entry.published).funds),notes:copy(notes),adjustments:hourAdjustments,extraHolidays:normalizeExtraHolidays(data.extraHolidays??json(entry.published).extraHolidays,year,month)}; // Monthly PR is preserved for display; request timestamps stay private.
       await db.query("UPDATE bb_months SET published=$3,published_revision=published_revision+1,status='closed',revision=revision+1,updated_at=NOW() WHERE year=$1 AND month=$2",[year,month,JSON.stringify(published)]);if(month===12)await db.query('UPDATE bb_months SET published_revision=published_revision+1 WHERE year=$1 AND month=$2',[year+1,1]);
       if(month===1)await db.query('UPDATE bb_months SET published_revision=published_revision+1 WHERE year=$1 AND month=$2',[year-1,12]);
       await audit(db,month,year,req.session.user,editing?'published_edit':'publish',{shifts});return {};});}
