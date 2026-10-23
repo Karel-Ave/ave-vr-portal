@@ -49,6 +49,7 @@ test('portal permissions cannot expose Nikotin to other roles even with enabled 
   let handler;
   vm.runInNewContext(source.slice(start,end),{
     app:{get(route,login,fn){handler=fn;}},requireLogin(){},console,
+    bbService:{permissions:async()=>({enabled:false,visible:false})},
     getPool:()=>({query:async sql=>({rows:sql.includes('permission_groups')?[{perms:'{"nikotin":{"enabled":true,"visible":true}}'}]:[{perm_overrides:'{"nikotin":{"enabled":true,"visible":true}}'}]})})
   });
   for(const role of ['recepční','vedoucí','pb6','admin']) {

@@ -1060,6 +1060,7 @@ async function init() {
   }
 
   await require('./nikotin').migrateNikotin(db);
+  await require('./bb').migrateBb(db);
   console.log('Databáze připravena.');
 }
 

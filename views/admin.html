@@ -396,7 +396,7 @@
               <select id="raspis-type">
                 <option value="">— žádný —</option>
                 <option>Denní</option><option>Noční</option><option>Obojí</option>
-              </select>
+              <option value="Bagážista" hidden>Bagážista</option></select>
             </div>
             <div style="flex:1">
               <label>Smlouva</label>
@@ -507,9 +507,17 @@
   </div>
 </div>
 
+<script src="/static/bb-availability.js"></script>
+<script src="/static/bb-admin.js"></script>
 <script>
   // ── Definice aplikací ─────────────────────────────────────────────────────────
   const DEFINED_APPS = {
+    bb: {label:'Bagážisté', buttons: {
+      requests_view:{label:'Vidět Požadavky BB',default:false},requests_edit_own:{label:'Editovat vlastní požadavky BB při otevřeném období',default:false},
+      requests_edit_all:{label:'Editovat požadavky všem BB',default:false},requests_open:{label:'Povolit / ukončit editaci BB',default:false},
+      create:{label:'Vytvořit měsíc BB',default:false},publish:{label:'Publikovat Rozpis BB',default:false},schedule_view:{label:'Vidět Rozpis BB',default:false},
+      schedule_edit:{label:'Editovat publikovaný Rozpis BB',default:false},add_staff:{label:'Přidat recepčního nebo BB do měsíce',default:false}
+    }},
     raspis: { label: 'Rozpis a požadavky', buttons: {
       tab_nastaveni: 'List Nastavení',
       tab_tvorba:    'List Tvorba rozpisu',
@@ -590,12 +598,22 @@
   const DEFAULT_APP_OPTIONS = [
     ['raspis', 'Rozpis a požadavky'],
     ['priplatky', 'Příplatky a pokuty'],
+    ['bb', 'Bagážisté'],
     ['dovolene', 'Dovolen\u00e9'],
     ['blacklist', 'Blacklist'],
     ['nikotin', 'Nikotin'],
     ['admin', 'Správa uživatelů']
   ];
 
+  function groupAppPermissions(perms, appKey, role) {
+    if (appKey !== 'bb') return perms[appKey] || {enabled:true, visible:true, buttons:{}};
+    const normalized = String(role || '').normalize('NFD').replace(/[\u0300-\u036f]/g,'').toLowerCase();
+    const manager = normalized === 'admin' || normalized.includes('ved') || normalized === 'vr';
+    const bb = normalized === 'bagazista', enabled = manager || bb;
+    const buttons = Object.fromEntries(Object.keys(DEFINED_APPS.bb.buttons).map(key => [key, manager || (bb && ['requests_view','requests_edit_own','schedule_view'].includes(key))]));
+    const stored = perms.bb || {};
+    return {enabled, visible:enabled, ...stored, buttons:{...buttons,...stored.buttons}};
+  }
   function permButtonLabel(btnDef) {
     return typeof btnDef === 'object' ? btnDef.label : btnDef;
   }
@@ -816,7 +834,7 @@
     document.getElementById('u-phone').value = '+420 ';
     document.getElementById('u-username').disabled = false;
     document.getElementById('pw-hint-label').style.display = 'none';
-    populateRoleSelect(document.getElementById('u-role'), 'vedoucí');
+    populateRoleSelect(document.getElementById('u-role'), 'recepční');
     clearMsg('user-msg');
     resetRaspisSection();
     document.getElementById('user-overlay').classList.add('show');
@@ -873,6 +891,9 @@
     const phone = formatPhoneInput(phoneInput.value);
     phoneInput.value = phone || '+420 ';
     const role = document.getElementById('u-role').value;
+    if (role === 'bagazista') {
+      document.getElementById('raspis-type').value = 'Bagážista';
+    }
     const msg = document.getElementById('user-msg');
     if (!name) { setMsg(msg, 'err', 'Zadejte jméno.'); return; }
     let r;
@@ -889,7 +910,8 @@
     if (!data.ok) { setMsg(msg, 'err', data.msg || 'Chyba.'); return; }
     // Ulož Raspis Test nastavení do perm_overrides
     const userId = currentUserId !== null ? currentUserId : data.id;
-    if (userId) await saveRaspisOverride(userId);
+    try { if (userId) await saveRaspisOverride(userId); }
+    catch(e) { currentUserId = userId; setMsg(msg, 'err', e.message || 'Nastavení se nepodařilo uložit.'); return; }
     closeUserModal();
     loadUsers();
   }
@@ -1009,7 +1031,7 @@
         container.appendChild(locked);
         continue;
       }
-      const gp  = groupPerms[appKey] || { enabled: true, buttons: {} };
+      const gp = groupAppPermissions(groupPerms, appKey, currentOverridesRole);
       const uo  = overridesData[appKey] || {};
       const appEnabled   = (uo.enabled != null) ? uo.enabled : gp.enabled;
       const appVisible   = (uo.visible != null) ? uo.visible : (gp.visible != null ? gp.visible : true);
@@ -1266,7 +1288,7 @@
         html += '<div class="app-block"><div class="app-header">Nikotin: nepřístupné, pouze role admin</div></div>';
         continue;
       }
-      const ap = perms[appKey] || { enabled: true, visible: true, buttons: {} };
+      const ap = groupAppPermissions(perms, appKey, grp.name);
       const isVisible = ap.visible !== false;
       html += `<div class="app-block">
         <div class="app-header" onclick="toggleAppSection(this)">
@@ -1319,7 +1341,7 @@
     const grp = allGroups.find(g => g.name === groupName);
     if (!grp) return;
     if (!grp.perms) grp.perms = {};
-    if (!grp.perms[appKey]) grp.perms[appKey] = { enabled: true, buttons: {} };
+    if (!grp.perms[appKey]) grp.perms[appKey] = groupAppPermissions({}, appKey, grp.name);
     if (!grp.perms[appKey].buttons) grp.perms[appKey].buttons = {};
     if (btnKey === null) {
       grp.perms[appKey].enabled = !grp.perms[appKey].enabled;
@@ -1531,6 +1553,7 @@
     document.getElementById('raspis-req-x-limit').value = 7;
     document.getElementById('raspis-req-y-limit').value = 0;
     renderRaspisHotelSkills([], {});
+    BbAdmin.reset();
   }
 
   function renderRaspisHotelSkills(selected, modes = {}) {
@@ -1594,6 +1617,7 @@
 
   function populateRaspisFields(rs) {
     if (!rs) return;
+    BbAdmin.load(rs);
     document.getElementById('raspis-name').value = rs.displayName || '';
     document.getElementById('raspis-login').value = rs.login || '';
     document.getElementById('raspis-type').value = rs.type || '';
@@ -1658,12 +1682,17 @@
     // Načti stávající overrides, abychom nepřepsali oprávnění
     let current = {};
     try {
-      const { overrides } = await fetch(`/api/admin/users/${userId}/overrides`).then(r => r.json());
-      current = overrides || {};
-    } catch(e) {}
+      const response = await fetch(`/api/admin/users/${userId}/overrides`);
+      if (!response.ok) throw Error('Nastavení nelze načíst. Zkuste uložit znovu.');
+      const result = await response.json();
+      if (result.ok === false) throw Error(result.msg || 'Nastavení nelze načíst.');
+      current = result.overrides || {};
+    } catch(e) { throw Error('Stávající nastavení se nepodařilo načíst; nebylo přepsáno. Zkuste uložit znovu.'); }
 
     if (active || displayName) {
       current.raspis_staff = {
+        ...(current.raspis_staff || {}),
+        ...(BbAdmin.isBb() ? BbAdmin.settings() : {}),
         active,
         displayName,
         login:       document.getElementById('raspis-login').value.trim().toUpperCase(),
@@ -1681,11 +1710,13 @@
       delete current.raspis_staff;
     }
 
-    await fetch(`/api/admin/users/${userId}/overrides`, {
+    const saved = await fetch(`/api/admin/users/${userId}/overrides`, {
       method: 'PUT',
       headers: {'Content-Type':'application/json'},
       body: JSON.stringify({ overrides: Object.keys(current).length ? current : null })
     });
+    const result = await saved.json();
+    if (!saved.ok || result.ok === false) throw Error(result.msg || 'Nastavení se nepodařilo uložit.');
   }
 
   // Init selects jednou při načtení

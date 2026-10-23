@@ -5,6 +5,8 @@ const path        = require('path');
 const PDFDocument = require('pdfkit');
 const { getPool, init } = require('./db');
 const { registerNikotin } = require('./nikotin');
+const { createBbService } = require('./bb');
+const bbService = createBbService({ getPool, getUserEffectivePerms });
 const requirementXyLocks = require('./public/requirement-xy-locks');
 const { projectVacations, prepareVacationSave, findStaffIndex: findVacationStaffIndex } = require('./public/requirements-vacations');
 
@@ -1050,6 +1052,7 @@ app.delete('/api/admin/logs', requireLogin, requirePermDefault('admin', 'logs_de
 });
 
 registerNikotin(app, { getPool, getUserEffectivePerms });
+bbService.register(app);
 
 app.get('/api/my-permissions', requireLogin, async (req, res) => {
   try {
@@ -1160,6 +1163,8 @@ app.get('/api/my-permissions', requireLogin, async (req, res) => {
       if (isAdm && appKey === 'priplatky') buttons.viewAll = true;
       result[appKey] = { enabled, visible, buttons };
     }
+    const bbPermissions = await bbService.permissions(user);
+    result.bb = {enabled:bbPermissions.enabled, visible:bbPermissions.visible, buttons:Object.fromEntries(Object.entries(bbPermissions).filter(([key])=>!['enabled','visible'].includes(key)))};
     // Module permissions can never grant nicotine diary access to another role.
     if (!isAdm) result.nikotin = { enabled: false, visible: false, buttons: {} };
     result.__defaultApp = userOv.__defaultApp || groupPerms.__defaultApp ||
@@ -1470,6 +1475,13 @@ app.get('/api/widget-today', requireLogin, async (req, res) => {
       return '';
     };
 
+    const bbShifts = await bbService.assignments(db, month, year, false, false);
+    const bbPeopleForDay = bbShifts.filter(s=>s.date===String(year)+'-'+String(month).padStart(2,'0')+'-'+String(day).padStart(2,'0'));
+    if(bbPeopleForDay.length) {
+      const bbPeople = await bbService.people(db);
+      hotelMap.C = hotelMap.C || {letter:'C',day:null,night:null};
+      hotelMap.C.bb = bbPeopleForDay.map(s=>bbPeople.find(p=>p.userId===s.userId)?.name || '').join(' / ') + (bbPeopleForDay.length>1 ? ' (konflikt BB)' : '');
+    }
     const currentQHolder = findQHolder(data, day, false);
     const prevDate = new Date(year, month - 1, day - 1);
     const prevDay = prevDate.getDate();
@@ -1895,8 +1907,8 @@ app.post('/api/user-prefs/default-public-hotel', requireLogin, async (req, res) 
 });
 
 app.post('/api/user-prefs/default-views', requireLogin, async (req, res) => {
-  const allowedApps = new Set(['raspis', 'priplatky', 'dovolene', 'blacklist', 'admin', 'nikotin']);
-  const allowedTabs = new Set(['nastaveni', 'tvorba', 'rozpis', 'public', 'denni', 'pozadavky', 'dovolene']);
+  const allowedApps = new Set(['bb', 'raspis', 'priplatky', 'dovolene', 'blacklist', 'admin', 'nikotin']);
+  const allowedTabs = new Set(['nastaveni', 'tvorba', 'rozpis', 'public', 'denni', 'pozadavky', 'dovolene', 'bb-requests', 'bb-schedule']);
   const raw = req.body && req.body.default_views && typeof req.body.default_views === 'object'
     ? req.body.default_views
     : {};
@@ -2738,9 +2750,9 @@ app.get('/api/priplatky/recepni', requireLogin, async (req, res) => {
   }
 
   const { rows: userRows } = await db.query(
-    `SELECT name, username, perm_overrides
+    `SELECT name, username, role, perm_overrides
      FROM users
-     WHERE perm_overrides IS NOT NULL`
+     WHERE perm_overrides IS NOT NULL OR role = 'bagazista'`
   );
   for (const u of userRows) {
     let overrides = null;
@@ -2752,12 +2764,14 @@ app.get('/api/priplatky/recepni', requireLogin, async (req, res) => {
       continue;
     }
     const rs = overrides?.raspis_staff;
-    if (!rs || !rs.active) continue;
-    const login = String(rs.login || u.username || '').trim().toUpperCase();
+    const isBb = u.role === 'bagazista' || String(rs?.type || '').normalize('NFD').replace(/[\u0300-\u036f]/g,'').toLowerCase() === 'bagazista';
+    if ((!rs || !rs.active) && !isBb) continue;
+    const login = String(rs?.login || u.username || '').trim().toUpperCase();
     if (!login) continue;
     byLogin.set(login.toLowerCase(), {
       login,
-      full_name: rs.displayName || u.name || login,
+      full_name: rs?.displayName || u.name || login,
+      category: isBb ? 'bb' : 'receptionist',
       active: true
     });
   }
@@ -4223,7 +4237,7 @@ app.get('/api/raspis-staff', requireLogin, async (req, res) => {
     // 1. Uživatelé s raspis_staff.active = true v perm_overrides
     const settingsMap = await loadRtStaffSettingsMap(db);
     const { rows: users } = await db.query(
-      'SELECT id, name, phone, perm_overrides FROM users WHERE perm_overrides IS NOT NULL'
+      'SELECT id, name, role, phone, perm_overrides FROM users WHERE perm_overrides IS NOT NULL'
     );
 
     const raspisUsers = [];
@@ -4235,7 +4249,7 @@ app.get('/api/raspis-staff', requireLogin, async (req, res) => {
           : u.perm_overrides;
       } catch (e) { continue; }
       const rs = overrides?.raspis_staff;
-      if (rs && rs.active) {
+      if (u.role !== 'bagazista' && rs && rs.active && rtNormalizeStaffName(rs.type) !== 'bagazista') {
         const entry = {
           userId:      u.id,
           displayName: rs.displayName || u.name,
@@ -5935,6 +5949,7 @@ app.get('/api/rt/drafts/:id', requireLogin, async (req, res) => {
     try { parsed = JSON.parse(draft.data); } catch(e) { parsed = draft.data; }
     parsed = await augmentRtDataWithActiveReceptionists(parsed, db);
     parsed = await augmentRtDataWithSpecialStaff(parsed, req.session.user.id, db);
+    parsed = await bbService.projectVr(parsed, db);
     res.json({ ok: true, data: parsed, month: draft.month, year: draft.year });
   } catch (err) { console.error(err); res.status(500).json({ ok: false }); }
 });
@@ -6102,6 +6117,7 @@ app.get('/api/rt/schedules/:key', requireLogin, async (req, res) => {
     try { parsed = typeof entry.data === 'string' ? JSON.parse(entry.data) : entry.data; } catch(e) { parsed = entry.data; }
     entry.data = await augmentRtDataWithActiveReceptionists(parsed, db);
     entry.data = await augmentRtDataWithSharedSpecialStaff(entry.data, db);
+    entry.data = await bbService.projectVr(entry.data, db);
     entry.data.coverageCounts = buildRtCoverageCounts(entry.data);
     res.json({ ok: true, entry });
   } catch (err) { console.error(err); res.status(500).json({ ok: false }); }
@@ -6118,12 +6134,12 @@ app.post('/api/rt/schedules/publish', requireLogin, requirePermDefault('raspis',
     data = await augmentRtDataWithSpecialStaff(data, req.session.user.id, db);
     data = await augmentRtDataWithSharedSpecialStaff(data, db);
     const knownHotelSync = await syncRtKnownHotelsFromSchedule(data, db);
-    await db.query(
+    data = await bbService.writeVrSchedule(data, key, req.session.user, async (client, linked) => client.query(
       `INSERT INTO rt_schedules (key, month, year, label, data, published_at, published_by)
        VALUES ($1,$2,$3,$4,$5,NOW(),$6)
        ON CONFLICT (key) DO UPDATE SET data=$5, published_at=NOW(), published_by=$6`,
-      [key, month, year, label, JSON.stringify(data), req.session.user.name]
-    );
+      [key, month, year, label, JSON.stringify(linked), req.session.user.name]
+    ));
     const vacationSync = await vacationTrySyncScheduleZMovements(db, key, month, year, data, req.session.user);
     const vacationManualSync = vacationSync?.ok
       ? await vacationSyncManualScheduleZRequests(db, key, month, year, data, req.session.user, vacationSync)
@@ -6144,8 +6160,8 @@ app.post('/api/rt/schedules/publish', requireLogin, requirePermDefault('raspis',
       }
     }
     broadcastWidgetUpdate();
-    res.json({ ok: true, key, knownHotelSync, vacationSync, vacationManualSync });
-  } catch (err) { console.error(err); res.json({ ok: false, msg: 'Chyba serveru.' }); }
+    res.json({ ok: true, key, data, knownHotelSync, vacationSync, vacationManualSync });
+  } catch (err) { console.error(err); res.json({ ok: false, msg: err.status ? err.message : 'Chyba serveru.' }); }
 });
 
 app.delete('/api/rt/schedules/:key', requireLogin, requirePermDefault('raspis', 'delete', false), async (req, res) => {
@@ -6180,14 +6196,17 @@ app.post('/api/rt/schedules/restore/:id', requireLogin, requirePermDefault('rasp
     const { rows } = await db.query('SELECT * FROM rt_schedules_trash WHERE id = $1', [id]);
     if (!rows.length) return res.json({ ok: false });
     const r = rows[0];
-    await db.query(
+    const restored = typeof r.data === 'string' ? JSON.parse(r.data) : r.data;
+    await bbService.writeVrSchedule(restored, r.key, req.session.user, async (client, linked) => {
+    await client.query(
       `INSERT INTO rt_schedules (key, month, year, label, data, published_at, published_by)
        VALUES ($1,$2,$3,$4,$5,$6,$7) ON CONFLICT (key) DO UPDATE SET data=$5, published_at=$6, published_by=$7`,
-      [r.key, r.month, r.year, r.label, r.data, r.published_at, r.published_by]
+      [r.key, r.month, r.year, r.label, JSON.stringify(linked), r.published_at, r.published_by]
     );
-    await db.query('DELETE FROM rt_schedules_trash WHERE id = $1', [id]);
+    await client.query('DELETE FROM rt_schedules_trash WHERE id = $1', [id]);
+    });
     res.json({ ok: true });
-  } catch (err) { console.error(err); res.json({ ok: false }); }
+  } catch (err) { console.error(err); res.json({ ok: false, msg: err.status ? err.message : 'Chyba serveru.' }); }
 });
 
 app.delete('/api/rt/schedules/perma/:id', requireLogin, requirePermDefault('raspis', 'archive', false), async (req, res) => {
@@ -6208,15 +6227,15 @@ app.post('/api/rt/schedules/save-edits', requireLogin, requirePerm('raspis', 'ed
     data = await augmentRtDataWithActiveReceptionists(data, db);
     data = await augmentRtDataWithSpecialStaff(data, req.session.user.id, db);
     const knownHotelSync = await syncRtKnownHotelsFromSchedule(data, db);
-    await db.query('UPDATE rt_schedules SET data = $1 WHERE key = $2', [JSON.stringify(data), key]);
+    data = await bbService.writeVrSchedule(data, key, req.session.user, async (client, linked) => client.query('UPDATE rt_schedules SET data = $1 WHERE key = $2', [JSON.stringify(linked), key]));
     const parsedVacationKey = vacationParseScheduleKey(key);
     const vacationSync = await vacationTrySyncScheduleZMovements(db, key, data.month || parsedVacationKey.month, data.year || parsedVacationKey.year, data, req.session.user);
     const vacationManualSync = vacationSync?.ok
       ? await vacationSyncManualScheduleZRequests(db, key, data.month || parsedVacationKey.month, data.year || parsedVacationKey.year, data, req.session.user, vacationSync)
       : { ok: false, created: 0, skipped: 0 };
     broadcastWidgetUpdate();
-    res.json({ ok: true, knownHotelSync, vacationSync, vacationManualSync });
-  } catch (err) { console.error(err); res.json({ ok: false }); }
+    res.json({ ok: true, data, knownHotelSync, vacationSync, vacationManualSync });
+  } catch (err) { console.error(err); res.json({ ok: false, msg: err.status ? err.message : 'Chyba serveru.' }); }
 });
 
 // ── Change log ────────────────────────────────────────────────────────────────
@@ -6406,7 +6425,7 @@ async function saveRequestNotesForTvorba(db, data, month, year, user) {
 async function loadRtPortalReceptionists(db) {
   const settingsMap = await loadRtStaffSettingsMap(db);
   const { rows } = await db.query(
-    'SELECT id, name, username, phone, perm_overrides FROM users WHERE perm_overrides IS NOT NULL'
+    'SELECT id, name, username, role, phone, perm_overrides FROM users WHERE perm_overrides IS NOT NULL'
   );
   const out = [];
   for (const u of rows) {
@@ -6417,7 +6436,7 @@ async function loadRtPortalReceptionists(db) {
         : u.perm_overrides;
     } catch (e) { continue; }
     const rs = overrides?.raspis_staff;
-    if (!rs || !rs.active || !rtIsReceptionistType(rs.type)) continue;
+    if (u.role === 'bagazista' || !rs || !rs.active || !rtIsReceptionistType(rs.type)) continue;
     const entry = {
       userId: u.id,
       name: rs.displayName || u.name || '',
@@ -7006,11 +7025,20 @@ function buildInitialRequirementsData(sourceData, month, year, reqSettings = {})
   clone.reqMeta = {};
   clone.reqNotes = {};
   clone.schedule = {};
+  if (Number(month) === 1 && Number(sourceData?.month) === 12 && Number(sourceData?.year) === Number(year) - 1) {
+    const december = sourceData.monthlyData?.[(year - 1) + '-12']?.schedule || sourceData.schedule || {};
+    for (let si = 0; si < (clone.staff || []).length; si++) {
+      for (let shift = 0; shift < 2; shift++) {
+        const value = december[si + '_' + (62 + shift)];
+        if (value != null && String(value).trim()) clone.schedule[si + '_' + shift] = value;
+      }
+    }
+  }
   clone.extras = {};
   clone.requirements = {};
   clone.monthlyData = clone.monthlyData && typeof clone.monthlyData === 'object' ? clone.monthlyData : {};
   clone.monthlyData[key] = {
-    schedule: {},
+    schedule: {...clone.schedule},
     extras: {},
     requirements: {},
     fondHpp: clone.fondHpp,

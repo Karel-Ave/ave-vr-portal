@@ -3164,6 +3164,8 @@ body.hide-req-changes .sched-cell[data-req-tip]:not([data-dup-tip]):hover::after
     <button class="tb-tab" data-tab="rozpis" type="button">Rozpis</button>
     <button class="tb-tab" data-tab="public" type="button">Rozpis</button>
     <button class="tb-tab" data-tab="pozadavky" type="button">Požadavky</button>
+    <button class="tb-tab" data-tab="bb-requests" type="button">Požadavky BB</button>
+    <button class="tb-tab" data-tab="bb-schedule" type="button">Rozpis BB</button>
     <button class="tb-tab" data-tab="dovolene" type="button">Dovolen&eacute;</button>
   </div>
 
@@ -3588,6 +3590,8 @@ body.hide-req-changes .sched-cell[data-req-tip]:not([data-dup-tip]):hover::after
   </div>
 </div>
 
+<div class="tab-panel" id="tab-bb-requests"><iframe id="bb-requests-frame" data-src="/bb?view=requests" title="Požadavky BB" style="width:100%;height:calc(100dvh - var(--topbar-h, 70px));border:0"></iframe></div>
+<div class="tab-panel" id="tab-bb-schedule"><iframe id="bb-schedule-frame" data-src="/bb?view=schedule" title="Rozpis BB" style="width:100%;height:calc(100dvh - var(--topbar-h, 70px));border:0"></iframe></div>
 <div class="tab-panel" id="tab-dovolene">
   <iframe id="dovolene-frame" src="/dovolene" style="width:100%;height:100%;min-height:calc(100vh - 170px);border:0;display:block;background:var(--bg);"></iframe>
 </div>
@@ -4867,6 +4871,7 @@ function getHotelByLetter(letter) {
 
 function getHotelHours(letter, st) {
   const up = (letter || '').toUpperCase();
+  if (up === 'W') return 12;
   const h = (st.hotels || []).find(h => h.letter === up);
   if (h) return Number(h.hours);
   // Legacy fallback
@@ -5363,6 +5368,7 @@ function calcSums(si, calCols, st) {
   const regularOff = s.regular ? s.regular.split(',').map(t => t.trim()).filter(Boolean) : [];
 
   calCols.forEach((col, ci) => {
+    if (col.nextYear) return;
     const key = `${si}_${ci}`;
     const val = st.schedule[key] || '';
     if (!val || SKIP_VALS.has(val)) return;
@@ -5611,7 +5617,8 @@ async function rtRefreshScheduleNotice() {
 function applyRaspisPermissions() {
   document.querySelectorAll('.tb-tab[data-tab]').forEach(btn => {
     const key = RT_TAB_PERMS[btn.dataset.tab];
-    if (btn.dataset.tab === 'dovolene') setPermHidden(btn, !rtCanApp('dovolene', canManageRequirements()));
+    if (btn.dataset.tab.startsWith('bb-')) setPermHidden(btn, !rtCanApp('bb', false) || !rtPermissions?.bb?.buttons?.[btn.dataset.tab === 'bb-requests' ? 'requests_view' : 'schedule_view']);
+    else if (btn.dataset.tab === 'dovolene') setPermHidden(btn, !rtCanApp('dovolene', canManageRequirements()));
     else if (key) setPermHidden(btn, !rtCan(key, btn.dataset.tab === 'public' || btn.dataset.tab === 'denni' || btn.dataset.tab === 'pozadavky'));
   });
 
@@ -6256,7 +6263,7 @@ function clearRequirementsUnavailableClasses(root = document) {
 function updateRequirementClasses() {
   scheduleTableIds().forEach(tblId => {
     const tbl = document.getElementById(tblId);
-    if (!tbl) return;
+    if (!tbl || (tblId === 'pozadavky-tbl' && activeScheduleSource !== 'requirements' && activeScheduleSource !== 'requirements-preview')) return;
     const calCols = getCalCols(state.month, state.year);
     tbl.querySelectorAll('.sched-cell[data-si][data-ci]').forEach(td => {
       if (td.classList.contains('cov-cell')) return;
@@ -6974,6 +6981,7 @@ function renderScheduleTable(tableId, editable) {
   setupScheduleColumnHover(tbl);
   bindMobileAxisScroll();
   maybeAutoScrollCurrentDay(tableId);
+  if (isPublicView) renderBbPublicRows();
   if (isRequirementsView) clearRequirementsUnavailableClasses(tbl);
 
   if (editable) {
@@ -8154,6 +8162,7 @@ function buildSaveData() {
       });
       return pcd;
     })(),
+    bbLinks: JSON.parse(JSON.stringify(state.bbLinks || [])),
     automaticVacations: JSON.parse(JSON.stringify(state.automaticVacations || [])),
     // Aktuální měsíc na root úrovni (zpětná kompatibilita)
     schedule: JSON.parse(JSON.stringify(state.schedule)),
@@ -8178,6 +8187,9 @@ function buildSaveData() {
 
 function applyData(data) {
   if (!data) return;
+  if (data.bbConflicts?.length) toast('Konflikt směn BB: ' + [...new Set(data.bbConflicts.map(c=>c.date))].join(', ') + '. Zkontrolujte Rozpis BB a Rozpis VR.', true);
+  state.bbLinks = JSON.parse(JSON.stringify(data.bbLinks || []));
+  state.bbDisplayRows = JSON.parse(JSON.stringify(data.bbDisplayRows || []));
   state.automaticVacations = JSON.parse(JSON.stringify(data.automaticVacations || []));
 
   state.coverageCounts = data.coverageCounts && typeof data.coverageCounts === 'object' ? data.coverageCounts : null;
@@ -8368,6 +8380,12 @@ let autoSaveTimer = null;
 let autoSaveIndClearTimer = null;
 let draftListCache = []; // cache seznamu draftů (pro init a findAndLoadMonthDraft)
 let activeScheduleSource = 'draft';
+let scheduleLoadGeneration = 0;
+function beginScheduleLoad() {
+  const generation = ++scheduleLoadGeneration;
+  const tab = document.body.dataset.activeTab;
+  return () => generation === scheduleLoadGeneration && tab === document.body.dataset.activeTab;
+}
 let tvorbaDraftSnapshot = null;
 
 function captureTvorbaDraftSnapshot() {
@@ -8763,6 +8781,8 @@ async function confirmAddWebUser() {
    Jejich vlastní data (maxHrs, poznámky, atd.) jsou uložena v portalCustomData.
 ══════════════════════════════════════════════════════════════════════════════ */
 async function syncRaspisStaff() {
+  const generation = scheduleLoadGeneration, tab = document.body.dataset.activeTab;
+  if (!['nastaveni','tvorba'].includes(tab)) return;
   try {
     // Načteme portálové pracovníky a speciální (Ostatní) souběžně
     const [staffResp, specialResp] = await Promise.all([
@@ -8776,7 +8796,7 @@ async function syncRaspisStaff() {
     // Z /api/raspis-staff berme POUZE portálové pracovníky (s userId).
     // master_staff je globální sdílená tabulka (jiné moduly) — záměrně ho
     // tady nečteme, aby nedošlo ke zdvojení nebo záměně pracovníků.
-    const apiStaff = (data.staff || []).filter(s => s.userId);
+    const apiStaff = (data.staff || []).filter(s => s.userId && normalizedStaffType(s) !== 'bagazista');
 
     // Ne-portáloví pracovníci (Vedoucí/Pohotovost/Speciální/Ostatní) jsou
     // uloženi per-user v /api/rt/special-staff (rt_drafts month=0, year=0).
@@ -8788,6 +8808,7 @@ async function syncRaspisStaff() {
       }
     }
 
+    if (generation !== scheduleLoadGeneration || tab !== document.body.dataset.activeTab) return;
     // Migrace: pokud special-staff ještě nemá záznamy, ale draft obsahuje
     // ne-portálové pracovníky (starý formát), migrujeme je do nového úložiště.
     const _specialTypes = new Set(['Vedoucí', 'Pohotovost', 'Speciální']);
@@ -9015,11 +9036,13 @@ async function loadDraftList() {
 }
 
 async function loadDraft(id) {
+  const loadIsCurrent = beginScheduleLoad();
   if (!id) return false;
   try {
     const r = await fetch(`/api/rt/drafts/${id}`, {credentials:'include'});
     if (!r.ok) { toast('Chyba načtení konceptu', true); return false; }
     const data = await r.json();
+    if (!loadIsCurrent()) return false;
     applyData(data.data || data);
     activeScheduleSource = 'draft';
     currentDraftId = id;
@@ -9213,10 +9236,11 @@ async function publishSchedule() {
       headers: {'Content-Type':'application/json'},
       body: JSON.stringify({month: state.month, year: state.year, data, draftId: currentDraftId})
     });
-    if (!r.ok) throw new Error(r.status);
     const response = await r.json().catch(() => ({}));
+    if (!r.ok || !response.ok) throw new Error(response.msg || r.status);
+    if (response.data) applyData(response.data);
     const key = response.key || `RT:${String(state.month).padStart(2, '0')}/${state.year}`;
-    publishedScheduleCache.set(key, JSON.parse(JSON.stringify(data)));
+    publishedScheduleCache.set(key, JSON.parse(JSON.stringify(response.data || data)));
     currentPubKey = key;
     activeScheduleSource = 'published';
     showVacationSyncConflicts(response.vacationSync);
@@ -9228,7 +9252,7 @@ async function publishSchedule() {
     loadDraftList();
     rtRefreshScheduleNotice();
   } catch(e) {
-    toast('Chyba publikování', true);
+    toast(e.message || 'Chyba publikování', true);
   }
 }
 
@@ -9251,6 +9275,8 @@ function publishedOptionExists(key) {
 }
 
 async function loadScheduleList() {
+  const requestedTab = document.body.dataset.activeTab;
+  const shouldLoad = ['rozpis', 'public'].includes(requestedTab);
   const sel = document.getElementById('pub-sel');
   const publicSel = document.getElementById('pub-sel-public');
   sel.innerHTML = '';
@@ -9290,7 +9316,7 @@ async function loadScheduleList() {
       showRozpisEmpty(false);
       showPublicEmpty(false);
       currentPubKey = sel.value;
-      loadSchedule(currentPubKey);
+      if (shouldLoad && document.body.dataset.activeTab === requestedTab) await loadSchedule(currentPubKey);
     }
   } catch(e) {
     if (keepExistingTable) {
@@ -9328,29 +9354,10 @@ function clearPublishedTables() {
 }
 
 async function loadSchedule(key) {
+  const loadIsCurrent = beginScheduleLoad();
   if (!key) return;
   const spinner = document.getElementById('rozpis-spinner');
   const publicSpinner = document.getElementById('public-spinner');
-  const cached = publishedScheduleCache.get(key);
-  if (cached) {
-    applyData(JSON.parse(JSON.stringify(cached)));
-    activeScheduleSource = 'published';
-    renderScheduleTable('rozpis-tbl', false);
-    renderScheduleTable('public-rozpis-tbl', false);
-    autoScrollActivePublishedDay(true);
-    scheduleDeferredCellRefresh(0);
-    buildHotelFilterButtons();
-    rozpisHasLoadedTable = true;
-    showRozpisEmpty(false);
-    showPublicEmpty(false);
-    currentPubKey = key;
-    const sel = document.getElementById('pub-sel');
-    const publicSel = document.getElementById('pub-sel-public');
-    if (sel) sel.value = key;
-    if (publicSel) publicSel.value = key;
-    applyPublicDefaultHotel();
-    return;
-  }
   spinner.style.display = '';
   if (publicSpinner) publicSpinner.style.display = '';
   document.getElementById('rozpis-tbl').style.display = 'none';
@@ -9370,6 +9377,7 @@ async function loadSchedule(key) {
       scheduleData = response.data || response;
     }
     if (!scheduleData) throw new Error('Prázdná data');
+    if (!loadIsCurrent()) return;
     publishedScheduleCache.set(key, JSON.parse(JSON.stringify(scheduleData)));
     applyData(scheduleData);
     activeScheduleSource = 'published';
@@ -9393,6 +9401,7 @@ async function loadSchedule(key) {
     if (publicSel) publicSel.value = key;
     applyPublicDefaultHotel();
   } catch(e) {
+    if (!loadIsCurrent()) return;
     console.error('[loadSchedule] chyba:', e);
     spinner.style.display = 'none';
     if (publicSpinner) publicSpinner.style.display = 'none';
@@ -9408,6 +9417,11 @@ async function loadSchedule(key) {
   }
 }
 
+window.addEventListener('message', e => {
+  if (e.origin !== location.origin || e.data?.type !== 'bb-changed') return;
+  publishedScheduleCache.clear();
+  if (document.body.dataset.activeTab === 'denni') loadDailySchedule();
+});
 let currentReqKey = null;
 let currentReqEntry = null;
 let reqItemsCache = [];
@@ -9810,14 +9824,17 @@ function updateRequirementsFundsInfo(entry) {
       return;
     }
     box.style.display = '';
+    const isRequests = !!box.closest('#tb-act-pozadavky');
+    const fundsReady = !isRequests || ['requirements', 'requirements-preview'].includes(activeScheduleSource);
     const hpp = box.querySelector('.rt-fond-hpp-info');
     const zpp = box.querySelector('.rt-fond-zpp-info');
-    if (hpp) hpp.textContent = formatRequirementFond(state.fondHpp);
-    if (zpp) zpp.textContent = formatRequirementFond(state.fondZpp);
+    if (hpp) hpp.textContent = fundsReady ? formatRequirementFond(state.fondHpp) : 'Načítání…';
+    if (zpp) zpp.textContent = fundsReady ? formatRequirementFond(state.fondZpp) : 'Načítání…';
   });
 }
 
 async function loadRequirementsList(preferredKey = currentReqKey, shouldLoad = true) {
+  const generation = scheduleLoadGeneration, tab = document.body.dataset.activeTab;
   reqPreviewMode = false;
   const sel = document.getElementById('req-sel');
   if (!sel) return;
@@ -9828,6 +9845,7 @@ async function loadRequirementsList(preferredKey = currentReqKey, shouldLoad = t
     if (!r.ok) throw new Error(r.status);
     const d = await r.json();
     if (d && d.ok === false) throw new Error(d.msg || 'load failed');
+    if (shouldLoad && (generation !== scheduleLoadGeneration || tab !== document.body.dataset.activeTab)) return;
     reqItemsCache = Array.isArray(d.items) ? d.items : [];
     if (!reqItemsCache.length) {
       if (currentReqEntry && canManageRequirements()) {
@@ -9878,8 +9896,11 @@ async function loadRequirementsList(preferredKey = currentReqKey, shouldLoad = t
 }
 
 async function loadRequirement(key) {
+  const loadIsCurrent = beginScheduleLoad();
   reqVacationEpoch++;
   if (!key) return;
+  activeScheduleSource = 'loading-requirements';
+  updateRequirementsFundsInfo();
   reqPreviewMode = false;
   const spinner = document.getElementById('requests-spinner');
   const tbl = document.getElementById('pozadavky-tbl');
@@ -9890,6 +9911,7 @@ async function loadRequirement(key) {
     const r = await fetch(`/api/rt/requirements/${encodeURIComponent(key)}`, { credentials: 'include' });
     const d = await r.json();
     if (!r.ok || !d.ok) throw new Error(d.msg || r.status);
+    if (!loadIsCurrent()) return;
     if (d.hidden) {
       currentReqKey = key;
       currentReqEntry = d.entry || null;
@@ -9900,6 +9922,7 @@ async function loadRequirement(key) {
       showRequestsEmpty(true, d.msg || REQ_RECEPTION_CLOSED_MSG);
       return;
     }
+    if (!loadIsCurrent()) return;
     applyData(d.entry.data || {});
     activeScheduleSource = 'requirements';
     currentReqKey = key;
@@ -9917,10 +9940,11 @@ async function loadRequirement(key) {
     applyRowFilters();
     showRequestsEmpty(false);
   } catch(e) {
+    if (!loadIsCurrent()) return;
     toast('Pozadavky se nepodarilo nacist', true);
     showRequestsEmpty(true);
   } finally {
-    if (spinner) spinner.style.display = 'none';
+    if (loadIsCurrent() && spinner) spinner.style.display = 'none';
   }
 }
 
@@ -9929,6 +9953,9 @@ async function loadLastSentRequirementPreview() {
     const leave = confirm('Ukončit aktuální editaci požadavků bez uložení a zobrazit odeslané požadavky?');
     if (!leave) return;
   }
+  const loadIsCurrent = beginScheduleLoad();
+  activeScheduleSource = 'loading-requirements';
+  updateRequirementsFundsInfo();
   const spinner = document.getElementById('requests-spinner');
   const tbl = document.getElementById('pozadavky-tbl');
   if (spinner) spinner.style.display = '';
@@ -9938,6 +9965,7 @@ async function loadLastSentRequirementPreview() {
     const r = await fetch('/api/rt/requirements/last-sent', { credentials: 'include', cache: 'no-store' });
     const d = await r.json();
     if (!r.ok || !d.ok) throw new Error(d.msg || r.status);
+    if (!loadIsCurrent()) return;
     applyData(d.entry.data || {});
     activeScheduleSource = 'requirements-preview';
     currentReqKey = null;
@@ -9958,10 +9986,11 @@ async function loadLastSentRequirementPreview() {
     applyRowFilters();
     showRequestsEmpty(false);
   } catch(e) {
+    if (!loadIsCurrent()) return;
     toast(e.message || 'Odeslané požadavky se nepodařilo načíst', true);
     if (!currentReqEntry) showRequestsEmpty(true);
   } finally {
-    if (spinner) spinner.style.display = 'none';
+    if (loadIsCurrent() && spinner) spinner.style.display = 'none';
   }
 }
 
@@ -11440,7 +11469,7 @@ function scheduleMapForTable(tblId) {
 function rowHasSelectedHotel(tblId, si, selectedHotels, tr = null) {
   const hotels = (selectedHotels || []).map(h => String(h || '').toUpperCase()).filter(Boolean);
   if (!hotels.length) return false;
-  return rowFilterValues(tblId, si, tr).some(value => hotels.includes(String(value || '').toUpperCase()));
+  return rowFilterValues(tblId, si, tr).some(value => hotels.includes(String(value || '').toUpperCase()) || (tblId === 'public-rozpis-tbl' && hotels.includes('C') && String(value).toUpperCase() === 'W'));
 }
 
 function rowHasSelectedHotelShift(tblId, si, selectedHotels, dn, tr = null) {
@@ -11450,7 +11479,7 @@ function rowHasSelectedHotelShift(tblId, si, selectedHotels, dn, tr = null) {
   const row = tr || document.getElementById(tblId)?.querySelector(`tbody tr[data-si="${si}"]`);
   if (row) {
     return Array.from(row.querySelectorAll(`td.sched-cell[data-dn="${wantedShift}"]`))
-      .some(cell => hotels.includes(String(cellDisplayValue(cell) || '').toUpperCase()));
+      .some(cell => hotels.includes(String(cellDisplayValue(cell) || '').toUpperCase()) || (tblId === 'public-rozpis-tbl' && hotels.includes('C') && String(cellDisplayValue(cell)).toUpperCase() === 'W'));
   }
   return getCalCols(state.month, state.year).some((col, ci) => {
     if (col.dn !== wantedShift) return false;
@@ -11535,6 +11564,28 @@ function rowFilterRank(si, s, tblId = '') {
   return 9;
 }
 
+function renderBbPublicRows() {
+  const table = document.getElementById('public-rozpis-tbl');
+  if (!table) return;
+  table.querySelectorAll('.bb-public-row').forEach(row => row.remove());
+  const body = table.querySelector('.staff-tbody');
+  if (!body || !filterHotels.has('C') || filterShift === 'night' || showMarkedOnly) return;
+  const before = Array.from(body.querySelectorAll('tr[data-si]')).find(row => isSystemLeadStaff(state.staff[Number(row.dataset.si)]));
+  const cols = getCalCols(state.month, state.year);
+  for (const person of state.bbDisplayRows || []) {
+    const row = document.createElement('tr'); row.className = 'bb-public-row';
+    const label = document.createElement('td'); label.className = 'col-name-td'; label.textContent = 'BB ' + person.name; row.appendChild(label);
+    let count = 0;
+    cols.forEach(col => {
+      const td = document.createElement('td'); td.className = 'sched-cell'; td.dataset.dn = col.dn;
+      const y = col.nextYear ? state.year + 1 : state.year, m = col.nextYear ? 1 : state.month;
+      const value = col.dn === 'd' ? person.cells?.[y+'-'+String(m).padStart(2,'0')+'-'+String(col.day).padStart(2,'0')] || '' : '';
+      td.textContent = value; if (value === 'W' && !col.nextYear) count++; row.appendChild(td);
+    });
+    Array.from({length:7}).forEach((_, idx) => {const td = document.createElement('td'); td.className = 'sum-cell';td.dataset.sumIdx=idx;if(idx===6)td.classList.add('sum-hrs');if(idx===5)td.classList.add('sum-pm');if(idx===0||idx===6)td.classList.add('sum-bold');td.textContent=idx===0?count:idx===6?count*12:'';row.appendChild(td);});
+    body.insertBefore(row, before || null);
+  }
+}
 function applyRowFilters() {
   if (availableSlotFilter && (availableSlotFilter.month !== state.month || availableSlotFilter.year !== state.year)) {
     clearAvailableSlotFilter();
@@ -11632,6 +11683,7 @@ function applyRowFilters() {
   if (isMobileLike() && mobileControlsOpen) {
     requestAnimationFrame(() => settleMobileScheduleHeader());
   }
+  renderBbPublicRows();
   refreshDuplicateClassesSoon();
 }
 
@@ -14137,7 +14189,8 @@ async function saveViewEdits(options = {}) {
     });
     const d = await r.json();
     if (d.ok) {
-      publishedScheduleCache.set(currentPubKey, JSON.parse(JSON.stringify(savedData)));
+      if (d.data) applyData(d.data);
+      publishedScheduleCache.set(currentPubKey, JSON.parse(JSON.stringify(d.data || savedData)));
       viewEditMode = false; viewEditSnapshot = null;
       stopViewEditIdleWatch();
       renderScheduleTable('rozpis-tbl', false);
@@ -14148,7 +14201,7 @@ async function saveViewEdits(options = {}) {
       updateLockUI();
       showVacationSyncConflicts(d.vacationSync);
       toast(auto ? 'Editace automaticky uložena po neaktivitě' : 'Uloženo do rozpisu VR');
-    } else toast('Chyba uložení', true);
+    } else toast(d.msg || 'Chyba uložení', true);
   } catch(e) { toast('Chyba uložení', true); }
 }
 
@@ -14598,7 +14651,7 @@ function renderDailySchedule(data) {
     const nightDisabled = !!item.dayOnly;
     return `<tr class="${cls.trim()}">
       <td class="daily-code">${rtHtml(letter)}</td>
-      <td class="daily-day">${dailyCellHtml(letter, item.day, false, item)}</td>
+      <td class="daily-day">${dailyCellHtml(letter, item.day, false, item)}${letter === 'C' && item.bb ? ' · <strong>BB</strong> ' + rtHtml(item.bb) : ''}</td>
       <td class="daily-code ${nightDisabled ? 'daily-code-empty' : ''}">${dailyCodeHtml(letter, true, item)}</td>
       <td class="daily-night ${nightDisabled ? 'daily-night-disabled' : ''}">${dailyCellHtml(letter, item.night, true, item)}</td>
     </tr>`;
@@ -14683,6 +14736,7 @@ function switchTab(name) {
     if (!leave) return;
     window.aveDiscardTvorbaChanges?.();
   }
+  if (previousTab !== name) scheduleLoadGeneration++;
   if (previousTab && ['tvorba', 'rozpis', 'public', 'pozadavky'].includes(previousTab)) saveStbState();
   if (previousTab === 'tvorba' && activeScheduleSource === 'draft') {
     captureTvorbaDraftSnapshot();
@@ -14700,6 +14754,9 @@ function switchTab(name) {
 
   const act = document.getElementById(`tb-act-${name}`);
   if (act) act.classList.remove('hidden');
+  if (name === 'pozadavky' && activeScheduleSource !== 'requirements') {
+    const table = document.getElementById('pozadavky-tbl'); if (table) table.style.display = 'none';
+  }
   updateRequirementsFundsInfo();
   document.getElementById('schedule-legend')?.classList.toggle('show', name === 'tvorba' || name === 'rozpis' || name === 'public' || name === 'pozadavky');
   if (name === 'denni') startDailyRefresh();
@@ -14725,6 +14782,10 @@ function switchTab(name) {
     updateRequirementClasses();
   }
 
+  if ((name === 'rozpis' || name === 'public') && activeScheduleSource === 'published' && !viewEditMode && !window._initRendering && currentPubKey) {
+    loadSchedule(currentPubKey);
+    return;
+  }
   if (name === 'tvorba') {
     if (activeScheduleSource !== 'draft') {
       if (!restoreTvorbaDraftSnapshot()) restoreTvorbaDraftAfterRequirements();
@@ -14797,7 +14858,7 @@ function switchTab(name) {
   } else if (name === 'pozadavky') {
     if (sumsMode !== 'all') setSumsMode('all');
     if (!window._initRendering) {
-      if (!currentReqKey || requirementsLoadedKey !== currentReqKey) {
+      if (!currentReqKey || requirementsLoadedKey !== currentReqKey || activeScheduleSource !== 'requirements') {
         loadRequirementsList(currentReqKey, true);
       } else if (!document.getElementById('pozadavky-tbl')?.innerHTML) {
         renderScheduleTable('pozadavky-tbl', reqEditMode);
@@ -14806,6 +14867,10 @@ function switchTab(name) {
       refreshCoverageSticky();
     }
     if (!window._initRendering) refreshAutomaticRequirementVacations();
+  } else if (name === 'bb-requests' || name === 'bb-schedule') {
+    const frame = document.getElementById(name + '-frame');
+    if (frame && !frame.getAttribute('src')) frame.src = frame.dataset.src;
+    else frame?.contentWindow?.postMessage({type:'bb-visible'}, location.origin);
   } else if (name === 'dovolene') {
     rtMarkVacationSeen();
     if (!window._initRendering) {
@@ -14857,7 +14922,7 @@ document.addEventListener('DOMContentLoaded', async () => {
   window._initRendering = true;
   {
     const urlTab = new URLSearchParams(location.search).get('tab');
-    const allowedTabs = new Set(['nastaveni', 'tvorba', 'rozpis', 'public', 'denni', 'pozadavky', 'dovolene']);
+    const allowedTabs = new Set(['nastaveni', 'tvorba', 'rozpis', 'public', 'denni', 'pozadavky', 'dovolene', 'bb-requests', 'bb-schedule']);
     let initialTab = allowedTabs.has(urlTab) ? urlTab : (sessionStorage.getItem('rt-active-tab') || 'rozpis');
     if (initialTab === 'tvorba' && isMobileLike()) initialTab = mobileTabFallback();
     switchTab(initialTab);
@@ -14905,7 +14970,7 @@ document.addEventListener('DOMContentLoaded', async () => {
       if (preferred) {
         const id = preferred.id || preferred._id;
         document.getElementById('rt-draft-sel').value = id;
-        await loadDraft(id);
+        if (document.body.dataset.activeTab === 'tvorba') await loadDraft(id);
       }
     }
 

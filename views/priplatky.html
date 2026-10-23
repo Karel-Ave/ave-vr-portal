@@ -1147,8 +1147,14 @@ function renderSkoleni(data) {
 }
 
 function renderPrehled(data) {
-  const wrap = document.getElementById('stbl-wrap');
-  if (!data.length) { wrap.innerHTML = '<p class="empty">Žádné záznamy v tomto měsíci.</p>'; return; }
+  const bbLogins = new Set(recepniAll.filter(p => p.category === 'bb').map(p => String(p.login).toLowerCase()));
+  const bb = data.filter(z => bbLogins.has(String(z.login).toLowerCase()));
+  const reception = data.filter(z => !bbLogins.has(String(z.login).toLowerCase()));
+  const group = (rows, title) => rows.length ? (canViewAllPriplatky ? '<h3>'+title+'</h3>' : '') + renderPriplatkyGroup(rows) : '';
+  document.getElementById('stbl-wrap').innerHTML = group(reception, 'Recepční') + group(bb, 'Bagážisté') || '<p class="empty">Žádné záznamy v tomto měsíci.</p>';
+}
+function renderPriplatkyGroup(data) {
+  if (!data.length) return '';
 
   const known = {}, unknown = {};
   data.forEach(z => {
@@ -1227,7 +1233,7 @@ function renderPrehled(data) {
     <span><strong>PO</strong> Pokuty</span>
     <span><strong>∑</strong> Součet</span>
   </div>`;
-  wrap.innerHTML = html;
+  return html;
 }
 
 // ═══ Detail (záznamy jednoho loginu) ═════════════════════════════════════════
