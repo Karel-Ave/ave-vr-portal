@@ -2379,6 +2379,8 @@ body.hide-req-changes .sched-cell[data-req-tip]:not([data-dup-tip]):hover::after
   .tb-tab[data-tab="rozpis"]::after { content: "Rozpis"; }
   .tb-tab[data-tab="public"]::after { content: "Rozpis"; }
   .tb-tab[data-tab="pozadavky"]::after { content: "Požadavky"; }
+  .tb-tab[data-tab="bb-schedule"]::after { content: "Rozpis BB"; }
+  .tb-tab[data-tab="bb-requests"]::after { content: "Pož. BB"; }
   .tb-tab[data-tab="dovolene"]::after { content: "Dovol."; }
 
   .tb-actions:not(.hidden),
@@ -2930,6 +2932,14 @@ body.hide-req-changes .sched-cell[data-req-tip]:not([data-dup-tip]):hover::after
 .daily-schedule-table .daily-row-q td.daily-night {
   background: color-mix(in srgb, var(--accent) 42%, var(--surface));
 }
+.daily-c-assignment { display:flex;align-items:center;min-width:0;gap:24px; }
+.daily-c-reception { min-width:0;overflow:hidden;text-overflow:ellipsis; }
+.daily-bb-inline { margin-left:auto;padding-right:12px;min-width:0;overflow:hidden;text-overflow:ellipsis; }
+.daily-bb-mobile-row { display:none; }
+@media(max-width:760px), (pointer:coarse) and (max-height:520px) {
+  .daily-bb-inline { display:none; }
+  .daily-bb-mobile-row { display:table-row; }
+}
 .daily-missing {
   color: #d0392f;
   font-weight: 900;
@@ -3164,8 +3174,8 @@ body.hide-req-changes .sched-cell[data-req-tip]:not([data-dup-tip]):hover::after
     <button class="tb-tab" data-tab="rozpis" type="button">Rozpis</button>
     <button class="tb-tab" data-tab="public" type="button">Rozpis</button>
     <button class="tb-tab" data-tab="pozadavky" type="button">Požadavky</button>
-    <button class="tb-tab" data-tab="bb-requests" type="button">Požadavky BB</button>
     <button class="tb-tab" data-tab="bb-schedule" type="button">Rozpis BB</button>
+    <button class="tb-tab" data-tab="bb-requests" type="button">Požadavky BB</button>
     <button class="tb-tab" data-tab="dovolene" type="button">Dovolen&eacute;</button>
   </div>
 
@@ -14645,22 +14655,25 @@ function renderDailySchedule(data) {
     if (updatedPanel) updatedPanel.textContent = '';
     return;
   }
+  const bbRow = '<tr class="daily-bb-mobile-row"><td class="daily-code">BB</td><td class="daily-day">'+rtHtml(map.C?.bb || '')+'</td><td class="daily-code daily-code-empty"></td><td class="daily-night daily-night-disabled"></td></tr>';
+  const bbBefore = order.includes('U')?'U':order.includes('P')?'P':order.includes('Q')?'Q':null;
   const rows = order.map(letter => {
     const item = map[letter] || {};
     const cls = (letter === 'P' ? ' daily-row-p' : letter === 'Q' ? ' daily-row-q' : '') + (letter === 'Q' && item.handoffFrom ? ' daily-row-q-handoff' : '');
     const nightDisabled = !!item.dayOnly;
-    return `<tr class="${cls.trim()}">
+    return `${letter === bbBefore && map.C ? bbRow : ''}<tr class="${cls.trim()}">
       <td class="daily-code">${rtHtml(letter)}</td>
-      <td class="daily-day">${dailyCellHtml(letter, item.day, false, item)}${letter === 'C' && item.bb ? ' · <strong>BB</strong> ' + rtHtml(item.bb) : ''}</td>
+      <td class="daily-day">${letter === 'C' ? '<div class="daily-c-assignment"><span class="daily-c-reception">'+dailyCellHtml(letter,item.day,false,item)+'</span>'+(item.bb?'<span class="daily-bb-inline"><strong>BB</strong> '+rtHtml(item.bb)+'</span>':'')+'</div>' : dailyCellHtml(letter,item.day,false,item)}</td>
       <td class="daily-code ${nightDisabled ? 'daily-code-empty' : ''}">${dailyCodeHtml(letter, true, item)}</td>
       <td class="daily-night ${nightDisabled ? 'daily-night-disabled' : ''}">${dailyCellHtml(letter, item.night, true, item)}</td>
     </tr>`;
   }).join('');
   content.className = 'daily-schedule-card';
+  const extraBbRow = !bbBefore && map.C ? bbRow : '';
   content.innerHTML = `<table class="daily-schedule-table">
     <colgroup><col class="daily-code-col"><col><col class="daily-code-col"><col></colgroup>
     <thead><tr><th></th><th>Denní</th><th></th><th>Noční</th></tr></thead>
-    <tbody>${rows}</tbody>
+    <tbody>${rows}${extraBbRow}</tbody>
   </table>${dailyLegendHtml(order, map)}`;
   if (updated) {
     const now = new Date();
