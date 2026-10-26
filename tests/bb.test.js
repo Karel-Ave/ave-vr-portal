@@ -8,6 +8,7 @@ function fixture(){
  const pool={connect:async()=>pool,release(){},async query(sql,args=[]){sql=sql.replace(/\s+/g,' ').trim();queries.push(sql);const rows=values=>({rows:clone(values),rowCount:values.length});const monthKey=()=>args[0]+'-'+args[1];
  if(sql==='BEGIN'){backup=clone(state);return rows([]);}if(sql==='ROLLBACK'){state=backup;return rows([]);}if(sql==='COMMIT')return rows([]);if(sql.includes('pg_advisory_xact_lock'))return rows([]);
  if(sql==='SELECT id,name,username,role,perm_overrides FROM users ORDER BY name,id')return rows(users);
+ if(sql.startsWith('SELECT year,month FROM bb_months'))return rows(Object.values(state.months).filter(m=>Array.isArray(m.requirements?.staffIds)&&!m.requirements.published).sort((a,b)=>b.year-a.year||b.month-a.month).slice(0,1).map(m=>({year:m.year,month:m.month})));
  if(sql.startsWith('SELECT * FROM bb_months'))return rows(state.months[monthKey()]?[state.months[monthKey()]]:[]);
  if(sql.startsWith('SELECT published FROM bb_months'))return rows(state.months[monthKey()]?[{published:state.months[monthKey()].published}]:[]);
  if(sql.startsWith('INSERT INTO bb_months')){assert(!state.months[monthKey()]);state.months[monthKey()]={year:args[0],month:args[1],requirements:JSON.parse(args[2]),published:null,status:'closed',revision:1,published_revision:0};return rows([]);}
@@ -161,7 +162,7 @@ test('BB holidays use the receptionist fixed calendar, including 31 Dec and next
 test('Extra holidays persist through creation, own saves and publication without leaking to another month',async()=>{
  const f=fixture();assert.equal((await f.call('/api/bb/create',{month:4,year:2027,extraHolidays:'15, 16',funds:{hpp:'150'}})).ok,true);let entry=f.state.months['2027-4'];assert.deepEqual(entry.requirements.extraHolidays,[15,16]);await f.call('/api/bb/status',{month:4,year:2027,status:'open'});
  assert.equal((await f.call('/api/bb/requests',{month:4,year:2027,data:{cells:{'1-1':'W'},extraHolidays:[20]}},1)).ok,true);assert.deepEqual(f.state.months['2027-4'].requirements.extraHolidays,[15,16]);await f.call('/api/bb/status',{month:4,year:2027,status:'closed'});entry=f.state.months['2027-4'];assert.equal((await f.call('/api/bb/publish',{month:4,year:2027,revision:entry.revision,publishedRevision:entry.published_revision})).ok,true);assert.deepEqual(f.state.months['2027-4'].published.extraHolidays,[15,16]);
- let before=clone(f.state);entry=f.state.months['2027-4'];assert.equal((await f.call('/api/bb/requests',{month:4,year:2027,revision:entry.revision,data:{...entry.requirements,extraHolidays:'31'}})).status,400);assert.deepEqual(f.state,before);
+ let before=clone(f.state);entry=f.state.months['2027-4'];assert.equal((await f.call('/api/bb/requests',{month:4,year:2027,revision:entry.revision,data:{...entry.requirements,extraHolidays:'31'}})).status,409);assert.deepEqual(f.state,before);
  assert.equal((await f.call('/api/bb/create',{month:5,year:2027})).ok,true);assert.deepEqual(f.state.months['2027-5'].requirements.extraHolidays,[]);before=clone(f.state);assert.equal((await f.call('/api/bb/create',{month:2,year:2027,extraHolidays:'29'})).status,400);assert.deepEqual(f.state,before);
 });
 
@@ -191,4 +192,10 @@ test('Existing requirements include newly active BB by ID without changing saved
 test('Publishing unsaved requirements adds active BB automatically and default request month follows Prague month/year',async()=>{
  const f=fixture();await f.create();f.users[2].role='bagazista';assert.equal((await f.publish()).ok,true);assert(f.state.months['2026-12'].published.staffIds.includes(10));
  assert.deepEqual(bbCalendar.defaultPeriod('requests',new Date('2026-10-23T12:00:00Z')),{month:11,year:2026});assert.deepEqual(bbCalendar.defaultPeriod('schedule',new Date('2026-10-23T12:00:00Z')),{month:10,year:2026});assert.deepEqual(bbCalendar.defaultPeriod('requests',new Date('2026-12-15T12:00:00Z')),{month:1,year:2027});assert.deepEqual(bbCalendar.defaultPeriod('requests',new Date('2026-10-31T23:30:00Z')),{month:12,year:2026});
+});
+
+
+test('Published BB requirements become inactive, remain archived and cannot be edited through a stale browser',async()=>{
+ const f=fixture();await f.call('/api/bb/create',{month:11,year:2026,funds:{hpp:'150'}});let e=f.state.months['2026-11'];const req={...e.requirements,cells:{'1-5':'W'},notes:{1:'PR archiv'}};await f.call('/api/bb/requests',{month:11,year:2026,revision:e.revision,data:req});let current=await f.call('/api/bb/current',{},99,'GET');assert.deepEqual(current.period,{month:11,year:2026});e=f.state.months['2026-11'];assert.equal((await f.call('/api/bb/publish',{month:11,year:2026,revision:e.revision,publishedRevision:e.published_revision})).ok,true);const before=clone(f.state);const read=await f.call('/api/bb/month',{month:11,year:2026},99,'GET');assert.equal(read.requestsPublished,true);assert.equal(read.requirements.cells['1-5'],'W');assert.equal(read.requirements.notes[1],'PR archiv');assert.equal(read.published.cells['1-5'],'W');assert.equal((await f.call('/api/bb/current',{},99,'GET')).period,null);
+ assert.equal((await f.call('/api/bb/status',{month:11,year:2026,status:'open'})).status,409);assert.equal((await f.call('/api/bb/requests',{month:11,year:2026,revision:read.revision,data:req})).status,409);assert.deepEqual(f.state,before);await f.create();assert.deepEqual((await f.call('/api/bb/current',{},99,'GET')).period,{month:12,year:2026});assert.deepEqual(f.state.months['2026-11'],before.months['2026-11']);
 });

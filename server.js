@@ -4529,7 +4529,7 @@ app.get('/api/vacations/summary', requireLogin, async (req, res) => {
     const count = Number(row.count || 0);
     const latestAt = row.latest_at ? new Date(row.latest_at).toISOString() : '';
     const scope = manager ? 'manager' : 'own';
-    const signature = 'vacations:' + scope + ':' + count + ':' + latestAt;
+    const signature = (await buildVacationNotification(db, user)).signature;
     const { rows: seenRows } = await db.query(
       'SELECT signature FROM user_notification_reads WHERE user_id=$1 AND notification_type=$2',
       [user.id, 'vacations']
@@ -4548,7 +4548,13 @@ async function buildVacationNotification(db, user) {
   let rows;
   if (manager) {
     ({ rows } = await db.query(
-      "SELECT COUNT(*)::int AS count, MAX(GREATEST(created_at, updated_at)) AS latest_at FROM vacation_requests WHERE status IN ('pending','needs_info')"
+      `SELECT COUNT(*)::int AS count, MAX(activity_at) AS latest_at FROM (
+        SELECT r.id, COALESCE(MAX(e.created_at),r.created_at) AS activity_at
+        FROM vacation_requests r LEFT JOIN vacation_request_events e ON e.request_id=r.id
+          AND e.event_type IN ('request_created','request_updated','staff_reply')
+          AND COALESCE(e.actor_role,'') <> 'admin' AND LOWER(COALESCE(e.actor_role,'')) NOT LIKE '%ved%'
+        WHERE COALESCE(r.manual_entry,false)=false GROUP BY r.id,r.created_at
+      ) AS incoming_staff_requests`
     ));
   } else {
     ({ rows } = await db.query(

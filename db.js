@@ -1061,6 +1061,9 @@ async function init() {
 
   await require('./remove-nikotin').removeNikotin(db);
   await require('./bb').migrateBb(db);
+  await db.query(`UPDATE bb_months AS m SET requirements=jsonb_set(m.requirements,'{published}','true'::jsonb),revision=m.revision+1
+    WHERE m.requirements ? 'staffIds' AND COALESCE(m.requirements->>'published','false') <> 'true'
+    AND EXISTS (SELECT 1 FROM bb_audit AS a WHERE a.year=m.year AND a.month=m.month AND a.action='publish')`);
   await require('./bb-october-2026-cleanup').removeAccidentalOctoberRequests(db);
   console.log('Databáze připravena.');
 }

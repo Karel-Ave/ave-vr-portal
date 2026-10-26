@@ -7634,8 +7634,17 @@ function parseYearMonthInput(value) {
 }
 
 function isStaffActiveInCurrentMonth(s) {
+  return isStaffActiveInMonth(s, state.month, state.year);
+}
+function isStaffVisibleInSettings(s) {
+  if (nastaveniMode === 'monthly') return isStaffActiveInMonth(s, overrideModeMonth, overrideModeYear);
   if (!s || s.inactive) return false;
-  const current = monthIndex(state.month, state.year);
+  const until = staffMonthValue(s.activeUntil), today = getPragueToday();
+  return !until || monthIndex(until.month, until.year) >= monthIndex(today.month, today.year);
+}
+function isStaffActiveInMonth(s, month, year) {
+  if (!s || s.inactive) return false;
+  const current = monthIndex(month, year);
   const from = staffMonthValue(s.activeFrom);
   const until = staffMonthValue(s.activeUntil);
   if (from && monthIndex(from.month, from.year) > current) return false;
@@ -7818,7 +7827,7 @@ function renderStaffTable() {
   const _portalSourceRaw = (state.allPortalUsers && state.allPortalUsers.length > 0)
     ? state.allPortalUsers
     : state.staff.filter(s => s.userId);
-  const _portalSource = _portalSourceRaw.filter(s => isStaffActiveInCurrentMonth(s));
+  const _portalSource = _portalSourceRaw.filter(s => isStaffVisibleInSettings(s));
   _portalSource.sort((a, b) => (a.name || '').localeCompare(b.name || '', 'cs'));
   let portalRowNum = 0;
   _portalSource.forEach((s, ai) => {
