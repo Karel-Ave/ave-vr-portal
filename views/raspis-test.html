@@ -8251,8 +8251,10 @@ function applyData(data) {
     s.hotel  = custom.hotel  || '';
     s.hotelSkills = Array.isArray(custom.hotelSkills) ? [...custom.hotelSkills] : [];
     s.noStandby = !!custom.noStandby || !!s.noStandby;
-    s.reqXLimit = Number.isFinite(Number(custom.reqXLimit ?? s.reqXLimit)) ? Number(custom.reqXLimit ?? s.reqXLimit) : 7;
-    s.reqYLimit = Number.isFinite(Number(custom.reqYLimit ?? s.reqYLimit)) ? Number(custom.reqYLimit ?? s.reqYLimit) : 0;
+    // Live staff limits from Správa uživatelů take precedence over old schedule snapshots.
+    s.reqXLimit = Number.isFinite(Number(s.reqXLimit ?? custom.reqXLimit)) ? Number(s.reqXLimit ?? custom.reqXLimit) : 7;
+    s.reqYLimit = Number.isFinite(Number(s.reqYLimit ?? custom.reqYLimit)) ? Number(s.reqYLimit ?? custom.reqYLimit) : 0;
+    state.portalCustomData[s.userId] = {...custom, reqXLimit:s.reqXLimit, reqYLimit:s.reqYLimit};
     s.monthlyOverrides = custom.monthlyOverrides ? JSON.parse(JSON.stringify(custom.monthlyOverrides)) : {};
   });
   state.hrsColorOverride = data.hrsColorOverride || {};
@@ -9935,7 +9937,7 @@ async function loadRequirement(key) {
   if (tbl) tbl.style.display = 'none';
   showRequestsEmpty(false);
   try {
-    const r = await fetch(`/api/rt/requirements/${encodeURIComponent(key)}`, { credentials: 'include' });
+    const r = await fetch(`/api/rt/requirements/${encodeURIComponent(key)}`, { credentials: 'include', cache: 'no-store' });
     const d = await r.json();
     if (!r.ok || !d.ok) throw new Error(d.msg || r.status);
     if (!loadIsCurrent()) return;
@@ -10339,6 +10341,24 @@ function isAutomaticVacationCell(si, ci) {
   return (state.automaticVacations || []).some(record => window.AveRequirementVacations.cellKey(state, record) === key);
 }
 
+function refreshRequirementLimitsFrom(incoming) {
+  const byId = new Map((incoming.staff || []).filter(s => s.userId).map(s => [String(s.userId), s]));
+  for (const target of [state, reqEditSnapshot]) {
+    if (!target) continue;
+    for (const row of target.staff || []) {
+      const live = row.userId && byId.get(String(row.userId));
+      if (!live) continue;
+      for (const field of ['reqXLimit', 'reqYLimit']) {
+        const value = Number(live[field]);
+        if (live[field] == null || !Number.isFinite(value) || value < 0) continue;
+        row[field] = value;
+        target.portalCustomData = target.portalCustomData || {};
+        target.portalCustomData[row.userId] = {...(target.portalCustomData[row.userId] || {}), [field]:value};
+      }
+    }
+  }
+}
+
 async function refreshAutomaticRequirementVacations() {
   if (reqVacationRefreshPending || reqVacationSavePending || reqPreviewMode || !currentReqKey || activeScheduleSource !== 'requirements') return;
   const key = currentReqKey;
@@ -10351,6 +10371,7 @@ async function refreshAutomaticRequirementVacations() {
     if (!response.ok || !result.ok || result.hidden || result.entry?.archived_at || !result.entry?.data || key !== currentReqKey || epoch !== reqVacationEpoch || state.schedule !== targetState || reqPreviewMode || activeScheduleSource !== 'requirements' || reqVacationSavePending) return;
     const incoming = result.entry.data;
     if (Number(incoming.month) !== Number(state.month) || Number(incoming.year) !== Number(state.year)) return;
+    refreshRequirementLimitsFrom(incoming);
     if (JSON.stringify(state.automaticVacations || []) === JSON.stringify(incoming.automaticVacations || [])) return;
     const helper = window.AveRequirementVacations;
     const changed = new Set();

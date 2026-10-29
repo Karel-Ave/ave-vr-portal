@@ -6873,6 +6873,8 @@ async function augmentRtDataWithActiveReceptionists(data, db = getPool()) {
         regularExceptionTo: s.regularExceptionTo || '',
         regularOpen: s.regularOpen,
         hotel: s.hotel,
+        reqXLimit: rtReqLimit(s.reqXLimit, 7),
+        reqYLimit: rtReqLimit(s.reqYLimit, 0),
         monthlyOverrides: s.monthlyOverrides
       });
     }
