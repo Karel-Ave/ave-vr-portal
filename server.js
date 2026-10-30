@@ -956,7 +956,7 @@ app.get('/api/admin/logs', requireLogin, requirePermDefault('admin', 'logs_view'
     const { rows: users } = await db.query(
       `SELECT id, username, name, role, perm_overrides, last_activity_at
        FROM users
-       WHERE role IN ('admin','vedoucí','recepční','pb6')
+       WHERE role IN ('admin','vedoucí','recepční','bagazista','pb6')
        ORDER BY role, name`
     );
     let sessions = [];
@@ -999,13 +999,17 @@ app.get('/api/admin/logs', requireLogin, requirePermDefault('admin', 'logs_view'
     } catch (err) {
       console.error('Last login fallback error:', err.message);
     }
-    const currentMonth = new Date().getFullYear() * 12 + new Date().getMonth() + 1;
-    const groupOrder = { admin: 0, 'vedoucí': 0, 'recepční': 1, pb6: 2 };
-    const groupLabel = role => (role === 'admin' || role === 'vedoucí') ? 'Admin/VR' : (role === 'pb6' ? 'PB6' : 'Recepční');
+    const monthParts = new Intl.DateTimeFormat('en-US', { timeZone: 'Europe/Prague', year: 'numeric', month: 'numeric' }).formatToParts(new Date());
+    const currentMonth = Number(monthParts.find(p => p.type === 'year').value) * 12 + Number(monthParts.find(p => p.type === 'month').value);
+    const groupOrder = { admin: 0, 'vedoucí': 0, 'recepční': 1, bagazista: 2, pb6: 3 };
+    const groupLabel = role => (role === 'admin' || role === 'vedoucí') ? 'Admin/VR' : (role === 'bagazista' ? 'Bagážisté' : (role === 'pb6' ? 'PB6' : 'Recepční'));
     const isActiveUser = row => {
       const role = String(row.role || '').toLowerCase();
       if (role === 'admin' || role === 'vedoucí') return true;
-      return isRaspisStaffActiveForMonthFromOverrides(row.perm_overrides, currentMonth);
+      // A future rota start date must not hide an account that can already log in.
+      const rs = parsePermOverridesValue(row.perm_overrides)?.raspis_staff || {};
+      const until = staffMonthIndexValue(rs.activeUntil);
+      return rs.inactive !== true && rs.active !== false && (until === null || until >= currentMonth);
     };
     const rows = users
       .filter(isActiveUser)
