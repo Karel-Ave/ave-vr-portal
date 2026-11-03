@@ -408,6 +408,14 @@
             </div>
           </div>
         </div>
+        <div class="form-group" id="contract-history-box">
+          <label>Úvazek platí od <span style="font-weight:400">(při změně vyberte měsíc, lze i zpětně)</span></label>
+          <input type="month" id="contract-effective">
+          <details style="margin-top:8px"><summary>Historie úvazků pro dovolenou</summary>
+            <div id="contract-history-rows"></div>
+            <button type="button" id="contract-add-period">Přidat období</button>
+          </details>
+        </div>
         <div class="raspis-row">
           <div class="form-group">
             <label>Aktivní od</label>
@@ -511,6 +519,7 @@
 
 <script src="/static/bb-availability.js"></script>
 <script src="/static/bb-admin.js"></script>
+<script src="/static/contract-history-admin.js"></script>
 <script>
   // ── Definice aplikací ─────────────────────────────────────────────────────────
   const DEFINED_APPS = {
@@ -859,8 +868,11 @@
     // Načti Raspis Test nastavení z perm_overrides
     resetRaspisSection(name);
     try {
-      const { overrides } = await fetch(`/api/admin/users/${id}/overrides`).then(r => r.json());
+      const history = await fetch(`/api/admin/users/${id}/overrides`).then(r => r.json());
+      if (!history.ok) throw Error('Nastavení se nepodařilo načíst.');
+      const overrides = history.overrides;
       if (overrides && overrides.raspis_staff) populateRaspisFields(overrides.raspis_staff);
+      ContractHistoryAdmin.load(history, overrides?.raspis_staff);
     } catch(e) {}
     document.getElementById('user-overlay').classList.add('show');
     setTimeout(() => document.getElementById('u-name').focus(), 50);
@@ -897,6 +909,7 @@
     }
     const msg = document.getElementById('user-msg');
     if (!name) { setMsg(msg, 'err', 'Zadejte jméno.'); return; }
+    try { ContractHistoryAdmin.payload(currentUserId === null); } catch(e) { setMsg(msg, 'err', e.message); return; }
     let r;
     if (currentUserId === null) {
       if (!username) { setMsg(msg, 'err', 'Zadejte uživatelské jméno.'); return; }
@@ -1530,6 +1543,7 @@
   }
 
   function resetRaspisSection(defaultName) {
+    ContractHistoryAdmin.reset();
     const now = new Date();
     document.getElementById('raspis-active-track').classList.remove('on');
     document.getElementById('raspis-body').style.display = 'none';
@@ -1704,10 +1718,11 @@
       delete current.raspis_staff;
     }
 
+    const history = ContractHistoryAdmin.payload(currentUserId === null);
     const saved = await fetch(`/api/admin/users/${userId}/overrides`, {
       method: 'PUT',
       headers: {'Content-Type':'application/json'},
-      body: JSON.stringify({ overrides: Object.keys(current).length ? current : null })
+      body: JSON.stringify({ overrides: Object.keys(current).length ? current : null, ...history })
     });
     const result = await saved.json();
     if (!saved.ok || result.ok === false) throw Error(result.msg || 'Nastavení se nepodařilo uložit.');

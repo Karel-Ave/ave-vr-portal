@@ -1,0 +1,16 @@
+const {test}=require('node:test');const assert=require('node:assert/strict');const fs=require('node:fs');const vm=require('node:vm');
+const source=fs.readFileSync(require.resolve('../server.js'),'utf8');
+function setup(){
+  const records=[{id:1,login:'A',sekce:'školení',datum:'2026-11-01',rok:2026,mesic:10,castka:500,poznamka:'10:00',koho_skolil:'B'}, {id:2,login:'A',sekce:'školení',datum:'2026-10-31',rok:2026,mesic:11,castka:500,poznamka:'11:00'}, {id:3,login:'B',sekce:'ostatní',datum:'2026-11-01',rok:2026,mesic:11,castka:100}];
+  const queries=[];const handlers={};const db={async query(sql,args){queries.push(sql);if(sql.startsWith('DELETE')){const i=records.findIndex(r=>r.id===+args[0]);if(i>=0)records.splice(i,1);return {rows:[]};}assert(sql.startsWith('SELECT'));assert(sql.includes('z.login = $3'));assert.deepEqual(Array.from(args).slice(2),['A']);const byDate=sql.includes('EXTRACT(YEAR FROM z.datum)');return {rows:records.filter(r=>r.login==='A'&&(byDate?r.sekce==='školení'&&r.datum.slice(0,7)===`${args[0]}-${String(args[1]).padStart(2,'0')}`:r.rok===+args[0]&&r.mesic===+args[1])).map(r=>({...r}))};}};
+  const context={getPool:()=>db,requireLogin(){},requirePermDefault(){},priplatkyOwnFilter:async()=>({params:['A'],where:' AND z.login = $IDX'}),applyPortalReceptionistNames(){},loadPortalReceptionistNameMap:async()=>new Map(),canUsePriplatkyInternalNote:async()=>false,canTouchPriplatkyRecord:async req=>req.session.user.id===99,logEvent:async()=>{},app:{get:(url,...fn)=>handlers['GET '+url]=fn.at(-1),delete:(url,...fn)=>handlers['DELETE '+url]=fn.at(-1)}};
+  vm.createContext(context);vm.runInContext(source.slice(source.indexOf("app.get('/api/priplatky/zaznamy'"),source.indexOf("app.post('/api/priplatky/zaznamy'")),context);vm.runInContext(source.slice(source.indexOf("app.delete('/api/priplatky/zaznamy/:id'"),source.indexOf('// Předdefinované poznámky / důvody')),context);
+  return {records,queries,async list(month,training){let out;await handlers['GET /api/priplatky/zaznamy']({query:{rok:'2026',mesic:String(month),training:training?'1':undefined},session:{user:{id:99}}},{json:v=>out=v});return out;},async remove(id,user=99){let result,status=200;await handlers['DELETE /api/priplatky/zaznamy/:id']({params:{id},session:{user:{id:user,username:'ADMIN'}}},{json:v=>result=v,status:s=>{status=s;return{json:v=>result=v}}});return {result,status};}};
+}
+test('training calendar uses actual dates and keeps bonus accounting on its payment month with own-row filtering',async()=>{
+  const f=setup();assert.deepEqual(Array.from(await f.list(10,true),r=>r.id),[2]);assert.deepEqual(Array.from(await f.list(11,true),r=>r.id),[1]);assert.deepEqual(Array.from(await f.list(10,false),r=>r.id),[1]);assert.deepEqual(Array.from(await f.list(11,false),r=>r.id),[2]);assert.equal(f.records.length,3);
+});
+test('training deletion uses the original bonus record: removes exactly that one record and still enforces permissions',async()=>{
+  const f=setup();assert.equal((await f.remove(1,10)).status,403);assert.equal(f.records.length,3);assert.equal((await f.remove(1)).result.ok,true);assert.deepEqual(Array.from(await f.list(11,true)),[]);assert.deepEqual(Array.from(await f.list(10,false)),[]);assert.deepEqual(f.records.map(r=>r.id),[2,3]);
+});
+module.exports={setup};

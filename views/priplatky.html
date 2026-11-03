@@ -1104,14 +1104,18 @@ async function loadPrehled() {
   }
 }
 
+let cachedTraining = [];
 async function loadSkoleni() {
   const wrap = document.getElementById('skoleni-wrap');
   if (!wrap) return;
   wrap.innerHTML = '<p class="empty">Načítám…</p>';
+  const requestedMonth = mesic, requestedYear = rok;
   try {
-    const resp = await fetch(`/api/priplatky/zaznamy?rok=${rok}&mesic=${mesic}`);
+    const resp = await fetch(`/api/priplatky/zaznamy?training=1&rok=${requestedYear}&mesic=${requestedMonth}`);
     const data = await resp.json();
-    renderSkoleni(Array.isArray(data) ? data : []);
+    if (requestedMonth !== mesic || requestedYear !== rok) return;
+    cachedTraining = Array.isArray(data) ? data : [];
+    renderSkoleni(cachedTraining);
   } catch(e) {
     wrap.innerHTML = `<p class="empty">Chyba: ${esc(e.message)}</p>`;
   }
@@ -1142,6 +1146,10 @@ function renderSkoleni(data) {
       <div><span class="label">Školil</span>${esc(trainer)}</div>
       <div><span class="label">Koho školil</span>${esc(z.koho_skolil || '-')}</div>
       <div class="note"><span class="label">Čas školení</span>${esc(z.poznamka || '-')}</div>
+      <div class="actions">
+        ${priplatkyCan('edit', false) ? '<button onclick="editZaznam('+Number(z.id)+', true)">Upravit</button>' : ''}
+        ${priplatkyCan('delete', false) ? '<button class="danger" onclick="deleteZaznam('+Number(z.id)+')">Smazat</button>' : ''}
+      </div>
     </div>`;
   }).join('')}</div>`;
 }
@@ -1466,9 +1474,9 @@ document.getElementById('btn-zaznam-save').addEventListener('click', async () =>
     hotel: d.hotel || null,
     // Skutečné datum záznamu
     den, mesicDatum, rokDatum,
-    // Platební měsíc — do kterého přehledu záznam patří
-    mesic,
-    rok,
+    // Preserve the payment period when editing a training from its actual-date list.
+    mesic: Number(document.getElementById('sel-mesic-platby').value) || mesic,
+    rok: Number(document.getElementById('inp-rok-platby').value) || rok,
     castka, poznamka,
     internal_note: priplatkyCan('internalNote', false) ? (d.internal_note || null) : null,
     partner:     d.partner     || null,
@@ -1500,11 +1508,12 @@ document.getElementById('btn-zaznam-save').addEventListener('click', async () =>
     closeOverlay('modal-form');
     closeOverlay('modal-detail');
     loadPrehled();
+    if (activeBonusTab() === 'skoleni') loadSkoleni();
   } catch(e) { alert('Chyba: ' + e.message); }
 });
 
-function editZaznam(id) {
-  const z = cachedData.find(r => r.id === id);
+function editZaznam(id, training = false) {
+  const z = (training ? cachedTraining : cachedData).find(r => Number(r.id) === Number(id));
   if (!z) return;
   resetForm();
   const form = document.getElementById('zaznam-form');
@@ -1585,9 +1594,14 @@ function editZaznam(id) {
 
 async function deleteZaznam(id) {
   if (!confirm('Smazat tento záznam?')) return;
-  await fetch(`/api/priplatky/zaznamy/${id}`, { method:'DELETE' });
-  closeOverlay('modal-detail');
-  loadPrehled();
+  try {
+    const resp = await fetch(`/api/priplatky/zaznamy/${id}`, { method:'DELETE' });
+    const result = await resp.json();
+    if (!resp.ok || !result.ok) throw Error(result.msg || 'Záznam se nepodařilo smazat.');
+    closeOverlay('modal-detail');
+    loadPrehled();
+    if (activeBonusTab() === 'skoleni') loadSkoleni();
+  } catch(e) { alert(e.message); }
 }
 
 // ═══ Doplnit do šablony (auto na výběr souboru) ═══════════════════════════════

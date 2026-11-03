@@ -6,6 +6,7 @@ const PDFDocument = require('pdfkit');
 const { getPool, init } = require('./db');
 const { createBbService } = require('./bb');
 const bbService = createBbService({ getPool, getUserEffectivePerms });
+const vacationEntitlement = require('./vacation-entitlement');
 const requirementXyLocks = require('./public/requirement-xy-locks');
 const { projectVacations, prepareVacationSave, findStaffIndex: findVacationStaffIndex } = require('./public/requirements-vacations');
 
@@ -931,23 +932,62 @@ app.put('/api/admin/groups/:name/perms', requireLogin, requirePermDefault('admin
 app.get('/api/admin/users/:id/overrides', requireLogin, requireAdminReadAccess, async (req, res) => {
   try {
     const db = getPool();
-    const { rows } = await db.query('SELECT perm_overrides FROM users WHERE id = $1', [req.params.id]);
+    const { rows } = await db.query('SELECT username, perm_overrides FROM users WHERE id = $1', [req.params.id]);
     if (!rows.length) return res.json({ ok: false });
-    res.json({ ok: true, overrides: rows[0].perm_overrides ? JSON.parse(rows[0].perm_overrides) : null });
+    const overrides = parsePermOverridesValue(rows[0].perm_overrides);
+    const login = String(overrides?.raspis_staff?.login || rows[0].username).trim().toUpperCase();
+    const periods = (await vacationContractPeriodsMap(db, [login])).get(login) || [];
+    const balance = (await db.query('SELECT contract FROM vacation_balance_settings WHERE UPPER(staff_login) = $1', [login])).rows[0];
+    res.json({ ok: true, overrides, contract_periods: periods, previous_contract: balance?.contract || overrides?.raspis_staff?.contract || '' });
   } catch(err) { res.json({ ok: false }); }
 });
 
 app.put('/api/admin/users/:id/overrides', requireLogin, requirePermDefault('admin', 'user_permissions', false), async (req, res) => {
+  const client = await getPool().connect();
   try {
-    const db = getPool();
-    const { rows: beforeRows } = await db.query('SELECT username, perm_overrides FROM users WHERE id = $1', [req.params.id]);
-    const beforeOverrides = parsePermOverridesValue(beforeRows[0]?.perm_overrides);
-    const previousLogin = beforeOverrides?.raspis_staff?.login || beforeRows[0]?.username || null;
-    const val = req.body.overrides ? JSON.stringify(req.body.overrides) : null;
-    await db.query('UPDATE users SET perm_overrides = $1 WHERE id = $2', [val, req.params.id]);
-    await syncReceptionistLoginFromUser(db, req.params.id, previousLogin);
+    await client.query('BEGIN');
+    const { rows } = await client.query('SELECT username, perm_overrides FROM users WHERE id = $1 FOR UPDATE', [req.params.id]);
+    if (!rows.length) throw Error('Uživatel neexistuje.');
+    const before = parsePermOverridesValue(rows[0].perm_overrides);
+    const previousLogin = before?.raspis_staff?.login || rows[0].username;
+    const login = String(previousLogin).trim().toUpperCase();
+    const after = req.body.overrides;
+    if (Object.hasOwn(req.body, 'contract_periods')) {
+      const periods = vacationNormalizeContractPeriods(req.body.contract_periods);
+      const oldPeriods = (await vacationContractPeriodsMap(client, [login])).get(login) || [];
+      if (before?.raspis_staff?.contract && after?.raspis_staff?.contract !== before.raspis_staff.contract && !periods.some(p => vacationContractKey(p.contract) === vacationContractKey(after?.raspis_staff?.contract))) {
+        throw Error('Při změně úvazku vyplňte měsíc platnosti.');
+      }
+      const comparable = values => JSON.stringify(vacationNormalizeContractPeriods(values));
+      if (req.body.expected_contract_periods == null || comparable(oldPeriods) !== comparable(req.body.expected_contract_periods)) {
+        throw Error('Historie úvazků se mezitím změnila. Otevřete uživatele znovu.');
+      }
+      const balance = (await client.query('SELECT * FROM vacation_balance_settings WHERE UPPER(staff_login) = $1 FOR UPDATE', [login])).rows[0];
+      if (balance && balance.entitlement_reference_hours == null) {
+        const year = Number(balance.base_from_year || new Date().getFullYear());
+        const rs = before?.raspis_staff || {};
+        const reference = vacationEntitlement.reference(rs, balance, oldPeriods, year);
+        await client.query('UPDATE vacation_balance_settings SET entitlement_reference_hours = $1, entitlement_reference_year = $2 WHERE id = $3', [reference, year, balance.id]);
+      }
+      await client.query('DELETE FROM vacation_contract_periods WHERE UPPER(staff_login) = $1', [login]);
+      const newLogin = String(after?.raspis_staff?.login || login).trim().toUpperCase();
+      for (const period of periods) {
+        await client.query(`INSERT INTO vacation_contract_periods (staff_login, contract, from_month, from_year, to_month, to_year, created_by, updated_by)
+          VALUES ($1,$2,$3,$4,$5,$6,$7,$7)`,
+          [newLogin,period.contract,period.from_month,period.from_year,period.to_month,period.to_year,req.session.user.id]);
+      }
+    } else if (before?.raspis_staff?.contract && after?.raspis_staff?.contract !== before.raspis_staff.contract) {
+      throw Error('Při změně úvazku vyplňte měsíc platnosti v historii úvazků.');
+    }
+    const val = after ? JSON.stringify(after) : null;
+    await client.query('UPDATE users SET perm_overrides = $1 WHERE id = $2', [val, req.params.id]);
+    await syncReceptionistLoginFromUser(client, req.params.id, previousLogin);
+    await client.query('COMMIT');
     res.json({ ok: true });
-  } catch(err) { res.json({ ok: false, msg: 'Chyba serveru.' }); }
+  } catch(err) {
+    try { await client.query('ROLLBACK'); } catch (_) {}
+    res.status(400).json({ ok: false, msg: err.message || 'Chyba serveru.' });
+  } finally { client.release(); }
 });
 
 app.get('/api/admin/logs', requireLogin, requirePermDefault('admin', 'logs_view', false), async (req, res) => {
@@ -2832,7 +2872,9 @@ app.get('/api/priplatky/zaznamy', requireLogin, async (req, res) => {
             rl.full_name
      FROM priplatky_zaznamy z
      LEFT JOIN receptionist_logins rl ON rl.login = z.login
-     WHERE z.rok = $1 AND z.mesic = $2${ownWhere}
+     WHERE ${req.query.training === '1'
+       ? "z.sekce = 'školení' AND EXTRACT(YEAR FROM z.datum) = $1 AND EXTRACT(MONTH FROM z.datum) = $2"
+       : 'z.rok = $1 AND z.mesic = $2'}${ownWhere}
      ORDER BY z.datum, z.id`,
     params
   );
@@ -4842,38 +4884,10 @@ function vacationCountsApprovedRequestMonth(year, month) {
   return vacationMonthIndex(year, month) >= vacationMonthIndex(VACATION_APPROVED_MOVEMENTS_FROM_YEAR, VACATION_APPROVED_MOVEMENTS_FROM_MONTH);
 }
 
-function vacationPeriodCovers(period, year, month) {
-  const target = vacationMonthIndex(year, month);
-  const from = vacationMonthIndex(period.from_year, period.from_month);
-  const to = period.to_year && period.to_month
-    ? vacationMonthIndex(period.to_year, period.to_month)
-    : vacationMonthIndex(period.from_year, 12);
-  return target >= from && target <= to;
-}
-
-function vacationEffectiveContractForMonth(staff, balance, periods, year, month) {
-  const period = (periods || []).find(p => vacationPeriodCovers(p, year, month));
-  return period?.contract || balance?.contract || staff?.contract || '';
-}
-
-function vacationEffectiveDayHoursForMonth(staff, balance, periods, year, month) {
-  return vacationDayHoursByContract(vacationEffectiveContractForMonth(staff, balance, periods, year, month))
-    || Number(balance?.day_hours || 0)
-    || vacationDayHoursByContract(staff?.contract || '');
-}
-
-function vacationAnnualEntitlementFromPeriods(staff, balance, periods, year) {
-  let hours = 0;
-  let hasAny = false;
-  for (let month = 1; month <= 12; month++) {
-    const dayHours = vacationEffectiveDayHoursForMonth(staff, balance, periods, year, month);
-    if (dayHours > 0) {
-      hasAny = true;
-      hours += (20 * dayHours) / 12;
-    }
-  }
-  return hasAny ? +hours.toFixed(2) : 0;
-}
+function vacationPeriodCovers(period, year, month) { return vacationEntitlement.covers(period, year, month); }
+function vacationEffectiveContractForMonth(staff, balance, periods, year, month) { return vacationEntitlement.contract(staff, balance, periods, year, month); }
+function vacationEffectiveDayHoursForMonth(staff, balance, periods, year, month) { return vacationEntitlement.dayHours(vacationEffectiveContractForMonth(staff, balance, periods, year, month)); }
+function vacationAnnualEntitlementFromPeriods(staff, balance, periods, year) { return vacationEntitlement.annual(staff, balance, periods, year); }
 
 async function vacationContractPeriodsMap(db, logins) {
   const normalized = [...new Set((logins || []).map(v => String(v || '').trim().toUpperCase()).filter(Boolean))];
@@ -4895,17 +4909,20 @@ async function vacationContractPeriodsMap(db, logins) {
 }
 
 function vacationNormalizeContractPeriods(raw) {
-  if (!Array.isArray(raw)) return [];
+  if (raw == null) return [];
+  if (!Array.isArray(raw)) throw Error('Neplatná historie úvazků.');
   const rows = raw.map(item => {
     const contract = vacationContractKey(item?.contract);
     const fromMonth = parseInt(item?.from_month, 10);
     const fromYear = parseInt(item?.from_year, 10);
     const toMonthRaw = item?.to_month === '' || item?.to_month == null ? null : parseInt(item?.to_month, 10);
     const toYearRaw = item?.to_year === '' || item?.to_year == null ? null : parseInt(item?.to_year, 10);
+    if ((toMonthRaw != null && !(toMonthRaw >= 1 && toMonthRaw <= 12)) || (toYearRaw != null && !(toYearRaw >= 2000 && toYearRaw <= 2100))) throw Error('Neplatný konec období úvazku.');
     const toMonth = toMonthRaw >= 1 && toMonthRaw <= 12 ? toMonthRaw : null;
     const toYear = toYearRaw >= 2000 && toYearRaw <= 2100 ? toYearRaw : null;
     return { contract, from_month: fromMonth, from_year: fromYear, to_month: toMonth, to_year: toYear };
   }).filter(p => p.contract && p.from_month >= 1 && p.from_month <= 12 && p.from_year >= 2000 && p.from_year <= 2100);
+  if (rows.length !== raw.length) throw Error('Neplatné období úvazku.');
   rows.sort((a, b) => vacationMonthIndex(a.from_year, a.from_month) - vacationMonthIndex(b.from_year, b.from_month));
   for (let i = 0; i < rows.length; i++) {
     const p = rows[i];
@@ -4913,11 +4930,11 @@ function vacationNormalizeContractPeriods(raw) {
       throw new Error('Vyplnte u obdobi mesic i rok do, nebo nechte oboji prazdne.');
     }
     const from = vacationMonthIndex(p.from_year, p.from_month);
-    const to = p.to_month && p.to_year ? vacationMonthIndex(p.to_year, p.to_month) : vacationMonthIndex(p.from_year, 12);
+    const to = p.to_month && p.to_year ? vacationMonthIndex(p.to_year, p.to_month) : Infinity;
     if (to < from) throw new Error('Konec obdobi uvazku nesmi byt pred zacatkem.');
     if (i > 0) {
       const prev = rows[i - 1];
-      const prevTo = prev.to_month && prev.to_year ? vacationMonthIndex(prev.to_year, prev.to_month) : vacationMonthIndex(prev.from_year, 12);
+      const prevTo = prev.to_month && prev.to_year ? vacationMonthIndex(prev.to_year, prev.to_month) : Infinity;
       if (from <= prevTo) throw new Error('Obdobi uvazku se nesmi prekryvat.');
     }
   }
@@ -5196,21 +5213,20 @@ async function vacationEnsureBalance(db, staff, user) {
   const contract = staff.contract || '';
   if (!vacationHasBalanceContract(contract)) return null;
   const dayHours = vacationDayHoursByContract(contract);
-  const baseDays = 20;
-  const baseHours = +(baseDays * dayHours).toFixed(2);
+  const year = new Date().getFullYear();
+  const periods = (await vacationContractPeriodsMap(db, [login])).get(login) || [];
+  const baseHours = vacationEntitlement.annual(staff, null, periods, year);
+  const baseDays = dayHours ? vacationEntitlement.round(baseHours / dayHours) : 0;
   const { rows } = await db.query(
     `INSERT INTO vacation_balance_settings
-     (staff_user_id, staff_login, staff_name, contract, base_days, base_hours, day_hours, updated_by, updated_at)
-     VALUES ($1,$2,$3,$4,$5,$6,$7,$8,NOW())
+     (staff_user_id, staff_login, staff_name, contract, base_days, base_hours, day_hours, updated_by, updated_at, base_from_month, base_from_year, entitlement_reference_hours, entitlement_reference_year)
+     VALUES ($1,$2,$3,$4,$5,$6,$7,$8,NOW(),1,$9,$6,$9)
      ON CONFLICT (staff_login) DO UPDATE SET
        staff_user_id = COALESCE(vacation_balance_settings.staff_user_id, EXCLUDED.staff_user_id),
        staff_name = EXCLUDED.staff_name,
-       contract = COALESCE(NULLIF(vacation_balance_settings.contract, ''), EXCLUDED.contract),
-       day_hours = CASE WHEN vacation_balance_settings.day_hours = 0 THEN EXCLUDED.day_hours ELSE vacation_balance_settings.day_hours END,
-       base_hours = CASE WHEN vacation_balance_settings.base_hours = 0 THEN EXCLUDED.base_hours ELSE vacation_balance_settings.base_hours END,
        updated_at = vacation_balance_settings.updated_at
      RETURNING *`,
-    [staff.userId || staff.staff_user_id || null, login, name, contract, baseDays, baseHours, dayHours, user?.id || null]
+    [staff.userId || staff.staff_user_id || null, login, name, contract, baseDays, baseHours, dayHours, user?.id || null, year]
   );
   return rows[0];
 }
@@ -5272,36 +5288,27 @@ async function vacationBalanceRows(db, user, filter = {}) {
     const login = String(staff.login || '').trim().toUpperCase();
     const saved = settingsByLogin.get(login);
     const moved = saved || movementByLogin.get(login) || {};
-    const contract = saved?.contract || staff.contract || '';
-    const defaultDayHours = vacationDayHoursByContract(contract);
-    const savedDayHours = Number(saved?.day_hours || 0);
-    const dayHours = defaultDayHours || savedDayHours;
-    const baseDays = saved ? Number(saved.base_days || 0) : 20;
-    const baseHours = saved ? Number(saved.base_hours || 0) : +(baseDays * dayHours).toFixed(2);
     const movedDays = Number(moved.moved_days || 0);
     const movedHours = Number(moved.moved_hours || 0);
     const periods = periodMap.get(login) || [];
-    const entitlementYear = saved?.base_from_year || new Date().getFullYear();
-    const annualEntitlementHours = vacationAnnualEntitlementFromPeriods(staff, saved, periods, entitlementYear);
+    const entitlementYear = Number(saved?.entitlement_reference_year || saved?.base_from_year || filter.year || new Date().getFullYear());
+    const displayMonth = Number(filter.month) >= 1 && Number(filter.month) <= 12 ? Number(filter.month) : new Date().getMonth()+1;
+    const totals = vacationEntitlement.totals(staff, saved, periods, entitlementYear, displayMonth, movedHours, Number(filter.year) || new Date().getFullYear());
     return {
       id: saved?.id || null,
       staff_user_id: saved?.staff_user_id || staff.userId || null,
       staff_login: login,
       staff_name: saved?.staff_name || staff.displayName || staff.name || login,
-      contract,
-      base_days: baseDays,
-      base_hours: baseHours,
-      day_hours: dayHours,
+      ...totals,
       base_from_month: saved?.base_from_month || null,
       base_from_year: saved?.base_from_year || null,
       note: saved?.note || '',
       contract_periods: periods,
       annual_entitlement_year: entitlementYear,
-      annual_entitlement_hours: annualEntitlementHours,
       moved_days: movedDays,
       moved_hours: movedHours,
-      remaining_days: +(baseDays + movedDays).toFixed(2),
-      remaining_hours: +(baseHours + movedHours).toFixed(2)
+      remaining_days: totals.remaining_days,
+      remaining_hours: totals.remaining_hours
     };
   }).sort(vacationStaffSort);
   return { manager, canManageBalances, balances };
@@ -5334,17 +5341,26 @@ app.post('/api/vacations/balances/base-from', requireLogin, async (req, res) => 
     for (const staff of staffList) {
       const login = String(staff.login || '').trim().toUpperCase();
       if (!login) continue;
-      const dayHours = vacationDayHoursByContract(staff.contract);
-      const baseDays = 20;
-      const baseHours = +(baseDays * dayHours).toFixed(2);
+      if (staff.userId) await client.query('SELECT id FROM users WHERE id = $1 FOR UPDATE', [staff.userId]);
+      const previous = (await client.query('SELECT * FROM vacation_balance_settings WHERE UPPER(staff_login) = $1 FOR UPDATE', [login])).rows[0];
+      const periods = (await vacationContractPeriodsMap(client, [login])).get(login) || [];
+      const referenceHours = vacationEntitlement.annual(staff, null, periods, baseFromYear);
+      const oldYear = Number(previous?.entitlement_reference_year || previous?.base_from_year || baseFromYear);
+      const baseHours = previous ? vacationEntitlement.totals(staff, previous, periods, oldYear, baseFromMonth).base_hours : referenceHours;
+      const dayHours = vacationEffectiveDayHoursForMonth(staff, previous, periods, baseFromYear, baseFromMonth);
+      const baseDays = dayHours ? vacationEntitlement.round(baseHours / dayHours) : 0;
       await client.query(
         `INSERT INTO vacation_balance_settings
-         (staff_user_id, staff_login, staff_name, contract, base_days, base_hours, day_hours, base_from_month, base_from_year, updated_by, updated_at)
-         VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,NOW())
+         (staff_user_id, staff_login, staff_name, contract, base_days, base_hours, day_hours, base_from_month, base_from_year, updated_by, updated_at, entitlement_reference_hours, entitlement_reference_year)
+         VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,NOW(),$11,$9)
          ON CONFLICT (staff_login) DO UPDATE SET
            staff_user_id = COALESCE(vacation_balance_settings.staff_user_id, EXCLUDED.staff_user_id),
            staff_name = EXCLUDED.staff_name,
            contract = EXCLUDED.contract,
+           base_days = EXCLUDED.base_days,
+           base_hours = EXCLUDED.base_hours,
+           entitlement_reference_hours = EXCLUDED.entitlement_reference_hours,
+           entitlement_reference_year = EXCLUDED.entitlement_reference_year,
            day_hours = EXCLUDED.day_hours,
            base_from_month = EXCLUDED.base_from_month,
            base_from_year = EXCLUDED.base_from_year,
@@ -5360,7 +5376,8 @@ app.post('/api/vacations/balances/base-from', requireLogin, async (req, res) => 
           dayHours,
           baseFromMonth,
           baseFromYear,
-          req.session.user.id
+          req.session.user.id,
+          referenceHours
         ]
       );
       touched++;
@@ -5388,6 +5405,7 @@ app.post('/api/vacations/balances/:login', requireLogin, async (req, res) => {
       return res.status(400).json({ ok: false, msg: 'Neplatny zustatek.' });
     }
     const baseHours = Number.isFinite(Number(req.body?.base_hours)) ? Number(req.body.base_hours) : +(baseDays * dayHours).toFixed(2);
+    if (!Number.isFinite(baseHours) || baseHours < 0) return res.status(400).json({ok:false,msg:'Neplatný počet hodin.'});
     const baseFromMonth = parseInt(req.body?.base_from_month, 10);
     const baseFromYear = parseInt(req.body?.base_from_year, 10);
     const fromMonth = baseFromMonth >= 1 && baseFromMonth <= 12 ? baseFromMonth : null;
@@ -5395,13 +5413,20 @@ app.post('/api/vacations/balances/:login', requireLogin, async (req, res) => {
     const periods = vacationNormalizeContractPeriods(req.body?.contract_periods);
     const staff = (await loadRtPortalReceptionists(client)).find(s => String(s.login || '').trim().toUpperCase() === login) || {};
     await client.query('BEGIN');
+    if (staff.userId) await client.query('SELECT id FROM users WHERE id = $1 FOR UPDATE', [staff.userId]);
+    const currentPeriods = (await vacationContractPeriodsMap(client, [login])).get(login) || [];
+    if (req.body.expected_contract_periods == null || JSON.stringify(vacationNormalizeContractPeriods(currentPeriods)) !== JSON.stringify(vacationNormalizeContractPeriods(req.body.expected_contract_periods))) throw Error('Historie úvazků se změnila. Otevřete zůstatek znovu.');
+    const referenceYear = fromYear || new Date().getFullYear();
+    const referenceHours = vacationEntitlement.annual(staff, null, periods, referenceYear);
     await client.query(
       `INSERT INTO vacation_balance_settings
-       (staff_user_id, staff_login, staff_name, contract, base_days, base_hours, day_hours, base_from_month, base_from_year, note, updated_by, updated_at)
-       VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,NOW())
+       (staff_user_id, staff_login, staff_name, contract, base_days, base_hours, day_hours, base_from_month, base_from_year, note, updated_by, updated_at, entitlement_reference_hours, entitlement_reference_year)
+       VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,NOW(),$12,$13)
        ON CONFLICT (staff_login) DO UPDATE SET
          staff_user_id = EXCLUDED.staff_user_id,
          staff_name = EXCLUDED.staff_name,
+         entitlement_reference_hours = EXCLUDED.entitlement_reference_hours,
+         entitlement_reference_year = EXCLUDED.entitlement_reference_year,
          contract = EXCLUDED.contract,
          base_days = EXCLUDED.base_days,
          base_hours = EXCLUDED.base_hours,
@@ -5411,7 +5436,7 @@ app.post('/api/vacations/balances/:login', requireLogin, async (req, res) => {
          note = EXCLUDED.note,
          updated_by = EXCLUDED.updated_by,
          updated_at = NOW()`,
-      [staff.userId || null, login, staff.displayName || staff.name || req.body?.staff_name || login, staff.contract || req.body?.contract || '', baseDays, baseHours, dayHours, fromMonth, fromYear, String(req.body?.note || ''), req.session.user.id]
+      [staff.userId || null, login, staff.displayName || staff.name || req.body?.staff_name || login, staff.contract || req.body?.contract || '', baseDays, baseHours, dayHours, fromMonth, fromYear, String(req.body?.note || ''), req.session.user.id, referenceHours, referenceYear]
     );
     await client.query('DELETE FROM vacation_contract_periods WHERE UPPER(staff_login) = UPPER($1)', [login]);
     for (const p of periods) {

@@ -741,6 +741,8 @@ async function init() {
   `);
   await db.query(`ALTER TABLE vacation_balance_settings ADD COLUMN IF NOT EXISTS base_from_month INTEGER`);
   await db.query(`ALTER TABLE vacation_balance_settings ADD COLUMN IF NOT EXISTS base_from_year INTEGER`);
+  await db.query(`ALTER TABLE vacation_balance_settings ADD COLUMN IF NOT EXISTS entitlement_reference_hours NUMERIC(10,2)`);
+  await db.query(`ALTER TABLE vacation_balance_settings ADD COLUMN IF NOT EXISTS entitlement_reference_year INTEGER`);
   await db.query(`
     CREATE TABLE IF NOT EXISTS vacation_contract_periods (
       id            BIGSERIAL PRIMARY KEY,
