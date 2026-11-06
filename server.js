@@ -429,6 +429,8 @@ async function canViewAllPriplatky(user) {
 }
 
 async function canUsePriplatkyInternalNote(user) {
+  const role=String(user?.role||'').normalize('NFD').replace(/[\u0300-\u036f]/g,'').toLowerCase();
+  if(role!=='admin'&&!role.includes('ved')&&role!=='vr') return false;
   return hasButtonPerm(user, 'priplatky', 'internalNote', false);
 }
 
@@ -1208,6 +1210,7 @@ app.get('/api/my-permissions', requireLogin, async (req, res) => {
         buttons[btnKey] = (ub != null) ? ub : (gb != null ? gb : (db != null ? db : true));
       }
       if (isAdm && appKey === 'priplatky') buttons.viewAll = true;
+      if (appKey === 'priplatky') buttons.internalNote = await canUsePriplatkyInternalNote(user);
       result[appKey] = { enabled, visible, buttons };
     }
     const bbPermissions = await bbService.permissions(user);

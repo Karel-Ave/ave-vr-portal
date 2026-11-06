@@ -5148,6 +5148,11 @@ function openMobileScheduleKeypad(si, ci, tableId) {
   grid.innerHTML = '';
   const cfg = getMobileKeypadConfig();
   const rows = cloneMobileKeypadRows(canManageRequirements() ? cfg.manager : cfg.receptionist);
+  // This is a view-only adaptation; saved keyboard preferences and Requests keep y.
+  const keypadRole = String(_user?.role || '').normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase();
+  if (tableId === 'rozpis-tbl' && (keypadRole === 'admin' || keypadRole.includes('ved') || keypadRole === 'vr') && rows.length) {
+    rows[rows.length - 1] = rows[rows.length - 1].map(token => parseMobileKeyToken(token).key.toLowerCase() === 'y' ? token.replace(/^y/i, 'z') : token);
+  }
   rows.flatMap(row => row).forEach(token => {
     const parsed = parseMobileKeyToken(token);
     if (!canUseMobileKey(parsed.key, si, tableId)) return;
