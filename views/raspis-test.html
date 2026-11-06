@@ -4301,6 +4301,8 @@ body.hide-req-changes .sched-cell[data-req-tip]:not([data-dup-tip]):hover::after
   <span class="legend-item"><span class="legend-swatch legend-selected"></span>Označeno</span>
 </div>
 
+<script src="/static/schedule-bonus-rules.js"></script>
+<script src="/static/schedule-bonuses-ui.js"></script>
 <script>
 'use strict';
 
@@ -6031,6 +6033,7 @@ function applyHistorySnapshot(snap) {
   markedWorkers = new Set(snap.markedWorkers || []);
   showMarkedOnly = !!snap.showMarkedOnly && markedWorkers.size > 0;
   refreshScheduleAfterHistory();
+  if (viewEditMode) vrBonuses.refresh();
   applyHistoryUiState(snap);
 }
 
@@ -7505,6 +7508,7 @@ function refreshCellVisuals(si, ci) {
 
 function setCellValue(si, ci, val) {
   const activeTableId = getActiveScheduleTableId();
+  if (activeTableId === 'rozpis-tbl' && viewSaveInFlight) return false;
   if (!canEditCellInTable(si, activeTableId)) return false;
   const normalizedVal = normalizeScheduleCellValue(val);
   if (normalizedVal === null) {
@@ -7536,6 +7540,7 @@ function setCellValue(si, ci, val) {
       delete state.reqMeta[key];
     }
   }
+  if (activeTableId === 'rozpis-tbl' && viewEditMode) vrBonuses.changed(vrBonusSource(si,ci),oldVal);
   historySave();
 
   scheduleTableIds().forEach(tblId => {
@@ -10610,6 +10615,7 @@ async function pollLock() {
       return;
     }
     if (viewEditMode && !lockOwned) {
+      vrBonuses.reset();
       viewEditMode = false;
       viewEditSnapshot = null;
       stopViewEditIdleWatch();
@@ -11849,6 +11855,7 @@ function hasCellSelection() {
 }
 
 function deleteSelectedCells() {
+  if (viewSaveInFlight) return true;
   if (!hasCellSelection()) return false;
   const activeTab = document.querySelector('.tb-tab.active')?.dataset.tab;
   if (activeTab === 'public') return true;
@@ -11894,6 +11901,7 @@ function deleteSelectedCells() {
   historySave();
   renderCells('tvorba-tbl', true);
   renderCells('rozpis-tbl', viewEditMode);
+  if (viewEditMode) vrBonuses.refresh();
   renderCells('public-rozpis-tbl', false);
   renderCells('pozadavky-tbl', reqEditMode);
   updateAllSums();
@@ -14205,6 +14213,16 @@ async function showScheduleLog() {
 
 let viewEditMode = false;
 let viewEditSnapshot = null;
+let viewSaveInFlight = false;
+function vrBonusSource(si,ci){
+  const person=state.staff[si];if(!person)return null;
+  return {userId:Number(person.userId),index:Number(ci),value:String(state.schedule[si+'_'+ci]||'').toUpperCase(),person,name:person.name||person.displayName||person.login,login:person.login||'',date:ScheduleBonusRules.sourceDate(state.year,state.month,ci,'vr'),month:state.month,year:state.year,shift:Number(ci)%2?'Noční':'Denní'};
+}
+const vrBonuses=ScheduleBonuses.create({host:'rozpis-wrap',
+  current:source=>{if(!viewEditMode||Number(source.month)!==Number(state.month)||Number(source.year)!==Number(state.year))return null;const si=state.staff.findIndex(p=>Number(p.userId)===Number(source.userId));return si<0?null:vrBonusSource(si,source.index);},
+  original:source=>{const si=(viewEditSnapshot?.staff||[]).findIndex(p=>Number(p.userId)===Number(source.userId));return si<0?'':viewEditSnapshot.schedule?.[si+'_'+source.index]||'';},
+  onDirty:()=>resetViewEditIdleTimer(),onError:message=>toast(message,true)
+});
 
 function restoreScheduleWrapScroll(wrapId, left, top) {
   const wrap = document.getElementById(wrapId);
@@ -14231,6 +14249,7 @@ async function toggleViewEdit() {
   const scrollTop = wrap ? wrap.scrollTop : 0;
   viewEditMode = true;
   viewEditSnapshot = JSON.parse(JSON.stringify(buildSaveData()));
+  vrBonuses.reset();
   renderScheduleTable('rozpis-tbl', true);
   applyStbStateUi();
   restoreScheduleWrapScroll('rozpis-wrap', scrollLeft, scrollTop);
@@ -14240,9 +14259,12 @@ async function toggleViewEdit() {
 }
 
 async function saveViewEdits(options = {}) {
-  if (!currentPubKey || !viewEditMode) return;
+  if (!currentPubKey || !viewEditMode || viewSaveInFlight) return;
+  await vrBonuses.whenIdle();
+  if (!currentPubKey || !viewEditMode || viewSaveInFlight) return;
   const auto = !!options.auto;
   if (!auto && !confirm('Uložit změny do publikovaného rozpisu?')) return;
+  viewSaveInFlight = true;
   const wrap = document.getElementById('rozpis-wrap');
   const scrollLeft = wrap ? wrap.scrollLeft : 0;
   const scrollTop = wrap ? wrap.scrollTop : 0;
@@ -14251,12 +14273,13 @@ async function saveViewEdits(options = {}) {
     const r = await fetch('/api/rt/schedules/save-edits', {
       method: 'POST', credentials: 'include',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ key: currentPubKey, data: savedData })
+      body: JSON.stringify(vrBonuses.request({ key: currentPubKey, data: savedData }))
     });
     const d = await r.json();
     if (d.ok) {
       if (d.data) applyData(d.data);
       publishedScheduleCache.set(currentPubKey, JSON.parse(JSON.stringify(d.data || savedData)));
+      vrBonuses.reset();
       viewEditMode = false; viewEditSnapshot = null;
       stopViewEditIdleWatch();
       renderScheduleTable('rozpis-tbl', false);
@@ -14268,7 +14291,8 @@ async function saveViewEdits(options = {}) {
       showVacationSyncConflicts(d.vacationSync);
       toast(auto ? 'Editace automaticky uložena po neaktivitě' : 'Uloženo do rozpisu VR');
     } else toast(d.msg || 'Chyba uložení', true);
-  } catch(e) { toast('Chyba uložení', true); }
+  } catch(e) { toast('Uložení nebylo potvrzeno. Zkuste znovu Uložit.', true); }
+  finally { viewSaveInFlight = false; }
 }
 
 /* ══════════════════════════════════════════════════════════════════════════════
@@ -14276,7 +14300,8 @@ async function saveViewEdits(options = {}) {
 ══════════════════════════════════════════════════════════════════════════════ */
 
 async function cancelViewEdit() {
-  if (!viewEditMode) return;
+  if (!viewEditMode || viewSaveInFlight) return;
+  vrBonuses.reset();
   const wrap = document.getElementById('rozpis-wrap');
   const scrollLeft = wrap ? wrap.scrollLeft : 0;
   const scrollTop = wrap ? wrap.scrollTop : 0;
@@ -15518,6 +15543,7 @@ document.addEventListener('DOMContentLoaded', async () => {
 
   // ── Global keyboard shortcuts ──
   document.addEventListener('keydown', e => {
+    if (vrBonuses.isOpen()) return;
     if (shouldRouteKeyToFocusedCell(e)) {
       routeKeyToFocusedCell(e);
       return;

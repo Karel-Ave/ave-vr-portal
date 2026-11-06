@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, viewport-fit=cover">
-<title>Příplatky a pokuty – VR AVE</title>
+<script>if(new URLSearchParams(location.search).has('scheduleBonusDraft'))document.documentElement.classList.add('schedule-bonus-draft');</script><style>html.schedule-bonus-draft,html.schedule-bonus-draft body{background:transparent!important}html.schedule-bonus-draft body>*:not(#modal-form):not(script):not(style){display:none!important}</style><title>Příplatky a pokuty – VR AVE</title>
 <link rel="icon" type="image/png" href="/static/logo.png">
 <script src="/static/theme.js"></script>
 <link rel="stylesheet" href="/static/theme.css">
@@ -1484,6 +1484,11 @@ document.getElementById('btn-zaznam-save').addEventListener('click', async () =>
     koho_skolil: d.koho_skolil || null,
   };
 
+  if(scheduleBonusDraft){
+    const selectedReason=document.getElementById('sel-brani-duvod').value;
+    parent.postMessage({type:'schedule-bonus-result',token:scheduleBonusDraft,payload,reason:selectedReason==='Jiné'?(document.getElementById('inp-brani-jine').value.trim()||'Jiné'):selectedReason,note:document.getElementById('schedule-bonus-note').value.trim()},location.origin);
+    return;
+  }
   const editId = d.editId;
   const url    = editId ? `/api/priplatky/zaznamy/${editId}` : '/api/priplatky/zaznamy';
   const method = editId ? 'PATCH' : 'POST';
@@ -1813,7 +1818,7 @@ async function deleteRecepni(login) {
 
 // ═══ Overlay helpers ══════════════════════════════════════════════════════════
 function openOverlay(id)  { document.getElementById(id).classList.add('show'); }
-function closeOverlay(id) { document.getElementById(id).classList.remove('show'); }
+function closeOverlay(id) { document.getElementById(id).classList.remove('show'); if(id==='modal-form'&&scheduleBonusDraft)parent.postMessage({type:'schedule-bonus-cancel',token:scheduleBonusDraft},location.origin); }
 
 // Formulářový modal: ✕ a Zrušit — pokud jsme na date-page, jdi zpět; jinak zavři modal
 document.getElementById('modal-form-close').addEventListener('click', () => {
@@ -1973,7 +1978,24 @@ document.getElementById('dp-next').addEventListener('click', () => {
 });
 
 // ═══ Start ════════════════════════════════════════════════════════════════════
-init();
+const scheduleBonusDraft=new URLSearchParams(location.search).get('scheduleBonusDraft');
+async function initScheduleBonusDraft(){
+  await loadPriplatkyPermissions();await loadHotelOptions();await loadRecepniDropdown();await loadDuvodyDropdowns();initFormConds();
+  const extra=document.createElement('div');extra.className='field';extra.innerHTML='<label>Doplňující poznámka</label><textarea id="schedule-bonus-note" maxlength="10000"></textarea>';
+  document.getElementById('zaznam-form').appendChild(extra);
+  window.addEventListener('message',event=>{
+    if(event.origin!==location.origin||event.source!==parent||event.data?.token!==scheduleBonusDraft||event.data.type!=='schedule-bonus-fill')return;
+    const {item,source}=event.data;
+    cachedData=[{id:-1,login:source.login,full_name:source.name,sekce:'braní směn',hotel:item.hotel,datum:item.date,mesic:item.paymentMonth,rok:item.paymentYear,castka:item.amount,poznamka:item.reason,internal_note:item.internalNote}];
+    editZaznam(-1);document.getElementById('modal-form-title').textContent='Přidat záznam';
+    document.getElementById('schedule-bonus-note').value=item.note||'';
+    document.getElementById('inp-ac').readOnly=true;document.getElementById('inp-ac').onfocus=null;
+    document.getElementById('sel-sekce').disabled=true;
+    let section=document.querySelector('#zaznam-form input[data-draft-section]');if(!section){section=document.createElement('input');section.type='hidden';section.name='sekce';section.value='braní směn';section.dataset.draftSection='';document.getElementById('zaznam-form').appendChild(section);}
+  });
+  parent.postMessage({type:'schedule-bonus-ready',token:scheduleBonusDraft},location.origin);
+}
+if(scheduleBonusDraft)initScheduleBonusDraft().catch(error=>parent.postMessage({type:'schedule-bonus-error',token:scheduleBonusDraft,message:error.message},location.origin));else init();
 </script>
 </body>
 </html>

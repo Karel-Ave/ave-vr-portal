@@ -5,7 +5,13 @@ const path        = require('path');
 const PDFDocument = require('pdfkit');
 const { getPool, init } = require('./db');
 const { createBbService } = require('./bb');
-const bbService = createBbService({ getPool, getUserEffectivePerms });
+const { createScheduleBonusService } = require('./schedule-bonuses');
+const scheduleBonusService = createScheduleBonusService({
+  canAdd: user => hasButtonPerm(user, 'priplatky', 'add', true),
+  canTouch: (user, login) => canTouchPriplatkyLogin({session:{user}}, login),
+  canInternal: canUsePriplatkyInternalNote
+});
+const bbService = createBbService({ getPool, getUserEffectivePerms, bonusService: scheduleBonusService });
 const vacationEntitlement = require('./vacation-entitlement');
 const requirementXyLocks = require('./public/requirement-xy-locks');
 const { projectVacations, prepareVacationSave, findStaffIndex: findVacationStaffIndex } = require('./public/requirements-vacations');
@@ -2858,6 +2864,15 @@ app.delete('/api/priplatky/recepni/:login', requireLogin, requirePermDefault('pr
   const db = getPool();
   await db.query('DELETE FROM receptionist_logins WHERE login=$1', [req.params.login]);
   res.json({ ok: true });
+});
+
+app.get('/api/schedule-bonuses/options', requireLogin, async (req,res) => {
+  try {
+    const user=req.session.user;
+    const canAdd=await hasButtonPerm(user,'priplatky','add',true);
+    const reasons=canAdd?(await getPool().query("SELECT text FROM priplatky_poznamky WHERE typ='brani' ORDER BY poradi,id")).rows.map(r=>r.text):[];
+    res.json({ok:true,canAdd,canAll:await canViewAllPriplatky(user),canInternal:await canUsePriplatkyInternalNote(user),userId:user.id,identities:userIdentityValues(user),reasons});
+  } catch(err) { res.status(500).json({ok:false,msg:'Nelze načíst nastavení příplatků.'}); }
 });
 
 // Záznamy
@@ -6252,12 +6267,17 @@ app.delete('/api/rt/schedules/perma/:id', requireLogin, requirePermDefault('rasp
 app.post('/api/rt/schedules/save-edits', requireLogin, requirePerm('raspis', 'edit'), async (req, res) => {
   let { key, data } = req.body;
   if (!key || !data) return res.json({ ok: false, msg: 'Chybí data.' });
+  data = JSON.parse(JSON.stringify(data));
   try {
     const db = getPool();
     data = await augmentRtDataWithActiveReceptionists(data, db);
     data = await augmentRtDataWithSpecialStaff(data, req.session.user.id, db);
     const knownHotelSync = await syncRtKnownHotelsFromSchedule(data, db);
-    data = await bbService.writeVrSchedule(data, key, req.session.user, async (client, linked) => client.query('UPDATE rt_schedules SET data = $1 WHERE key = $2', [JSON.stringify(linked), key]));
+    data = await bbService.writeVrSchedule(data, key, req.session.user, async (client, linked, previous) => {
+      if (!previous) throw Object.assign(Error('Publikovaný rozpis neexistuje.'),{status:404});
+      await client.query('UPDATE rt_schedules SET data = $1 WHERE key = $2', [JSON.stringify(linked), key]);
+      await scheduleBonusService.save(client, req.body, req.session.user, 'vr:'+key, previous, linked, 'vr');
+    }, {before: client => scheduleBonusService.begin(client, req.body, req.session.user, 'vr:'+key)});
     const parsedVacationKey = vacationParseScheduleKey(key);
     const vacationSync = await vacationTrySyncScheduleZMovements(db, key, data.month || parsedVacationKey.month, data.year || parsedVacationKey.year, data, req.session.user);
     const vacationManualSync = vacationSync?.ok

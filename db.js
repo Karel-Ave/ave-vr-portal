@@ -457,6 +457,15 @@ async function init() {
   await db.query(`CREATE INDEX IF NOT EXISTS idx_pz_login    ON priplatky_zaznamy (login)`);
   await db.query(`ALTER TABLE priplatky_zaznamy ADD COLUMN IF NOT EXISTS internal_note TEXT`);
 
+  // Receipts survive manual bonus deletion: retries must never recreate it.
+  await db.query(`CREATE TABLE IF NOT EXISTS schedule_edit_receipts (
+    id TEXT PRIMARY KEY, user_id INTEGER NOT NULL, scope TEXT NOT NULL,
+    payload_hash TEXT NOT NULL, created_at TIMESTAMPTZ NOT NULL DEFAULT NOW())`);
+  await db.query(`CREATE TABLE IF NOT EXISTS schedule_bonus_receipts (
+    id TEXT PRIMARY KEY, user_id INTEGER NOT NULL, scope TEXT NOT NULL,
+    payload_hash TEXT NOT NULL, record_id INTEGER NOT NULL,
+    created_at TIMESTAMPTZ NOT NULL DEFAULT NOW())`);
+
   // ── Příplatky a pokuty: předdefinované poznámky ──────────────────────────────
   await db.query(`
     CREATE TABLE IF NOT EXISTS priplatky_poznamky (

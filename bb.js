@@ -88,7 +88,7 @@ async function migrateBb(db) {
   const perms={__defaultApp:'bb',bb:{enabled:true,visible:true,buttons:{requests_view:true,requests_edit_own:true,requests_edit_all:false,requests_open:false,create:false,publish:false,schedule_view:true,schedule_edit:false,add_staff:false}},raspis:{enabled:true,visible:true,buttons:{tab_nastaveni:false,tab_tvorba:false,tab_rozpis_vr:false,tab_rozpis:false,tab_denni:true,tab_pozadavky:false,filters:false,publish:false,edit:false,req_create:false,req_edit:false,req_edit_all:false,req_toggle_reception:false,req_send_tvorba:false,settings_monthly:false,settings_add_staff:false}},priplatky:{enabled:true,visible:true,buttons:{viewAll:false,add:false,edit:false,delete:false,export:false,settings:false}},dovolene:{enabled:false,visible:false},blacklist:{enabled:false,visible:false},admin:{enabled:false,visible:false}};
   await db.query("INSERT INTO permission_groups(name,display_name,sublist,perms) VALUES ('bagazista','Bagážisté','Bagážisté',$1) ON CONFLICT(name) DO UPDATE SET sublist=EXCLUDED.sublist",[JSON.stringify(perms)]);
 }
-function createBbService({getPool,getUserEffectivePerms}) {
+function createBbService({getPool,getUserEffectivePerms,bonusService}) {
   async function permissions(user) {
     if(!user) return {};
     const {groupPerms,userOv}=await getUserEffectivePerms(user); const gp=groupPerms.bb||{},up=userOv.bb||{};
@@ -178,10 +178,11 @@ function createBbService({getPool,getUserEffectivePerms}) {
       if(changed){setSchedule(data,cells);await db.query('UPDATE rt_schedules SET data=$1 WHERE key=$2',[JSON.stringify(data),row.key]);}
     }
   }
-  async function writeVrSchedule(data,key,user,writer) {
+  async function writeVrSchedule(data,key,user,writer,hooks={}) {
     return transaction(async db=>{
       const {month,year}=period(data.month,data.year);if(key!==rtKey(year,month))fail('Nesouhlasí měsíc rozpisu.',400);await lock(db,month,year);
       const oldRows=await db.query('SELECT data FROM rt_schedules WHERE key=$1 FOR UPDATE',[key]);const old=oldRows.rows[0]?json(oldRows.rows[0].data):null;
+      if(hooks.before&&await hooks.before(db))return projectVr(old||data,db);
       const existing=await assignments(db,month,year,true,false);const incoming=vrAssignments(data);const cells={...scheduleCells(data)},removed=[];
       const allPeople=await people(db);
       // A stale open VR/draft may still contain W after another editor cancelled it.
@@ -207,7 +208,7 @@ function createBbService({getPool,getUserEffectivePerms}) {
       const desired=uniqueAssignments([...existing.filter(s=>!isReceptionist(allPeople.find(p=>p.userId===s.userId))),...incoming]);
       for(const shift of removed)await db.query('DELETE FROM bb_assignments WHERE day=$1 AND user_id=$2',[shift.date,shift.userId]);
       for(const shift of desired)await putAssignment(db,shift,user);
-      setSchedule(data,cells);await updateVrRows(db,desired,removed,allPeople,key);await writer(db,data);
+      setSchedule(data,cells);await updateVrRows(db,desired,removed,allPeople,key);await writer(db,data,old);
       await db.query('UPDATE bb_months SET published_revision=published_revision+1 WHERE year=$1 AND month=$2',[year,month]);
       if(month===12)await db.query('UPDATE bb_months SET published_revision=published_revision+1 WHERE year=$1 AND month=1',[year+1]);
       if(month===1)await db.query('UPDATE bb_months SET published_revision=published_revision+1 WHERE year=$1 AND month=$2',[year-1,12]);
@@ -248,7 +249,11 @@ function createBbService({getPool,getUserEffectivePerms}) {
       for(const uid of allowed){for(let day=1;day<=dayCount(year,month)+(month===12?1:0);day++){const key=uid+'-'+day,value=normalizeBbCell(incoming.cells?.[key]);if(value&&!['W','x','z'].includes(value))fail('Povoleno je W, x nebo z (z pouze admin a VR).',400);if((value==='z'||current.cells[key]==='z')&&value!==String(current.cells[key]||'')&&!manager(req.session.user))fail('Dovolenou z může zadat nebo změnit pouze admin nebo VR.',403);if(value!==String(current.cells[key]||'')){if(value){current.cells[key]=value;current.sequence=Number(current.sequence||0)+1;current.meta[key]={order:current.sequence,at:new Date().toISOString(),author:req.session.user.name||req.session.user.username,userId:req.session.user.id};}else{delete current.cells[key];delete current.meta[key];}}}const note=String(incoming.notes?.[uid]||'').trim();if(note.length>10000)fail('PR je příliš dlouhé.',400);if(note)current.notes[uid]=note;else delete current.notes[uid];current.rowVersions[uid]=(current.rowVersions[uid]||0)+1;}
       const duplicates=duplicateRequests(current,all);if(duplicates.length&&!req.body.confirmDuplicates)fail('BB směnu si zapsalo více lidí. Uložit i přesto?',409,{duplicates});
       await db.query('UPDATE bb_months SET requirements=$3,revision=revision+1,updated_at=NOW() WHERE year=$1 AND month=$2',[year,month,JSON.stringify(current)]);await audit(db,month,year,req.session.user,'requests_save',{staffIds:[...allowed]});return {duplicates};});});
-    async function publish(req,p,editing=false){if(editing?!p.schedule_edit:!p.publish)fail('Nemáte oprávnění publikovat nebo upravovat Rozpis BB.',403);const {month,year}=period(req.body.month,req.body.year);return transaction(async db=>{await lock(db,month,year);let entry=await readMonth(db,month,year);
+    async function publish(req,p,editing=false){if(editing?!p.schedule_edit:!p.publish)fail('Nemáte oprávnění publikovat nebo upravovat Rozpis BB.',403);const {month,year}=period(req.body.month,req.body.year);return transaction(async db=>{await lock(db,month,year);
+      const bonusScope='bb:'+year+'-'+month;
+      if(editing&&bonusService&&await bonusService.begin(db,req.body,req.session.user,bonusScope))return {};
+      if((req.body.bonuses||[]).length&&!bonusService)fail('Příplatky nejsou dostupné.',400);
+      let entry=await readMonth(db,month,year);
       const currentShifts=await assignments(db,month,year,true,false);
       if(editing&&(req.body.assignmentVersion!==undefined||!entry)&&req.body.assignmentVersion!==assignmentVersion(currentShifts))fail('Směny BB se mezitím změnily. Obnovte rozpis před uložením.');
       if(!editing&&!hasRequirements(entry))fail('Nejdříve vytvořte požadavky BB.',404);
@@ -275,6 +280,9 @@ function createBbService({getPool,getUserEffectivePerms}) {
       }catch(error){if(error.status)throw error;fail(error.message,400);}
       const notes=editing?(json(entry.published).notes??json(entry.requirements).notes??{}):(data.notes||{});
       if(!editing){data.published=true;await db.query('UPDATE bb_months SET requirements=$3 WHERE year=$1 AND month=$2',[year,month,JSON.stringify(data)]);}
+      if(editing&&bonusService){const previous=copy(json(entry.published));previous.cells=previous.cells||{};for(const key of Object.keys(previous.cells))if(previous.cells[key]==='W')delete previous.cells[key];
+        for(const shift of existing)previous.cells[shift.userId+'-'+calendar.dayIndex(year,month,shift.date)]='W';
+        await bonusService.save(db,req.body,req.session.user,bonusScope,previous,{...data,month,year},'bb');}
       const published={staffIds:[...roster],cells:data.cells||{},funds:normalizeFunds(data.funds??json(entry.published).funds),notes:copy(notes),adjustments:hourAdjustments,extraHolidays:normalizeExtraHolidays(data.extraHolidays??json(entry.published).extraHolidays,year,month)}; // Monthly PR is preserved for display; request timestamps stay private.
       await db.query("UPDATE bb_months SET published=$3,published_revision=published_revision+1,status='closed',revision=revision+1,updated_at=NOW() WHERE year=$1 AND month=$2",[year,month,JSON.stringify(published)]);if(month===12)await db.query('UPDATE bb_months SET published_revision=published_revision+1 WHERE year=$1 AND month=$2',[year+1,1]);
       if(month===1)await db.query('UPDATE bb_months SET published_revision=published_revision+1 WHERE year=$1 AND month=$2',[year-1,12]);

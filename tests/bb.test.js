@@ -2,10 +2,10 @@
 const {test}=require('node:test'),assert=require('node:assert/strict');
 const {createBbService,migrateBb,vrAssignments,uniqueAssignments,personIndex}=require('../bb');
 const clone=v=>JSON.parse(JSON.stringify(v));
-function fixture(){
+function fixture({bonusService,extraQuery}={}){
  const users=[{id:1,name:'BB Jeden',username:'BB1',role:'bagazista',perm_overrides:JSON.stringify({raspis_staff:{active:true,type:'Bagážista'}})},{id:2,name:'BB Dva',username:'BB2',role:'bagazista',perm_overrides:JSON.stringify({raspis_staff:{active:true,type:'Bagážista'}})},{id:10,name:'Recepční A',username:'A',role:'recepční',perm_overrides:JSON.stringify({raspis_staff:{active:true,type:'Obojí'}})},{id:11,name:'Recepční B',username:'B',role:'recepční',perm_overrides:JSON.stringify({raspis_staff:{active:true,type:'Denní'}})},{id:99,name:'Admin',role:'admin',perm_overrides:'{}'}];
  let state={months:{},assignments:{},schedules:{},audit:[],seq:0},backup;let queries=[];
- const pool={connect:async()=>pool,release(){},async query(sql,args=[]){sql=sql.replace(/\s+/g,' ').trim();queries.push(sql);const rows=values=>({rows:clone(values),rowCount:values.length});const monthKey=()=>args[0]+'-'+args[1];
+ const pool={connect:async()=>pool,release(){},async query(sql,args=[]){sql=sql.replace(/\s+/g,' ').trim();queries.push(sql);if(extraQuery){const result=await extraQuery(sql,args,state,users);if(result)return result;}const rows=values=>({rows:clone(values),rowCount:values.length});const monthKey=()=>args[0]+'-'+args[1];
  if(sql==='BEGIN'){backup=clone(state);return rows([]);}if(sql==='ROLLBACK'){state=backup;return rows([]);}if(sql==='COMMIT')return rows([]);if(sql.includes('pg_advisory_xact_lock'))return rows([]);
  if(sql==='SELECT id,name,username,role,perm_overrides FROM users ORDER BY name,id')return rows(users);
  if(sql.includes('FROM bb_months WHERE published IS NOT NULL'))return rows(Object.values(state.months).filter(m=>m.published).sort((a,b)=>b.year-a.year||b.month-a.month).slice(0,1).map(m=>({year:m.year,month:m.month})));
@@ -23,7 +23,7 @@ function fixture(){
  if(sql.startsWith('INSERT INTO bb_audit')){state.audit.push(clone(args));return rows([]);}
  throw Error('Unhandled test SQL: '+sql);
  }};
- const service=createBbService({getPool:()=>pool,getUserEffectivePerms:async user=>({groupPerms:{},userOv:user.overrides||{}})});
+ const service=createBbService({getPool:()=>pool,bonusService,getUserEffectivePerms:async user=>({groupPerms:{},userOv:user.overrides||{}})});
  const handlers={};service.register({get:(route,fn)=>handlers['GET '+route]=fn,post:(route,fn)=>handlers['POST '+route]=fn});
  async function call(route,body={},uid=99,method='POST',extra={}){let status=200,result;const res={status(n){status=n;return this;},json(v){result=v;}};const user=uid===null?null:{...users.find(u=>u.id===uid),...extra};await handlers[method+' '+route]({session:{user},body,query:body},res);return {status,...result};}
  async function create(){assert.equal((await call('/api/bb/create',{month:12,year:2026})).ok,true);return state.months['2026-12'];}
@@ -31,7 +31,7 @@ function fixture(){
  async function publish(){const e=state.months['2026-12'];return call('/api/bb/publish',{month:12,year:2026,revision:e.revision,publishedRevision:e.published_revision});}
  const vr=(schedule={},staff=[{userId:10,name:'Recepční A',type:'Obojí'},{userId:11,name:'Recepční B',type:'Denní'}],month=12,year=2026)=>({month,year,staff,staffOrder:staff.map(s=>s.userId),schedule,monthlyData:{},fondHpp:'157,5',portalCustomData:{10:{noteP:'keep'}}});
  async function storeVr(data){const key='RT:'+String(data.month).padStart(2,'0')+'/'+data.year;return service.writeVrSchedule(data,key,users[4],async(db,linked)=>db.query('UPDATE rt_schedules SET data=$1 WHERE key=$2',[JSON.stringify(linked),key]));}
- return {get state(){return state},users,pool,service,call,create,save,publish,vr,storeVr,queries};
+ return {pool,get state(){return state},users,pool,service,call,create,save,publish,vr,storeVr,queries};
 }
 test('BB permissions are explicit, manager defaults and own row only',async()=>{const f=fixture();assert.equal((await f.service.permissions(f.users[0])).schedule_edit,false);assert.equal((await f.service.permissions(f.users[4])).publish,true);assert.equal((await f.service.permissions(f.users[2])).enabled,false);assert.equal((await f.service.permissions({...f.users[4],overrides:{bb:{buttons:{publish:false}}}})).publish,false);assert.equal((await f.call('/api/bb/create',{month:12,year:2026},1)).status,403);assert.equal((await f.call('/api/bb/month',{month:12,year:2026},null,'GET')).status,401);await f.create();assert.deepEqual(f.state.months['2026-12'].requirements.staffIds,[1,2]);});
 test('Own saves require open editing, preserve other people and allow unlimited x but no y',async()=>{const f=fixture();let e=await f.create();const body={month:12,year:2026,data:{cells:Object.fromEntries(Array.from({length:31},(_,i)=>['1-'+(i+1),'x']).concat([['2-1','W']])),notes:{1:'PR own',2:'foreign'}}};assert.equal((await f.call('/api/bb/requests',body,1)).status,403);await f.call('/api/bb/status',{month:12,year:2026,status:'open'});assert.equal((await f.call('/api/bb/requests',body,1)).ok,true);e=f.state.months['2026-12'];assert.equal(Object.keys(e.requirements.cells).length,31);assert.equal(e.requirements.cells['2-1'],undefined);assert.equal(e.requirements.notes[2],undefined);assert.equal((await f.call('/api/bb/requests',{...body,rowVersion:1,data:{cells:{'1-1':'y'}}},1)).status,400);assert.equal((await f.call('/api/bb/requests',body,1)).status,409);await f.call('/api/bb/status',{month:12,year:2026,status:'closed'});assert.equal((await f.call('/api/bb/requests',{...body,rowVersion:1},1)).status,403);});
