@@ -12,7 +12,8 @@ function getPool() {
       ssl: { rejectUnauthorized: false },
       max: 10,
       idleTimeoutMillis: 30000,
-      connectionTimeoutMillis: 5000
+      connectionTimeoutMillis: 5000,
+      statement_timeout: 120000
     });
     pool.on('error', (err) => console.error('Chyba PostgreSQL poolu:', err));
   }
@@ -32,6 +33,14 @@ async function init() {
       created_at TIMESTAMPTZ DEFAULT NOW()
     )
   `);
+  await db.query('ALTER TABLE users ADD COLUMN IF NOT EXISTS auth_version INTEGER NOT NULL DEFAULT 0');
+  await db.query(`CREATE TABLE IF NOT EXISTS login_attempt_windows (
+    key TEXT PRIMARY KEY,
+    attempts INTEGER NOT NULL,
+    window_id UUID NOT NULL,
+    expires_at TIMESTAMPTZ NOT NULL
+  )`);
+  await db.query('CREATE INDEX IF NOT EXISTS login_attempt_windows_expiry ON login_attempt_windows (expires_at)');
   // Safe migration: add theme column if it doesn't exist yet
   await db.query(`
     ALTER TABLE users ADD COLUMN IF NOT EXISTS theme VARCHAR(5) DEFAULT 'light'
@@ -827,11 +836,14 @@ async function init() {
   const { rows } = await db.query('SELECT COUNT(*) AS cnt FROM users');
   if (parseInt(rows[0].cnt, 10) === 0) {
     const bcrypt = require('bcryptjs');
+    const initialPassword = process.env.INITIAL_ADMIN_PASSWORD;
+    if (!initialPassword || initialPassword.length < 15 || Buffer.byteLength(initialPassword) > 72) {
+      throw new Error('Prázdná databáze vyžaduje vlastní INITIAL_ADMIN_PASSWORD (nejméně 15 znaků, nejvýše 72 bajtů).');
+    }
     await db.query(
       'INSERT INTO users (name, username, password_hash, role) VALUES ($1, $2, $3, $4)',
-      ['Karel', 'Karel-Ave', bcrypt.hashSync('Karel.AVE', 10), 'admin']
+      ['Karel', 'Karel-Ave', await bcrypt.hash(initialPassword, 10), 'admin']
     );
-    console.log('Vytvořen výchozí admin: Karel-Ave / Karel.AVE');
   }
 
   // ── Receptionist user accounts migration ─────────────────────────────────────
@@ -907,7 +919,7 @@ async function init() {
         ['VRAM',    'Vránek Matyáš',            'Denní', 'DPP'],
       ];
       for (const [login, name, type, contract] of RECEPTIONIST_SEED) {
-        const hash = await bcrypt.hash(login + '123', 10);
+        const hash = await bcrypt.hash(require('node:crypto').randomBytes(32).toString('hex'), 10);
         const { rows: ins } = await db.query(
           `INSERT INTO users (name, username, password_hash, role)
            VALUES ($1, $2, $3, 'vedoucí')

@@ -1999,7 +1999,16 @@
     const value = String(portalPrefs.default_public_hotel || 'ALL').toUpperCase();
     const active = new Set(value === 'ALL' ? ['ALL'] : value.split(',').filter(Boolean));
     const hotels = ['ALL', ...portalHotelLetters];
-    grid.innerHTML = hotels.map(h => `<button type="button" class="public-hotel-pick${active.has(h) ? ' active' : ''}" data-hotel="${h}" onclick="toggleDefaultPublicHotel('${h}')">${h === 'ALL' ? 'V&Scaron;E' : h}</button>`).join('');
+    grid.replaceChildren(...hotels.map(h => {
+      const button = document.createElement('button');
+      button.type = 'button';
+      button.className = 'public-hotel-pick';
+      button.classList.toggle('active', active.has(h));
+      button.dataset.hotel = h;
+      button.textContent = h === 'ALL' ? 'VŠE' : h;
+      button.addEventListener('click', () => toggleDefaultPublicHotel(h));
+      return button;
+    }));
   }
 
   function portalMonthIndex(value) {

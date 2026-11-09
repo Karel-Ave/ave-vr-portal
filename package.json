@@ -7,7 +7,6 @@
     "start": "node server.js"
   },
   "dependencies": {
-    "archiver": "^8.0.0",
     "bcryptjs": "^2.4.3",
     "connect-pg-simple": "^9.0.1",
     "docxtemplater": "^3.68.7",
@@ -16,9 +15,14 @@
     "pdfkit": "^0.15.0",
     "pg": "^8.11.3",
     "pizzip": "^3.2.0",
-    "xlsx": "^0.18.5"
+    "xlsx": "https://cdn.sheetjs.com/xlsx-0.20.3/xlsx-0.20.3.tgz"
   },
   "devDependencies": {
     "jimp": "^1.6.1"
+  },
+  "overrides": {
+    "express": {
+      "qs": "6.17.1"
+    }
   }
 }

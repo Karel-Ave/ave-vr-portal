@@ -1100,7 +1100,7 @@ async function loadPrehled() {
     cachedData = await resp.json();
     renderPrehled(cachedData);
   } catch(e) {
-    wrap.innerHTML = `<p class="empty">Chyba: ${e.message}</p>`;
+    wrap.innerHTML = `<p class="empty">Chyba: ${esc(e.message)}</p>`;
   }
 }
 
@@ -1192,7 +1192,7 @@ function renderPriplatkyGroup(data) {
       const sClass = soucet < 0 ? 'neg' : (soucet > 0 ? 'pos' : '');
       const label = cssClass ? login : b.name;
       return `<tr>
-        <td><span class="${cssClass || 'login-link'}" onclick="openDetail('${esc(login)}')">${esc(label)}</span></td>
+        <td><span class="${cssClass || 'login-link'}" data-bonus-login="${esc(login).replace(/"/g, '&quot;')}">${esc(label)}</span></td>
         <td>${b.bs||''}</td><td>${b.re||''}</td><td>${b.sk||''}</td>
         <td>${b.os||''}</td><td>${b.po||''}</td>
         <td class="soucet ${sClass}">${soucet}</td>
@@ -1978,6 +1978,11 @@ document.getElementById('dp-next').addEventListener('click', () => {
 });
 
 // ═══ Start ════════════════════════════════════════════════════════════════════
+document.getElementById('stbl-wrap').addEventListener('click', event => {
+  const link = event.target.closest('[data-bonus-login]');
+  if (link) openDetail(link.dataset.bonusLogin);
+});
+
 const scheduleBonusDraft=new URLSearchParams(location.search).get('scheduleBonusDraft');
 async function initScheduleBonusDraft(){
   await loadPriplatkyPermissions();await loadHotelOptions();await loadRecepniDropdown();await loadDuvodyDropdowns();initFormConds();

@@ -2,6 +2,8 @@ const express     = require('express');
 const session     = require('express-session');
 const bcrypt      = require('bcryptjs');
 const path        = require('path');
+const {reserveLoginAttempt} = require('./login-limiter');
+const {sessionSecret, loginTarget, requestFromPortal, securityHeaders, isPublicAsset, protectStaticFiles} = require('./portal-security');
 const PDFDocument = require('pdfkit');
 const { getPool, init } = require('./db');
 const { createBbService } = require('./bb');
@@ -18,6 +20,8 @@ const { projectVacations, prepareVacationSave, findStaffIndex: findVacationStaff
 
 const app  = express();
 const PORT = process.env.PORT || 8080;
+const SESSION_SECRET = sessionSecret(process.env);
+const dummyPasswordHash = bcrypt.hashSync(require('node:crypto').randomBytes(32).toString('hex'), 10);
 const SESSION_MAX_AGE = 10 * 365 * 24 * 60 * 60 * 1000;
 const DEFAULT_LIGHT_SKIN = 'indigo';
 const DEFAULT_DARK_SKIN = 'green';
@@ -55,12 +59,14 @@ function sessionUserFromDbUser(user) {
 
 // ── Middleware ────────────────────────────────────────────────────────────────
 
+app.set('trust proxy', 1);
+app.use(securityHeaders);
+app.use(requestFromPortal);
+app.use('/login', express.json({limit:'8kb'}), express.urlencoded({extended:false,limit:'8kb',parameterLimit:12}));
 app.use(express.json({ limit: '20mb' }));
 app.use(express.urlencoded({ extended: true }));
-app.set('trust proxy', 1);
-
-// Statické soubory
-app.use('/static', express.static(path.join(__dirname, 'public')));
+const serveStatic = express.static(path.join(__dirname, 'public'), {index:false,redirect:false});
+app.use('/static', (req, res, next) => isPublicAsset(req.path) ? serveStatic(req, res, next) : next());
 // Apple touch icon (pro iOS Oblíbené/plochu)
 app.get('/apple-touch-icon.png', (req, res) => res.sendFile(path.join(__dirname, 'public', 'apple-touch-icon.png')));
 app.get('/apple-touch-icon-precomposed.png', (req, res) => res.sendFile(path.join(__dirname, 'public', 'apple-touch-icon.png')));
@@ -72,12 +78,13 @@ app.use(session({
     pool: getPool(),
     createTableIfMissing: true
   }),
-  secret: process.env.SESSION_SECRET || 'ave-portal-2026-secret',
+  secret: SESSION_SECRET,
   resave: false,
   saveUninitialized: false,
   rolling: true,
   cookie: {
     maxAge: SESSION_MAX_AGE,
+    httpOnly: true,
     sameSite: 'lax',
     secure: process.env.NODE_ENV === 'production'
   }
@@ -271,20 +278,17 @@ function sessionExpiredResponse(req, res) {
   return res.redirect('/?expired=1');
 }
 
-async function getAutoLogoutMinutes(userId) {
-  const db = getPool();
-  const { rows } = await db.query(
-    'SELECT auto_logout_minutes FROM user_preferences WHERE user_id = $1',
-    [userId]
+async function getSessionPolicy(user, version) {
+  const {rows: [row]} = await getPool().query(
+    `SELECT u.id, u.role, u.auth_version, p.auto_logout_minutes
+      FROM users u LEFT JOIN user_preferences p ON p.user_id = u.id WHERE u.id = $1`,
+    [user.id]
   );
-  const minutes = Number(rows[0]?.auto_logout_minutes);
-  if (!AUTO_LOGOUT_ALLOWED_MINUTES.has(minutes)) return 30;
-  if (minutes === 0) {
-    const { rows: userRows } = await db.query('SELECT id, username, name, role, perm_overrides FROM users WHERE id = $1', [userId]);
-    const canNever = userRows.length && await hasButtonPerm(sessionUserFromDbUser(userRows[0]), 'admin', 'never_logout', false);
-    return canNever ? 0 : 30;
-  }
-  return minutes;
+  if (!row || row.role !== user.role || row.auth_version !== version) return null;
+  const minutes = Number(row.auto_logout_minutes ?? 30);
+  if (!AUTO_LOGOUT_ALLOWED_MINUTES.has(minutes)) return {minutes: 30};
+  if (minutes === 0 && !await hasButtonPerm(user, 'admin', 'never_logout', false)) return {minutes: 30};
+  return {minutes};
 }
 
 async function touchUserActivity(req, force = false) {
@@ -308,7 +312,12 @@ app.use(async (req, res, next) => {
   if (req.path === '/logout') return next();
 
   try {
-    const minutes = await getAutoLogoutMinutes(user.id);
+    const policy = await getSessionPolicy(user, req.session.authVersion ?? 0);
+    if (!policy) {
+      releaseUserLocks(user.id);
+      return req.session.destroy(() => sessionExpiredResponse(req, res));
+    }
+    const {minutes} = policy;
     const now = Date.now();
     const lastActivity = Number(req.session.lastActivityAt || req.session.loginAt || now);
     if (minutes !== 0 && now - lastActivity > minutes * 60 * 1000) {
@@ -324,9 +333,11 @@ app.use(async (req, res, next) => {
     return next();
   } catch (err) {
     console.error('Auto logout check error:', err.message);
-    return next();
+    return res.status(503).json({ok:false,msg:'Ověření přihlášení je dočasně nedostupné.'});
   }
 });
+
+app.use('/static', protectStaticFiles, serveStatic);
 
 const locks = {};
 const lockTimers = {};
@@ -742,15 +753,24 @@ app.patch('/api/me/theme', requireLogin, async (req, res) => {
 });
 
 app.post('/login', async (req, res) => {
-  const { username, password } = req.body;
+  const { username, password, next } = req.body || {};
+  const login = typeof username === 'string' && username.length <= 100 ? username.trim() : '';
   try {
     const db = getPool();
-    const { rows } = await db.query('SELECT * FROM users WHERE LOWER(username) = LOWER($1)', [username]);
-    const user = rows[0];
-    if (!user || !bcrypt.compareSync(password, user.password_hash)) {
-      return res.redirect('/?error=1');
+    const attempt = await reserveLoginAttempt(db, req.ip, login);
+    if (attempt.retryAfter) {
+      res.set('Retry-After', String(attempt.retryAfter));
+      return res.status(429).send('Příliš mnoho pokusů o přihlášení. Zkuste to za chvíli znovu.');
     }
+    if (!login || typeof password !== 'string' || !password || password.length > 4096) return res.redirect('/?error=1');
+    const { rows } = await db.query('SELECT * FROM users WHERE LOWER(username) = LOWER($1)', [login]);
+    const user = rows[0];
+    const validPassword = await bcrypt.compare(password, user?.password_hash || dummyPasswordHash);
+    if (!user || !validPassword) return res.redirect('/?error=1');
+    await attempt.releaseSuccess();
+    await new Promise((resolve, reject) => req.session.regenerate(err => err ? reject(err) : resolve()));
     req.session.user = sessionUserFromDbUser(user);
+    req.session.authVersion = user.auth_version;
     req.session.loginAt = Date.now();
     req.session.lastActivityAt = req.session.loginAt;
     req.session.lastSeenAt = req.session.loginAt;
@@ -758,8 +778,7 @@ app.post('/login', async (req, res) => {
     req.session.cookie.maxAge = SESSION_MAX_AGE;
     await db.query('UPDATE users SET last_activity_at = NOW() WHERE id = $1', [user.id]);
     logEvent(user.id, user.username, 'login', { role: user.role });
-    const next = req.body.next || '';
-    const target = (next && next.startsWith('/') && next !== '/widget') ? next : '/portal';
+    const target = loginTarget(next);
     req.session.save(err => {
       if (err) {
         console.error('Chyba ulozeni session:', err);
@@ -796,8 +815,12 @@ app.post('/api/change-password', requireLogin, async (req, res) => {
     if (!bcrypt.compareSync(oldPassword, user.password_hash)) {
       return res.json({ ok: false, msg: 'Současné heslo není správné.' });
     }
-    await db.query('UPDATE users SET password_hash = $1 WHERE id = $2',
-      [bcrypt.hashSync(newPassword, 10), user.id]);
+    const {rows: [updated]} = await db.query(
+      'UPDATE users SET password_hash = $1, auth_version = auth_version + 1 WHERE id = $2 AND auth_version = $3 RETURNING auth_version',
+      [await bcrypt.hash(newPassword, 10), user.id, user.auth_version]
+    );
+    if (!updated) return res.status(409).json({ok:false,msg:'Heslo se mezitím změnilo.'});
+    req.session.authVersion = updated.auth_version;
     res.json({ ok: true, msg: 'Heslo bylo změněno.' });
   } catch (err) {
     console.error('Chyba změny hesla:', err);
@@ -867,13 +890,14 @@ app.patch('/api/users/:id', requireLogin, requirePermDefault('admin', 'users_edi
       await db.query('UPDATE users SET username = $1 WHERE id = $2', [username.trim(), id]);
     }
     if (name) await db.query('UPDATE users SET name = $1 WHERE id = $2', [name.trim(), id]);
-    if (role) await db.query('UPDATE users SET role = $1 WHERE id = $2', [role, id]);
+    if (role) await db.query('UPDATE users SET role = $1, auth_version = auth_version + CASE WHEN role IS DISTINCT FROM $1 THEN 1 ELSE 0 END WHERE id = $2', [role, id]);
     if (phone !== undefined) await db.query('UPDATE users SET phone = $1 WHERE id = $2', [formatPhoneForStorage(phone), id]);
     await syncReceptionistLoginFromUser(db, id, previousLogin);
     if (password) {
       if (password.length < 5) return res.json({ ok: false, msg: 'Heslo musí mít alespoň 5 znaků.' });
-      await db.query('UPDATE users SET password_hash = $1 WHERE id = $2',
-        [bcrypt.hashSync(password, 10), id]);
+      const {rows: [updated]} = await db.query('UPDATE users SET password_hash = $1, auth_version = auth_version + 1 WHERE id = $2 RETURNING auth_version',
+        [await bcrypt.hash(password, 10), id]);
+      if (updated && id === req.session.user.id) req.session.authVersion = updated.auth_version;
     }
     res.json({ ok: true });
   } catch (err) {
@@ -1286,6 +1310,11 @@ app.get('/api/settings', requireLogin, async (req, res) => {
 
 app.post('/api/settings', requireLogin, async (req, res) => {
   try {
+    const user = req.session.user;
+    const changesHotelManager = Object.hasOwn(req.body || {}, 'hotels') || Object.hasOwn(req.body || {}, 'mobileKeypadConfig');
+    const canManageHotels = await hasButtonPerm(user, 'raspis', 'hotel_manager', false);
+    const canSaveLegacySettings = !changesHotelManager && await hasButtonPerm(user, 'raspis', 'settings_monthly', false);
+    if (!canManageHotels && !canSaveLegacySettings) return res.status(403).json({ok:false,msg:'Nemáte oprávnění měnit sdílené nastavení.'});
     const db = getPool();
     const { rows } = await db.query("SELECT value FROM settings WHERE key = 'main'");
     const current = rows.length > 0 ? JSON.parse(rows[0].value) : {};
@@ -3653,14 +3682,32 @@ async function _disabledImportFile1(req, res) {
 // ══════════════════════════════════════════════════════════════════════════════
 
 const fs            = require('fs');
-const archiver      = require('archiver');
 const PizZip        = require('pizzip');
 const Docxtemplater = require('docxtemplater');
 const XLSX          = require('xlsx');
 const TEMPLATES_DIR = path.join(__dirname, 'templates', 'smlouvy');
 
 // ── Stránka ───────────────────────────────────────────────────────────────────
-app.get('/smlouvy', requireLogin, (req, res) =>
+async function requireContractsAccess(req, res, next) {
+  const user = req.session.user;
+  if (user.role === 'admin') return next();
+  try {
+    const {groupPerms, userOv} = await getUserEffectivePerms(user);
+    const group = groupPerms.smlouvy || {};
+    const override = userOv.smlouvy || {};
+    const role = String(user.role || '').toLowerCase();
+    const defaultAccess = role.includes('ved') || role === 'vr';
+    if ((override.enabled ?? group.enabled ?? defaultAccess) === true) return next();
+    if (req.path === '/smlouvy') return res.redirect('/portal');
+    return res.status(403).json({ok:false,msg:'Nemáte oprávnění pro Smlouvy.'});
+  } catch (err) {
+    console.error('Ověření přístupu ke Smlouvám:', err.message);
+    return res.status(503).json({ok:false,msg:'Ověření oprávnění je dočasně nedostupné.'});
+  }
+}
+
+app.use('/api/smlouvy', requireLogin, requireContractsAccess);
+app.get('/smlouvy', requireLogin, requireContractsAccess, (req, res) =>
   res.sendFile(path.join(__dirname, 'views', 'smlouvy.html'))
 );
 
@@ -3801,38 +3848,20 @@ app.post('/api/smlouvy/generate', requireLogin, async (req, res) => {
     const tdata  = buildTemplateData(d, tvurce);
     const { sml, info } = chooseTemplates(d);
 
+    const archive = new PizZip();
+
+    archive.file(login + '_smlouva.docx', renderDocx(sml, tdata));
+    archive.file(login + '_BOZP.docx', renderDocx('BOZP.docx', tdata));
+    archive.file(login + '_Dohoda_hmotna_odp.docx', renderDocx('Dohoda_hmotna_odp.docx', tdata));
+    archive.file(login + '_Dotaznik_mzdove_uctarna.docx', renderDocx('Dotaznik_mzdova_uctarna.docx', tdata));
+    archive.file(login + '_Informace_o_obsahu_PP.docx', renderDocx(info, tdata));
+    archive.file(login + '_Vstupni_prohlidka.docx', renderDocx('Vstupni_prohlidka.docx', tdata));
+    archive.file(login + '_Danove_prohlaseni.pdf', fs.readFileSync(path.join(TEMPLATES_DIR, 'Danove_prohlaseni.pdf')));
+
+    const zip = archive.generate({type:'nodebuffer', compression:'DEFLATE', compressionOptions:{level:6}});
     res.setHeader('Content-Type', 'application/zip');
-    res.setHeader('Content-Disposition',
-      `attachment; filename*=UTF-8''${encodeURIComponent(login + '_smlouvy.zip')}`);
-
-    const archive = archiver('zip', { zlib: { level: 6 } });
-    archive.on('error', err => { throw err; });
-    archive.pipe(res);
-
-    // 1. Pracovní smlouva
-    archive.append(renderDocx(sml, tdata),
-      { name: `${login}_smlouva.docx` });
-    // 2. BOZP
-    archive.append(renderDocx('BOZP.docx', tdata),
-      { name: `${login}_BOZP.docx` });
-    // 3. Dohoda o hmotné odpovědnosti
-    archive.append(renderDocx('Dohoda_hmotna_odp.docx', tdata),
-      { name: `${login}_Dohoda_hmotna_odp.docx` });
-    // 4. Dotazník mzdové účtárny
-    archive.append(renderDocx('Dotaznik_mzdova_uctarna.docx', tdata),
-      { name: `${login}_Dotaznik_mzdova_uctarna.docx` });
-    // 5. Informace o obsahu PP
-    archive.append(renderDocx(info, tdata),
-      { name: `${login}_Informace_o_obsahu_PP.docx` });
-    // 6. Vstupní prohlídka (login = login zaměstnance)
-    archive.append(renderDocx('Vstupni_prohlidka.docx', tdata),
-      { name: `${login}_Vstupni_prohlidka.docx` });
-    // 7. Daňové prohlášení (PDF — prostá kopie)
-    archive.append(
-      fs.createReadStream(path.join(TEMPLATES_DIR, 'Danove_prohlaseni.pdf')),
-      { name: `${login}_Danove_prohlaseni.pdf` });
-
-    await archive.finalize();
+    res.setHeader('Content-Disposition', `attachment; filename*=UTF-8''${encodeURIComponent(login + '_smlouvy.zip')}`);
+    res.send(zip);
 
     await logEvent(req.session.user.id, req.session.user.username,
       'smlouvy_generate', { login, typ: d.typ_smlouvy });
@@ -8289,7 +8318,9 @@ app.post('/api/rt/log', requireLogin, requirePermDefault('raspis', 'log', false)
 // ── Start ─────────────────────────────────────────────────────────────────────
 init()
   .then(() => {
-    app.listen(PORT, () => console.log(`AVE Portál běží na portu ${PORT}`));
+    const httpServer = app.listen(PORT, () => console.log(`AVE Portál běží na portu ${PORT}`));
+    httpServer.headersTimeout = 30000;
+    httpServer.requestTimeout = 120000;
   })
   .catch(err => {
     console.error('Chyba inicializace databáze:', err.message);

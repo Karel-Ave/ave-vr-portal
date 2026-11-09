@@ -14029,8 +14029,8 @@ function showHotelManager() {
     const panelOn = h.showInPanel !== undefined ? h.showInPanel : !PANEL_DEF_EXCL.has(h.letter);
     const panelChk = panelOn ? 'checked' : '';
     item.innerHTML = `
-      <span class="hotel-letter-badge">${h.letter}</span>
-      <input type="text" class="hotel-name-inp" value="${h.name||''}" placeholder="Název hotelu…">
+      <span class="hotel-letter-badge"></span>
+      <input type="text" class="hotel-name-inp" placeholder="Název hotelu…">
       ${hotelHoursSelect(h.hours)}
       <label class="hotel-chk-lbl"><input type="checkbox" class="hm-dayonly" ${dayOnlyChk}> Jen denní</label>
       <label class="hotel-chk-lbl" style="width:66px"><input type="checkbox" class="hm-active" ${activeChk}> Aktivní</label>
@@ -14040,6 +14040,8 @@ function showHotelManager() {
       <button class="hotel-hide-btn" title="Skryt od aktualniho mesice">Skrýt</button>
       <button class="hotel-del-btn" title="Smazat uplne">✕</button>
     `;
+    item.querySelector('.hotel-letter-badge').textContent = h.letter;
+    item.querySelector('.hotel-name-inp').value = h.name || '';
     item.querySelector('.hotel-hide-btn').addEventListener('click', () => {
       if (!confirm(`Skryt hotel ${h.letter} od ${String(state.month).padStart(2, '0')}/${state.year}?`)) return;
       setHotelMonthSelect(item, 'hm-inactive-from', { month: state.month, year: state.year });
