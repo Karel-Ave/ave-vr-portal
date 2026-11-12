@@ -27,7 +27,7 @@ test('new November starters have only two months entitlement, with activeUntil a
   }
 });
 function setup(){
-  const state={user:{username:'BRIS',perm_overrides:JSON.stringify({other:{keep:1},raspis_staff:{contract:'HPP',login:'BRIS',activeFrom:{year:2020,month:1}}})},balance:{id:12,contract:'ZPP',base_hours:69.6,base_days:14.5,note:'Ručně od srpna',base_from_year:2026},periods:[],movements:[{staff_login:'BRIS',hours_delta:-19.2}]};
+  const state={user:{username:'BRIS',role:'recepční',perm_overrides:JSON.stringify({other:{keep:1},raspis_staff:{contract:'HPP',login:'BRIS',activeFrom:{year:2020,month:1}}})},balance:{id:12,contract:'ZPP',base_hours:69.6,base_days:14.5,note:'Ručně od srpna',base_from_year:2026},periods:[],movements:[{staff_login:'BRIS',hours_delta:-19.2}]};
   const queries=[];let snapshot;let fail=false;
   const client={async query(sql,p=[]){queries.push({sql,p});
     if(sql==='BEGIN'){snapshot=JSON.stringify(state);return {rows:[]};}
@@ -45,8 +45,9 @@ function setup(){
   let handler;const context={vacationEntitlement:entitlement,Date,console,getPool:()=>({connect:async()=>client}),requireLogin(){},requirePermDefault(){},parsePermOverridesValue:v=>typeof v==='string'?JSON.parse(v):v,syncReceptionistLoginFromUser:async()=>{},app:{put(...a){handler=a.at(-1)}}};
   vm.createContext(context);
   vm.runInContext(source.slice(source.indexOf('function vacationContractKey('),source.indexOf('function vacationScheduleKey(')),context);
+  vm.runInContext(source.slice(source.indexOf('const protectedUserGroups'),source.indexOf("app.post('/api/users'")),context);
   vm.runInContext(source.slice(source.indexOf("app.put('/api/admin/users/:id/overrides'"),source.indexOf("app.get('/api/admin/logs'")),context);
-  return {state,queries,setFail(){fail=true},context,async save(ps,expected=state.periods){let response,status=200;const overrides=JSON.parse(state.user.perm_overrides);overrides.raspis_staff.contract='HPP';await handler({params:{id:33},body:{overrides,contract_periods:ps,expected_contract_periods:expected},session:{user:{id:99}}},{json:v=>response=v,status:v=>{status=v;return{json:r=>response=r}}});return {response,status};}};
+  return {state,queries,setFail(){fail=true},context,async save(ps,expected=state.periods,role='admin'){let response,status=200;const overrides=JSON.parse(state.user.perm_overrides);overrides.raspis_staff.contract='HPP';await handler({params:{id:33},body:{overrides,contract_periods:ps,expected_contract_periods:expected},session:{user:{id:99,role}}},{json:v=>response=v,status:v=>{status=v;return{json:r=>response=r}}});return {response,status};}};
 }
 test('admin history save freezes legacy baseline once, preserving manual balance, other permissions and consumed movements',async()=>{
   const f=setup(),before=JSON.stringify(f.state.movements);const result=await f.save(periods);assert.equal(result.response.ok,true);assert.equal(f.state.balance.entitlement_reference_hours,96);assert.equal(f.state.balance.base_hours,69.6);assert.equal(f.state.balance.note,'Ručně od srpna');assert.equal(JSON.parse(f.state.user.perm_overrides).other.keep,1);assert.equal(JSON.stringify(f.state.movements),before);
@@ -55,6 +56,16 @@ test('admin history save freezes legacy baseline once, preserving manual balance
 });
 test('overlap, stale history and a partial database failure all preserve the original data',async()=>{
   for(const failure of ['overlap','stale','write']){const f=setup();const before=JSON.stringify(f.state);if(failure==='write')f.setFail();const result=await f.save(failure==='overlap'?[...periods,{contract:'ZPP',from_year:2026,from_month:11}]:periods,failure==='stale'?periods:[]);assert.equal(result.response.ok,false,failure);assert.equal(JSON.stringify(f.state),before,failure);assert.equal(f.queries.at(-1).sql,'ROLLBACK');}
+});
+test('delegated VR cannot write protected account overrides, even with user permissions',async()=>{
+  const f=setup();
+  for (const role of ['admin','vedoucí']) {
+    f.state.user.role=role;
+    const before=JSON.stringify(f.state);
+    assert.equal((await f.save(periods,[],'vedoucí')).status,403);
+    assert.equal(JSON.stringify(f.state),before);
+    assert.equal(f.queries.at(-1).sql,'ROLLBACK');
+  }
 });
 test('history validation rejects missing dates, invalid contracts, partial end dates and reverse ranges',()=>{
   const f=setup();for(const p of [{contract:'nonsense',from_month:1,from_year:2026},{contract:'HPP',from_month:0,from_year:2026},{contract:'HPP',from_month:5,from_year:2026,to_month:4,to_year:2026},{contract:'HPP',from_month:1,from_year:2026,to_month:4}])assert.throws(()=>f.context.vacationNormalizeContractPeriods([p]));

@@ -636,7 +636,8 @@
     return val != null ? val : permButtonDefault(btnDef);
   }
 
-  let myId = null, currentUserId = null;
+  let myId = null, myRole = '', currentUserId = null;
+  const canManageUserGroup = role => myRole === 'admin' || (role !== 'admin' && role !== 'vedoucí');
   let currentOverridesId = null, currentOverridesRole = '';
   let overridesData = {};
   let allGroups = [];
@@ -656,6 +657,7 @@
 
   fetch('/api/me').then(r => r.json()).then(async u => {
     myId = u.id;
+    myRole = u.role;
     await loadRaspisHotelLetters();
     loadUsers();
     loadGroups();
@@ -786,6 +788,7 @@
       return;
     }
     tbody.innerHTML = filtered.map((u, i) => {
+      const canManageUser = canManageUserGroup(u.role);
       const grp = allGroups.find(g => g.name === u.role);
       const grpLabel = grp ? esc(grp.displayName) : esc(u.role);
       const inactive = isRaspisInactive(u);
@@ -798,10 +801,10 @@
         <td><span class="role-badge ${roleClass(u.role)}">${grpLabel}</span></td>
         <td style="color:#777;font-size:12px">${formatDate(u.created_at)}</td>
         <td class="td-actions">
-          <button class="btn-action" onclick="openEditModal(${u.id})">Upravit</button>
-          <button class="btn-action" onclick="openOverridesModal(${u.id},'${esc(u.name)}','${esc(u.role)}')">Oprávnění</button>
-          ${inactive ? `<button class="btn-action" onclick="reactivateRaspisUser(${u.id},'${esc(u.name)}')">Aktivovat</button>` : ''}
-          ${u.id !== myId ? `<button class="btn-action danger" onclick="deleteUser(${u.id},'${esc(u.name)}')">Smazat</button>` : ''}
+          ${canManageUser ? `<button class="btn-action" onclick="openEditModal(${u.id})">Upravit</button>
+          <button class="btn-action" onclick="openOverridesModal(${u.id},'${esc(u.name)}','${esc(u.role)}')">Oprávnění</button>` : ''}
+          ${canManageUser && inactive ? `<button class="btn-action" onclick="reactivateRaspisUser(${u.id},'${esc(u.name)}')">Aktivovat</button>` : ''}
+          ${canManageUser && u.id !== myId ? `<button class="btn-action danger" onclick="deleteUser(${u.id},'${esc(u.name)}')">Smazat</button>` : ''}
         </td>
       </tr>`;
     }).join('');
@@ -825,7 +828,7 @@
     sel.innerHTML = '';
     const groups = allGroups.length ? allGroups : [{ name: 'admin', displayName: 'Admin' }, { name: 'vedoucí', displayName: 'VR' }, { name: 'recepční', displayName: 'Recepční' }, { name: 'pb6', displayName: 'PB6' }, { name: 'hotely', displayName: 'Hotely' }];
     groups
-      .filter(g => g.name !== 'widget')
+      .filter(g => g.name !== 'widget' && canManageUserGroup(g.name))
       .slice()
       .sort(compareGroups)
       .forEach(g => {
@@ -855,6 +858,7 @@
     const name = user.name || '';
     const username = user.username || '';
     const role = user.role || '';
+    if (!canManageUserGroup(role)) return;
     currentUserId = id;
     document.getElementById('modal-title').textContent = 'Upravit uživatele';
     document.getElementById('u-name').value = name;
@@ -910,6 +914,7 @@
     const msg = document.getElementById('user-msg');
     if (!name) { setMsg(msg, 'err', 'Zadejte jméno.'); return; }
     try { ContractHistoryAdmin.payload(currentUserId === null); } catch(e) { setMsg(msg, 'err', e.message); return; }
+    const changingOwnGroup = currentUserId === myId && role !== myRole;
     let r;
     if (currentUserId === null) {
       if (!username) { setMsg(msg, 'err', 'Zadejte uživatelské jméno.'); return; }
@@ -917,11 +922,16 @@
       r = await fetch('/api/users', { method: 'POST', headers: {'Content-Type':'application/json'}, body: JSON.stringify({ name, username, password, role, phone }) });
     } else {
       if (!username) { setMsg(msg, 'err', 'Zadejte uživatelské jméno.'); return; }
+      if (changingOwnGroup) {
+        try { await saveRaspisOverride(currentUserId); }
+        catch (e) { setMsg(msg, 'err', e.message || 'Nastavení se nepodařilo uložit.'); return; }
+      }
       const body = { name, role, username, phone }; if (password) body.password = password;
       r = await fetch(`/api/users/${currentUserId}`, { method: 'PATCH', headers: {'Content-Type':'application/json'}, body: JSON.stringify(body) });
     }
     const data = await r.json();
     if (!data.ok) { setMsg(msg, 'err', data.msg || 'Chyba.'); return; }
+    if (changingOwnGroup) { window.top.location.href = '/'; return; }
     // Ulož Raspis Test nastavení do perm_overrides
     const userId = currentUserId !== null ? currentUserId : data.id;
     try { if (userId) await saveRaspisOverride(userId); }

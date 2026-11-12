@@ -843,8 +843,18 @@ app.get('/api/users', requireLogin, requireAdminReadAccess, async (req, res) => 
   }
 });
 
+const protectedUserGroups = new Set(['admin', 'vedoucí']);
+const protectedUserGroupMessage = 'Účty ve skupinách Admin a VR může spravovat pouze Admin.';
+
+function canManageUserGroup(actor, role) {
+  return actor.role === 'admin' || !protectedUserGroups.has(role);
+}
+
 app.post('/api/users', requireLogin, requirePermDefault('admin', 'users_add', false), async (req, res) => {
   const { name, username, password, role, phone } = req.body;
+  if (!canManageUserGroup(req.session.user, role)) {
+    return res.status(403).json({ ok: false, msg: protectedUserGroupMessage });
+  }
   if (!name?.trim() || !username?.trim() || !password || !role) {
     return res.json({ ok: false, msg: 'Vyplňte všechna pole.' });
   }
@@ -872,37 +882,57 @@ app.post('/api/users', requireLogin, requirePermDefault('admin', 'users_add', fa
 app.patch('/api/users/:id', requireLogin, requirePermDefault('admin', 'users_edit', false), async (req, res) => {
   const id = parseInt(req.params.id, 10);
   const { name, role, password, username, phone } = req.body;
+  const actor = req.session.user;
 
-  if (id === req.session.user.id && role && role !== 'admin') {
-    return res.json({ ok: false, msg: 'Nemůžete si sami odebrat roli admina.' });
+  if (!canManageUserGroup(actor, role)) {
+    return res.status(403).json({ ok: false, msg: protectedUserGroupMessage });
+  }
+  if (password && password.length < 5) {
+    return res.json({ ok: false, msg: 'Heslo musí mít alespoň 5 znaků.' });
   }
 
+  let client;
   try {
-    const db = getPool();
-    const { rows: beforeRows } = await db.query('SELECT username FROM users WHERE id = $1', [id]);
-    const previousLogin = beforeRows[0]?.username || null;
+    client = await getPool().connect();
+    await client.query('BEGIN');
+    const { rows: [before] } = await client.query('SELECT username, role FROM users WHERE id = $1 FOR UPDATE', [id]);
+    if (!before) throw Object.assign(new Error('Uživatel neexistuje.'), { status: 404 });
+    if (!canManageUserGroup(actor, before.role)) {
+      throw Object.assign(new Error(protectedUserGroupMessage), { status: 403 });
+    }
+    if (role && role !== before.role) {
+      const { rows } = await client.query('SELECT 1 FROM permission_groups WHERE name = $1', [role]);
+      if (!rows.length) throw Object.assign(new Error('Neplatná skupina.'), { status: 400 });
+      await client.query('UPDATE users SET role = $1, auth_version = auth_version + 1 WHERE id = $2', [role, id]);
+    }
     if (username) {
-      // Check username not taken by someone else
-      const { rows: taken } = await db.query(
+      const { rows: taken } = await client.query(
         'SELECT id FROM users WHERE LOWER(username) = LOWER($1) AND id != $2', [username.trim(), id]
       );
-      if (taken.length > 0) return res.json({ ok: false, msg: 'Toto uživatelské jméno je již obsazeno.' });
-      await db.query('UPDATE users SET username = $1 WHERE id = $2', [username.trim(), id]);
+      if (taken.length) throw Object.assign(new Error('Toto uživatelské jméno je již obsazeno.'), { status: 409 });
+      await client.query('UPDATE users SET username = $1 WHERE id = $2', [username.trim(), id]);
     }
-    if (name) await db.query('UPDATE users SET name = $1 WHERE id = $2', [name.trim(), id]);
-    if (role) await db.query('UPDATE users SET role = $1, auth_version = auth_version + CASE WHEN role IS DISTINCT FROM $1 THEN 1 ELSE 0 END WHERE id = $2', [role, id]);
-    if (phone !== undefined) await db.query('UPDATE users SET phone = $1 WHERE id = $2', [formatPhoneForStorage(phone), id]);
-    await syncReceptionistLoginFromUser(db, id, previousLogin);
+    if (name) await client.query('UPDATE users SET name = $1 WHERE id = $2', [name.trim(), id]);
+    if (phone !== undefined) await client.query('UPDATE users SET phone = $1 WHERE id = $2', [formatPhoneForStorage(phone), id]);
+    await syncReceptionistLoginFromUser(client, id, before.username);
+    let authVersion;
     if (password) {
-      if (password.length < 5) return res.json({ ok: false, msg: 'Heslo musí mít alespoň 5 znaků.' });
-      const {rows: [updated]} = await db.query('UPDATE users SET password_hash = $1, auth_version = auth_version + 1 WHERE id = $2 RETURNING auth_version',
+      const { rows: [updated] } = await client.query('UPDATE users SET password_hash = $1, auth_version = auth_version + 1 WHERE id = $2 RETURNING auth_version',
         [await bcrypt.hash(password, 10), id]);
-      if (updated && id === req.session.user.id) req.session.authVersion = updated.auth_version;
+      authVersion = updated.auth_version;
     }
+    await client.query('COMMIT');
+    if (authVersion !== undefined && id === actor.id) req.session.authVersion = authVersion;
     res.json({ ok: true });
   } catch (err) {
+    if (client) {
+      try { await client.query('ROLLBACK'); } catch (_) {}
+    }
+    if (err.status) return res.status(err.status).json({ ok: false, msg: err.message });
     console.error('Chyba úpravy uživatele:', err);
     res.json({ ok: false, msg: 'Chyba serveru.' });
+  } finally {
+    if (client) client.release();
   }
 });
 
@@ -913,7 +943,13 @@ app.delete('/api/users/:id', requireLogin, requirePermDefault('admin', 'users_de
   }
   try {
     const db = getPool();
-    await db.query('DELETE FROM users WHERE id = $1', [id]);
+    const { rowCount } = await db.query(
+      'DELETE FROM users WHERE id = $1 AND ($2::boolean OR role <> ALL($3::text[]))',
+      [id, req.session.user.role === 'admin', [...protectedUserGroups]]
+    );
+    if (!rowCount && req.session.user.role !== 'admin') {
+      return res.status(403).json({ ok: false, msg: protectedUserGroupMessage });
+    }
     res.json({ ok: true });
   } catch (err) {
     console.error('Chyba smazání uživatele:', err);
@@ -978,8 +1014,11 @@ app.put('/api/admin/users/:id/overrides', requireLogin, requirePermDefault('admi
   const client = await getPool().connect();
   try {
     await client.query('BEGIN');
-    const { rows } = await client.query('SELECT username, perm_overrides FROM users WHERE id = $1 FOR UPDATE', [req.params.id]);
+    const { rows } = await client.query('SELECT username, role, perm_overrides FROM users WHERE id = $1 FOR UPDATE', [req.params.id]);
     if (!rows.length) throw Error('Uživatel neexistuje.');
+    if (!canManageUserGroup(req.session.user, rows[0].role)) {
+      throw Object.assign(new Error(protectedUserGroupMessage), { status: 403 });
+    }
     const before = parsePermOverridesValue(rows[0].perm_overrides);
     const previousLogin = before?.raspis_staff?.login || rows[0].username;
     const login = String(previousLogin).trim().toUpperCase();
@@ -1018,7 +1057,7 @@ app.put('/api/admin/users/:id/overrides', requireLogin, requirePermDefault('admi
     res.json({ ok: true });
   } catch(err) {
     try { await client.query('ROLLBACK'); } catch (_) {}
-    res.status(400).json({ ok: false, msg: err.message || 'Chyba serveru.' });
+    res.status(err.status || 400).json({ ok: false, msg: err.message || 'Chyba serveru.' });
   } finally { client.release(); }
 });
 
