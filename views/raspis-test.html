@@ -8222,7 +8222,7 @@ function buildSaveData() {
   };
 }
 
-function applyData(data) {
+function applyData(data, { preferLoadedHotelSkills = false } = {}) {
   if (!data) return;
   if (data.bbConflicts?.length) toast('Konflikt směn BB: ' + [...new Set(data.bbConflicts.map(c=>c.date))].join(', ') + '. Zkontrolujte Rozpis BB a Rozpis VR.', true);
   state.bbLinks = JSON.parse(JSON.stringify(data.bbLinks || []));
@@ -8259,7 +8259,10 @@ function applyData(data) {
     s.regularExceptionTo = custom.regularExceptionTo || '';
     s.regularOpen = normalizeRegularOpen(custom.regularOpen);
     s.hotel  = custom.hotel  || '';
-    s.hotelSkills = Array.isArray(custom.hotelSkills) ? [...custom.hotelSkills] : [];
+    const loadedHotelSkills = Array.isArray(s.hotelSkills) ? s.hotelSkills : null;
+    const savedHotelSkills = Array.isArray(custom.hotelSkills) ? custom.hotelSkills : null;
+    s.hotelSkills = preferLoadedHotelSkills ? loadedHotelSkills ?? savedHotelSkills : savedHotelSkills ?? loadedHotelSkills;
+    if (preferLoadedHotelSkills) s.hotelSkillModes = s.hotelSkillModes ?? custom.hotelSkillModes;
     s.noStandby = !!custom.noStandby || !!s.noStandby;
     // Live staff limits from Správa uživatelů take precedence over old schedule snapshots.
     s.reqXLimit = Number.isFinite(Number(s.reqXLimit ?? custom.reqXLimit)) ? Number(s.reqXLimit ?? custom.reqXLimit) : 7;
@@ -8341,7 +8344,7 @@ function applyData(data) {
   // ── Neuložení pracovníci z XLS ──
   updateRequirementsFundsInfo();
   state.unmatchedXls = Array.isArray(data.unmatchedXls) ? data.unmatchedXls : [];
-  reconcileLoadedStaffWithSettings();
+  reconcileLoadedStaffWithSettings({ preferLoadedHotelSkills });
   ensureActiveReceptionistsInCurrentSchedule();
 
   // ── UI: sel-month-year ──
@@ -8743,7 +8746,7 @@ async function confirmAddWebUser() {
             x: as.x ?? custom.x ?? '', xa: as.xa ?? custom.xa ?? '', dates: as.dates ?? custom.dates ?? '',
             regular: as.regular ?? custom.regular ?? '', regularFrom: as.regularFrom ?? custom.regularFrom ?? '', regularTo: as.regularTo ?? custom.regularTo ?? '', regularExceptionFrom: as.regularExceptionFrom ?? custom.regularExceptionFrom ?? '', regularExceptionTo: as.regularExceptionTo ?? custom.regularExceptionTo ?? '', regularOpen: normalizeRegularOpen(as.regularOpen ?? custom.regularOpen ?? false), hotel: as.hotel ?? custom.hotel ?? '',
             hotelSkills: Array.isArray(skills) ? [...skills] : (Array.isArray(custom.hotelSkills) ? [...custom.hotelSkills] : []),
-        hotelSkillModes: Object.keys(cloneHotelSkillModes(as.hotelSkillModes)).length ? cloneHotelSkillModes(as.hotelSkillModes) : cloneHotelSkillModes(custom.hotelSkillModes),
+            hotelSkillModes: cloneHotelSkillModes(as.hotelSkillModes),
             noStandby: !!as.noStandby,
             reqXLimit: Number.isFinite(Number(as.reqXLimit ?? custom.reqXLimit)) ? Number(as.reqXLimit ?? custom.reqXLimit) : 7,
             reqYLimit: Number.isFinite(Number(as.reqYLimit ?? custom.reqYLimit)) ? Number(as.reqYLimit ?? custom.reqYLimit) : 0,
@@ -8773,7 +8776,7 @@ async function confirmAddWebUser() {
               regularExceptionTo: newApiEntry.regularExceptionTo ?? custom.regularExceptionTo ?? '',
               regular: newApiEntry.regular ?? custom.regular ?? '', hotel: newApiEntry.hotel ?? custom.hotel ?? '',
               hotelSkills: Array.isArray(skills) ? [...skills] : (Array.isArray(custom.hotelSkills) ? [...custom.hotelSkills] : []),
-              hotelSkillModes: Object.keys(cloneHotelSkillModes(newApiEntry.hotelSkillModes)).length ? cloneHotelSkillModes(newApiEntry.hotelSkillModes) : cloneHotelSkillModes(custom.hotelSkillModes),
+              hotelSkillModes: cloneHotelSkillModes(newApiEntry.hotelSkillModes),
               noStandby: !!newApiEntry.noStandby,
               reqXLimit: Number.isFinite(Number(newApiEntry.reqXLimit ?? custom.reqXLimit)) ? Number(newApiEntry.reqXLimit ?? custom.reqXLimit) : 7,
               reqYLimit: Number.isFinite(Number(newApiEntry.reqYLimit ?? custom.reqYLimit)) ? Number(newApiEntry.reqYLimit ?? custom.reqYLimit) : 0,
@@ -8819,14 +8822,14 @@ async function confirmAddWebUser() {
    Portaloví uživatelé (s userId) se NIKDY neukládají do draftu.
    Jejich vlastní data (maxHrs, poznámky, atd.) jsou uložena v portalCustomData.
 ══════════════════════════════════════════════════════════════════════════════ */
-async function syncRaspisStaff() {
+async function syncRaspisStaff({ hotelSkillsOnly = false } = {}) {
   const generation = scheduleLoadGeneration, tab = document.body.dataset.activeTab;
   if (!['nastaveni','tvorba'].includes(tab)) return;
   try {
     // Načteme portálové pracovníky a speciální (Ostatní) souběžně
     const [staffResp, specialResp] = await Promise.all([
-      fetch('/api/raspis-staff',      { credentials: 'include' }),
-      fetch('/api/rt/special-staff',  { credentials: 'include' })
+      fetch('/api/raspis-staff', { credentials: 'include', cache: 'no-store' }),
+      hotelSkillsOnly ? null : fetch('/api/rt/special-staff', { credentials: 'include' })
     ]);
     if (!staffResp.ok) return;
     const data = await staffResp.json();
@@ -8836,6 +8839,19 @@ async function syncRaspisStaff() {
     // master_staff je globální sdílená tabulka (jiné moduly) — záměrně ho
     // tady nečteme, aby nedošlo ke zdvojení nebo záměně pracovníků.
     const apiStaff = (data.staff || []).filter(s => s.userId && normalizedStaffType(s) !== 'bagazista');
+
+    if (hotelSkillsOnly) {
+      if (generation !== scheduleLoadGeneration || tab !== document.body.dataset.activeTab) return;
+      const byId = new Map(apiStaff.map(s => [String(s.userId), s]));
+      for (const row of [...state.staff, ...(state.allPortalUsers || [])]) {
+        const current = byId.get(String(row.userId));
+        if (!current) continue;
+        row.hotelSkills = [...current.hotels];
+        row.hotelSkillModes = cloneHotelSkillModes(current.hotelSkillModes);
+      }
+      applyRowFilters();
+      return;
+    }
 
     // Ne-portáloví pracovníci (Vedoucí/Pohotovost/Speciální/Ostatní) jsou
     // uloženi per-user v /api/rt/special-staff (rt_drafts month=0, year=0).
@@ -8884,7 +8900,7 @@ async function syncRaspisStaff() {
         regularExceptionTo: as.regularExceptionTo ?? custom.regularExceptionTo ?? '',
         hotel:    as.hotel  ?? custom.hotel  ?? '',
         hotelSkills: Array.isArray(skills) ? [...skills] : (Array.isArray(custom.hotelSkills) ? [...custom.hotelSkills] : []),
-        hotelSkillModes: Object.keys(cloneHotelSkillModes(as.hotelSkillModes)).length ? cloneHotelSkillModes(as.hotelSkillModes) : cloneHotelSkillModes(custom.hotelSkillModes),
+        hotelSkillModes: cloneHotelSkillModes(as.hotelSkillModes),
         noStandby: !!as.noStandby,
         reqXLimit: Number.isFinite(Number(as.reqXLimit ?? custom.reqXLimit)) ? Number(as.reqXLimit ?? custom.reqXLimit) : 7,
         reqYLimit: Number.isFinite(Number(as.reqYLimit ?? custom.reqYLimit)) ? Number(as.reqYLimit ?? custom.reqYLimit) : 0,
@@ -9082,7 +9098,7 @@ async function loadDraft(id) {
     if (!r.ok) { toast('Chyba načtení konceptu', true); return false; }
     const data = await r.json();
     if (!loadIsCurrent()) return false;
-    applyData(data.data || data);
+    applyData(data.data || data, { preferLoadedHotelSkills: true });
     activeScheduleSource = 'draft';
     currentDraftId = id;
     dirtyFlag = false;
@@ -9277,7 +9293,7 @@ async function publishSchedule() {
     });
     const response = await r.json().catch(() => ({}));
     if (!r.ok || !response.ok) throw new Error(response.msg || r.status);
-    if (response.data) applyData(response.data);
+    if (response.data) applyData(response.data, { preferLoadedHotelSkills: true });
     const key = response.key || `RT:${String(state.month).padStart(2, '0')}/${state.year}`;
     publishedScheduleCache.set(key, JSON.parse(JSON.stringify(response.data || data)));
     currentPubKey = key;
@@ -9418,7 +9434,7 @@ async function loadSchedule(key) {
     if (!scheduleData) throw new Error('Prázdná data');
     if (!loadIsCurrent()) return;
     publishedScheduleCache.set(key, JSON.parse(JSON.stringify(scheduleData)));
-    applyData(scheduleData);
+    applyData(scheduleData, { preferLoadedHotelSkills: true });
     activeScheduleSource = 'published';
     spinner.style.display = 'none';
     if (publicSpinner) publicSpinner.style.display = 'none';
@@ -12570,7 +12586,7 @@ function getScheduleSettingsByName() {
   return settingsByName;
 }
 
-function reconcileLoadedStaffWithSettings() {
+function reconcileLoadedStaffWithSettings({ preferLoadedHotelSkills = false } = {}) {
   const portalById = new Map((state.allPortalUsers || []).map(s => [s.userId, s]));
   const settingsByName = getScheduleSettingsByName();
   if (!portalById.size && !settingsByName.size) return false;
@@ -12586,7 +12602,12 @@ function reconcileLoadedStaffWithSettings() {
       return { ...row, unmatchedXls: true };
     }
     changed = changed || row.unmatchedXls || row.name !== (matched.name || matched.displayName || row.name || '');
-    return { ...row, ...matched, name: matched.name || matched.displayName || row.name || '', unmatchedXls: false };
+    const merged = { ...row, ...matched, name: matched.name || matched.displayName || row.name || '', unmatchedXls: false };
+    if (preferLoadedHotelSkills && row.userId) {
+      merged.hotelSkills = row.hotelSkills ?? matched.hotelSkills;
+      merged.hotelSkillModes = row.hotelSkillModes ?? matched.hotelSkillModes;
+    }
+    return merged;
   });
 
   const cleaned = removeStaleUnmatchedRows(settingsByName);
@@ -14284,7 +14305,7 @@ async function saveViewEdits(options = {}) {
     });
     const d = await r.json();
     if (d.ok) {
-      if (d.data) applyData(d.data);
+      if (d.data) applyData(d.data, { preferLoadedHotelSkills: true });
       publishedScheduleCache.set(currentPubKey, JSON.parse(JSON.stringify(d.data || savedData)));
       vrBonuses.reset();
       viewEditMode = false; viewEditSnapshot = null;
@@ -14889,9 +14910,11 @@ function switchTab(name) {
   }
   if (name === 'tvorba') {
     if (activeScheduleSource !== 'draft') {
-      if (!restoreTvorbaDraftSnapshot()) restoreTvorbaDraftAfterRequirements();
+      if (restoreTvorbaDraftSnapshot()) syncRaspisStaff({ hotelSkillsOnly: true });
+      else restoreTvorbaDraftAfterRequirements();
       return;
     }
+    if (!window._initRendering) syncRaspisStaff({ hotelSkillsOnly: true });
     const tbl = document.getElementById('tvorba-tbl');
     const spinner = document.getElementById('tvorba-spinner');
     // Skip the lazy render during DOMContentLoaded init — loadDraft() renders authoritatively
